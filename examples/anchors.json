@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "anchors": {
+    "PROTO": [
+      {
+        "form_id": "anchor:fixture:water",
+        "variety_id": "PROTO",
+        "concept_id": "948",
+        "segments": ["p", "a"],
+        "provenance": {
+          "dataset_id": "fixture-historical-source",
+          "source_form_id": "historical-water",
+          "segment_source": "curated phonemic transcription",
+          "source_reference": "Fixture citation, entry historical-water"
+        }
+      }
+    ]
+  }
+}

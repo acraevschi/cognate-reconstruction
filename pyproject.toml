@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cognate-reconstruction"
+version = "0.2.0"
+description = "Deterministic historical-linguistics reconstruction harness with validated LLM tool use"
+requires-python = ">=3.11"
+license = "MIT"
+readme = "README.md"
+dependencies = [
+    "pycldf>=1.35",
+    "newick>=1.0",
+    "pydantic>=2.8,<3",
+    "lingpy>=2.6,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov"]
+agent = ["litellm>=1.63,<1.82"]
+
+[project.scripts]
+cognate-reconstruct = "cognate_reconstruction.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cognate_reconstruction*"]
+
+[tool.setuptools.package-data]
+cognate_reconstruction = ["py.typed", "agent/SKILL.md"]

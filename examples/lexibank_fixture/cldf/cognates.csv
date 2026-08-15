@@ -1,0 +1,7 @@
+ID,Form_ID,Cognateset_ID,Segment_Slice,Alignment
+c1,a-water,water-1,,p a
+c1-alt,a-water,water-alt,,p a
+c2,b-water,water-1,1:2,f a
+c3,a-fire,fire-1,,p u r
+c4,b-fire,fire-1,,f u r
+c5,a-raw-only,water-2,,

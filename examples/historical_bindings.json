@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "bindings": [
+    {
+      "source_variety_id": "iecor:112",
+      "node_id": "iecor:112",
+      "role": "target",
+      "source_reference": "Explicit project configuration for attested Latin"
+    }
+  ]
+}

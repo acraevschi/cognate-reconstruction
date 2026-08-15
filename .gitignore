@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+.venv/
+venv/
+
+# OS / editor artifacts
+.DS_Store
+.gemini/
+
+# Local Claude Code config; the canonical skill source is committed at skills/
+.claude/
+
+# Run outputs
+runs/
+reconstruction_events.jsonl
+reconstruction_result.json
+trajectories.jsonl
+
+torch_datasets/train_dataset.pt
+torch_datasets/val_dataset.pt
+commands_to_run.txt
+
+# Large corpora: user-managed local checkouts and generated datasets.
+# These are multi-GB and must never be committed.
+data/glottolog/
+data/lexibank/
+data/stage1_cognate_reflex*.jsonl
+data/stage2_reconstruction*.jsonl
+data/**/*.arrow
+*.pt
+*.safetensors
+*.bin
+*.ckpt

@@ -1,0 +1,1125 @@
+{
+ "committed_reconstruction": {
+  "parsed_rules": [
+   {
+    "confidence": 0.9,
+    "rule": {
+     "environment": {
+      "left": null,
+      "right": null,
+      "word_final": false,
+      "word_initial": true
+     },
+     "replacement": {
+      "morphological_boundary_tokens": [
+       "+",
+       "-"
+      ],
+      "tokens": [
+       "p"
+      ]
+     },
+     "rule_id": "restore-p",
+     "source": "f > p / #_",
+     "target": {
+      "morphological_boundary_tokens": [
+       "+",
+       "-"
+      ],
+      "tokens": [
+       "f"
+      ]
+     }
+    },
+    "source_child_ids": [
+     "B"
+    ]
+   }
+  ],
+  "request": {
+   "anomalies": [],
+   "cascade_validation_call_id": null,
+   "node_id": "PROTO",
+   "rules": [
+    {
+     "confidence": 0.9,
+     "direction": "child_to_parent",
+     "dsl": "f > p / #_",
+     "rationale": "regular initial correspondence",
+     "rule_id": "restore-p",
+     "source_child_ids": [
+      "B"
+     ],
+     "supporting_form_ids": [
+      "B:water"
+     ],
+     "validation_call_id": "validate"
+    }
+   ],
+   "segmentation_overlay_id": null,
+   "summary": "Restore parent initial p from regular B f."
+  }
+ },
+ "completed": true,
+ "configuration_sha256": "config-pre-change",
+ "failure": null,
+ "initial_payload": {
+  "active_children": [
+   {
+    "concept_count": 1,
+    "form_count": 1,
+    "name": "A",
+    "node_id": "A"
+   },
+   {
+    "concept_count": 1,
+    "form_count": 1,
+    "name": "B",
+    "node_id": "B"
+   }
+  ],
+  "anchor_policy": "advisory",
+  "anchors": [],
+  "node_id": "PROTO"
+ },
+ "instruction_sha256": "51460449bb086afee57311e919064202347dee627c2472218bdee7b2e83c3ffb",
+ "messages": [
+  {
+   "content": "Inspect, test, then commit.",
+   "name": null,
+   "role": "system",
+   "tool_call_id": null,
+   "tool_calls": []
+  },
+  {
+   "content": "Reconstruct the parent represented by this node. Use the tools iteratively and finish with commit_reconstruction.\n\n{\n  \"node_id\": \"PROTO\",\n  \"active_children\": [\n    {\n      \"node_id\": \"A\",\n      \"name\": \"A\",\n      \"form_count\": 1,\n      \"concept_count\": 1\n    },\n    {\n      \"node_id\": \"B\",\n      \"name\": \"B\",\n      \"form_count\": 1,\n      \"concept_count\": 1\n    }\n  ],\n  \"anchor_policy\": \"advisory\",\n  \"anchors\": []\n}",
+   "name": null,
+   "role": "user",
+   "tool_call_id": null,
+   "tool_calls": []
+  },
+  {
+   "content": null,
+   "name": null,
+   "role": "assistant",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "arguments": {},
+     "call_id": "inspect",
+     "name": "list_concepts"
+    }
+   ]
+  },
+  {
+   "content": "{\"ok\":true,\"result\":{\"concepts\":[{\"concept\":{\"concept_id\":\"water\",\"gloss\":\"water\",\"concepticon_id\":null,\"aliases\":[],\"semantic_field\":null},\"form_count\":2,\"node_ids\":[\"A\",\"B\"]}],\"next_offset\":null},\"error\":null}",
+   "name": "list_concepts",
+   "role": "tool",
+   "tool_call_id": "inspect",
+   "tool_calls": []
+  },
+  {
+   "content": null,
+   "name": null,
+   "role": "assistant",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "arguments": {
+      "dsl": "f > p / #_",
+      "source_child_ids": [
+       "B"
+      ]
+     },
+     "call_id": "validate",
+     "name": "test_sound_law"
+    }
+   ]
+  },
+  {
+   "content": "{\"ok\":true,\"result\":{\"validation_call_id\":\"validate\",\"parsed_rule\":{\"rule_id\":\"rule-54a31246b23e\",\"source\":\"f > p / #_\",\"target\":{\"tokens\":[\"f\"],\"morphological_boundary_tokens\":[\"+\",\"-\"]},\"replacement\":{\"tokens\":[\"p\"],\"morphological_boundary_tokens\":[\"+\",\"-\"]},\"environment\":{\"left\":null,\"right\":null,\"word_initial\":true,\"word_final\":false}},\"source_child_ids\":[\"B\"],\"segmentation_overlay_id\":null,\"report\":{\"rule\":{\"rule_id\":\"rule-54a31246b23e\",\"source\":\"f > p / #_\",\"target\":{\"tokens\":[\"f\"],\"morphological_boundary_tokens\":[\"+\",\"-\"]},\"replacement\":{\"tokens\":[\"p\"],\"morphological_boundary_tokens\":[\"+\",\"-\"]},\"environment\":{\"left\":null,\"right\":null,\"word_initial\":true,\"word_final\":false}},\"results\":[{\"form_id\":\"B:water\",\"source_candidate_id\":null,\"input_segments\":[\"f\",\"a\"],\"output_segments\":[\"p\",\"a\"],\"status\":\"applied\",\"locations\":[{\"start_token\":0,\"end_token\":1}],\"target_occurrences\":1,\"anchor_ids\":[],\"matched_anchor_ids\":[],\"explanation\":\"rule applied at 1 location(s)\"}],\"words_applied\":1,\"anchors_matched\":0,\"exceptions\":[]},\"supporting_form_ids\":[\"B:water\"]},\"error\":null}",
+   "name": "test_sound_law",
+   "role": "tool",
+   "tool_call_id": "validate",
+   "tool_calls": []
+  },
+  {
+   "content": null,
+   "name": null,
+   "role": "assistant",
+   "tool_call_id": null,
+   "tool_calls": [
+    {
+     "arguments": {
+      "anomalies": [],
+      "node_id": "PROTO",
+      "rules": [
+       {
+        "confidence": 0.9,
+        "dsl": "f > p / #_",
+        "rationale": "regular initial correspondence",
+        "rule_id": "restore-p",
+        "source_child_ids": [
+         "B"
+        ],
+        "supporting_form_ids": [
+         "B:water"
+        ],
+        "validation_call_id": "validate"
+       }
+      ],
+      "summary": "Restore parent initial p from regular B f."
+     },
+     "call_id": "commit",
+     "name": "commit_reconstruction"
+    }
+   ]
+  },
+  {
+   "content": "{\"ok\":true,\"result\":{\"status\":\"committed\",\"reconstruction\":{\"request\":{\"node_id\":\"PROTO\",\"segmentation_overlay_id\":null,\"cascade_validation_call_id\":null,\"rules\":[{\"rule_id\":\"restore-p\",\"dsl\":\"f > p / #_\",\"direction\":\"child_to_parent\",\"source_child_ids\":[\"B\"],\"confidence\":0.9,\"validation_call_id\":\"validate\",\"supporting_form_ids\":[\"B:water\"],\"rationale\":\"regular initial correspondence\"}],\"anomalies\":[],\"summary\":\"Restore parent initial p from regular B f.\"},\"parsed_rules\":[{\"rule\":{\"rule_id\":\"restore-p\",\"source\":\"f > p / #_\",\"target\":{\"tokens\":[\"f\"],\"morphological_boundary_tokens\":[\"+\",\"-\"]},\"replacement\":{\"tokens\":[\"p\"],\"morphological_boundary_tokens\":[\"+\",\"-\"]},\"environment\":{\"left\":null,\"right\":null,\"word_initial\":true,\"word_final\":false}},\"source_child_ids\":[\"B\"],\"confidence\":0.9}]}},\"error\":null}",
+   "name": "commit_reconstruction",
+   "role": "tool",
+   "tool_call_id": "commit",
+   "tool_calls": []
+  }
+ ],
+ "metrics": {
+  "cascade_tests": 0,
+  "committed_anomaly_count": 0,
+  "committed_rule_count": 1,
+  "committed_without_inspection": false,
+  "cost_usd": null,
+  "duration_seconds": 2.0,
+  "finished_at": "2026-08-10T09:00:02Z",
+  "identity_without_testing": false,
+  "input_tokens": null,
+  "inspection_tool_calls": 1,
+  "output_tokens": null,
+  "provider_attempts": 3,
+  "retry_count": 0,
+  "sound_law_tests": 1,
+  "started_at": "2026-08-10T09:00:00Z",
+  "tool_call_count": 3,
+  "total_tokens": null,
+  "turn_count": 3
+ },
+ "model_id": "scripted/fixture",
+ "node_id": "PROTO",
+ "payload_schema_sha256": "db4c9ed8108c223c602e4e69b07a211243bfce76a1b2a638093972781273ca9d",
+ "provider_adapter": "Provider",
+ "provider_responses": [
+  {
+   "finish_reason": null,
+   "model_id": null,
+   "provider_id": null,
+   "response_id": null,
+   "usage": null
+  },
+  {
+   "finish_reason": null,
+   "model_id": null,
+   "provider_id": null,
+   "response_id": null,
+   "usage": null
+  },
+  {
+   "finish_reason": null,
+   "model_id": null,
+   "provider_id": null,
+   "response_id": null,
+   "usage": null
+  }
+ ],
+ "reconstruction_step": {
+  "anomaly_reports": [],
+  "child_node_ids": [
+   "A",
+   "B"
+  ],
+  "correspondence_maps": [],
+  "diagnostics": {
+   "anchor_mismatches": 0,
+   "anomaly_count": 0,
+   "anomaly_rate": 0.0,
+   "context_mismatches": 0,
+   "identity_reconstruction": false,
+   "rule_complexity_cost": 4,
+   "rule_count": 1,
+   "rule_coverage": 1.0,
+   "rule_results_evaluated": 1,
+   "successful_applications": 1,
+   "target_absent": 0
+  },
+  "input_beams": [
+   {
+    "beam_width": 5,
+    "distributions": [
+     {
+      "candidates": [
+       {
+        "candidate_id": "A:water:22f39c9abb29",
+        "derivations": [
+         {
+          "alignment_ids": [],
+          "child_candidate_ids": [],
+          "derivation_id": "observed:A:water:0",
+          "note": "observed leaf form",
+          "rule_ids": []
+         }
+        ],
+        "log_score": 0.0,
+        "probability": 1.0,
+        "segments": [
+         "p",
+         "a"
+        ]
+       }
+      ],
+      "concept_id": "water"
+     }
+    ],
+    "node_id": "A",
+    "source_child_ids": null
+   },
+   {
+    "beam_width": 5,
+    "distributions": [
+     {
+      "candidates": [
+       {
+        "candidate_id": "B:water:729adea2d8a7",
+        "derivations": [
+         {
+          "alignment_ids": [],
+          "child_candidate_ids": [],
+          "derivation_id": "observed:B:water:0",
+          "note": "observed leaf form",
+          "rule_ids": []
+         }
+        ],
+        "log_score": 0.0,
+        "probability": 1.0,
+        "segments": [
+         "f",
+         "a"
+        ]
+       }
+      ],
+      "concept_id": "water"
+     }
+    ],
+    "node_id": "B",
+    "source_child_ids": null
+   }
+  ],
+  "output_beam": {
+   "beam_width": 5,
+   "distributions": [
+    {
+     "candidates": [
+      {
+       "candidate_id": "PROTO:water:22f39c9abb29",
+       "derivations": [
+        {
+         "alignment_ids": [],
+         "child_candidate_ids": [
+          "A:water:22f39c9abb29",
+          "B:water:729adea2d8a7"
+         ],
+         "derivation_id": "PROTO:water:A:water:22f39c9abb29:B:water:729adea2d8a7",
+         "note": "incremental n-ary child-beam derivation",
+         "rule_ids": [
+          "restore-p"
+         ]
+        }
+       ],
+       "log_score": -0.10536051565782628,
+       "probability": 1.0,
+       "segments": [
+        "p",
+        "a"
+       ]
+      }
+     ],
+     "concept_id": "water"
+    }
+   ],
+   "node_id": "PROTO",
+   "source_child_ids": [
+    "A",
+    "B"
+   ]
+  },
+  "parent_node_id": "PROTO",
+  "rule_reports": [
+   {
+    "results": [
+     {
+      "anchor_ids": [],
+      "explanation": "rule applied at 1 location(s)",
+      "form_id": "beam-form:B:water:729adea2d8a7",
+      "input_segments": [
+       "f",
+       "a"
+      ],
+      "locations": [
+       {
+        "end_token": 1,
+        "start_token": 0
+       }
+      ],
+      "matched_anchor_ids": [],
+      "output_segments": [
+       "p",
+       "a"
+      ],
+      "source_candidate_id": "B:water:729adea2d8a7",
+      "status": "applied",
+      "target_occurrences": 1
+     }
+    ],
+    "rule": {
+     "environment": {
+      "left": null,
+      "right": null,
+      "word_final": false,
+      "word_initial": true
+     },
+     "replacement": {
+      "morphological_boundary_tokens": [
+       "+",
+       "-"
+      ],
+      "tokens": [
+       "p"
+      ]
+     },
+     "rule_id": "restore-p",
+     "source": "f > p / #_",
+     "target": {
+      "morphological_boundary_tokens": [
+       "+",
+       "-"
+      ],
+      "tokens": [
+       "f"
+      ]
+     }
+    }
+   }
+  ]
+ },
+ "run_id": "run-pre-change",
+ "schema_version": "2.0",
+ "tool_definitions": [
+  {
+   "description": "Commit ordered individually validated rules and anomalies. Rules must change their targets; use rules=[] for identity. Each rule needs a successful same-session test_sound_law validation: give its ID as the per-rule validation_call_id, or omit that field and the harness resolves the unique validation with the identical DSL and child scope. supporting_form_ids defaults to that validation's forms. Set cascade_validation_call_id only to an ID returned by test_rule_cascade; omit it if no cascade preview was run.",
+   "name": "commit_reconstruction",
+   "parameters": {
+    "$defs": {
+     "AnomalyReport": {
+      "additionalProperties": false,
+      "properties": {
+       "anomaly_type": {
+        "$ref": "#/$defs/AnomalyType"
+       },
+       "concept_id": {
+        "anyOf": [
+         {
+          "minLength": 1,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "title": "Concept Id"
+       },
+       "explanation": {
+        "minLength": 1,
+        "title": "Explanation",
+        "type": "string"
+       },
+       "form_id": {
+        "anyOf": [
+         {
+          "minLength": 1,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "title": "Form Id"
+       }
+      },
+      "required": [
+       "anomaly_type",
+       "explanation"
+      ],
+      "title": "AnomalyReport",
+      "type": "object"
+     },
+     "AnomalyType": {
+      "enum": [
+       "loanword",
+       "morphological_leveling",
+       "taboo_deformation",
+       "unknown_irregularity"
+      ],
+      "title": "AnomalyType",
+      "type": "string"
+     },
+     "CommittedSoundRule": {
+      "additionalProperties": false,
+      "properties": {
+       "confidence": {
+        "description": "Your confidence in this rule, in the open-closed interval (0, 1]. This is your own judgement; the harness cannot derive it. The deterministic beam uses it as a score weight.",
+        "exclusiveMinimum": 0.0,
+        "maximum": 1.0,
+        "title": "Confidence",
+        "type": "number"
+       },
+       "direction": {
+        "const": "child_to_parent",
+        "default": "child_to_parent",
+        "description": "Fixed. Rules are operational child-to-parent transformations; the harness never inverts a conventional forward historical law.",
+        "title": "Direction",
+        "type": "string"
+       },
+       "dsl": {
+        "description": "The child-to-parent rule text, character-identical to the 'dsl' argument of the test_sound_law call that validated it, for example 'f > p / #_'.",
+        "minLength": 1,
+        "title": "Dsl",
+        "type": "string"
+       },
+       "rationale": {
+        "anyOf": [
+         {
+          "minLength": 1,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Optional rule-specific justification. The required top-level 'summary' already carries the reasoning for the whole commit.",
+        "title": "Rationale"
+       },
+       "rule_id": {
+        "anyOf": [
+         {
+          "minLength": 1,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Optional stable label. When omitted, the harness deterministically derives one from the exact DSL and child scope.",
+        "title": "Rule Id"
+       },
+       "source_child_ids": {
+        "description": "Active child node IDs this rule is applied to. Must equal the source_child_ids of the test_sound_law call that validated it.",
+        "items": {
+         "minLength": 1,
+         "type": "string"
+        },
+        "minItems": 1,
+        "title": "Source Child Ids",
+        "type": "array"
+       },
+       "supporting_form_ids": {
+        "default": [],
+        "description": "Exact form IDs this rule applied to. Optional: when omitted it defaults to the supporting_form_ids reported by the resolved validation. When supplied it must be a subset of them.",
+        "items": {
+         "minLength": 1,
+         "type": "string"
+        },
+        "title": "Supporting Form Ids",
+        "type": "array"
+       },
+       "validation_call_id": {
+        "anyOf": [
+         {
+          "minLength": 1,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "The validation_call_id returned by the test_sound_law call that tested this exact dsl and this exact source_child_ids. It is per-rule and is never the top-level cascade_validation_call_id, which only ever holds a test_rule_cascade ID. Optional: when omitted the harness resolves it automatically, but only when exactly one successful same-session test_sound_law validation matches this rule's DSL, child scope, and segmentation overlay. Supply it explicitly when several validations would match.",
+        "title": "Validation Call Id"
+       }
+      },
+      "required": [
+       "dsl",
+       "source_child_ids",
+       "confidence"
+      ],
+      "title": "CommittedSoundRule",
+      "type": "object"
+     }
+    },
+    "additionalProperties": false,
+    "properties": {
+     "anomalies": {
+      "description": "Every unresolved irregularity, each naming a form_id or concept_id. Use an empty list when none remain.",
+      "items": {
+       "$ref": "#/$defs/AnomalyReport"
+      },
+      "title": "Anomalies",
+      "type": "array"
+     },
+     "cascade_validation_call_id": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Only the validation_call_id returned by a successful test_rule_cascade call. Omit this field if test_rule_cascade was not called; never use a test_sound_law call ID here. A test_sound_law ID belongs in the per-rule validation_call_id.",
+      "title": "Cascade Validation Call Id"
+     },
+     "node_id": {
+      "description": "The node_id of the node being reconstructed, exactly as given in the prompt payload.",
+      "minLength": 1,
+      "title": "Node Id",
+      "type": "string"
+     },
+     "rules": {
+      "description": "The ordered rule cascade to commit. Use an empty list for an identity reconstruction.",
+      "items": {
+       "$ref": "#/$defs/CommittedSoundRule"
+      },
+      "title": "Rules",
+      "type": "array"
+     },
+     "segmentation_overlay_id": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The segmentation_overlay_id returned by segment_morphemes, when the committed rules were validated against an overlay. Omit it when no overlay was used.",
+      "title": "Segmentation Overlay Id"
+     },
+     "summary": {
+      "description": "A concise statement of the reconstruction and the evidence supporting it.",
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+     }
+    },
+    "required": [
+     "node_id",
+     "rules",
+     "anomalies",
+     "summary"
+    ],
+    "title": "CommitReconstructionArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "Align forms from any two or more available nodes and return an n-way MSA plus derived pairwise correspondences. Requires an explicit small selection: at most 12 concept_ids or 48 form_ids; never request the whole vocabulary at once.",
+   "name": "get_alignments",
+   "parameters": {
+    "additionalProperties": false,
+    "properties": {
+     "concept_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "maxItems": 12,
+      "title": "Concept Ids",
+      "type": "array"
+     },
+     "form_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "maxItems": 48,
+      "title": "Form Ids",
+      "type": "array"
+     },
+     "include_anchors": {
+      "default": false,
+      "title": "Include Anchors",
+      "type": "boolean"
+     },
+     "node_ids": {
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "minItems": 2,
+      "title": "Node Ids",
+      "type": "array"
+     },
+     "respect_cognate_sets": {
+      "default": true,
+      "title": "Respect Cognate Sets",
+      "type": "boolean"
+     },
+     "segmentation_overlay_id": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Segmentation Overlay Id"
+     }
+    },
+    "required": [
+     "node_ids"
+    ],
+    "title": "GetAlignmentsArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "List observed and already reconstructed evidence nodes.",
+   "name": "list_available_nodes",
+   "parameters": {
+    "$defs": {
+     "EvidenceKind": {
+      "enum": [
+       "observed",
+       "reconstructed"
+      ],
+      "title": "EvidenceKind",
+      "type": "string"
+     },
+     "EvidenceRelation": {
+      "enum": [
+       "active_child",
+       "descendant",
+       "outgroup"
+      ],
+      "title": "EvidenceRelation",
+      "type": "string"
+     }
+    },
+    "additionalProperties": false,
+    "properties": {
+     "kinds": {
+      "default": [],
+      "items": {
+       "$ref": "#/$defs/EvidenceKind"
+      },
+      "title": "Kinds",
+      "type": "array"
+     },
+     "relations": {
+      "default": [],
+      "items": {
+       "$ref": "#/$defs/EvidenceRelation"
+      },
+      "title": "Relations",
+      "type": "array"
+     }
+    },
+    "title": "ListAvailableNodesArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "List searchable concept metadata and form counts.",
+   "name": "list_concepts",
+   "parameters": {
+    "$defs": {
+     "EvidenceScope": {
+      "enum": [
+       "active_children",
+       "available_tree"
+      ],
+      "title": "EvidenceScope",
+      "type": "string"
+     }
+    },
+    "additionalProperties": false,
+    "properties": {
+     "limit": {
+      "default": 50,
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+     },
+     "node_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Node Ids",
+      "type": "array"
+     },
+     "offset": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Offset",
+      "type": "integer"
+     },
+     "query": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Query"
+     },
+     "scope": {
+      "$ref": "#/$defs/EvidenceScope",
+      "default": "active_children"
+     }
+    },
+    "title": "ListConceptsArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "Search active or available-tree forms by semantics, segments, position, node, or cognate set.",
+   "name": "search_forms",
+   "parameters": {
+    "$defs": {
+     "EvidenceScope": {
+      "enum": [
+       "active_children",
+       "available_tree"
+      ],
+      "title": "EvidenceScope",
+      "type": "string"
+     },
+     "SegmentPosition": {
+      "enum": [
+       "initial",
+       "final",
+       "contains",
+       "exact"
+      ],
+      "title": "SegmentPosition",
+      "type": "string"
+     }
+    },
+    "additionalProperties": false,
+    "properties": {
+     "cognate_set_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Cognate Set Ids",
+      "type": "array"
+     },
+     "concept_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Concept Ids",
+      "type": "array"
+     },
+     "concept_query": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Concept Query"
+     },
+     "include_boundaries": {
+      "default": false,
+      "title": "Include Boundaries",
+      "type": "boolean"
+     },
+     "limit": {
+      "default": 50,
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+     },
+     "node_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Node Ids",
+      "type": "array"
+     },
+     "offset": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Offset",
+      "type": "integer"
+     },
+     "position": {
+      "$ref": "#/$defs/SegmentPosition",
+      "default": "contains"
+     },
+     "scope": {
+      "$ref": "#/$defs/EvidenceScope",
+      "default": "active_children"
+     },
+     "segment_pattern": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Segment Pattern",
+      "type": "array"
+     }
+    },
+    "title": "SearchFormsArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "Create a temporary boundary-only segmentation overlay.",
+   "name": "segment_morphemes",
+   "parameters": {
+    "$defs": {
+     "MorphemeSegmentation": {
+      "additionalProperties": false,
+      "properties": {
+       "form_id": {
+        "minLength": 1,
+        "title": "Form Id",
+        "type": "string"
+       },
+       "segments": {
+        "items": {
+         "minLength": 1,
+         "type": "string"
+        },
+        "minItems": 1,
+        "title": "Segments",
+        "type": "array"
+       }
+      },
+      "required": [
+       "form_id",
+       "segments"
+      ],
+      "title": "MorphemeSegmentation",
+      "type": "object"
+     }
+    },
+    "additionalProperties": false,
+    "properties": {
+     "base_overlay_id": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Base Overlay Id"
+     },
+     "rationale": {
+      "minLength": 1,
+      "title": "Rationale",
+      "type": "string"
+     },
+     "segmentations": {
+      "items": {
+       "$ref": "#/$defs/MorphemeSegmentation"
+      },
+      "minItems": 1,
+      "title": "Segmentations",
+      "type": "array"
+     }
+    },
+    "required": [
+     "segmentations",
+     "rationale"
+    ],
+    "title": "SegmentMorphemesArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "Preview a complete ordered, branch-scoped sound-law cascade and return every intermediate diff plus final forms. No-op rules are invalid; an empty cascade represents identity.",
+   "name": "test_rule_cascade",
+   "parameters": {
+    "$defs": {
+     "CascadeRuleSpec": {
+      "additionalProperties": false,
+      "properties": {
+       "dsl": {
+        "description": "One child-to-parent rule in the sound-law DSL, for example 'f > p / #_'. Rules run in the order given.",
+        "minLength": 1,
+        "title": "Dsl",
+        "type": "string"
+       },
+       "rule_id": {
+        "anyOf": [
+         {
+          "minLength": 1,
+          "type": "string"
+         },
+         {
+          "type": "null"
+         }
+        ],
+        "default": null,
+        "description": "Optional stable label. When omitted, the harness deterministically derives one from the exact DSL and child scope.",
+        "title": "Rule Id"
+       },
+       "source_child_ids": {
+        "description": "Active child node IDs this rule is applied to. Only active direct children of the node being reconstructed are accepted.",
+        "items": {
+         "minLength": 1,
+         "type": "string"
+        },
+        "minItems": 1,
+        "title": "Source Child Ids",
+        "type": "array"
+       }
+      },
+      "required": [
+       "dsl",
+       "source_child_ids"
+      ],
+      "title": "CascadeRuleSpec",
+      "type": "object"
+     }
+    },
+    "additionalProperties": false,
+    "properties": {
+     "concept_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Concept Ids",
+      "type": "array"
+     },
+     "rules": {
+      "items": {
+       "$ref": "#/$defs/CascadeRuleSpec"
+      },
+      "minItems": 1,
+      "title": "Rules",
+      "type": "array"
+     },
+     "segmentation_overlay_id": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Segmentation Overlay Id"
+     }
+    },
+    "required": [
+     "rules"
+    ],
+    "title": "TestRuleCascadeArgs",
+    "type": "object"
+   }
+  },
+  {
+   "description": "Parse and apply one child-to-parent DSL rule, returning exact diffs. A rule must change its target; use an empty committed rule set for identity reconstruction.",
+   "name": "test_sound_law",
+   "parameters": {
+    "additionalProperties": false,
+    "properties": {
+     "concept_ids": {
+      "default": [],
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "title": "Concept Ids",
+      "type": "array"
+     },
+     "dsl": {
+      "minLength": 1,
+      "title": "Dsl",
+      "type": "string"
+     },
+     "segmentation_overlay_id": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "title": "Segmentation Overlay Id"
+     },
+     "source_child_ids": {
+      "items": {
+       "minLength": 1,
+       "type": "string"
+      },
+      "minItems": 1,
+      "title": "Source Child Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "dsl",
+     "source_child_ids"
+    ],
+    "title": "TestSoundLawArgs",
+    "type": "object"
+   }
+  }
+ ],
+ "tool_schema_sha256": "1e724f877e82f1a64b4e1c7782a9121a492ad459ed7f38a64a0547d1bbec3305",
+ "trajectory_id": "trajectory-pre-change-fixture",
+ "trajectory_schema_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+}

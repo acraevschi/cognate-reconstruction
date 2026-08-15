@@ -1,0 +1,152 @@
+{
+  "@context": ["http://www.w3.org/ns/csvw", {"@language": "en"}],
+  "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#Wordlist",
+  "tables": [
+    {
+      "url": "forms.csv",
+      "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#FormTable",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Language_ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#languageReference",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Parameter_ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#parameterReference",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Form",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#form",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Segments",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#segments",
+            "datatype": "string",
+            "separator": " "
+          }
+        ],
+        "primaryKey": ["ID"],
+        "foreignKeys": [
+          {
+            "columnReference": ["Language_ID"],
+            "reference": {"resource": "languages.csv", "columnReference": ["ID"]}
+          },
+          {
+            "columnReference": ["Parameter_ID"],
+            "reference": {"resource": "parameters.csv", "columnReference": ["ID"]}
+          }
+        ]
+      }
+    },
+    {
+      "url": "languages.csv",
+      "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#LanguageTable",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Name",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#name",
+            "datatype": "string"
+          },
+          {
+            "name": "Glottocode",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#glottocode",
+            "datatype": "string"
+          },
+          {"name": "Family", "datatype": "string"},
+          {"name": "historical", "datatype": "boolean"}
+        ],
+        "primaryKey": ["ID"]
+      }
+    },
+    {
+      "url": "parameters.csv",
+      "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#ParameterTable",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Name",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#name",
+            "datatype": "string"
+          },
+          {"name": "Concepticon_ID", "datatype": "string"},
+          {"name": "Concepticon_Gloss", "datatype": "string"}
+        ],
+        "primaryKey": ["ID"]
+      }
+    },
+    {
+      "url": "cognates.csv",
+      "dc:conformsTo": "http://cldf.clld.org/v1.0/terms.rdf#CognateTable",
+      "tableSchema": {
+        "columns": [
+          {
+            "name": "ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#id",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Form_ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#formReference",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Cognateset_ID",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#cognatesetReference",
+            "datatype": "string",
+            "required": true
+          },
+          {
+            "name": "Segment_Slice",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#segmentSlice",
+            "datatype": {
+              "base": "string",
+              "format": "\\d+(:\\d+)?"
+            },
+            "separator": " "
+          },
+          {
+            "name": "Alignment",
+            "propertyUrl": "http://cldf.clld.org/v1.0/terms.rdf#alignment",
+            "datatype": "string",
+            "separator": " "
+          }
+        ],
+        "primaryKey": ["ID"],
+        "foreignKeys": [
+          {
+            "columnReference": ["Form_ID"],
+            "reference": {"resource": "forms.csv", "columnReference": ["ID"]}
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "lexicons": [
+    {
+      "variety_id": "A",
+      "name": "Fixture A",
+      "forms": [
+        {
+          "form_id": "A:water",
+          "variety_id": "A",
+          "concept_id": "water",
+          "segments": ["p", "a"],
+          "cognate_set_id": "water-1"
+        }
+      ]
+    },
+    {
+      "variety_id": "B",
+      "name": "Fixture B",
+      "forms": [
+        {
+          "form_id": "B:water",
+          "variety_id": "B",
+          "concept_id": "water",
+          "segments": ["f", "a"],
+          "cognate_set_id": "water-1"
+        }
+      ]
+    }
+  ],
+  "concepts": [
+    {
+      "concept_id": "water",
+      "gloss": "water"
+    }
+  ],
+  "newick": "(A,B)PROTO;"
+}
