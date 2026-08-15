@@ -11,6 +11,16 @@ from cognate_reconstruction.schemas.rules import (
 )
 
 
+class NoOpRuleError(ValueError):
+    """A syntactically valid rule that cannot change any token sequence.
+
+    A subclass rather than a message check: callers that need to tell "the model
+    wrote nonsense" apart from "the model wrote a rule that does nothing" should
+    not have to match on prose. It stays a ``ValueError`` so existing handling is
+    unaffected.
+    """
+
+
 def _tokens(text: str, *, allow_empty: bool = False) -> tuple[str, ...]:
     stripped = text.strip()
     if stripped in {"", "Ø", "∅"}:
@@ -57,7 +67,7 @@ def parse_rule(source: str, *, rule_id: str | None = None) -> ParsedSoundRule:
     target_tokens = _tokens(raw_target)
     replacement_tokens = _tokens(raw_replacement, allow_empty=True)
     if target_tokens == replacement_tokens:
-        raise ValueError(
+        raise NoOpRuleError(
             "a sound rule must change its target; represent identity "
             "reconstruction with an empty rule set"
         )

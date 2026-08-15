@@ -64,6 +64,7 @@ def get_node_reconstruction(
     available = sorted(prior.node_id for prior in context.prior_reconstructions)
     raise ToolInputError(
         f"no committed hypothesis is available for node {arguments.node_id!r}",
+        code="unknown-node",
         remediation=(
             "Nodes with a retrievable hypothesis in this run: "
             + (", ".join(available) if available else "none")

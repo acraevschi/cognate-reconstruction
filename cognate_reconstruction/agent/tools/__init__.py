@@ -111,7 +111,9 @@ def default_tool_registry() -> ToolRegistry:
             description=(
                 "Preview a complete ordered, branch-scoped sound-law cascade "
                 "and return every intermediate diff plus final forms. No-op "
-                "rules are invalid; an empty cascade represents identity."
+                "rules are invalid; an empty cascade represents identity. Each "
+                "rule takes only dsl and source_child_ids: this call is itself "
+                "the test, so a rule here carries no validation_call_id."
             ),
             args_model=TestRuleCascadeArgs,
             handler=test_rule_cascade,

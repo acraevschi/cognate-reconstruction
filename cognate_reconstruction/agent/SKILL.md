@@ -204,8 +204,9 @@ inspect evidence first so the identity claim is explicit rather than accidental.
 A rejected tool call returns an error and, where the harness can be concrete
 about it, a `remediation` field listing the exact session state you need, such
 as every `(validation_call_id, dsl, source_child_ids)` triple recorded so far.
-Read it and change the arguments. Repeating an identical rejected call ends the
-session.
+Read it and change the arguments. Repeating the same mistake ends the session,
+and varying the arguments does not help: repetition is judged by what was wrong,
+not by whether the wording of the error happened to change.
 
 ## Completion standard
 

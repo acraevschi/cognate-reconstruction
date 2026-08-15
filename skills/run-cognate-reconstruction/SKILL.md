@@ -56,7 +56,7 @@ Studio models; exits nonzero if anything is missing.
 
 ## Run: deterministic path (no model, no network)
 
-Fastest way to confirm the core still works. Runs the unit suite (84 fixed
+Fastest way to confirm the core still works. Runs the unit suite (118 fixed
 tests, plus one backward-compatibility check per `runs/*/trajectories.jsonl`
 you have locally) and the CLDF fixture ingestion:
 
@@ -98,9 +98,15 @@ taxonomy, committed rules with scope, diagnostics, reconstructed forms, and the
 
 ```
 FAILED TOOL CALLS: 3 of 7  (43% of tool budget wasted)
-    1x  commit_reconstruction
+  3 protocol, 0 exploratory
+    3x  commit_reconstruction  [protocol]  schema:rules[].confidence=missing
         ValidationError: rules.0.confidence Field required; ...
 ```
+
+The code is the countable part and the message below it is the readable part.
+Three calls that omitted `confidence` on different rules share one code even
+though Pydantic wrote three different messages, which is what makes the tally
+mean something.
 
 Trajectories written before 2026-08-15 have no failure counters, so the
 per-node line shows `failed=n/a` while the taxonomy above it still counts the
@@ -155,12 +161,22 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
   `(validation_call_id, dsl, source_child_ids)` triple. If you still see a
   cluster of `commit_reconstruction` errors, read the `remediation` in the
   triage output before blaming the model — it names exactly what was missing.
-- **`high_quality` still is not a linguistic grade.** It now also fails a
-  trajectory whose rejected share of tool calls exceeds
-  `MAX_PROTOCOL_FAILURE_RATE` (0.25, in
-  `cognate_reconstruction/agent/trajectory.py`), and `AgentNodeMetrics` carries
-  `failed_tool_call_count` / `tool_failures_by_type`. Passing that gate means
-  the workflow was clean, not that the reconstruction is right.
+- **`high_quality` still is not a linguistic grade.** It fails a trajectory
+  whose *protocol*-failure share exceeds `MAX_PROTOCOL_FAILURE_RATE` (0.25, in
+  `cognate_reconstruction/agent/trajectory.py`) — unless it had at most one
+  protocol failure, a floor that keeps a three-call identity commit from being
+  disqualified at 0.33 by a single slip. Not every rejection counts: a
+  `dsl-parse-error`, `no-op-rule`, or `empty-scope` is *exploratory* — the model
+  proposed a rule and the parser refused — and only `protocol` rejections reach
+  the gate. Triage prints both tallies. Passing means the workflow was clean,
+  not that the reconstruction is right.
+- **`tool_failures_by_type` keys on the structural error code**, not the
+  exception class, so it now reads `{"schema:rules[].confidence=missing": 4}`
+  instead of the useless `{"ValidationError": 4}`. The vocabulary is closed and
+  documented in `cognate_reconstruction/agent/error_codes.py`. Runs recorded
+  before codes existed have none, and triage shows those under a `legacy:`
+  prefix derived from the message — that prefix is the old unstable signature,
+  so do not compare its counts across runs.
 - **`rule_coverage` is applied / applicable, not applied / evaluated.** Forms
   that never contained the rule's target are excluded from the denominator, so
   `f > p / #_` scoped to three children scores the same 1.0 as the same rule
@@ -175,17 +191,26 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
   elsewhere. Nodes restored from a checkpoint by `--resume` never ran in the
   process, so their hypotheses are not retrievable even though their lexicons
   are.
-- **A repeated identical tool error now ends the node.** After
-  `max_repeated_tool_failures` (default 3) rejections with the same error text
-  anywhere in the node — not necessarily back to back — the orchestrator injects
-  one targeted correction carrying the tool's remediation; one further
-  recurrence raises `ProtocolStallError` instead of burning the turn budget. A
-  model whose malformed arguments keep *changing* the error text still escapes
-  this. `finish_reason="length"` is handled separately and also stalls after
-  `max_truncated_responses` (default 3) truncated no-tool responses. Both are
+- **A repeated tool error now ends the node, even if its wording changes.**
+  After `max_repeated_tool_failures` (default 3) rejections sharing one
+  `(tool, error code)` signature within the trailing window of
+  `stall_window_calls` calls (default 9, successes included), the orchestrator
+  injects one targeted correction carrying the tool's remediation; one further
+  recurrence raises `ProtocolStallError` instead of burning the turn budget.
+  Repeats need not be consecutive, and varying the arguments no longer helps —
+  the signature is the code, not the message. The window is what forgives a
+  session that hit one mistake three times far apart and recovered in between.
+  A model cycling through many *different* malformed shapes is caught by a
+  second condition on the same window: `max_window_protocol_failures` (default
+  6 of 9) protocol rejections of any codes draw one correction naming them, then
+  stall. Exploratory rejections — a malformed DSL, a no-op rule, an empty
+  scope — never count toward either condition, so a session that tests bad sound
+  laws all day is bounded only by the turn limit, on purpose.
+  `finish_reason="length"` is handled separately and also stalls after
+  `max_truncated_responses` (default 3) truncated no-tool responses. All four are
   orchestrator constructor parameters with no CLI flag, and `infer` supplies its
-  own `configuration_sha256` that excludes them — so changing either is *not*
-  detected on `--resume`.
+  own `configuration_sha256` that excludes them — so changing any of them is
+  *not* detected on `--resume`.
 
 ## Troubleshooting
 
@@ -195,6 +220,6 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
 | `curl` to :1234 returns nothing, exit 000 | LM Studio server is off: `~/.lmstudio/bin/lms server start`. |
 | `model 'X' is not reported by LM Studio` | Model is not loaded. Check `driver.py preflight` for loaded IDs. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |
-| Run ends in `AgentLoopLimitError` | Model never produced a valid commit and never repeated one error verbatim. Triage it; raise `--max-turns` or use a stronger model. |
-| Run ends in `ProtocolStallError` | Either the same tool call was rejected identically after a targeted correction, or output was truncated repeatedly with no tool call. Read the message: the first case is a tool-contract problem, the second needs a larger `max_tokens` in the `--provider-config` JSON. |
+| Run ends in `AgentLoopLimitError` | Model never produced a valid commit and never failed densely enough to trip either stall condition — typically a session that keeps exploring, since exploratory rejections never count. Triage it; raise `--max-turns` or use a stronger model. |
+| Run ends in `ProtocolStallError` | One of three things: a `(tool, error code)` signature recurred after a targeted correction; the trailing window filled with protocol rejections of mixed codes; or output was truncated repeatedly with no tool call. Read the message — the first two are tool-contract problems, the third needs a larger `max_tokens` in the `--provider-config` JSON. |
 | `PydanticSerializationUnexpectedValue` warnings | Known nonfatal LiteLLM/Pydantic noise. Tool execution and trajectories still succeed. |

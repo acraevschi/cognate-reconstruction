@@ -1,6 +1,11 @@
 """Agentic hypothesis management for deterministic cognate reconstruction."""
 
 from cognate_reconstruction.agent.context import AgentContext
+from cognate_reconstruction.agent.error_codes import (
+    TOOL_ERROR_CODES,
+    ToolErrorCategory,
+    classify_tool_error_code,
+)
 from cognate_reconstruction.agent.events import (
     CompositeEventSink,
     ConsoleEventSink,
@@ -15,6 +20,7 @@ from cognate_reconstruction.agent.reconstructor import AgenticNodeReconstructor
 from cognate_reconstruction.agent.service import ReconstructionService
 from cognate_reconstruction.agent.tools import default_tool_registry
 from cognate_reconstruction.agent.trajectory import (
+    MAX_FLOOR_PROTOCOL_FAILURES,
     MAX_PROTOCOL_FAILURE_RATE,
     AgentRunResult,
     AgentTrajectory,
@@ -24,8 +30,12 @@ from cognate_reconstruction.agent.trajectory import (
 )
 
 __all__ = [
+    "MAX_FLOOR_PROTOCOL_FAILURES",
     "MAX_PROTOCOL_FAILURE_RATE",
+    "TOOL_ERROR_CODES",
     "AgentContext",
+    "ToolErrorCategory",
+    "classify_tool_error_code",
     "ProtocolStallError",
     "ConsoleEventSink",
     "CompositeEventSink",

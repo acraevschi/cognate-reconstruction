@@ -10,8 +10,10 @@ from cognate_reconstruction.agent.schemas import (
     CommittedSoundRule,
     TestSoundLawResult,
 )
-from cognate_reconstruction.agent.tools.errors import ToolInputError
-from cognate_reconstruction.rules.parser import parse_rule
+from cognate_reconstruction.agent.tools.errors import (
+    ToolInputError,
+    parse_rule_or_reject,
+)
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.rules import ReconstructionRule
 
@@ -94,6 +96,7 @@ def _resolve_validation(
             raise ToolInputError(
                 f"rule {committed.rule_id!r} references an unknown validation "
                 f"call {committed.validation_call_id!r}",
+                code="validation-unknown",
                 remediation=describe_session_validations(context),
             ) from error
     scope = set(committed.source_child_ids)
@@ -111,12 +114,14 @@ def _resolve_validation(
             f"rule {committed.rule_id!r} omitted validation_call_id and no "
             "same-session test_sound_law validation matches its exact DSL, "
             "child scope, and segmentation overlay",
+            code="validation-unresolved",
             remediation=describe_session_validations(context),
         )
     raise ToolInputError(
         f"rule {committed.rule_id!r} omitted validation_call_id but "
         f"{len(matches)} same-session validations match its DSL, child scope, "
         "and overlay; name the intended one explicitly",
+        code="validation-ambiguous",
         remediation=describe_session_validations(context),
     )
 
@@ -128,17 +133,22 @@ def commit_reconstruction(
 ) -> CommitReconstructionResult:
     arguments = CommitReconstructionArgs.model_validate(raw_arguments)
     if context.commit is not None:
-        raise ValueError("this node already has a committed reconstruction")
+        raise ToolInputError(
+            "this node already has a committed reconstruction",
+            code="already-committed",
+        )
     if arguments.node_id != context.node_id:
-        raise ValueError(
-            f"commit node {arguments.node_id!r} does not match active node {context.node_id!r}"
+        raise ToolInputError(
+            f"commit node {arguments.node_id!r} does not match active node {context.node_id!r}",
+            code="node-mismatch",
         )
     if (
         arguments.segmentation_overlay_id is not None
         and arguments.segmentation_overlay_id not in context.overlays
     ):
-        raise ValueError(
-            f"unknown segmentation overlay {arguments.segmentation_overlay_id!r}"
+        raise ToolInputError(
+            f"unknown segmentation overlay {arguments.segmentation_overlay_id!r}",
+            code="unknown-overlay",
         )
     active_children = set(context.child_ids)
     parsed_rules: list[ReconstructionRule] = []
@@ -146,8 +156,11 @@ def commit_reconstruction(
     for committed in arguments.rules:
         unknown = sorted(set(committed.source_child_ids) - active_children)
         if unknown:
-            raise ValueError(f"rule {committed.rule_id!r} targets inactive children: {unknown}")
-        parsed = parse_rule(committed.dsl, rule_id=committed.rule_id)
+            raise ToolInputError(
+                f"rule {committed.rule_id!r} targets inactive children: {unknown}",
+                code="inactive-children",
+            )
+        parsed = parse_rule_or_reject(committed.dsl, rule_id=committed.rule_id)
         validation_call_id, validation = _resolve_validation(
             committed,
             parsed.source,
@@ -157,17 +170,20 @@ def commit_reconstruction(
         if parsed.source != validation.parsed_rule.source:
             raise ToolInputError(
                 f"rule {committed.rule_id!r} was not validated with this exact DSL",
+                code="validation-mismatch",
                 remediation=describe_session_validations(context),
             )
         if set(committed.source_child_ids) != set(validation.source_child_ids):
             raise ToolInputError(
                 f"rule {committed.rule_id!r} was not validated for this child scope",
+                code="scope-mismatch",
                 remediation=describe_session_validations(context),
             )
         if validation.segmentation_overlay_id != arguments.segmentation_overlay_id:
             raise ToolInputError(
                 f"rule {committed.rule_id!r} was not validated on the committed "
                 "segmentation overlay",
+                code="overlay-mismatch",
                 remediation=describe_session_validations(context),
             )
         # Deterministic engine output, not a model claim: an omitted list is
@@ -181,6 +197,7 @@ def commit_reconstruction(
         if unsupported:
             raise ToolInputError(
                 f"rule {committed.rule_id!r} cites unsupported forms: {unsupported}",
+                code="unsupported-forms",
                 remediation=(
                     f"validation {validation_call_id!r} supports only "
                     f"{list(validation.supporting_form_ids)}. Omit "
@@ -191,6 +208,7 @@ def commit_reconstruction(
             raise ToolInputError(
                 f"rule {committed.rule_id!r} applied to no form in validation "
                 f"{validation_call_id!r} and cannot be committed",
+                code="rule-unsupported",
                 remediation=(
                     "Retest the rule against forms it actually changes, widen "
                     "its child scope, or drop it from the commit."
@@ -226,11 +244,13 @@ def commit_reconstruction(
                 "cascade_validation_call_id must come from a successful "
                 "test_rule_cascade result, or be omitted when no cascade "
                 "preview was run",
+                code="cascade-unknown",
                 remediation=describe_session_validations(context),
             ) from error
         if cascade.segmentation_overlay_id != arguments.segmentation_overlay_id:
-            raise ValueError(
-                "ordered cascade was not tested on the committed segmentation overlay"
+            raise ToolInputError(
+                "ordered cascade was not tested on the committed segmentation overlay",
+                code="overlay-mismatch",
             )
         committed_signature = tuple(
             (
@@ -250,6 +270,7 @@ def commit_reconstruction(
             raise ToolInputError(
                 "committed rule order, DSL, or child scope differs from the "
                 "tested cascade",
+                code="cascade-signature-mismatch",
                 remediation=describe_session_validations(context),
             )
 
@@ -261,9 +282,15 @@ def commit_reconstruction(
     }
     for anomaly in arguments.anomalies:
         if anomaly.form_id is not None and anomaly.form_id not in active_form_ids:
-            raise ValueError(f"anomaly references unknown form {anomaly.form_id!r}")
+            raise ToolInputError(
+                f"anomaly references unknown form {anomaly.form_id!r}",
+                code="anomaly-unknown-reference",
+            )
         if anomaly.concept_id is not None and anomaly.concept_id not in active_concept_ids:
-            raise ValueError(f"anomaly references unknown concept {anomaly.concept_id!r}")
+            raise ToolInputError(
+                f"anomaly references unknown concept {anomaly.concept_id!r}",
+                code="anomaly-unknown-reference",
+            )
 
     reconstruction = CommittedReconstruction(
         request=arguments,

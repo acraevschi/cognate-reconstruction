@@ -18,6 +18,7 @@ from cognate_reconstruction.agent.schemas import (
     SearchFormsResult,
     SegmentPosition,
 )
+from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.traversal import (
@@ -85,7 +86,10 @@ def _selected_evidence(
     if selected_ids:
         unknown = selected_ids - {item.node_id for item in items}
         if unknown:
-            raise ValueError(f"nodes are unavailable in the selected scope: {sorted(unknown)}")
+            raise ToolInputError(
+                f"nodes are unavailable in the selected scope: {sorted(unknown)}",
+                code="unknown-node",
+            )
         items = tuple(item for item in items if item.node_id in selected_ids)
     return items
 
