@@ -107,6 +107,13 @@ class LLMToolDefinition(WorkbenchModel):
 class ToolError(WorkbenchModel):
     error_type: NonEmptyStr
     message: NonEmptyStr
+    code: NonEmptyStr | None = Field(
+        default=None,
+        description=(
+            "Stable structural identifier for this rejection, used for counting "
+            "and matching only. The full explanation stays in 'message'."
+        ),
+    )
     remediation: NonEmptyStr | None = Field(
         default=None,
         description=(
@@ -294,6 +301,13 @@ class TestSoundLawResult(WorkbenchModel):
 
 
 class CascadeRuleSpec(WorkbenchModel):
+    """One rule in an ordered cascade preview.
+
+    A cascade spec carries no validation ID. This call *is* the test, so there
+    is nothing to reference yet; per-rule validation_call_id belongs to
+    commit_reconstruction, and sending one here is rejected.
+    """
+
     rule_id: NonEmptyStr | None = Field(
         default=None,
         description=(

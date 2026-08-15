@@ -53,6 +53,71 @@ rejected commit-schema errors.
   recorded values.
 - Kept `schema_version` at `2.0`: the new fields are additive and defaulted,
   and `trajectory_schema_sha256` already records the exact schema per record.
+- Added a structural `code` to every tool rejection, drawn from a closed
+  vocabulary documented in the new `agent/error_codes.py`. Schema rejections
+  derive theirs from the sorted set of `(field location, error type)` pairs with
+  list indices normalized, so `rules.0.confidence` and `rules.1.confidence`
+  collapse to `schema:rules[].confidence=missing`. `message` is unchanged and
+  still carries the full explanation; the code exists only for counting and
+  matching.
+- Changed the stall signature from `(tool, error type, error message)` to
+  `(tool, code)`. Pydantic embeds input values in its messages, so a model whose
+  malformed arguments kept changing produced a fresh signature for one
+  unchanging mistake and looped until the turn limit. It now stalls.
+- Keyed `tool_failures_by_type` on the code rather than the exception class
+  name: a real run reported `{"ValidationError": 4}`. The field name is
+  deliberately unchanged, since `extra="forbid"` would make existing records
+  carrying it unloadable.
+- Bounded the stall detector's memory with a trailing window of
+  `stall_window_calls` tool calls, default `3 * max_repeated_tool_failures`, with
+  successful calls occupying slots. A long, mostly-productive session is no
+  longer killed by three well-separated repeats it recovered from each time,
+  while the interleave that defeats reset-on-success — bad commit, good test, bad
+  commit — still trips. Added to the orchestrator's `public_configuration`; still
+  no CLI flag, so a change to it is not detected on `--resume`.
+- Added a second stall condition on the same window: when
+  `max_window_protocol_failures` of the last `stall_window_calls` calls were
+  protocol rejections, whatever their codes, the node draws one correction
+  naming them and then raises `ProtocolStallError`. The per-signature rule needs
+  the *same* code N times, so a model producing a differently-shaped protocol
+  error every turn spent its whole budget and ended in `AgentLoopLimitError`
+  with no diagnosis. Defaults to `min(2 * max_repeated_tool_failures,
+  stall_window_calls)`; exploratory rejections are excluded from the count.
+- Coded the alignment backend's refusals at the tool boundary
+  (`alignment-failed`), closing the last path by which a model-reachable
+  rejection arrived as `unclassified`.
+- Documented in `CascadeRuleSpec` and the `test_rule_cascade` description that a
+  cascade rule carries no `validation_call_id`. A live `google/gemma-4-26b-a4b`
+  run sent one and was rejected; the schema is unchanged, since accepting the
+  field would weaken validation to paper over a documentation gap.
+- Added a `tool_failures_by_code` read-only view of `tool_failures_by_type`, so
+  new code reads the name that describes the key while the persisted field stays
+  where append-only auditability needs it.
+- Reported the number of distinct messages behind each code in triage. Two
+  unrelated mistakes sharing a code cannot be prevented in general; this makes
+  the over-collapse visible so a code can be split on evidence.
+- Guarded the triage driver's hand-copied exploratory code set against the real
+  classification, and the two checked-in skill copies against each other, with
+  tests rather than by removing the duplication — the driver is stdlib-only by
+  design so it runs without the harness installed.
+- Split rejections into `exploratory` (`dsl-parse-error`, `no-op-rule`,
+  `empty-scope`) and `protocol` (everything else, including all `schema:*`
+  codes), with anything unclassified failing closed as protocol, and gated
+  `high_quality` on the protocol rate alone. A `test_sound_law` rejection for a
+  malformed DSL is the hypothesis loop working; counting it like a commit
+  reference error scored a model that explores below one that never explores.
+- Added `protocol_failure_count` to `AgentNodeMetrics`, defaulting to `None`
+  rather than `0` so records written before the split fall back to
+  `failed_tool_call_count / tool_call_count` and keep the exact `high_quality`
+  verdict they already had. `failed_tool_call_count` remains the total.
+- Added a floor of one protocol failure to the `high_quality` gate: a three-call
+  identity commit was disqualified at 0.33 by a single slip it recovered from.
+  The 0.25 threshold is unchanged and still uncalibrated.
+- Surfaced the code in `tool_result` events, in `summarize-trajectories` (which
+  now reports `total_protocol_failures` and `total_exploratory_failures`), and in
+  the run-triage skill's failure taxonomy.
+- Added `NoOpRuleError` to the rule parser so a rule that does nothing can be
+  told from one that does not parse without matching on prose.
 - Added a ninth tool, `get_node_reconstruction`, returning the rules, child
   scopes, confidences, anomalies, and summary committed at one node already
   reconstructed in this run, and flagged those nodes with

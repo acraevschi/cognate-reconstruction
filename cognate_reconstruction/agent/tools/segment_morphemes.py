@@ -7,6 +7,7 @@ from cognate_reconstruction.agent.schemas import (
     SegmentMorphemesArgs,
     SegmentMorphemesResult,
 )
+from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.schemas.common import MORPHOLOGICAL_BOUNDARY_TOKENS, WorkbenchModel
 from cognate_reconstruction.schemas.lexicon import LexicalForm
 
@@ -52,22 +53,29 @@ def segment_morphemes(
     arguments = SegmentMorphemesArgs.model_validate(raw_arguments)
     ids = [item.form_id for item in arguments.segmentations]
     if len(ids) != len(set(ids)):
-        raise ValueError("a segmentation request may edit each form only once")
+        raise ToolInputError(
+            "a segmentation request may edit each form only once",
+            code="overlay-invalid-edit",
+        )
     base_forms = context.forms_for_overlay(arguments.base_overlay_id)
     edited = []
     for segmentation in arguments.segmentations:
         try:
             original = base_forms[segmentation.form_id]
         except KeyError as error:
-            raise ValueError(f"unknown form {segmentation.form_id!r}") from error
+            raise ToolInputError(
+                f"unknown form {segmentation.form_id!r}",
+                code="unknown-form",
+            ) from error
         phonetic = tuple(
             segment
             for segment in segmentation.segments
             if segment not in MORPHOLOGICAL_BOUNDARY_TOKENS
         )
         if phonetic != original.phonetic_segments:
-            raise ValueError(
-                f"segmentation for {segmentation.form_id!r} changes phonetic tokens"
+            raise ToolInputError(
+                f"segmentation for {segmentation.form_id!r} changes phonetic tokens",
+                code="overlay-invalid-edit",
             )
         updated = original.model_dump(mode="python")
         updated["segments"] = segmentation.segments

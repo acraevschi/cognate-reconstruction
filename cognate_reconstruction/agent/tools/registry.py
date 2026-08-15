@@ -9,6 +9,10 @@ from dataclasses import dataclass
 from pydantic import ValidationError
 
 from cognate_reconstruction.agent.context import AgentContext
+from cognate_reconstruction.agent.error_codes import (
+    UNCLASSIFIED_ERROR_CODE,
+    schema_error_code,
+)
 from cognate_reconstruction.agent.schemas import (
     LLMToolCall,
     LLMToolDefinition,
@@ -42,6 +46,21 @@ class ToolSpec:
         )
 
 
+def _rejection_code(error: Exception) -> str:
+    """Name a rejection structurally, whatever raised it.
+
+    A tool that named its own code keeps it. Schema rejections happen before any
+    handler runs, so their code is derived from which fields failed and how.
+    Anything else is unclassified, which fails closed as a protocol failure.
+    """
+    code = getattr(error, "code", None)
+    if isinstance(code, str) and code:
+        return code
+    if isinstance(error, ValidationError):
+        return schema_error_code(error)
+    return UNCLASSIFIED_ERROR_CODE
+
+
 class ToolRegistry:
     def __init__(self) -> None:
         self._tools: dict[str, ToolSpec] = {}
@@ -62,6 +81,7 @@ class ToolRegistry:
                 error=ToolError(
                     error_type="unknown_tool",
                     message=f"unknown tool {call.name!r}",
+                    code="unknown-tool",
                 ),
             )
         try:
@@ -79,6 +99,7 @@ class ToolRegistry:
                     error_type=getattr(error, "error_type", None)
                     or type(error).__name__,
                     message=str(error),
+                    code=_rejection_code(error),
                     remediation=remediation,
                 ),
             )

@@ -475,6 +475,9 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
     total_failed_tool_calls = sum(
         item.metrics.failed_tool_call_count for item in trajectories
     )
+    # Exploratory rejections are counted in the total but not in the gate: only
+    # protocol friction says the session was a poor tool-use example.
+    total_protocol_failures = sum(item.metrics.protocol_failures for item in trajectories)
     return {
         "schema_version": "2.0",
         "trajectory_count": len(trajectories),
@@ -487,8 +490,10 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
         "total_turns": sum(item.metrics.turn_count for item in trajectories),
         "total_tool_calls": total_tool_calls,
         "total_failed_tool_calls": total_failed_tool_calls,
+        "total_protocol_failures": total_protocol_failures,
+        "total_exploratory_failures": total_failed_tool_calls - total_protocol_failures,
         "protocol_failure_rate": (
-            total_failed_tool_calls / total_tool_calls if total_tool_calls else 0.0
+            total_protocol_failures / total_tool_calls if total_tool_calls else 0.0
         ),
         "max_protocol_failure_rate": MAX_PROTOCOL_FAILURE_RATE,
         "trajectories_above_protocol_failure_rate": sum(

@@ -6,11 +6,17 @@ import hashlib
 import json
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Callable
 
 from cognate_reconstruction.agent.context import AgentContext
+from cognate_reconstruction.agent.error_codes import (
+    UNCLASSIFIED_ERROR_CODE,
+    ToolErrorCategory,
+    classify_tool_error_code,
+)
 from cognate_reconstruction.agent.events import (
     AgentEvent,
     AgentEventKind,
@@ -27,6 +33,7 @@ from cognate_reconstruction.agent.schemas import (
     NodePromptPayload,
     ProviderResponse,
     ProviderResponseMetadata,
+    ToolError,
     ToolExecutionResult,
 )
 from cognate_reconstruction.agent.tools import ToolRegistry, default_tool_registry
@@ -55,6 +62,12 @@ class ProtocolStallError(RuntimeError):
     """
 
 
+_FailureSignature = tuple[str, str]
+
+_SUCCESS_SIGNATURE: _FailureSignature = ("", "<success>")
+"""Placeholder recorded for an accepted call so it occupies a window slot."""
+
+
 @dataclass
 class _RunState:
     started_at: datetime
@@ -64,19 +77,22 @@ class _RunState:
     retry_count: int = 0
     tool_call_count: int = 0
     failed_tool_call_count: int = 0
+    protocol_failure_count: int = 0
     tool_failures_by_type: dict[str, int] = field(default_factory=dict)
     truncated_response_count: int = 0
     tool_names: list[str] = field(default_factory=list)
     successful_tool_names: list[str] = field(default_factory=list)
     provider_responses: list[ProviderResponseMetadata] = field(default_factory=list)
-    # How often each (tool, error type, error message) signature was rejected in
-    # this node, and which of those have already drawn a targeted correction.
-    failure_signature_counts: dict[tuple[str, str, str], int] = field(
-        default_factory=dict
+    # The trailing window of (tool, error code) signatures, successes included so
+    # that productive work pushes old failures out, and the signatures that have
+    # already drawn a targeted correction.
+    recent_call_signatures: deque[_FailureSignature] = field(
+        default_factory=deque
     )
-    corrected_failure_signatures: set[tuple[str, str, str]] = field(
+    corrected_failure_signatures: set[_FailureSignature] = field(
         default_factory=set
     )
+    corrected_window_saturation: bool = False
 
 
 def _sha256_json(value: object) -> str:
@@ -100,6 +116,8 @@ class AgentOrchestrator:
         max_run_seconds: float | None = None,
         max_total_cost_usd: float | None = None,
         max_repeated_tool_failures: int = 3,
+        stall_window_calls: int | None = None,
+        max_window_protocol_failures: int | None = None,
         max_truncated_responses: int = 3,
         instructions: str | None = None,
         trajectory_sink: TrajectorySink | None = None,
@@ -122,6 +140,26 @@ class AgentOrchestrator:
             raise ValueError("max_total_cost_usd must be positive")
         if max_repeated_tool_failures < 1 or max_truncated_responses < 1:
             raise ValueError("unproductive-turn thresholds must be positive")
+        window = (
+            stall_window_calls
+            if stall_window_calls is not None
+            else 3 * max_repeated_tool_failures
+        )
+        if window < max_repeated_tool_failures:
+            raise ValueError(
+                "stall_window_calls must be at least max_repeated_tool_failures, "
+                "or no signature could ever reach the threshold"
+            )
+        saturation = (
+            max_window_protocol_failures
+            if max_window_protocol_failures is not None
+            else min(2 * max_repeated_tool_failures, window)
+        )
+        if not 1 <= saturation <= window:
+            raise ValueError(
+                "max_window_protocol_failures must be between 1 and "
+                "stall_window_calls, or it could never be reached"
+            )
         self.provider = provider
         self.registry = registry or default_tool_registry()
         self.max_turns = max_turns
@@ -133,6 +171,8 @@ class AgentOrchestrator:
         self.max_run_seconds = max_run_seconds
         self.max_total_cost_usd = max_total_cost_usd
         self.max_repeated_tool_failures = max_repeated_tool_failures
+        self.stall_window_calls = window
+        self.max_window_protocol_failures = saturation
         self.max_truncated_responses = max_truncated_responses
         self.instructions = instructions or load_agent_instructions()
         self.trajectory_sink = trajectory_sink
@@ -156,6 +196,8 @@ class AgentOrchestrator:
             "max_run_seconds": max_run_seconds,
             "max_total_cost_usd": max_total_cost_usd,
             "max_repeated_tool_failures": max_repeated_tool_failures,
+            "stall_window_calls": window,
+            "max_window_protocol_failures": saturation,
             "max_truncated_responses": max_truncated_responses,
             "instruction_sha256": hashlib.sha256(
                 self.instructions.encode()
@@ -237,6 +279,27 @@ class AgentOrchestrator:
                 self.sleep_fn(delay)
         raise AssertionError("unreachable provider retry loop")
 
+    def _record_call_signature(
+        self,
+        state: _RunState,
+        signature: _FailureSignature,
+    ) -> int:
+        """Append one call to the trailing window and count that signature in it.
+
+        The window is bounded, and successes occupy slots too, so a repeat that
+        is far away from its predecessors is forgiven while a dense cluster is
+        not. That is the real distinction between a session that recovered and
+        moved on and one that is going in circles: resetting on success instead
+        would be fooled by the obvious interleave — bad commit, good
+        ``test_sound_law``, bad commit — which is exactly what a stuck model
+        produces.
+        """
+        window = state.recent_call_signatures
+        window.append(signature)
+        while len(window) > self.stall_window_calls:
+            window.popleft()
+        return sum(entry == signature for entry in window)
+
     def _record_tool_failure(
         self,
         context: AgentContext,
@@ -247,40 +310,46 @@ class AgentOrchestrator:
         """Count a rejected call and decide whether to intervene.
 
         Returns ``(correction, stall_reason)``. The loop retries transport
-        failures, but a rejection reproduced verbatim N times is not transport:
-        it is the model failing to read the contract. Correct it once with the
-        tool's own remediation, then fail fast rather than spending the budget.
+        failures, but one mistake reproduced N times is not transport: it is the
+        model failing to read the contract. Correct it once with the tool's own
+        remediation, then fail fast rather than spending the budget.
 
-        Occurrences are counted per signature over the whole node rather than
-        only in consecutive runs. A live gemma session alternated between two
-        commit errors — A, B, A, B — so neither was ever consecutive and a
-        strictly consecutive counter would have watched it loop indefinitely.
+        The signature is ``(tool name, structural error code)``, not the error
+        text. Pydantic embeds input values in its messages, so a model that
+        keeps varying its malformed arguments produced a fresh message — and a
+        fresh signature — for one unchanging mistake, and looped until the turn
+        limit. Occurrences are also counted across the window rather than only
+        in consecutive runs, because a live gemma session alternated between two
+        commit errors so that neither was ever consecutive.
         """
         error = result.error
         error_type = error.error_type if error is not None else "unknown"
         message = error.message if error is not None else ""
+        code = (error.code if error is not None else None) or UNCLASSIFIED_ERROR_CODE
         state.failed_tool_call_count += 1
-        state.tool_failures_by_type[error_type] = (
-            state.tool_failures_by_type.get(error_type, 0) + 1
+        if classify_tool_error_code(code) is ToolErrorCategory.PROTOCOL:
+            state.protocol_failure_count += 1
+        state.tool_failures_by_type[code] = (
+            state.tool_failures_by_type.get(code, 0) + 1
         )
-        signature = (call.name, error_type, message)
-        occurrences = state.failure_signature_counts.get(signature, 0) + 1
-        state.failure_signature_counts[signature] = occurrences
+        signature = (call.name, code)
+        occurrences = self._record_call_signature(state, signature)
         if occurrences < self.max_repeated_tool_failures:
-            return None, None
+            return self._window_intervention(context, state, error)
         if signature in state.corrected_failure_signatures:
             return None, (
-                f"tool {call.name} produced the same {error_type} rejection "
-                f"again ({occurrences} times in this node) after a targeted "
-                "correction quoting it; the model is not adapting to the tool "
-                "contract"
+                f"tool {call.name} produced the same {code} rejection again "
+                f"({occurrences} times in the last {self.stall_window_calls} "
+                "calls) after a targeted correction quoting it; the model is "
+                "not adapting to the tool contract"
             )
         state.corrected_failure_signatures.add(signature)
         remediation = error.remediation if error is not None else None
         correction = (
-            f"Stop. {occurrences} {call.name} calls in this session were "
-            "rejected with exactly the same error, so repeating the same "
-            "arguments cannot succeed:\n"
+            f"Stop. {occurrences} of your last {self.stall_window_calls} tool "
+            f"calls were {call.name} calls rejected for the same reason "
+            f"({code}), so varying the same malformed arguments cannot "
+            "succeed:\n"
             f"{message}\n"
             "Change the arguments to satisfy the tool schema before calling it "
             "again."
@@ -293,7 +362,76 @@ class AgentOrchestrator:
             f"injected a targeted correction after repeated {call.name} failures",
             tool_name=call.name,
             error_type=error_type,
-            repeated=self.max_repeated_tool_failures,
+            error_code=code,
+            reason="repeated_signature",
+            repeated=occurrences,
+            window=self.stall_window_calls,
+        )
+        return correction, None
+
+    def _window_intervention(
+        self,
+        context: AgentContext,
+        state: _RunState,
+        error: ToolError | None,
+    ) -> tuple[str | None, str | None]:
+        """Catch a model that is stuck without ever repeating one mistake.
+
+        The per-signature rule needs the *same* code N times. A model that
+        produces a differently-shaped protocol error on every turn — a missing
+        field here, an unknown reference there — never satisfies it and simply
+        runs out of turns with no diagnosis. Saturation of the window is the
+        general condition: it does not care which mistakes they were, only that
+        the recent past is mostly rejected calls.
+
+        Exploratory rejections are excluded. A model working through malformed
+        sound laws is using the tools as intended, however many it gets wrong,
+        and ending its node for that would punish exactly the behaviour the
+        trajectories are meant to teach.
+        """
+        failures = sum(
+            entry != _SUCCESS_SIGNATURE
+            and classify_tool_error_code(entry[1]) is ToolErrorCategory.PROTOCOL
+            for entry in state.recent_call_signatures
+        )
+        if failures < self.max_window_protocol_failures:
+            return None, None
+        codes = sorted(
+            {
+                entry[1]
+                for entry in state.recent_call_signatures
+                if entry != _SUCCESS_SIGNATURE
+                and classify_tool_error_code(entry[1]) is ToolErrorCategory.PROTOCOL
+            }
+        )
+        if state.corrected_window_saturation:
+            return None, (
+                f"{failures} of the last {len(state.recent_call_signatures)} "
+                "tool calls were rejected on protocol grounds even after a "
+                f"correction naming them ({', '.join(codes)}); the model is "
+                "cycling through malformed calls rather than adapting to the "
+                "tool contract"
+            )
+        state.corrected_window_saturation = True
+        correction = (
+            f"Stop. {failures} of your last "
+            f"{len(state.recent_call_signatures)} tool calls were rejected "
+            "before they ran, for these reasons: "
+            f"{', '.join(codes)}. You are not converging on the tool contract. "
+            "Re-read the schema of the tool you are calling and send one "
+            "minimal, complete call."
+        )
+        remediation = error.remediation if error is not None else None
+        if remediation:
+            correction += f"\n{remediation}"
+        self._emit(
+            AgentEventKind.PROTOCOL_CORRECTION,
+            context.node_id,
+            "injected a targeted correction after repeated protocol rejections",
+            reason="window_saturated",
+            error_codes=codes,
+            repeated=failures,
+            window=self.stall_window_calls,
         )
         return correction, None
 
@@ -352,6 +490,7 @@ class AgentOrchestrator:
             retry_count=state.retry_count,
             tool_call_count=state.tool_call_count,
             failed_tool_call_count=state.failed_tool_call_count,
+            protocol_failure_count=state.protocol_failure_count,
             tool_failures_by_type=dict(sorted(state.tool_failures_by_type.items())),
             truncated_response_count=state.truncated_response_count,
             inspection_tool_calls=inspection_count,
@@ -634,6 +773,7 @@ class AgentOrchestrator:
                     result = self.registry.execute(call, context)
                     if result.ok:
                         state.successful_tool_names.append(call.name)
+                        self._record_call_signature(state, _SUCCESS_SIGNATURE)
                     else:
                         correction, stall_reason = self._record_tool_failure(
                             context, state, call, result
@@ -646,6 +786,9 @@ class AgentOrchestrator:
                         f"tool {call.name} "
                         f"{'succeeded' if result.ok else 'failed'}",
                         call_id=call.call_id,
+                        error_code=(
+                            result.error.code if result.error is not None else None
+                        ),
                         result=result.model_dump(mode="json"),
                     )
                     messages.append(

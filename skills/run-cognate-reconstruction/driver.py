@@ -60,6 +60,12 @@ INSPECTION_TOOLS = {
     "get_alignments",
 }
 
+# Rejection codes that mean the hypothesis tester did its job: the model
+# proposed a sound law and the parser refused it. Everything else is protocol
+# friction. Mirrors TOOL_ERROR_CODES in cognate_reconstruction/agent/
+# error_codes.py, duplicated because this driver is stdlib-only.
+EXPLORATORY_CODES = {"dsl-parse-error", "no-op-rule", "empty-scope"}
+
 
 # --------------------------------------------------------------------------
 # environment
@@ -292,14 +298,32 @@ def cmd_run(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------
 
 
+def error_code(error: dict) -> str:
+    """The structural code the harness assigned to a rejection.
+
+    Codes are stable across calls that repeat one mistake with different
+    arguments, which is what makes them countable. Runs recorded before codes
+    existed fall back to the old prose signature, which is not.
+    """
+    code = error.get("code")
+    if code:
+        return code
+    return "legacy:" + error_signature(error)
+
+
 def error_signature(error: dict) -> str:
-    """Collapse a tool error into a countable one-line signature."""
+    """Collapse a tool error message into a readable one-line summary."""
     kind = error.get("error_type", "?")
     message = error.get("message", "")
     fields = re.findall(r"^([A-Za-z_][\w.]*)\n\s+(.+?)\s\[type=", message, re.M)
     if fields:
         return f"{kind}: " + "; ".join(f"{name} {reason}" for name, reason in fields[:3])
     return f"{kind}: {message.splitlines()[0][:140]}" if message else kind
+
+
+def error_category(code: str) -> str:
+    """Classify a code, failing closed as protocol exactly as the harness does."""
+    return "exploratory" if code in EXPLORATORY_CODES else "protocol"
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -340,6 +364,9 @@ def triage(run_dir: Path) -> None:
                 continue
             result = event["details"]["result"]
             entry["ok"] = result.get("ok", False)
+            entry["code"] = (
+                error_code(result["error"]) if not result.get("ok") else None
+            )
             entry["error"] = (
                 error_signature(result["error"]) if not result.get("ok") else None
             )
@@ -364,23 +391,51 @@ def triage(run_dir: Path) -> None:
             index += 1
             mark = "ok " if entry.get("ok") else "ERR"
             print(f"           {mark}  {entry['name']}")
-            if entry.get("error"):
+            code = entry.get("code")
+            if code:
+                print(f"                  {code}")
+            # A legacy code is the message, so printing both says it twice.
+            if entry.get("error") and not str(code).startswith("legacy:"):
                 print(f"                  {entry['error']}")
 
     # ---- failure taxonomy ----------------------------------------------
     failed = [entry for entry in calls.values() if not entry.get("ok")]
     total = len(calls)
+    protocol = [
+        entry for entry in failed
+        if error_category(entry.get("code") or "?") == "protocol"
+    ]
     print(f"\nFAILED TOOL CALLS: {len(failed)} of {total}"
           + (f"  ({100 * len(failed) / total:.0f}% of tool budget wasted)"
              if total else ""))
     if failed:
+        # Only protocol failures count against high_quality. An exploratory
+        # rejection is the model proposing a rule and the parser refusing it.
+        print(f"  {len(protocol)} protocol, "
+              f"{len(failed) - len(protocol)} exploratory")
         tally: dict[tuple[str, str], int] = {}
+        variants: dict[tuple[str, str], set] = {}
+        examples: dict[tuple[str, str], str] = {}
         for entry in failed:
-            key = (entry["name"], entry["error"] or "?")
+            key = (entry["name"], entry.get("code") or "?")
             tally[key] = tally.get(key, 0) + 1
-        for (name, error), count in sorted(tally.items(), key=lambda kv: -kv[1]):
-            print(f"  {count:>3}x  {name}")
-            print(f"        {error}")
+            variants.setdefault(key, set()).add(entry["error"] or "?")
+            examples.setdefault(key, entry["error"] or "?")
+        for (name, code), count in sorted(tally.items(), key=lambda kv: -kv[1]):
+            # Distinct messages behind one code make over-collapse visible. A
+            # code that keeps showing several unrelated messages is a code that
+            # wants splitting; this count is the evidence for that decision.
+            # Under a `legacy:` key the message *is* the key, so the spread is
+            # always 1 and says nothing.
+            distinct = len(variants[(name, code)])
+            spread = (
+                f"  ({distinct} distinct messages)"
+                if distinct > 1 and not code.startswith("legacy:")
+                else ""
+            )
+            print(f"  {count:>3}x  {name}  [{error_category(code)}]  {code}{spread}")
+            if not code.startswith("legacy:"):
+                print(f"        {examples[(name, code)]}")
 
     # ---- per-node outcome ----------------------------------------------
     print(f"\nTRAJECTORIES: {len(trajectories)}")
@@ -400,11 +455,15 @@ def triage(run_dir: Path) -> None:
               # absent in trajectories written before failure accounting: show
               # "n/a" rather than a zero that contradicts the taxonomy above.
               f"failed={metrics.get('failed_tool_call_count', 'n/a')} "
+              # None means the record predates the exploratory/protocol split,
+              # where the total stands in and the verdict is unchanged.
+              f"protocol={metrics.get('protocol_failure_count', 'n/a')} "
               f"inspections={metrics.get('inspection_tool_calls')} "
               f"law_tests={metrics.get('sound_law_tests')} "
               f"cascades={metrics.get('cascade_tests')}")
         if metrics.get("tool_failures_by_type"):
-            print(f"    failures_by_type={metrics['tool_failures_by_type']}")
+            # Keyed on the structural error code, not the exception class.
+            print(f"    failures_by_code={metrics['tool_failures_by_type']}")
         if metrics.get("truncated_response_count"):
             print(f"    truncated_responses={metrics['truncated_response_count']}")
         print(f"    tokens in={metrics.get('input_tokens')} "
@@ -450,8 +509,11 @@ def triage(run_dir: Path) -> None:
               f"(threshold {data.get('max_protocol_failure_rate')}) "
               f"above_threshold="
               f"{data.get('trajectories_above_protocol_failure_rate')}")
+        print(f"  failures: {data.get('total_protocol_failures')} protocol, "
+              f"{data.get('total_exploratory_failures')} exploratory, "
+              f"of {data.get('total_failed_tool_calls')} rejected calls")
         if data.get("tool_failures_by_type"):
-            print(f"  tool_failures_by_type={data['tool_failures_by_type']}")
+            print(f"  failures_by_code={data['tool_failures_by_type']}")
         # high_quality is a workflow filter, not a linguistic grade: it now
         # counts rejected calls, but it still says nothing about correctness.
         if data.get("high_quality"):

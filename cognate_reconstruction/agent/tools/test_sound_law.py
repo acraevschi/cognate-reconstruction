@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import TestSoundLawArgs, TestSoundLawResult
-from cognate_reconstruction.rules.parser import parse_rule
+from cognate_reconstruction.agent.tools.errors import (
+    ToolInputError,
+    parse_rule_or_reject,
+)
 from cognate_reconstruction.schemas.common import WorkbenchModel
 
 
@@ -16,8 +19,11 @@ def test_sound_law(
     arguments = TestSoundLawArgs.model_validate(raw_arguments)
     unknown = sorted(set(arguments.source_child_ids) - set(context.child_ids))
     if unknown:
-        raise ValueError(f"rule targets inactive children: {unknown}")
-    rule = parse_rule(arguments.dsl)
+        raise ToolInputError(
+            f"rule targets inactive children: {unknown}",
+            code="inactive-children",
+        )
+    rule = parse_rule_or_reject(arguments.dsl)
     selected_concepts = set(arguments.concept_ids)
     forms = tuple(
         form
@@ -28,7 +34,10 @@ def test_sound_law(
         if not selected_concepts or form.concept_id in selected_concepts
     )
     if not forms:
-        raise ValueError("no forms matched the requested child and concept scope")
+        raise ToolInputError(
+            "no forms matched the requested child and concept scope",
+            code="empty-scope",
+        )
     anchors_by_concept: dict[str, dict[str, tuple[str, ...]]] = {}
     for anchor in context.active_anchors:
         anchors_by_concept.setdefault(anchor.concept_id, {})[anchor.form_id] = anchor.segments

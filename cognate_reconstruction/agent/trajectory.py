@@ -23,11 +23,25 @@ from cognate_reconstruction.schemas.traversal import ReconstructionStep
 TRAJECTORY_SCHEMA_VERSION = "2.0"
 
 MAX_PROTOCOL_FAILURE_RATE = 0.25
-"""Share of a node's tool calls that may be rejected before `high_quality` drops.
+"""Share of a node's tool calls that may be *protocol* failures before
+`high_quality` drops.
 
 This is a workflow heuristic, not a linguistic judgement. A session may misstep
 once and recover; a session that spends most of its budget being rejected by the
 tool schemas is teaching the wrong protocol, whatever its linguistics.
+
+Only protocol failures count. An exploratory rejection — a malformed DSL the
+model then fixes — is the hypothesis tester doing its job, and charging for it
+would score a model that explores below one that never explores. See
+`agent/error_codes.py` for the classification.
+"""
+
+MAX_FLOOR_PROTOCOL_FAILURES = 1
+"""Protocol failures a session may have regardless of its rate.
+
+A three-call identity commit hits 0.33 on a single slip, which is harsher than a
+rate threshold is meant to be; the rate exists so the gate does not tighten as
+sessions get longer, not so it tightens as they get shorter.
 """
 
 
@@ -42,6 +56,17 @@ class AgentNodeMetrics(WorkbenchModel):
     # Defaulted so trajectories written before failure accounting existed stay
     # loadable; absent counters read as "not recorded", which is zero here.
     failed_tool_call_count: int = Field(default=0, ge=0)
+    protocol_failure_count: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Rejections that were protocol friction rather than a tested "
+            "hypothesis. None means the record predates the split, not zero."
+        ),
+    )
+    # Keyed on the structural error code, not the exception class name. The
+    # field name is unchanged on purpose: records written before the split
+    # already carry it, and `extra='forbid'` would make a rename unloadable.
     tool_failures_by_type: dict[str, int] = Field(default_factory=dict)
     truncated_response_count: int = Field(default=0, ge=0)
     inspection_tool_calls: int = Field(ge=0)
@@ -57,11 +82,36 @@ class AgentNodeMetrics(WorkbenchModel):
     identity_without_testing: bool
 
     @property
+    def tool_failures_by_code(self) -> dict[str, int]:
+        """The failure breakdown under the name that describes it.
+
+        `tool_failures_by_type` is the persisted field and cannot be renamed:
+        records already carry it and `extra="forbid"` would make them
+        unloadable. New code should read this instead of inheriting the older
+        name's implication that the key is an exception class.
+        """
+        return dict(self.tool_failures_by_type)
+
+    @property
+    def protocol_failures(self) -> int:
+        """Protocol failures, falling back to the total for older records.
+
+        A record written before the exploratory/protocol split has a real
+        `failed_tool_call_count` and no protocol count. Reading the absent
+        counter as zero would hand it a verdict it never earned — a trajectory
+        that legitimately failed the gate would start passing it — so the total
+        stands in, and such a record keeps exactly the verdict it had.
+        """
+        if self.protocol_failure_count is None:
+            return self.failed_tool_call_count
+        return self.protocol_failure_count
+
+    @property
     def protocol_failure_rate(self) -> float:
-        """Rejected share of attempted tool calls, mechanical not linguistic."""
+        """Protocol-rejected share of attempted calls, mechanical not linguistic."""
         if self.tool_call_count == 0:
             return 0.0
-        return self.failed_tool_call_count / self.tool_call_count
+        return self.protocol_failures / self.tool_call_count
 
 
 class AgentTrajectory(WorkbenchModel):
@@ -105,7 +155,10 @@ class AgentTrajectory(WorkbenchModel):
             return False
         if self.metrics.committed_without_inspection:
             return False
-        if self.metrics.protocol_failure_rate > MAX_PROTOCOL_FAILURE_RATE:
+        if (
+            self.metrics.protocol_failures > MAX_FLOOR_PROTOCOL_FAILURES
+            and self.metrics.protocol_failure_rate > MAX_PROTOCOL_FAILURE_RATE
+        ):
             return False
         if (
             self.metrics.committed_rule_count > 0

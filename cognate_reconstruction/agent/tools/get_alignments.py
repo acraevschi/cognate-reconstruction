@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import GetAlignmentsArgs, GetAlignmentsResult
+from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.schemas.common import WorkbenchModel
 
 
@@ -42,11 +43,20 @@ def get_alignments(
         if arguments.include_anchors
         else ()
     )
-    alignment_map = context.aligner.align_multiple(
-        lexicons,
-        anchors,
-        respect_cognate_sets=arguments.respect_cognate_sets,
-    )
+    # The aligner is deterministic core and knows nothing about tool codes, so
+    # the code is attached here at the boundary, as with rule parsing. Without
+    # it a refused selection would be the one remaining `unclassified` path a
+    # model can reach.
+    try:
+        alignment_map = context.aligner.align_multiple(
+            lexicons,
+            anchors,
+            respect_cognate_sets=arguments.respect_cognate_sets,
+        )
+    except ToolInputError:
+        raise
+    except ValueError as error:
+        raise ToolInputError(str(error), code="alignment-failed") from error
     return GetAlignmentsResult(
         alignment_map=alignment_map,
         segmentation_overlay_id=arguments.segmentation_overlay_id,

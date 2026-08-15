@@ -63,7 +63,7 @@ the runtime classification tree.
 | Supplied Newick | Implemented and recommended | Quoting, leaf validation, pruning, unary collapse, branch lengths, internal IDs, and unresolved polytomies are supported. |
 | Tree induction | Implemented, exploratory | LingPy LexStat SCA distances with neighbor joining or UPGMA; not an independent classification. |
 | Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. |
-| LLM tool loop | Implemented | Nine typed tools, bounded turns/calls, same-session rule validation, ordered cascade preview, exact commit checks, remediation on rejected calls, read-only prior-node hypotheses, and stall/truncation handling. |
+| LLM tool loop | Implemented | Nine typed tools, bounded turns/calls, same-session rule validation, ordered cascade preview, exact commit checks, coded rejections with remediation, read-only prior-node hypotheses, and windowed stall/truncation handling. |
 | Deterministic reconstruction | Implemented | Literal token-rule cascades, n-ary beam combination, derivation provenance, diagnostics, and optional scored anchors. |
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
 | Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. No mid-node resume. |
@@ -91,6 +91,7 @@ cognate_reconstruction/
     ├── providers/      provider protocol and LiteLLM adapter
     ├── tools/          deterministic model-facing tools
     ├── SKILL.md        hypothesis-manager instructions
+    ├── error_codes.py  closed rejection vocabulary and its classification
     ├── orchestrator.py bounded/retrying model loop
     ├── events.py       console and JSONL events
     └── trajectory.py   versioned audit/training artifacts
@@ -302,11 +303,23 @@ retrieves evidence incrementally. It cannot execute arbitrary code.
 | `test_rule_cascade` | Preview the complete ordered branch-scoped cascade, every intermediate diff, and final forms. |
 | `commit_reconstruction` | Accept only exact same-session validated rules, scopes, order, overlay, support, anomalies, and node ID. |
 
-A rejected tool call returns `{error_type, message, remediation}`. `remediation`
-is deterministic text derived from recorded session state — for a rejected
-commit it lists every `(validation_call_id, dsl, source_child_ids)` triple the
-session recorded — so a model that has to join two records is shown the join
-key instead of a bare Pydantic dump.
+A rejected tool call returns `{error_type, message, code, remediation}`.
+`remediation` is deterministic text derived from recorded session state — for a
+rejected commit it lists every `(validation_call_id, dsl, source_child_ids)`
+triple the session recorded — so a model that has to join two records is shown
+the join key instead of a bare Pydantic dump.
+
+`code` is a stable machine identifier for *what was wrong*, drawn from the closed
+vocabulary in
+[`agent/error_codes.py`](cognate_reconstruction/agent/error_codes.py). Schema
+rejections derive theirs structurally from the sorted set of
+`(field location, error type)` pairs with list indices collapsed, so
+`rules.0.confidence` and `rules.1.confidence` both render as
+`schema:rules[].confidence=missing`. The code is used only for counting and
+matching — repeated-failure detection, the failure taxonomy, and the
+exploratory/protocol split. Humans and the model still read `message`, which is
+unchanged and complete; that separation is why collapsing two distinct problems
+into one code costs nothing in auditability.
 
 ### The commit contract
 
@@ -502,21 +515,54 @@ cognate-reconstruct export-trajectories +  --input runs/family/trajectories.json
 The current `high_quality` flag is a conservative workflow filter. It requires
 a completed deterministic step, evidence inspection, same-session validation
 for committed rules, a cascade preview for multi-rule commits, no no-op rules,
-and a protocol-failure rate at or below `MAX_PROTOCOL_FAILURE_RATE`. It does
+and a *protocol*-failure rate at or below `MAX_PROTOCOL_FAILURE_RATE`. It does
 not grade linguistic truth. An inspected empty identity commit can pass without
 a sound-law test, although `identity_without_testing` remains visible.
 
-`AgentNodeMetrics` records `failed_tool_call_count`, `tool_failures_by_type`,
-and `truncated_response_count`; `protocol_failure_rate` is
-`failed_tool_call_count / tool_call_count`. **The threshold is 0.25, and it is a
-workflow heuristic rather than a linguistic judgement.** A session may misstep
-once and recover; a session that spends most of its budget being rejected by the
-tool schemas is a poor tool-use example whatever its linguistics, and exporting
-it for later fine-tuning would teach the wrong protocol. A rate is used rather
-than an absolute count so the gate does not tighten as sessions get longer.
+**Not every rejected call counts against the flag.** Each rejection is
+classified by its error code as `exploratory` or `protocol`:
+
+- **exploratory** — `dsl-parse-error`, `no-op-rule`, and `empty-scope`. The
+  model proposed a sound law, the deterministic parser refused it, and the model
+  refined. That is the hypothesis loop working, and charging for it would score
+  a model that explores below one that never explores — backwards for a corpus
+  meant to teach tool use.
+- **protocol** — everything else: commit reference errors, unknown tools, and
+  every `schema:*` argument-shape rejection. This is friction with no epistemic
+  content.
+
+Anything unclassified is protocol; the split fails closed, and a test asserts
+that every code in the vocabulary is classified explicitly.
+
+`AgentNodeMetrics` records `failed_tool_call_count` (the total),
+`protocol_failure_count`, `tool_failures_by_type`, and
+`truncated_response_count`; `protocol_failure_rate` is
+`protocol_failure_count / tool_call_count`. `tool_failures_by_type` keys on the
+structural error code, so a real run now reports
+`{"schema:rules[].confidence=missing": 4}` rather than `{"ValidationError": 4}`.
+The field name is unchanged deliberately: records written days ago already carry
+it, and `extra="forbid"` would make a rename unloadable — a purely cosmetic gain
+against a real loss of append-only auditability.
+
+**The threshold is 0.25, and it is a workflow heuristic rather than a linguistic
+judgement.** A session may misstep once and recover; a session that spends most
+of its budget being rejected by the tool schemas is a poor tool-use example
+whatever its linguistics, and exporting it for later fine-tuning would teach the
+wrong protocol. A rate is used rather than an absolute count so the gate does not
+tighten as sessions get longer — and a floor of one protocol failure keeps it
+from tightening as they get *shorter*, since a three-call identity commit
+otherwise hits 0.33 on a single slip. A session passes when it has at most one
+protocol failure **or** a protocol rate at or below the threshold.
+
 These fields are additive and defaulted, so trajectories written before they
-existed still load and keep the verdict they already had; an absent counter
-reads as zero rather than as a failure.
+existed still load and keep the verdict they already had. `protocol_failure_count`
+defaults to `None` rather than `0`, and that distinction is load-bearing: an
+older record has a real `failed_tool_call_count` and no protocol count, so
+reading the absent counter as zero would hand it "zero protocol failures" and let
+a trajectory that legitimately failed the gate start passing it. With `None` the
+rate falls back to `failed_tool_call_count / tool_call_count` and the record
+keeps its original verdict, which the suite checks against every
+`runs/*/trajectories.jsonl` present locally.
 
 `schema_version` stays `2.0`. The new fields are additive with defaults, so
 every 2.0 file — old and new — validates against the same literal, and each
@@ -570,7 +616,7 @@ The following was re-run in `llm_reconstruction` on 2026-08-15:
 
 | Check | Result |
 | --- | --- |
-| Supported suite: `pytest -q` | 99 passed (89 fixed tests, plus one per `runs/*/trajectories.jsonl` present locally) |
+| Supported suite: `pytest -q` | 141 passed (127 fixed tests, plus one per `runs/*/trajectories.jsonl` present locally; `pytest -q -k "not local_run_artifacts"` reports the fixed 127) |
 | `make smoke-lexibank` | 2 varieties, 4 tokenized forms, 2 concepts; supplied tree normalized successfully |
 | `make smoke-iecor-historical` | 6 evidence varieties, 1,029 tokenized forms, 170 concepts, 1 hidden historical binding; supplied tree normalized successfully |
 | CLI installation/help | `cognate-reconstruct` available; all seven CLI subcommands load |
@@ -590,6 +636,22 @@ and truncation handling, coverage scoping, and backward compatibility against
 both a checked-in pre-change fixture and every `runs/*/trajectories.jsonl`
 present locally.
 
+It also covers the structural error codes specifically: that index-normalized
+schema codes are deterministic and identical for one mistake repeated at
+different list positions, that a scripted provider varying only the *text* of
+its rejections now ends in `ProtocolStallError`, that the trailing stall window
+forgives widely-spaced repeats but not the same spacing inside one window, that
+every code raised anywhere in `agent/` is in the classified vocabulary (read out
+of the source by an AST scan, so a new raise site cannot widen it silently), and
+that two sessions with the same rejected-call count get opposite `high_quality`
+verdicts when one's failures are exploratory and the other's are protocol. It
+covers window saturation with a provider that never repeats a code — nine
+differently-shaped rejections in rotation — and confirms that the exploratory
+one among them occupies a window slot without counting toward the trip. Two
+repository-hygiene checks guard the triage driver: its hand-copied exploratory
+set must equal the real classification, and the two checked-in copies of the
+skill must stay byte-identical.
+
 Local ignored live-run artifacts also demonstrate both success and failure:
 
 - `runs/google-gemma-4-e4b-20260815-101423`: the pre-change commit-protocol
@@ -603,14 +665,36 @@ Local ignored live-run artifacts also demonstrate both success and failure:
   own broad-scope `f > p / #_` across all three children and scored
   `coverage 1.00` with `target_absent 4` still reported, against the
   baseline's 0.33 for the same rule;
-- a local two-internal-node run of the same lexicons under
-  `(language_a,(language_b,language_c)INNER)PROTO;`: `INNER` committed an
-  identity reconstruction and `PROTO` then committed `f > p / #_` scoped to
-  `INNER`, giving the correct `p a` / `p u r`. `PROTO` also rejected four
-  commits (31%), so the run reports `high_quality: 1/2` — the live form of the
-  new gate. Those four rejections alternated between two error signatures,
-  which is what motivated counting repeats per signature rather than only
-  consecutively;
+- `runs/google-gemma-4-e4b-20260815-104140`, a two-internal-node run of the same
+  lexicons under `(language_a,(language_b,language_c)INNER)PROTO;`: `INNER`
+  committed an identity reconstruction and `PROTO` then committed `f > p / #_`
+  scoped to `INNER`, giving the correct `p a` / `p u r`. `PROTO` also rejected
+  four commits (31%), so the run reports `high_quality: 1/2` — the live form of
+  the gate. Those four rejections alternated between two error signatures, which
+  is what motivated counting repeats per signature rather than only
+  consecutively. Its rejections predate error codes, so triage reports them
+  under a `legacy:` prefix derived from the message, which is exactly the
+  unstable signature the codes replaced;
+- `runs/google-gemma-4-26b-a4b-20260815-185157` and
+  `runs/google-gemma-4-e4b-20260815-185318`, after the error-code work: the
+  three-language input in 32s over five clean tool calls, and the two-node tree
+  in 86s over eight clean tool calls across both nodes, `high_quality: 2/2`.
+  Both record `protocol=0`;
+- `runs/google-gemma-4-26b-a4b-20260815-210535`, the first live artifact to
+  exercise a structural code: the three-language input in 24s over six tool
+  calls, the correct `p a` / `p u r`, and one rejected `test_rule_cascade`
+  reported as
+  `schema:rules=too_short,rules[].validation_call_id=extra_forbidden`. The code
+  is legible enough to name the model's actual confusion — it put a per-rule
+  `validation_call_id` into a cascade spec, which `CascadeRuleSpec` forbids —
+  where the previous taxonomy would have recorded only `ValidationError: 1`.
+  One protocol failure in six calls is 0.17, so `high_quality` stays 1/1;
+- `runs/google-gemma-4-26b-a4b-20260815-220437`, the same model, input, and
+  temperature after `CascadeRuleSpec` gained a docstring saying a cascade rule
+  carries no validation ID: five tool calls, none rejected, 20s. The rejected
+  cascade call from the run above did not recur. That is suggestive rather than
+  conclusive — one trial, and a local server is not bit-deterministic at
+  temperature 0 — but the tool schema is the only input that changed;
 - `runs/gemma-noop-fix.IKD1kR`: one completed `google/gemma-4-e4b`
   trajectory, five turns, five tool calls, one real rule, and
   `high_quality: 1`;
@@ -662,15 +746,29 @@ future ideas.
   `ProtocolStallError`. What is still missing is any automatic recovery — the
   harness names the condition rather than shrinking the request or continuing
   the truncated output.
-- A tool rejection reproduced `max_repeated_tool_failures` times within a node
-  now triggers one targeted correction carrying the tool's remediation, and one
-  further recurrence raises `ProtocolStallError`. Occurrences are counted per
-  signature across the whole node, not only in consecutive runs, because a live
-  gemma session alternated between two commit errors so that neither was ever
-  consecutive. The signature is still the exact
-  `(tool name, error type, error message)` triple, so a model that varies its
-  malformed arguments enough to change the message text can continue to loop
-  until the turn limit.
+- A tool rejection reproduced `max_repeated_tool_failures` times **within the
+  trailing window of `stall_window_calls` tool calls** now triggers one targeted
+  correction carrying the tool's remediation, and one further recurrence raises
+  `ProtocolStallError`. The signature is `(tool name, structural error code)`,
+  so a model that varies its malformed arguments no longer escapes by changing
+  the message text. Occurrences are counted across the window rather than only
+  in consecutive runs, because a live gemma session alternated between two
+  commit errors so that neither was ever consecutive; the window bounds that
+  memory so a long, mostly-productive session is not killed by three
+  well-separated repeats of one mistake it recovered from each time. Successes
+  occupy window slots, which is what makes distance forgivable without making
+  density forgivable — resetting on success instead would be fooled by the
+  obvious interleave of a bad commit, a good test, and another bad commit.
+- A model that never repeats one code is caught by a second condition on the
+  same window: when `max_window_protocol_failures` of the last
+  `stall_window_calls` calls were *protocol* rejections — whatever their
+  codes — the harness injects one correction naming them and then raises
+  `ProtocolStallError`. Exploratory rejections are excluded, so a model working
+  through malformed sound laws is never stopped for it however many it gets
+  wrong. What remains unhandled: two genuinely different mistakes that happen to
+  share a code are counted as one. Triage makes that visible by reporting the
+  number of distinct messages behind each code, which is the evidence for
+  splitting a code rather than a fault in itself.
 - With the currently observed LiteLLM/Pydantic combination, live LM Studio
   calls may print nonfatal `PydanticSerializationUnexpectedValue` warnings.
   Tool execution and normalized trajectories can still succeed, but the noise
@@ -700,9 +798,13 @@ future ideas.
   chronological plausibility, regularity, or historical correctness.
 - `high_quality` is a workflow heuristic, not an expert label. It does not
   score held-out accuracy, correspondence recurrence, support diversity, or
-  linguistic plausibility. Its protocol-failure threshold (0.25) is an
-  engineering judgement chosen from a handful of local runs, not a calibrated
-  value.
+  linguistic plausibility. Its protocol-failure threshold (0.25) and its
+  single-failure floor are engineering judgements chosen from a handful of local
+  runs, not calibrated values. The exploratory/protocol split now decides *what*
+  is counted against that threshold, and that boundary is itself a judgement:
+  `empty-scope` is treated as the model probing its evidence, but a model that
+  never learns which children hold a target would be scored as exploring rather
+  than as failing.
 - Beam probabilities are normalized heuristic scores and should not be
   interpreted as calibrated uncertainty.
 - Rule confidence is supplied by the model. There is no independent
@@ -763,16 +865,25 @@ future ideas.
    cumulative. This became more pressing, not less. `agent/SKILL.md` and the
    tool schemas both changed in this work, and `infer` builds its own
    configuration hash in `_provider_and_configuration` that covers none of
-   them — nor the new `max_repeated_tool_failures` /
-   `max_truncated_responses` thresholds, which have no CLI flag. A checkpoint
-   written before this release still resumes cleanly even though the model now
-   receives different instructions and a different tool schema.
+   them — nor the `max_repeated_tool_failures` / `stall_window_calls` /
+   `max_truncated_responses` / `max_window_protocol_failures` thresholds, none
+   of which has a CLI flag. A checkpoint written before this release still
+   resumes cleanly even though the model now receives different instructions and
+   a different tool schema. Do this as **one** change rather than adding the
+   missing inputs to the hash piecemeal: every addition invalidates every
+   existing checkpoint, so paying that cost repeatedly buys a fraction of the
+   safety each time. Exposing the stall thresholds as CLI flags belongs in the
+   same change, since a flag nobody hashes is a flag that silently changes a
+   resumed run.
 2. Recover from truncation rather than only naming it — the harness now
    detects `finish_reason="length"` and stalls deliberately, but it cannot
    shrink a request or continue a cut-off response.
-3. Make repeated-failure detection robust to varied error text. The current
-   signature is the exact error message, which catches verbatim repetition but
-   not a model that keeps producing differently-malformed arguments.
+3. Decide whether an exploratory rejection should ever end a node. Neither stall
+   condition counts one today: repeats are caught per structural code, window
+   saturation counts only protocol rejections, and a model that tests malformed
+   sound laws indefinitely is bounded by the turn limit alone. That is the
+   deliberate choice — exploration is what the trajectories are meant to teach —
+   but it has not been checked against a session that exploits it.
 4. Remove or narrowly suppress the known LiteLLM/Pydantic serializer warning
    only after confirming response fields remain intact.
 5. Add one maintained live-provider contract test for each provider/model
@@ -786,9 +897,15 @@ future ideas.
 2. Curate held-out historical nodes/families with explicit provenance and
    leakage controls.
 3. Calibrate the `high_quality` protocol-failure threshold against a real
-   corpus of trajectories instead of the current judgement call, and decide
-   whether an exploratory rejection (a malformed DSL the model then fixes)
-   should count the same as a commit-schema rejection.
+   corpus of trajectories instead of the current judgement call. The second half
+   of this item is now decided in code — an exploratory rejection does *not*
+   count the same as a commit-schema one — but 0.25 and the single-failure floor
+   are still engineering judgements, and the exploratory/protocol boundary itself
+   deserves the same corpus check. The cheap enabling step, which needs no
+   research decision, is to report the *distribution* of per-trajectory protocol
+   rates from `summarize-trajectories` rather than only the pooled rate and a
+   count above threshold; a threshold cannot be calibrated against a number that
+   has already been averaged.
 4. Decide whether parsimony should affect scoring, and document the objective
    before implementing it.
 5. Add diagnostics for recurring correspondence support, residual mismatch,
@@ -836,9 +953,9 @@ the archived [predecessor repository](https://github.com/acraevschi/llm_cognate_
 - generator-only tests and dataset-exception notes.
 
 The one artifact still needed at runtime, the curated lineage CSV, is carried
-forward as `data/historical_lineages.csv`. Existing ignored multi-gigabyte
-Stage-1/Stage-2 JSONL and local Lexibank/Glottolog checkouts remain at their
-current local paths, neither deleted nor reinterpreted.
+forward as `data/historical_lineages.csv`. Stage-1/Stage-2 JSONL corpora are not
+part of this repository in any form; see [data/README.md](data/README.md) for
+what `data/` does and does not contain.
 
 Do not reintroduce archived modules into root defaults or public APIs simply
 because they contain useful old code. Migrate a narrow dependency into

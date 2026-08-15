@@ -8,7 +8,10 @@ from cognate_reconstruction.agent.schemas import (
     TestRuleCascadeArgs,
     TestRuleCascadeResult,
 )
-from cognate_reconstruction.rules.parser import parse_rule
+from cognate_reconstruction.agent.tools.errors import (
+    ToolInputError,
+    parse_rule_or_reject,
+)
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.rules import ReconstructionRule
 
@@ -22,7 +25,7 @@ def test_rule_cascade(
     active_children = set(context.child_ids)
     parsed = tuple(
         ReconstructionRule(
-            rule=parse_rule(spec.dsl, rule_id=spec.rule_id),
+            rule=parse_rule_or_reject(spec.dsl, rule_id=spec.rule_id),
             source_child_ids=spec.source_child_ids,
             # Preview is mechanical; confidence belongs to the later commit.
             confidence=1.0,
@@ -32,9 +35,10 @@ def test_rule_cascade(
     for rule in parsed:
         unknown = sorted(set(rule.source_child_ids) - active_children)
         if unknown:
-            raise ValueError(
+            raise ToolInputError(
                 f"cascade rule {rule.rule.rule_id!r} targets inactive children: "
-                f"{unknown}"
+                f"{unknown}",
+                code="inactive-children",
             )
 
     selected_concepts = set(arguments.concept_ids)
@@ -74,7 +78,10 @@ def test_rule_cascade(
             CascadeFinalForm(child_id=child_id, form=form) for form in transformed
         )
     if not final_forms:
-        raise ValueError("no forms matched the requested cascade scope")
+        raise ToolInputError(
+            "no forms matched the requested cascade scope",
+            code="empty-scope",
+        )
     result = TestRuleCascadeResult(
         validation_call_id=call_id,
         rules=parsed,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass, field
 
+from cognate_reconstruction.agent.error_codes import ToolInputError
 from cognate_reconstruction.alignment.protocol import AlignmentProvider
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.schemas.rules import AnchorPolicy
@@ -68,7 +69,10 @@ class AgentContext:
         try:
             return next(item.lexicon for item in self.evidence if item.node_id == node_id)
         except StopIteration as error:
-            raise ValueError(f"unknown or unavailable evidence node {node_id!r}") from error
+            raise ToolInputError(
+                f"unknown or unavailable evidence node {node_id!r}",
+                code="unknown-node",
+            ) from error
 
     def forms_for_overlay(self, overlay_id: str | None) -> dict[str, LexicalForm]:
         forms = {form.form_id: form for form in self.all_forms}
@@ -77,7 +81,10 @@ class AgentContext:
         try:
             forms.update(self.overlays[overlay_id])
         except KeyError as error:
-            raise ValueError(f"unknown segmentation overlay {overlay_id!r}") from error
+            raise ToolInputError(
+                f"unknown segmentation overlay {overlay_id!r}",
+                code="unknown-overlay",
+            ) from error
         return forms
 
     def lexicon(self, child_id: str, overlay_id: str | None = None) -> LanguageLexicon:
@@ -86,7 +93,10 @@ class AgentContext:
                 lexicon for lexicon in self.child_lexicons if lexicon.variety_id == child_id
             )
         except StopIteration as error:
-            raise ValueError(f"unknown child {child_id!r}") from error
+            raise ToolInputError(
+                f"unknown child {child_id!r}",
+                code="unknown-node",
+            ) from error
         forms = self.forms_for_overlay(overlay_id)
         return original.model_copy(
             update={"forms": tuple(forms[form.form_id] for form in original.forms)}
