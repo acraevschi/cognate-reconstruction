@@ -44,8 +44,10 @@ reconstruction. The heuristic `sidwellvietic` cognate relinking also remains
 archived: it changes linguistic judgements and is not required for faithful
 CLDF ingestion.
 
-Existing ignored multi-gigabyte Stage-1/Stage-2 JSONL files remain at their
-current local paths. The migration does not copy, delete, or reinterpret them.
+Stage-1/Stage-2 JSONL corpora are not part of this repository. No code path
+reads that format, and `data/` neither documents nor expects it. Any such files
+still sitting in a local `data/` directory are leftovers of the superseded
+fine-tuning scope and are safe to delete; the generator remains archived.
 
 ## Deliberate boundary
 
