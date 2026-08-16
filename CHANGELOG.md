@@ -204,6 +204,61 @@ rejected commit-schema errors.
   traverser's post-order reconstructed-evidence set, so nothing leaks from a
   node that has not been reconstructed yet. Hypotheses from nodes restored by
   `--resume` are not retrievable, since those nodes never ran in the process.
+- Added `inspect-run --run-dir`, the supported artifact-facing report over
+  `result.json` and `trajectories.jsonl` (`events.jsonl` when present). Plain
+  text on stdout; `--html PATH` writes one self-contained file with no external
+  CSS, JS, fonts, or images, readable in light and dark, with rule tables
+  scrolling inside their own container; `--all-forms` lifts the 40-form cap. Per
+  node it reports the session shape, the committed hypothesis, the deterministic
+  diagnostics, the best lexicon, and `high_quality` **with the condition it
+  failed**. A missing `events.jsonl` drops only the event counts; a missing
+  `result.json` falls back to the trajectories' own beams.
+- Added a report-only cross-node consistency section: one DSL committed at
+  several nodes with materially different confidence, adjacent nodes mapping the
+  same target in the same environment to different things, and a correspondence
+  established below a node that the node never mentions. Worded as observations,
+  headed by a line saying the harness does not judge historical correctness, and
+  scored by nothing — a test asserts a contradictory family and a consistent one
+  get identical `high_quality` verdicts. Penalising any of it changes what counts
+  as a valid reconstruction and stays a research-owner decision.
+- Made `driver.py triage` shell out to `inspect-run` for the artifact sections
+  instead of keeping its own copy of them. Triage keeps what only `events.jsonl`
+  knows: the turn-by-turn timeline and the failure taxonomy, which is still the
+  only source of rejection counts for runs written before failure accounting.
+- Added `AgentTrajectory.high_quality_failure_reasons`, and defined
+  `high_quality` as that tuple being empty. The report states why the gate
+  failed rather than describing the gate, so the two cannot drift.
+- Required a per-rule `rationale` on commits carrying more than one rule, with a
+  new `missing-rule-rationale` code and a remediation naming the exact
+  `rule_id`s. The schema keeps the field optional, so existing records stay
+  loadable, and single-rule commits are unaffected — the measured transcription
+  friction that made `rationale` optional was entirely on those. One `summary`
+  cannot attribute reasoning to one of several rules, and a corpus filter that
+  discards every multi-rule commit for missing reasoning is the worse outcome.
+- Added `schema_variants` and `current_trajectory_schema_sha256` to
+  `summarize-trajectories`: record counts grouped by `trajectory_schema_sha256`
+  with the current digest marked. `schema_version` stays `2.0` — the rule, now
+  written down in the README, is to bump it when a reader must behave
+  differently, never merely because fields were added. A regression test widens
+  the literal to `Literal["2.0", "2.1"]` and asserts a real 2.0 file still loads
+  and still says 2.0.
+- Committed `tests/workbench/fixtures/trajectory_real_pre_change.jsonl`, a
+  genuine pre-change live run copied verbatim out of `runs/`, and asserted
+  against it that the record loads and keeps its exact `high_quality` verdict.
+  The claim previously rested only on globbing gitignored `runs/`: clearing that
+  directory reduced the parametrization to zero cases and left the suite green
+  with the guarantee gone. The glob stays as opportunistic extra coverage, so
+  `pytest -q -k "not local_run_artifacts"` is now the authoritative count.
+- Noted, without changing it, that `result.json` is written with computed fields
+  included and therefore does not round-trip through its own `extra="forbid"`
+  model. `inspect-run` reads it as JSON and validates the fragments it uses.
+- Added `docs/report_reject_or_score.md`, recording the reasoning the
+  mechanical/workflow/linguistic invariant compresses into one line: the three
+  questions a run can be asked, why a report is reversible and a gate is not,
+  and the rule for deciding which a new signal belongs to. The worked example is
+  the cross-node observation that fires on a perfectly correct run — report it
+  and a human reads a line; score it and a correct reconstruction is excluded
+  from the corpus.
 
 ## 0.2.0
 

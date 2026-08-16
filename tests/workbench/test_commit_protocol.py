@@ -317,6 +317,116 @@ def test_identity_commit_needs_no_validation_and_says_so() -> None:
     assert state.commit.parsed_rules == ()
 
 
+def _validate_two_rules(registry, state) -> None:
+    _validate(
+        registry,
+        state,
+        "validate-restore-p",
+        dsl="f > p / #_",
+        source_child_ids=["B"],
+    )
+    _validate(
+        registry,
+        state,
+        "validate-final-l",
+        dsl="r > l / _#",
+        source_child_ids=["A", "B"],
+    )
+
+
+def _two_rules(*rationales: str | None) -> list[dict]:
+    specs = (
+        ("restore-p", "f > p / #_", ["B"]),
+        ("final-l", "r > l / _#", ["A", "B"]),
+    )
+    rules = []
+    for (rule_id, dsl, scope), rationale in zip(specs, rationales, strict=True):
+        rule = {
+            "rule_id": rule_id,
+            "dsl": dsl,
+            "source_child_ids": scope,
+            "confidence": 0.8,
+        }
+        if rationale is not None:
+            rule["rationale"] = rationale
+        rules.append(rule)
+    return rules
+
+
+def test_a_multi_rule_commit_missing_a_rationale_names_the_offending_rules() -> None:
+    """One summary cannot say why each of several rules is there."""
+    state = _context()
+    registry = default_tool_registry()
+    _validate_two_rules(registry, state)
+    result = _commit(
+        registry,
+        state,
+        rules=_two_rules("Regular initial correspondence in B.", None),
+    )
+    assert not result.ok
+    assert result.error is not None
+    assert result.error.code == "missing-rule-rationale"
+    assert "1 of 2 committed rules omit 'rationale'" in result.error.message
+    remediation = result.error.remediation or ""
+    assert "'final-l'" in remediation
+    # The rule that supplied one is not named as an offender.
+    assert "'restore-p'" not in remediation
+    assert state.commit is None
+
+
+def test_a_multi_rule_commit_with_every_rationale_is_accepted() -> None:
+    state = _context()
+    registry = default_tool_registry()
+    _validate_two_rules(registry, state)
+    result = _commit(
+        registry,
+        state,
+        rules=_two_rules(
+            "Regular initial correspondence in B.",
+            "Both children lose final r to l.",
+        ),
+    )
+    assert result.ok, result.error
+    assert state.commit is not None
+    assert [rule.rationale for rule in state.commit.request.rules] == [
+        "Regular initial correspondence in B.",
+        "Both children lose final r to l.",
+    ]
+
+
+def test_a_single_rule_commit_still_needs_no_rationale() -> None:
+    """The measured transcription friction was entirely on this shape."""
+    state = _context()
+    registry = default_tool_registry()
+    _validate(
+        registry,
+        state,
+        "validate-restore-p",
+        dsl="f > p / #_",
+        source_child_ids=["B"],
+    )
+    result = _commit(
+        registry,
+        state,
+        rules=[
+            {"dsl": "f > p / #_", "source_child_ids": ["B"], "confidence": 0.9}
+        ],
+    )
+    assert result.ok, result.error
+    assert state.commit is not None
+    assert state.commit.request.rules[0].rationale is None
+
+
+def test_the_rationale_rule_is_stated_in_the_field_description() -> None:
+    """The model reads the schema; the requirement cannot live only in code."""
+    rule_schema = CommitReconstructionArgs.model_json_schema()["$defs"][
+        "CommittedSoundRule"
+    ]["properties"]
+    description = rule_schema["rationale"]["description"]
+    assert "Required on every rule" in description
+    assert "more than one" in description
+
+
 def test_every_committed_rule_field_is_described_for_the_model() -> None:
     schema = CommitReconstructionArgs.model_json_schema()
     rule_schema = schema["$defs"]["CommittedSoundRule"]["properties"]

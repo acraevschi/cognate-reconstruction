@@ -121,7 +121,8 @@ what was tested. Permitted anomaly types are `loanword`,
 10. Call `commit_reconstruction` only after every committed rule has a successful
    validation call in this node session. Per rule you need only `dsl`,
    `source_child_ids`, and `confidence`; the harness binds each rule to its own
-   validation.
+   validation. When the commit carries more than one rule, add a `rationale` to
+   each of them as well.
 
 ## Tool guidance
 
@@ -191,7 +192,11 @@ You do not have to transcribe it. This is a complete, accepted commit:
   validations would match, and then only with a `test_sound_law` ID.
 - `supporting_form_ids` is optional and defaults to the resolved validation's
   forms. Supply it only to cite a subset of them.
-- `rationale` is optional; the required `summary` carries the reasoning.
+- `rationale` is optional **when you commit a single rule**: the required
+  `summary` carries the reasoning for it. When you commit more than one rule,
+  every rule needs its own `rationale`, because one summary cannot say why each
+  separate rule is there. A multi-rule commit missing any of them is rejected
+  and the error names the exact `rule_id`s.
 - `rule_id` is an optional label; when omitted the harness derives a stable ID
   from the exact DSL and child scope.
 - `cascade_validation_call_id` takes only an ID returned by a successful

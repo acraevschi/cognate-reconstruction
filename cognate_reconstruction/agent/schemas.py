@@ -464,8 +464,11 @@ class CommittedSoundRule(WorkbenchModel):
     rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Optional rule-specific justification. The required top-level "
-            "'summary' already carries the reasoning for the whole commit."
+            "Rule-specific justification. Optional when the commit carries a "
+            "single rule, because the required top-level 'summary' already "
+            "states the reasoning for it. Required on every rule of a commit "
+            "that carries more than one, since one summary cannot attribute "
+            "reasoning to one of several rules."
         ),
     )
 

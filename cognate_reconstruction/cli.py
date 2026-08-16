@@ -36,6 +36,7 @@ from cognate_reconstruction.ingestion import (
     ingest_payload,
     load_cldf_dataset,
 )
+from cognate_reconstruction.inspect_run import DEFAULT_FORM_LIMIT, inspect_run
 from cognate_reconstruction.ingestion.historical import (
     load_historical_lineage_bindings,
     materialize_historical_bindings,
@@ -646,6 +647,39 @@ def _command_infer(args: argparse.Namespace) -> None:
         )
 
 
+def _current_trajectory_schema_sha256() -> str:
+    """The digest every record written by this build carries.
+
+    Derived exactly as `AgentOrchestrator._trajectory` derives it, so the two
+    agree without either importing the other's helper.
+    """
+    return _hash_json(AgentTrajectory.model_json_schema())
+
+
+def _schema_variants(trajectories) -> list[dict[str, Any]]:
+    """Group records by the exact trajectory schema they were written against.
+
+    `schema_version` stays `2.0` while fields are added with defaults, because a
+    reader does not have to behave differently — see the README on when the
+    literal is bumped. That leaves a real question a curator cannot otherwise
+    answer without hashing things themselves: which 2.0 records carry the new
+    counters and which predate them. Every record already records the answer in
+    `trajectory_schema_sha256`; this only counts them.
+    """
+    current = _current_trajectory_schema_sha256()
+    counts = Counter(item.trajectory_schema_sha256 for item in trajectories)
+    return [
+        {
+            "trajectory_schema_sha256": digest,
+            "records": count,
+            "current": digest == current,
+        }
+        for digest, count in sorted(
+            counts.items(), key=lambda item: (item[0] != current, item[0])
+        )
+    ]
+
+
 def _trajectory_summary(trajectories) -> dict[str, Any]:
     completed = [item for item in trajectories if item.completed]
     models = Counter(item.model_id or "unknown" for item in trajectories)
@@ -666,6 +700,8 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
     total_protocol_failures = sum(item.metrics.protocol_failures for item in trajectories)
     return {
         "schema_version": "2.0",
+        "current_trajectory_schema_sha256": _current_trajectory_schema_sha256(),
+        "schema_variants": _schema_variants(trajectories),
         "trajectory_count": len(trajectories),
         "completed": len(completed),
         "failed": len(trajectories) - len(completed),
@@ -738,6 +774,17 @@ def _command_validate_trajectories(args: argparse.Namespace) -> None:
 def _command_summarize_trajectories(args: argparse.Namespace) -> None:
     trajectories = TrajectoryDatasetBuilder.read_jsonl(args.input)
     print(json.dumps(_trajectory_summary(trajectories), indent=2, sort_keys=True))
+
+
+def _command_inspect_run(args: argparse.Namespace) -> None:
+    text, _ = inspect_run(
+        args.run_dir,
+        html_path=args.html,
+        form_limit=None if args.all_forms else DEFAULT_FORM_LIMIT,
+    )
+    print(text, end="")
+    if args.html:
+        print(f"wrote {args.html}", file=sys.stderr)
 
 
 def _command_export_trajectories(args: argparse.Namespace) -> None:
@@ -966,6 +1013,32 @@ def _parser() -> argparse.ArgumentParser:
     )
     summary.add_argument("--input", required=True)
     summary.set_defaults(handler=_command_summarize_trajectories)
+
+    inspect = subparsers.add_parser(
+        "inspect-run",
+        help="Report one run directory's artifacts in readable form.",
+    )
+    inspect.add_argument(
+        "--run-dir",
+        required=True,
+        help=(
+            "Directory holding result.json and trajectories.jsonl; "
+            "events.jsonl is used when present."
+        ),
+    )
+    inspect.add_argument(
+        "--html",
+        help="Also write a single self-contained HTML file to this path.",
+    )
+    inspect.add_argument(
+        "--all-forms",
+        action="store_true",
+        help=(
+            f"List every reconstructed form instead of the first "
+            f"{DEFAULT_FORM_LIMIT} per node."
+        ),
+    )
+    inspect.set_defaults(handler=_command_inspect_run)
 
     export = subparsers.add_parser(
         "export-trajectories",

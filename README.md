@@ -1,7 +1,7 @@
 # Cognate Reconstruction Harness
 
 > Current-state guide for developers and coding agents. Last verified:
-> 2026-08-15, package version 0.2.0.
+> 2026-08-16, package version 0.2.0.
 
 `cognate_reconstruction` is the supported product in this repository. It is
 an auditable historical-linguistics harness in which an LLM manages
@@ -70,7 +70,7 @@ the runtime classification tree.
 | Trajectory curation | Implemented at a mechanical level | Version 2.0 validation, summaries, workflow-quality filtering, and generic tool-training export. No expert linguistic grader or deterministic replay command. |
 | Research-grade evaluation | Partial | Exact held-out historical target evaluation exists; broad curated family benchmarks and a validated quality objective do not. |
 | Training backend | Not implemented | Trajectory export is the boundary for later work; no TRL/Unsloth training pipeline is included. |
-| Human-facing trace/result viewer | Not implemented | Live console output and JSON/JSONL can be inspected with `jq`; there is no dedicated report UI or trace browser. |
+| Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. There is still no interactive trace browser, and the turn-by-turn timeline lives in the run-triage skill. |
 
 The harness is ready for controlled local experiments and deterministic
 development. It is not yet a system whose mechanically accepted
@@ -87,6 +87,7 @@ cognate_reconstruction/
 ├── alignment/          typed LingPy SCA alignment wrapper
 ├── rules/              literal sound-law parser and token engine
 ├── traversal/          beams, deterministic reconstruction, checkpoints
+├── inspect_run.py      readable run report and cross-node observations
 └── agent/
     ├── providers/      provider protocol and LiteLLM adapter
     ├── tools/          deterministic model-facing tools
@@ -106,6 +107,9 @@ Start with:
 
 - [the full inference/CLI guide](docs/running_inference.md) for schemas,
   commands, provider options, and artifact contracts;
+- [report, reject, or score](docs/report_reject_or_score.md) for where a new
+  signal belongs — the reasoning behind the mechanical/workflow/linguistic
+  split, and why a report and a gate are different kinds of decision;
 - [the migration note](MIGRATION.md) for what moved and why;
 - [the agent instructions](cognate_reconstruction/agent/SKILL.md) for the exact
   comparative-method and tool-use policy; and
@@ -338,8 +342,17 @@ into one code costs nothing in auditability.
   validation's forms. Those are deterministic engine output, not a model claim;
   a supplied list must still be a subset of them, and a rule that applied to no
   form is still rejected.
-- `rationale` is optional. The required top-level `summary` carries the
-  reasoning, and no deterministic check consumes per-rule prose.
+- `rationale` is optional **on a single-rule commit**. The required top-level
+  `summary` carries the reasoning for the one rule, and no deterministic check
+  consumes per-rule prose. On a commit carrying **more than one** rule every
+  rule must supply one, and a commit missing any is rejected with a remediation
+  naming the exact `rule_id`s. The schema keeps the field optional and the tool
+  enforces the multi-rule case, so records written before the rule stay
+  loadable. The asymmetry is deliberate: the measured transcription friction
+  that made `rationale` optional was entirely on single-rule commits, while a
+  single `summary` cannot attribute reasoning to one of several rules — and a
+  corpus filter that has to discard *every* multi-rule commit for missing
+  reasoning is a worse outcome than one extra required string on a rare call.
 - `confidence` stays required: it is a model judgement that the beam consumes as
   a score weight, and defaulting it would invent a claim the model never made.
 
@@ -367,12 +380,16 @@ rather than pushed into the prompt:
 The second exists because the comparative method is iterative: a correspondence
 established at one node constrains its neighbours, and without this every
 internal node of a 170-concept family re-derives the same correspondences while
-nothing makes adjacent, mutually contradictory rule inventories visible. A
-prior node's rule is a *hypothesis*, on the same footing as a reconstructed form
-not being direct attestation. **It has no effect on scoring.** Whether a
-parent's confidence should propagate into a child's beam, or cross-node
-inconsistency should be penalised, changes what counts as a valid
+nothing showed the model that its neighbours had claimed something
+incompatible. A prior node's rule is a *hypothesis*, on the same footing as a
+reconstructed form not being direct attestation. **It has no effect on
+scoring.** Whether a parent's confidence should propagate into a child's beam,
+or cross-node inconsistency should be penalised, changes what counts as a valid
 reconstruction and is listed under decisions requiring research-owner input.
+
+After a run, `inspect-run` reports the same relationships from the other
+direction: it compares committed rule inventories across nodes and prints what
+it finds for a human. That is also report-only — see "Inspect one run".
 
 Visibility is gated on the traverser's reconstructed-evidence set, which
 post-order populates only after a node completes, so nothing leaks from a node
@@ -597,19 +614,88 @@ rate falls back to `failed_tool_call_count / tool_call_count` and the record
 keeps its original verdict, which the suite checks against every
 `runs/*/trajectories.jsonl` present locally.
 
-`schema_version` stays `2.0`. The new fields are additive with defaults, so
-every 2.0 file — old and new — validates against the same literal, and each
-record already carries a `trajectory_schema_sha256` that changes precisely when
-the schema does. Bumping the literal would fork the readable-version set
-without adding information that hash does not already give.
+**The versioning rule: bump `schema_version` when a reader must behave
+differently, never merely because fields were added.** The new fields are
+additive with defaults, so every 2.0 file — old and new — validates against the
+same literal, and each record already carries a `trajectory_schema_sha256` that
+changes precisely when the schema does. Bumping the literal would fork the
+readable-version set without adding information that hash does not already give.
+The asymmetry that decides it is that bumping later is trivial — widening
+`Literal["2.0"]` to `Literal["2.0", "2.1"]` keeps every existing file loadable,
+and a test asserts exactly that — while un-bumping after files exist in the wild
+is not: those files are already written, already say `2.1`, and every reader
+that has to accept them inherits the fork forever.
+
+What the literal cannot tell a curator is which 2.0 record carries the new
+counters. `summarize-trajectories` therefore reports `schema_variants`: record
+counts grouped by `trajectory_schema_sha256`, with the digest this build writes
+marked `current` and repeated as `current_trajectory_schema_sha256`. That is the
+legibility a version string would have given, at finer granularity, out of data
+every record already carries.
 
 `validate-trajectories` means that each JSONL record satisfies the versioned
 schema and outcome invariants. It does not re-execute every recorded tool call
 or independently reproduce the deterministic step.
 
-### Inspect artifacts today
+### Inspect one run
 
-There is no dedicated trace viewer yet. Useful `jq` views are:
+```bash
+cognate-reconstruct inspect-run --run-dir runs/family
+cognate-reconstruct inspect-run --run-dir runs/family --html runs/family/report.html
+```
+
+`inspect-run` reads `result.json` and `trajectories.jsonl`, plus `events.jsonl`
+when present, and prints a readable report: per node the session shape (turns,
+tool calls, rejections split protocol/exploratory and grouped by structural
+error code, truncations and recoveries, retries, duration, tokens), the
+committed hypothesis (each rule's DSL, child scope, confidence, resolved
+validation, supporting-form count, rationale, plus anomalies and summary), the
+deterministic diagnostics, the best reconstructed lexicon, and `high_quality`
+**with the specific condition it failed**. A family summary and any held-out
+historical target evaluation follow. `--html` writes one self-contained file —
+no external CSS, JS, fonts, or images — readable in light and dark, with wide
+rule tables scrolling inside their own container. `--all-forms` lifts the
+40-form-per-node cap.
+
+The quality reasons are the gate itself rather than a description of it:
+`high_quality` is true exactly when `high_quality_failure_reasons` is empty, so
+the report cannot drift from the filter curation applies.
+
+A missing `events.jsonl` only drops the event counts; a missing `result.json`
+falls back to the beams recorded in the trajectories, so a run that failed
+before writing a result is still readable.
+
+**Cross-node consistency is reported and nothing more.** The last section walks
+the committed rules across nodes and observes three things: one DSL committed at
+several nodes with materially different confidence, adjacent nodes mapping the
+same target in the same environment to different things, and a correspondence
+established below a node that the node itself never mentions. Each is a
+mechanical comparison of committed rule text, worded for a human to adjudicate,
+and the section says so in its own header. None of it is scored, none of it
+reaches `high_quality` or the beam, and whether cross-node inconsistency should
+ever affect scoring stays in "Decisions that require research-owner input". A
+live two-node run illustrates why the wording matters: `PROTO` committed an
+identity reconstruction because `INNER` had already completed `f > p`, and the
+observation that `PROTO` never mentions that correspondence is a description of
+a correct run, not a complaint about it.
+
+`inspect-run` is the supported artifact-facing report. The run-triage skill's
+`driver.py triage` is the event-facing one — the turn-by-turn timeline and the
+failure taxonomy read out of `events.jsonl`, which is the only source for runs
+written before failure counters existed — and it shells out to `inspect-run` for
+the artifact sections rather than keeping its own copy of them.
+
+Note that `result.json` is written with computed fields included, so it does not
+round-trip through its own `extra="forbid"` model. `inspect-run` therefore reads
+it as JSON and validates the fragments it uses (`best_lexicon`, the historical
+evaluations) individually. Nothing depends on this, but a future reader that
+tries `FamilyReconstructionResult.model_validate_json` on a real result file
+will be rejected.
+
+### Inspect artifacts with `jq`
+
+For anything the report does not cover, or on a machine without the harness
+installed:
 
 ```bash
 RUN_DIR="runs/family"
@@ -645,15 +731,14 @@ jq -r '
 
 ## Verification snapshot
 
-The following was re-run in `llm_reconstruction` on 2026-08-15, with the suite
-counts re-checked on 2026-08-16 after the seeding run-ID filter landed:
+The following was re-run in `llm_reconstruction` on 2026-08-16:
 
 | Check | Result |
 | --- | --- |
-| Supported suite: `pytest -q` | 174 passed (158 fixed tests, plus one per `runs/*/trajectories.jsonl` present locally; `pytest -q -k "not local_run_artifacts"` reports the fixed 158, and the total drifts with `runs/`) |
+| Supported suite: `pytest -q -k "not local_run_artifacts"` | **178 passed.** This is the authoritative count: it is the fixed suite, and it does not depend on `runs/`. Plain `pytest -q` adds one opportunistic case per `runs/*/trajectories.jsonl` present locally, so its total drifts with local evidence — it changed twice during this session's own live runs — and should not be quoted as the suite size. |
 | `make smoke-lexibank` | 2 varieties, 4 tokenized forms, 2 concepts; supplied tree normalized successfully |
 | `make smoke-iecor-historical` | 6 evidence varieties, 1,029 tokenized forms, 170 concepts, 1 hidden historical binding; supplied tree normalized successfully |
-| CLI installation/help | `cognate-reconstruct` available; all seven CLI subcommands load |
+| CLI installation/help | `cognate-reconstruct` available; all eight CLI subcommands load |
 | Core/agent versions in the environment | harness 0.2.0, LiteLLM 1.81.16, Pydantic 2.13.4, LingPy 2.6.14 |
 | LM Studio discovery | Local `/v1/models` discovery succeeded |
 | Archived-code import audit | No runtime import of `cognate_reflexes`; the package has no dependency on archived corpus code |
@@ -666,9 +751,30 @@ Newick normalization/polytomies, provider request normalization, retries,
 failed trajectories, checkpoints, and resume. It additionally covers
 validation-call resolution (unique, absent, and ambiguous), commit remediation
 text, protocol-failure metrics and the `high_quality` gate, orchestrator stall
-and truncation handling, coverage scoping, and backward compatibility against
-both a checked-in pre-change fixture and every `runs/*/trajectories.jsonl`
-present locally.
+and truncation handling, coverage scoping, and backward compatibility.
+
+Backward compatibility is now pinned by a **checked-in real artifact**:
+`tests/workbench/fixtures/trajectory_real_pre_change.jsonl` is
+`runs/google-gemma-4-e4b-20260815-101423` verbatim — the pre-change
+commit-protocol baseline, written by code that had never heard of the fields it
+is asserted against. Previously that guarantee rested on globbing gitignored
+`runs/`, which meant clearing `runs/` reduced the parametrization to zero cases
+and left the suite green with the guarantee silently gone. The glob remains as
+opportunistic extra coverage, and the synthetic
+`trajectory_pre_failure_metrics.json` remains as the minimal readable case.
+
+`inspect-run` has its own coverage: a scripted two-internal-node run whose
+second node deliberately fails the gate, asserting that both nodes are named,
+the committed rules and diagnostics are reported, and the specific failing
+condition is stated; a run directory with no `events.jsonl`; the HTML output
+containing no `http://`, `https://`, `src=`, or `href=`; the cross-node
+observations firing on a contradictory adjacent pair and staying silent on a
+consistent family; and — the property that matters most — a contradictory family
+and a consistent one producing identical `high_quality` verdicts, so the
+observations demonstrably score nothing. The multi-rule `rationale` requirement
+is covered in both directions, including that the remediation names only the
+offending `rule_id`s, and `schema_variants` is covered across a mixed file plus
+a widened-literal regression test.
 
 It also covers the structural error codes specifically: that index-normalized
 schema codes are deterministic and identical for one mistake repeated at
@@ -778,7 +884,17 @@ Local ignored live-run artifacts also demonstrate both success and failure:
   `ProtocolStallError` with explicit truncation and recovery events;
 - `runs/qwen36-tujia-20260810-102624`: a completed pre-fix trajectory whose
   12 identity-like no-op rules remain audit-readable but now produce
-  `high_quality: 0`.
+  `high_quality: 0`;
+- `runs/google-gemma-4-26b-a4b-20260816-125755` and
+  `runs/google-gemma-4-26b-a4b-20260816-125837`, the runs `inspect-run` was
+  checked against: the three-language input in 25.6s over five clean tool calls,
+  and the same lexicons under
+  `(language_a,(language_b,language_c)INNER)PROTO;` in 33.8s over nine clean
+  tool calls, `high_quality: 2/2`, `protocol=0`. The second is the one that
+  exercised the cross-node section on real output: `INNER` committed
+  `f > p / #_` and `PROTO` then committed identity, which the report observes as
+  `PROTO` never mentioning a correspondence established below it — correct
+  behaviour described neutrally, which is the whole test of the wording.
 
 These `runs/` paths are ignored local evidence and may not exist in another
 clone. They are listed to make the current verification history explicit, not
@@ -938,6 +1054,12 @@ future ideas.
   `empty-scope` is treated as the model probing its evidence, but a model that
   never learns which children hold a target would be scored as exploring rather
   than as failing.
+- Cross-node consistency is *observed* by `inspect-run` and scored by nothing.
+  A family whose nodes commit contradictory rules gets exactly the same
+  `high_quality` verdicts, diagnostics, and beams as a consistent one; the
+  difference is a paragraph in a report. That is deliberate — scoring it changes
+  what counts as a valid reconstruction — but it does mean a mechanically clean
+  run can still be internally incoherent.
 - Beam probabilities are normalized heuristic scores and should not be
   interpreted as calibrated uncertainty.
 - Rule confidence is supplied by the model. There is no independent
@@ -956,9 +1078,12 @@ future ideas.
   Glottolog-to-dataset mapping workflow. Supported entry points are strict JSON
   and existing local CLDF.
 - The harness deliberately does not download/build large Lexibank datasets.
-- There is no dedicated input validation report, result dashboard, trace
-  browser, or side-by-side rule/cascade report. Inspection is currently
-  console plus JSON/JSONL tooling.
+- `inspect-run` covers the static run report, in text and as one self-contained
+  HTML file. There is still no dedicated input-validation report, no result
+  dashboard, no interactive trace browser, and no side-by-side rule/cascade
+  report. The turn-by-turn timeline is not in `inspect-run` either: it is
+  reconstructed from `events.jsonl` by the run-triage skill, which is a
+  developer tool rather than a supported product surface.
 - Historical benchmark curation beyond the checked-in lineage metadata is not
   automated.
 - Partial and alternative cognacy are preserved faithfully, but the exploratory
@@ -975,9 +1100,15 @@ future ideas.
   heuristics; it is not a full probabilistic sound-change model.
 - No automatic linguistic review gate prevents a mechanically valid but
   implausible rule inventory from becoming a completed trajectory.
-- Adjacent nodes can now *read* each other's committed hypotheses, but nothing
-  detects or reports mutually contradictory rule inventories across a family.
-  Consistency remains something a human reads out of the trajectories.
+- Adjacent nodes can read each other's committed hypotheses, and `inspect-run`
+  now *reports* three mechanical cross-node observations — a shared DSL with
+  materially different confidence, adjacent nodes mapping one target two ways,
+  and a correspondence established below a node that the node never mentions.
+  Nothing *judges* them. The comparison is also literal: it matches parsed
+  target, replacement, and environment, so two rules expressing the same change
+  through different environments will not be seen as related, and a genuine
+  contradiction spread across three nodes rather than two adjacent ones is not
+  detected. Adjudication remains a human reading the trajectories.
 
 ### Trajectory and training boundary
 
@@ -1049,8 +1180,10 @@ future ideas.
    only after confirming response fields remain intact.
 5. Add one maintained live-provider contract test for each provider/model
    combination the project is willing to claim as supported.
-6. Add a readable `inspect-run`/HTML report and a deterministic trajectory
-   replay validator.
+6. Add a deterministic trajectory replay validator. The other half of this item,
+   the readable `inspect-run`/HTML report, is done: `validate-trajectories`
+   still means schema validation, and nothing re-executes a recorded tool call
+   or independently reproduces the deterministic step.
 
 ### Research validity next
 
@@ -1082,7 +1215,9 @@ future ideas.
 
 1. Add a guided input-validation/preparation report and, if genuinely needed,
    a generic CSV adapter.
-2. Build a human-facing trace/result explorer.
+2. Build an interactive trace explorer. `inspect-run` covers the static report;
+   what is missing is a navigable view of the message/tool history, which today
+   means `jq` over `messages` or the triage timeline.
 3. Define an explicit trainer/evaluator adapter over curated trajectory 2.0
    examples; do not revive legacy Stage-1/Stage-2 JSONL as a silent substitute.
 
@@ -1100,8 +1235,12 @@ future ideas.
   induction or scoring, and if so, on what linguistic basis?
 - Should a hypothesis committed at one node ever affect a neighbouring node's
   score — a parent's confidence propagating into a child's beam, or a penalty
-  for cross-node inconsistency? Prior hypotheses are currently readable through
-  `get_node_reconstruction` and have no scoring effect whatsoever.
+  for cross-node inconsistency? Prior hypotheses are readable through
+  `get_node_reconstruction` and have no scoring effect whatsoever, and the
+  cross-node observations `inspect-run` prints are deliberately the same:
+  visible, never counted. Deciding otherwise would also need a threshold for
+  what "materially different confidence" means, which the report currently sets
+  at 0.25 purely to decide whether to print a line.
 - Which DSL extensions are essential for the intended families?
 
 ## Archive boundary
@@ -1151,7 +1290,10 @@ Future changes should preserve these rules:
 - keep tool schemas strict and never expose arbitrary code execution;
 - require exact same-session validation for every non-empty committed rule;
 - test complete ordered cascades, not only individual rules;
-- distinguish mechanical correctness, workflow quality, and linguistic truth;
+- distinguish mechanical correctness, workflow quality, and linguistic truth —
+  [docs/report_reject_or_score.md](docs/report_reject_or_score.md) records why,
+  and the rule for deciding whether a new signal is a rejection, a report, or a
+  score;
 - use `conda run -n llm_reconstruction` for repository verification;
 - update this status snapshot when behavior, test counts, or known limitations
   materially change.

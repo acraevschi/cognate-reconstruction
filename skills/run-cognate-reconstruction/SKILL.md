@@ -26,6 +26,16 @@ reports the failure taxonomy, so a run that committed the right answer after
 burning its budget on rejected calls is visibly different from a clean one. That
 distinction is the whole reason this skill exists — see Gotchas.
 
+**Which tool for what.** `triage` owns only what `events.jsonl` knows: the
+timeline and the live failure taxonomy — the sole source of rejection counts for
+runs written before failure accounting. Everything derived from `result.json`
+and `trajectories.jsonl` — committed rules, diagnostics, reconstructed forms,
+`high_quality` and the exact condition it failed, cross-node observations —
+belongs to `cognate-reconstruct inspect-run`, which is a supported CLI
+subcommand and which `triage` shells out to. Reach for `inspect-run` directly
+when you have a run directory and want to know what it produced; reach for
+`triage` when you want to know how the session behaved on the way there.
+
 ## Prerequisites
 
 The `llm_reconstruction` Conda env already exists at
@@ -56,9 +66,14 @@ Studio models; exits nonzero if anything is missing.
 
 ## Run: deterministic path (no model, no network)
 
-Fastest way to confirm the core still works. Runs the unit suite (158 fixed
-tests, plus one backward-compatibility check per `runs/*/trajectories.jsonl`
-you have locally) and the CLDF fixture ingestion:
+Fastest way to confirm the core still works. Runs the unit suite (178 fixed
+tests, plus one opportunistic backward-compatibility case per
+`runs/*/trajectories.jsonl` you have locally, so the total you see is higher and
+drifts as you do runs) and the CLDF fixture ingestion. The fixed 178 is the
+number to quote: run
+`pytest -q -k "not local_run_artifacts"` for it. The guarantee those extra cases
+used to carry alone is now pinned by a checked-in real pre-change trajectory, so
+an empty `runs/` no longer quietly removes it:
 
 ```bash
 python3 .claude/skills/run-cognate-reconstruction/driver.py smoke
@@ -92,9 +107,11 @@ Drop `--quiet` to stream the harness's own verbose event log. Use
 python3 .claude/skills/run-cognate-reconstruction/driver.py triage --run-dir runs/google-gemma-4-e4b-20260814-184836
 ```
 
-Reports the per-turn timeline with token growth and per-call ok/ERR, the failure
-taxonomy, committed rules with scope, diagnostics, reconstructed forms, and the
-`high_quality` flag with its protocol-failure rate. A failing run looks like:
+Reports the per-turn timeline with token growth and per-call ok/ERR and the
+failure taxonomy, then prints `inspect-run` for the same directory — committed
+rules with scope, diagnostics, reconstructed forms, the `high_quality` verdict
+with the exact condition it failed, and the cross-node observations. A failing
+run looks like:
 
 ```
 FAILED TOOL CALLS: 3 of 7  (43% of tool budget wasted)
@@ -108,10 +125,11 @@ Three calls that omitted `confidence` on different rules share one code even
 though Pydantic wrote three different messages, which is what makes the tally
 mean something.
 
-Trajectories written before 2026-08-15 have no failure counters, so the
-per-node line shows `failed=n/a` while the taxonomy above it still counts the
-errors from `events.jsonl`. That is the expected reading of an older artifact,
-not a bug.
+Trajectories written before 2026-08-15 have no failure counters, so the artifact
+report says `0 recorded, unsplit` and tells you to read `events.jsonl` while the
+taxonomy above it counts the real rejections. That disagreement is the expected
+reading of an older artifact, not a bug — and it is exactly why `triage` keeps
+the event-derived taxonomy instead of deferring everything to `inspect-run`.
 
 The same input on the same model after the commit-protocol work:
 
@@ -128,12 +146,34 @@ The underlying command the driver wraps:
 ```
 
 Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
-`prepare-lexibank`, `validate-trajectories`, `summarize-trajectories`,
-`export-trajectories`.
+`prepare-lexibank`, `inspect-run`, `validate-trajectories`,
+`summarize-trajectories`, `export-trajectories`.
 
 ```bash
 /opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli summarize-trajectories --input runs/google-gemma-4-e4b-20260814-184836/trajectories.jsonl
 ```
+
+## Read a run's artifacts directly
+
+```bash
+/opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli inspect-run --run-dir runs/google-gemma-4-26b-a4b-20260816-125837
+```
+
+Add `--html runs/<dir>/report.html` for one self-contained file (no external
+CSS, JS, fonts, or images; readable light and dark) or `--all-forms` to list
+every reconstructed form instead of the first 40 per node. Works on a run
+directory with no `events.jsonl`, and on one with no `result.json` — the forms
+then come from the beams in the trajectories.
+
+The last section compares committed rules across nodes and prints observations:
+one DSL committed at several nodes with materially different confidence,
+adjacent nodes mapping the same target in the same environment two ways, and a
+correspondence established below a node that the node never mentions. **These
+are observations, not findings.** Nothing scores them, they never reach
+`high_quality` or the beam, and the third one fires on perfectly correct runs —
+a parent that committed identity because the change was already complete below
+it looks exactly like a parent that forgot. Read them as prompts to look, not as
+errors.
 
 ## Gotchas
 
@@ -161,6 +201,12 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
   `(validation_call_id, dsl, source_child_ids)` triple. If you still see a
   cluster of `commit_reconstruction` errors, read the `remediation` in the
   triage output before blaming the model — it names exactly what was missing.
+- **A multi-rule commit now needs a `rationale` per rule.** Single-rule commits
+  do not; that asymmetry is deliberate, since one `summary` can carry the
+  reasoning for one rule but not for several. A commit missing any is rejected
+  with `missing-rule-rationale` and a remediation naming the exact `rule_id`s,
+  which counts as a protocol failure. If a model that used to commit two rules
+  cleanly starts failing once and then succeeding, this is why.
 - **`high_quality` still is not a linguistic grade.** It fails a trajectory
   whose *protocol*-failure share exceeds `MAX_PROTOCOL_FAILURE_RATE` (0.25, in
   `cognate_reconstruction/agent/trajectory.py`) — unless it had at most one
@@ -257,3 +303,5 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
 | `checkpoint cannot be resumed because these changed: ...` | Expected after editing `agent/SKILL.md`, the tool schemas, an `--anchors` file, or any hashed flag. The named part is the one to restore — or start a new checkpoint path. |
 | `could not load prior hypotheses from ...` | `trajectories.jsonl` is present but does not validate. Do not delete it; a missing file only warns, so this is telling you the artifact is corrupt at the named line. |
 | `PydanticSerializationUnexpectedValue` warnings | Known nonfatal LiteLLM/Pydantic noise. Tool execution and trajectories still succeed. |
+| `[driver] inspect-run ... failed; the artifact sections are missing` | The timeline above it is still valid. Run the printed command yourself for the full error — usually a run directory holding neither `result.json` nor `trajectories.jsonl`, or a harness too old to have the subcommand. |
+| `1 of 2 committed rules omit 'rationale'` | Expected on a multi-rule commit without per-rule reasoning. The remediation names the `rule_id`s; single-rule commits still need none. |
