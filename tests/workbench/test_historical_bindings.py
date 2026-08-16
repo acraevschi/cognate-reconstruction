@@ -66,6 +66,9 @@ class _IdentityProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         return LLMMessage(

@@ -298,6 +298,51 @@ Relevant controls:
 
 The cost budget is enforced only when response metadata reports a cost.
 
+The thresholds that decide when a stuck node gives up are also flags, and all
+of them are part of the checkpoint compatibility hash:
+
+```text
+--max-repeated-tool-failures    rejections sharing one (tool, error code)
+                                signature inside the window (default 3)
+--stall-window-calls            trailing tool calls remembered, successes
+                                included (default 3x the above)
+--max-truncated-responses       truncated responses carrying no tool call
+                                before the node stops (default 3)
+```
+
+### Truncation recovery
+
+A response with `finish_reason="length"` and no tool call is usually the model
+spending its whole output budget on reasoning prose. The turn immediately after
+one is sent with `tool_choice="required"` instead of `"auto"`. This needs no
+configuration, is attempted once per node, and falls back to the ordinary
+request if the provider raises or still returns no tool call. It appears in the
+event stream as `truncation_recovery` and in the metrics as
+`forced_tool_choice_count`.
+
+The second recovery is opt-in because it overrides an option you supplied:
+
+```text
+--allow-truncation-backoff          off by default
+--truncation-max-tokens-ceiling     required whenever the flag is set
+```
+
+With it enabled, a truncated no-tool response doubles the effective
+`max_tokens` for the remainder of that node, never above the ceiling. `max_tokens`
+belongs to your `--provider-config`, so nothing is raised unless you ask; your
+stored options are not modified, and the raised value is merged into the
+affected requests only. The base for doubling is the truncated response's
+reported output length, so a provider that reports no token usage gets no
+backoff rather than a raise that might land below your configured value. Each
+raise is counted in `truncation_backoff_applied` and emitted as an event, so a
+run that only succeeded because of backoff is visible as such in its
+trajectory.
+
+`--max-truncated-responses` bounds how far backoff can get, since the node
+stops once that many truncated no-tool responses have accumulated. At the
+default of 3 the value doubles at most twice, so a ceiling above 4x your
+configured `max_tokens` is unreachable unless you raise both flags together.
+
 Enable node-boundary recovery:
 
 ```bash
@@ -318,8 +363,35 @@ cognate-reconstruct infer \
 ```
 
 Already completed nodes are replayed from deterministic steps. The next
-unfinished internal node starts a fresh provider loop. A changed input,
-normalized tree, or configuration is rejected.
+unfinished internal node starts a fresh provider loop.
+
+A resume is rejected when the input, the normalized tree, the CLI and provider
+settings, **the agent instruction text, the tool schemas, or the `--anchors`
+file** changed since the checkpoint was written. The error names which of those
+moved, for example:
+
+```text
+error: checkpoint cannot be resumed because these changed: the agent instructions
+```
+
+A checkpoint written before this behaviour existed refuses correctly but can
+only report `the configuration`, because it never recorded the individual
+digests to compare against.
+
+Resuming also reads `--trajectories` back and restores the hypotheses committed
+at the nodes it is skipping, so `get_node_reconstruction` still returns them in
+the resumed process. A record is used only if it is completed with its commit
+present, belongs to a node in the checkpoint, and was written under both the
+same configuration hash **and** the same run ID; the count is printed. The run
+ID matters because two invocations over the same input with the same settings
+produce the same configuration hash, and `--trajectories` defaults to one file
+in the working directory — without it, one run's rules could be paired with
+another run's checkpointed forms.
+
+A missing or unreadable trajectory file warns and the run continues without
+prior hypotheses. A file that fails schema validation stops the run instead of
+being ignored, which is also why the whole file is validated and held in memory
+during seeding.
 
 ## Events and failures
 

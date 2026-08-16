@@ -163,9 +163,14 @@ class ReconstructionService:
         *,
         anchors_by_node: Mapping[str, Sequence[LexicalForm]] | None = None,
         resume_steps: Mapping[str, ReconstructionStep] | None = None,
+        seed_trajectories: Sequence[AgentTrajectory] = (),
         on_step_complete: Callable[[ReconstructionStep], None] | None = None,
     ) -> FamilyReconstructionResult:
+        # Seeds are taken here rather than set by the caller beforehand:
+        # `clear_run_results` wipes prior hypotheses, so anything seeded ahead
+        # of this call would vanish without a trace.
         self.reconstructor.clear_run_results()
+        self.reconstructor.seed_prior_reconstructions(seed_trajectories)
         active_anchors = _merge_node_forms(
             _forms_by_node(
                 dataset.historical_form_bindings,

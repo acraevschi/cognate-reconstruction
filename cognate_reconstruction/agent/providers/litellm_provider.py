@@ -66,6 +66,9 @@ class LiteLLMProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> ProviderResponse:
         completion = self._completion_fn
         if completion is None:
@@ -75,6 +78,11 @@ class LiteLLMProvider:
                 raise RuntimeError(
                     "LiteLLMProvider requires the optional 'agent' dependency"
                 ) from error
+        # Merged into a copy: the stored options are the user's, and an
+        # override applies to this one request only.
+        options = dict(self.completion_kwargs)
+        if max_tokens_override is not None:
+            options["max_tokens"] = max_tokens_override
         try:
             response = completion(
                 model=self.model,
@@ -90,8 +98,8 @@ class LiteLLMProvider:
                     }
                     for tool in tools
                 ],
-                tool_choice="auto",
-                **self.completion_kwargs,
+                tool_choice=tool_choice,
+                **options,
             )
         except Exception as error:
             if _is_transient_error(error):

@@ -38,13 +38,10 @@ rejected commit-schema errors.
   three truncated no-tool responses.
 - Added `max_repeated_tool_failures` and `max_truncated_responses` as
   orchestrator parameters, included in the orchestrator's own
-  `public_configuration`. Note that `infer` computes and supplies its own
-  configuration hash (`cli._provider_and_configuration`), which overrides the
-  orchestrator's and does not contain these two values, so **CLI checkpoints
-  written before this release remain resumable** and a change to either
-  threshold is not detected on `--resume`. Neither threshold is exposed as a
-  CLI flag yet. `agent/SKILL.md` and the tool schemas also changed, and the
-  checkpoint hash covers neither.
+  `public_configuration`. `infer` computes and supplies its own configuration
+  hash (`cli._provider_and_configuration`), which overrides the orchestrator's;
+  it now contains both thresholds, and both are CLI flags. See the checkpoint
+  entry below — this is the change that invalidates existing checkpoints.
 - Changed `rule_coverage` to `successful_applications /
   applicable_rule_results`, excluding results whose form never contained the
   rule's target, and added `applicable_rule_results` to the diagnostics. A
@@ -73,8 +70,8 @@ rejected commit-schema errors.
   successful calls occupying slots. A long, mostly-productive session is no
   longer killed by three well-separated repeats it recovered from each time,
   while the interleave that defeats reset-on-success — bad commit, good test, bad
-  commit — still trips. Added to the orchestrator's `public_configuration`; still
-  no CLI flag, so a change to it is not detected on `--resume`.
+  commit — still trips. Added to the orchestrator's `public_configuration` and
+  exposed as `--stall-window-calls`.
 - Added a second stall condition on the same window: when
   `max_window_protocol_failures` of the last `stall_window_calls` calls were
   protocol rejections, whatever their codes, the node draws one correction
@@ -118,6 +115,86 @@ rejected commit-schema errors.
   the run-triage skill's failure taxonomy.
 - Added `NoOpRuleError` to the rule parser so a rule that does nothing can be
   told from one that does not parse without matching on prose.
+- Recovered from truncation instead of only naming it. `LLMProvider.complete`
+  gained keyword-only `tool_choice` and `max_tokens_override`; the turn after a
+  truncated response that carried no tool call is now requested with
+  `tool_choice="required"`. This crosses no configuration boundary — the
+  request shape is the harness's own responsibility — and is attempted once per
+  node, falling back to the ordinary request if the provider raises or still
+  returns no tool call. Every scripted provider in `tests/workbench/` accepts
+  and ignores both keywords.
+- Added `--allow-truncation-backoff` and `--truncation-max-tokens-ceiling`,
+  **off by default**, letting the harness double the effective `max_tokens` for
+  the rest of a node after a truncated no-tool response, never above the
+  ceiling. `max_tokens` is a user-supplied `--provider-config` option, which is
+  why this is opt-in and why the adapter merges the override into a copy rather
+  than mutating stored options. The base for doubling is the truncated
+  response's reported output length; a provider that reports no usage gets no
+  backoff, since there would be no way to guarantee the raised value stays
+  above what the user configured.
+- Added `forced_tool_choice_count` and `truncation_backoff_applied` to
+  `AgentNodeMetrics` and a `truncation_recovery` event, both defaulted, so a
+  session that only reached a tool call because the harness intervened is not
+  silently identical to a clean one. The `ProtocolStallError` message now says
+  which recoveries were already tried.
+- Made `trajectories.jsonl` a readable input on `--resume`. Committed
+  hypotheses lived only in `AgenticNodeReconstructor.prior_reconstructions` for
+  one process, so after a resume `get_node_reconstruction` returned nothing for
+  checkpoint-restored nodes even though their lexicons were fully available —
+  two kinds of cross-node information with different durability and no way to
+  tell from outside. `seed_prior_reconstructions` replays completed
+  trajectories through the same `summarize_commit` the live path uses.
+  `infer --resume` seeds only records that are completed with a commit, name a
+  node in the checkpoint, and carry both the current `configuration_sha256` and
+  the checkpoint's `run_id`, and prints how many. A missing or unreadable file
+  warns and continues; a file that fails schema validation stops the run.
+- Filtered seeding on `run_id` as well as the configuration hash. The hash
+  cannot separate two invocations — the same model over the same input with the
+  same settings hashes identically — and `--trajectories` defaults to one file
+  in the working directory, so two runs append to it. Reproduced before fixing:
+  a checkpoint from `run-A` seeded node X's hypothesis from `run-B`, pairing one
+  run's checkpointed lexicon with another run's rules, decided by which line was
+  written last. `--run-id` cannot change during `--resume`, so the filter
+  excludes nothing legitimate.
+- Documented, without changing behaviour: that `--max-truncated-responses`
+  bounds how far `--allow-truncation-backoff` can escalate (two doublings at the
+  defaults); that `--stall-window-calls 9` and omitting the flag hash
+  differently despite identical behaviour; and that `high_quality` does not
+  currently penalise a node that needed truncation recovery. The last is left
+  open as part of the threshold-calibration item rather than settled in code.
+- Recorded `TrajectoryDatasetBuilder.read_jsonl`'s whole-file materialization
+  under "Trajectory and training boundary", now that seeding makes it four
+  callers rather than three. Measured rather than estimated: a 434 KB record
+  costs 1.5 MB resident and 2.8 MB peak, of which seeding uses 2.4 KB. Left
+  unoptimised deliberately — a 30-node family peaks around 85 MB beside a local
+  model holding gigabytes — with the fix specified as a streaming variant of the
+  reader serving all four callers, and the conditions that should trigger it
+  written down. Seeding would need no API change for that: the reconstructor
+  already accepts an `Iterable` and retains only the summary.
+- Passed the seeds through `ReconstructionService.reconstruct_family` rather
+  than setting them beforehand: `clear_run_results` at the top of that method
+  also clears prior hypotheses, so anything seeded earlier was silently wiped.
+  A test pre-seeds, clears, and fails if that ordering is ever inverted.
+- **Existing CLI checkpoints do not resume after this release.** Verified, not
+  assumed: a checkpoint written by `infer` before this change was replayed
+  against the new code and refused with `checkpoint cannot be resumed because
+  these changed: the configuration`. The earlier note in this section claiming
+  such checkpoints remain resumable described the state before this change and
+  has been corrected. `cli._provider_and_configuration` now hashes
+  `instruction_sha256`, the tool-schema hash, and a digest of the `--anchors`
+  file, using the same derivations as `AgentOrchestrator._trajectory` so the two
+  artifacts report identical values.
+- Exposed `--max-repeated-tool-failures`, `--stall-window-calls`, and
+  `--max-truncated-responses` as CLI flags and included them, with the two
+  truncation-backoff flags, in the configuration hash. `max_window_protocol_failures`
+  remains orchestrator-only; the CLI never sets it and its default derives from
+  two hashed values, so it cannot change independently from the command line.
+- Added `configuration_components` to `FamilyCheckpoint`, defaulted, holding
+  named digests of the parts of the configuration hash. A refused resume now
+  reads "these changed: the agent instructions" instead of "these hashes
+  changed: configuration". `configuration_sha256` is still the decision; a
+  checkpoint written without components refuses correctly and keeps the generic
+  wording rather than guessing.
 - Added a ninth tool, `get_node_reconstruction`, returning the rules, child
   scopes, confidences, anomalies, and summary committed at one node already
   reconstructed in this run, and flagged those nodes with

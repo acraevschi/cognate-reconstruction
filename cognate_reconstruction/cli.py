@@ -17,6 +17,7 @@ from cognate_reconstruction.agent import (
     MAX_PROTOCOL_FAILURE_RATE,
     AgenticNodeReconstructor,
     AgentOrchestrator,
+    AgentTrajectory,
     CompositeEventSink,
     ConsoleEventSink,
     JsonlEventSink,
@@ -24,7 +25,9 @@ from cognate_reconstruction.agent import (
     LiteLLMProvider,
     ReconstructionService,
     TrajectoryDatasetBuilder,
+    default_tool_registry,
 )
+from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.provider_config import (
     api_key_from_environment,
     load_provider_options,
@@ -268,9 +271,45 @@ def _command_prepare_lexibank(args: argparse.Namespace) -> None:
     )
 
 
+ABSENT_COMPONENT_DIGEST = "absent"
+"""Recorded for an optional input that was not supplied at all.
+
+Distinguishing "no anchors" from "these anchors" is the point: supplying an
+anchor file to a resume that had none is exactly as much of a change as editing
+one.
+"""
+
+
+def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
+    """Digest the model-visible inputs that are not plain CLI scalars.
+
+    These are the inputs a checkpoint hash kept missing: the instruction text
+    the model is given, the tool schemas it is given, and any external anchor
+    file. The first two use the same derivation as
+    `AgentOrchestrator._trajectory`, so a checkpoint and a trajectory written by
+    the same run report identical digests.
+
+    Keys are the human-readable phrases used in the refused-resume message.
+    """
+    definitions = default_tool_registry().definitions()
+    return {
+        "the agent instructions": _hash_text(load_agent_instructions()),
+        "the tool schemas": _hash_json(
+            [definition.model_dump(mode="json") for definition in definitions]
+        ),
+        "the anchor file": (
+            _hash_text(
+                Path(args.anchors).expanduser().read_text(encoding="utf-8")
+            )
+            if args.anchors
+            else ABSENT_COMPONENT_DIGEST
+        ),
+    }
+
+
 def _provider_and_configuration(
     args: argparse.Namespace,
-) -> tuple[LiteLLMProvider, str, dict[str, Any]]:
+) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
     options = load_provider_options(args.provider_config)
     api_key = api_key_from_environment(args.api_key_env)
     preset = "lm-studio" if args.lm_studio else args.preset
@@ -304,7 +343,7 @@ def _provider_and_configuration(
     options["temperature"] = args.temperature
     options["timeout"] = args.timeout
     provider = LiteLLMProvider(model, completion_kwargs=options)
-    public = {
+    settings = {
         "model": model,
         "preset": preset,
         "api_base": api_base,
@@ -322,8 +361,26 @@ def _provider_and_configuration(
         "max_total_tool_calls": args.max_total_tool_calls,
         "max_run_seconds": args.max_run_seconds,
         "max_total_cost_usd": args.max_total_cost_usd,
+        # Thresholds that decide when a node gives up. A flag nobody hashes is
+        # a flag that silently changes a resumed run.
+        "max_repeated_tool_failures": args.max_repeated_tool_failures,
+        "stall_window_calls": args.stall_window_calls,
+        "max_truncated_responses": args.max_truncated_responses,
+        "allow_truncation_backoff": args.allow_truncation_backoff,
+        "truncation_max_tokens_ceiling": args.truncation_max_tokens_ceiling,
     }
-    return provider, _hash_json(public), public
+    digests = _behavioural_input_digests(args)
+    public = {
+        **settings,
+        "instruction_sha256": digests["the agent instructions"],
+        "tool_schema_sha256": digests["the tool schemas"],
+        "anchors_sha256": digests["the anchor file"],
+    }
+    components = {
+        **digests,
+        "the provider and limit settings": _hash_json(settings),
+    }
+    return provider, _hash_json(public), public, components
 
 
 def _event_sink(args: argparse.Namespace):
@@ -352,18 +409,128 @@ def _load_anchors(
     return anchors.validate_for_dataset(dataset)
 
 
+def _resume_mismatches(
+    checkpoint: FamilyCheckpoint,
+    *,
+    input_sha256: str,
+    tree_sha256: str,
+    configuration_sha256: str,
+    components: dict[str, str],
+) -> list[str]:
+    """Name what changed in terms an operator can act on.
+
+    `configuration_sha256` stays the decision — it is the value every existing
+    checkpoint carries — but a bare "configuration" sends the reader to compare
+    a dozen unrelated settings. When the checkpoint recorded component digests,
+    the message names the ones that actually moved instead.
+    """
+    mismatches = []
+    if checkpoint.input_sha256 != input_sha256:
+        mismatches.append("the input dataset")
+    if checkpoint.normalized_tree_sha256 != tree_sha256:
+        mismatches.append("the normalized tree")
+    if checkpoint.configuration_sha256 != configuration_sha256:
+        # An older checkpoint recorded no components; `.get` then compares a
+        # digest with itself and the message stays honestly generic.
+        changed = [
+            name
+            for name, digest in components.items()
+            if checkpoint.configuration_components.get(name, digest) != digest
+        ]
+        mismatches.extend(changed or ["the configuration"])
+    return mismatches
+
+
+def _seed_trajectories(
+    path: str,
+    checkpoint: FamilyCheckpoint,
+    configuration_sha256: str,
+) -> tuple[AgentTrajectory, ...]:
+    """Load committed hypotheses for nodes this run will not re-execute.
+
+    A record qualifies only if it is a completed commit, for a node the
+    checkpoint already holds, under this run's configuration hash, and from
+    this run. See the filter below for why the last two are not the same test.
+
+    A resumed run without them is degraded, not broken — the reconstructed
+    lexicons are in the checkpoint either way — so an absent or unreadable file
+    warns and continues. A file that is present but fails schema validation is
+    a different matter and is raised: silently seeding nothing from a corrupt
+    audit artifact would hide the corruption.
+
+    `read_jsonl` materializes the whole file, as it does for its three other
+    callers. That is fine at the scale this harness runs at and is left alone
+    on purpose; README "Trajectory and training boundary" records the
+    measurements and what should trigger a streaming reader.
+    """
+    source = Path(path).expanduser()
+    if not source.exists():
+        print(
+            f"warning: {source} does not exist; resuming without the "
+            "hypotheses committed at already-completed nodes",
+            file=sys.stderr,
+        )
+        return ()
+    try:
+        loaded = TrajectoryDatasetBuilder.read_jsonl(source)
+    except OSError as error:
+        print(
+            f"warning: could not read {source} ({error}); resuming without "
+            "the hypotheses committed at already-completed nodes",
+            file=sys.stderr,
+        )
+        return ()
+    except ValueError as error:
+        raise ValueError(
+            f"could not load prior hypotheses from {source}: {error}"
+        ) from error
+    completed_nodes = {
+        step.parent_node_id for step in checkpoint.completed_steps
+    }
+    return tuple(
+        trajectory
+        for trajectory in loaded
+        if trajectory.completed
+        and trajectory.committed_reconstruction is not None
+        and trajectory.node_id in completed_nodes
+        # The same compatibility notion the checkpoint itself uses: a
+        # hypothesis produced under a different model or a different
+        # instruction set must not leak into this run.
+        and trajectory.configuration_sha256 == configuration_sha256
+        # And it must be *this* run. The configuration hash cannot tell two
+        # invocations apart — same model, same input, same settings produce the
+        # same hash — and `--trajectories` defaults to one file in the working
+        # directory, so two runs append to it. Without this, a node's lexicon
+        # could come from the checkpoint's own step while its rules came from a
+        # different invocation that happened to be written last: the model
+        # would read rules that did not produce the forms it can see.
+        # `--run-id` cannot change during `--resume`, so every legitimate
+        # record already carries the checkpoint's run ID.
+        and trajectory.run_id == checkpoint.run_id
+    )
+
+
 def _command_infer(args: argparse.Namespace) -> None:
+    if args.allow_truncation_backoff and args.truncation_max_tokens_ceiling is None:
+        raise ValueError(
+            "--allow-truncation-backoff requires "
+            "--truncation-max-tokens-ceiling; the harness will not override a "
+            "user-supplied provider option without an explicit bound"
+        )
     input_path = Path(args.input).expanduser()
     input_text = input_path.read_text(encoding="utf-8")
     payload = WorkbenchPayload.model_validate_json(input_text)
     dataset = ingest_payload(payload)
     anchors_by_node = _load_anchors(args.anchors, dataset)
-    provider, configuration_sha256, _ = _provider_and_configuration(args)
+    provider, configuration_sha256, _, components = _provider_and_configuration(
+        args
+    )
 
     checkpoint_store = (
         CheckpointStore(args.checkpoint) if args.checkpoint else None
     )
     checkpoint: FamilyCheckpoint | None = None
+    seed_trajectories: tuple[AgentTrajectory, ...] = ()
     input_sha256 = _hash_text(input_text)
     tree_sha256 = _hash_text(dataset.tree.newick)
     if args.resume:
@@ -372,19 +539,22 @@ def _command_infer(args: argparse.Namespace) -> None:
         if checkpoint_store is None:
             raise ValueError("--resume requires --checkpoint")
         checkpoint = checkpoint_store.load()
-        mismatches = []
-        if checkpoint.input_sha256 != input_sha256:
-            mismatches.append("input")
-        if checkpoint.configuration_sha256 != configuration_sha256:
-            mismatches.append("configuration")
-        if checkpoint.normalized_tree_sha256 != tree_sha256:
-            mismatches.append("normalized tree")
+        mismatches = _resume_mismatches(
+            checkpoint,
+            input_sha256=input_sha256,
+            tree_sha256=tree_sha256,
+            configuration_sha256=configuration_sha256,
+            components=components,
+        )
         if mismatches:
             raise ValueError(
-                "checkpoint cannot be resumed because these hashes changed: "
+                "checkpoint cannot be resumed because these changed: "
                 + ", ".join(mismatches)
             )
         run_id = checkpoint.run_id
+        seed_trajectories = _seed_trajectories(
+            args.trajectories, checkpoint, configuration_sha256
+        )
     else:
         if checkpoint_store is not None and checkpoint_store.path.exists():
             raise ValueError(
@@ -398,6 +568,7 @@ def _command_infer(args: argparse.Namespace) -> None:
                 input_sha256=input_sha256,
                 configuration_sha256=configuration_sha256,
                 normalized_tree_sha256=tree_sha256,
+                configuration_components=components,
             )
             checkpoint_store.save(checkpoint)
 
@@ -411,6 +582,11 @@ def _command_infer(args: argparse.Namespace) -> None:
         max_total_tool_calls=args.max_total_tool_calls,
         max_run_seconds=args.max_run_seconds,
         max_total_cost_usd=args.max_total_cost_usd,
+        max_repeated_tool_failures=args.max_repeated_tool_failures,
+        stall_window_calls=args.stall_window_calls,
+        max_truncated_responses=args.max_truncated_responses,
+        allow_truncation_backoff=args.allow_truncation_backoff,
+        truncation_max_tokens_ceiling=args.truncation_max_tokens_ceiling,
         trajectory_sink=JsonlTrajectorySink(args.trajectories),
         event_sink=_event_sink(args),
         run_id=run_id,
@@ -435,10 +611,20 @@ def _command_infer(args: argparse.Namespace) -> None:
         checkpoint = checkpoint.with_step(step)
         checkpoint_store.save(checkpoint)
 
+    if args.resume:
+        seeded_nodes = {item.node_id for item in seed_trajectories}
+        print(
+            f"seeded {len(seeded_nodes)} prior committed hypothes"
+            f"{'is' if len(seeded_nodes) == 1 else 'es'} from "
+            f"{args.trajectories} for nodes restored from the checkpoint",
+            file=sys.stderr,
+        )
+
     result = service.reconstruct_family(
         dataset,
         anchors_by_node=anchors_by_node,
         resume_steps=checkpoint.steps_by_node if checkpoint else None,
+        seed_trajectories=seed_trajectories,
         on_step_complete=save_step,
     )
     _write_json(args.output, result.model_dump_json(indent=2))
@@ -503,6 +689,12 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
         "tool_failures_by_type": dict(sorted(tool_failures.items())),
         "truncated_responses": sum(
             item.metrics.truncated_response_count for item in trajectories
+        ),
+        "forced_tool_choices": sum(
+            item.metrics.forced_tool_choice_count for item in trajectories
+        ),
+        "truncation_backoffs": sum(
+            item.metrics.truncation_backoff_applied for item in trajectories
         ),
         "total_retries": sum(item.metrics.retry_count for item in trajectories),
         "committed_rules": sum(
@@ -700,6 +892,49 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--max-total-tool-calls", type=int)
     infer.add_argument("--max-run-seconds", type=float)
     infer.add_argument("--max-total-cost-usd", type=float)
+    infer.add_argument(
+        "--max-repeated-tool-failures",
+        type=int,
+        default=3,
+        help=(
+            "Rejections sharing one (tool, error code) signature inside the "
+            "stall window before the node is corrected once and then stopped."
+        ),
+    )
+    infer.add_argument(
+        "--stall-window-calls",
+        type=int,
+        help=(
+            "Trailing tool calls the stall detector remembers, successes "
+            "included. Defaults to 3x --max-repeated-tool-failures."
+        ),
+    )
+    infer.add_argument(
+        "--max-truncated-responses",
+        type=int,
+        default=3,
+        help=(
+            "Truncated responses carrying no tool call before the node ends "
+            "in ProtocolStallError."
+        ),
+    )
+    infer.add_argument(
+        "--allow-truncation-backoff",
+        action="store_true",
+        help=(
+            "Permit the harness to raise max_tokens above the value in "
+            "--provider-config after a truncated response with no tool call. "
+            "Off by default: max_tokens is your option, not the harness's."
+        ),
+    )
+    infer.add_argument(
+        "--truncation-max-tokens-ceiling",
+        type=int,
+        help=(
+            "Hard upper bound for --allow-truncation-backoff, which is "
+            "required whenever that flag is set."
+        ),
+    )
     infer.add_argument(
         "--checkpoint",
         help="Atomically save completed internal-node boundaries here.",

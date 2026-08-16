@@ -56,7 +56,7 @@ Studio models; exits nonzero if anything is missing.
 
 ## Run: deterministic path (no model, no network)
 
-Fastest way to confirm the core still works. Runs the unit suite (118 fixed
+Fastest way to confirm the core still works. Runs the unit suite (158 fixed
 tests, plus one backward-compatibility check per `runs/*/trajectories.jsonl`
 you have locally) and the CLDF fixture ingestion:
 
@@ -188,9 +188,19 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
   committed rules with `get_node_reconstruction`, and `list_available_nodes`
   flags which nodes have one. That is read-only and does not affect scoring, so
   it will not change a beam or a diagnostic — if a run's numbers move, look
-  elsewhere. Nodes restored from a checkpoint by `--resume` never ran in the
-  process, so their hypotheses are not retrievable even though their lexicons
-  are.
+  elsewhere. **This survives `--resume` now:** the resumed run reads
+  `trajectories.jsonl` back and reseeds the hypotheses of checkpoint-restored
+  nodes, printing `seeded N prior committed hypotheses`. A record is seeded only
+  if it is completed with its commit, names a node in the checkpoint, and
+  carries both the current `configuration_sha256` **and** the checkpoint's
+  `run_id`. If that line says 0 when you expected more, check those four before
+  suspecting the tool — a trajectory file from a different model, a different
+  `agent/SKILL.md`, or a different invocation is filtered out by design. The
+  run-ID filter is the one that surprises people: two runs over the same input
+  with the same settings hash identically and both default to
+  `trajectories.jsonl` in the working directory, so without it one run's rules
+  would be paired with another run's forms. A missing file warns and continues;
+  a corrupt one stops the run.
 - **A repeated tool error now ends the node, even if its wording changes.**
   After `max_repeated_tool_failures` (default 3) rejections sharing one
   `(tool, error code)` signature within the trailing window of
@@ -207,10 +217,32 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
   scope — never count toward either condition, so a session that tests bad sound
   laws all day is bounded only by the turn limit, on purpose.
   `finish_reason="length"` is handled separately and also stalls after
-  `max_truncated_responses` (default 3) truncated no-tool responses. All four are
-  orchestrator constructor parameters with no CLI flag, and `infer` supplies its
-  own `configuration_sha256` that excludes them — so changing any of them is
-  *not* detected on `--resume`.
+  `max_truncated_responses` (default 3) truncated no-tool responses.
+- **Truncation now has a real remedy, and triage says when it was used.** After
+  a truncated response with no tool call, the *next* request goes out with
+  `tool_choice="required"` — once per node, then it gives up and behaves as
+  before. Optionally, `--allow-truncation-backoff` with
+  `--truncation-max-tokens-ceiling` doubles the effective `max_tokens` for the
+  rest of the node; it is **off by default** because `max_tokens` is your
+  `--provider-config` option, not the harness's. Triage prints
+  `truncation_recovery forced_tool_choice=N max_tokens_backoff=N` on any node
+  where either fired, so a run that only committed because the harness
+  intervened does not read as clean. Two things to know: `high_quality` does
+  *not* currently penalise a node that needed either recovery — that is an open
+  calibration question, not a verdict — and `--max-truncated-responses` caps how
+  far backoff can escalate, so at the defaults you get at most two doublings
+  before the node stops.
+- **Thresholds are CLI flags and *are* covered by the resume hash.**
+  `--max-repeated-tool-failures`, `--stall-window-calls`,
+  `--max-truncated-responses`, and both truncation-backoff flags are hashed into
+  `configuration_sha256`, along with the `agent/SKILL.md` text, the tool
+  schemas, and any `--anchors` file. Changing any of them makes an existing
+  checkpoint refuse to resume, and the error names which one
+  ("the agent instructions", "the tool schemas", "the anchor file", "the
+  provider and limit settings"). Checkpoints written before 2026-08-15 refuse
+  too, but can only say "the configuration" — they never recorded the parts.
+  `max_window_protocol_failures` still has no flag; the CLI never sets it and
+  its default derives from two flags that are hashed.
 
 ## Troubleshooting
 
@@ -221,5 +253,7 @@ Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
 | `model 'X' is not reported by LM Studio` | Model is not loaded. Check `driver.py preflight` for loaded IDs. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |
 | Run ends in `AgentLoopLimitError` | Model never produced a valid commit and never failed densely enough to trip either stall condition — typically a session that keeps exploring, since exploratory rejections never count. Triage it; raise `--max-turns` or use a stronger model. |
-| Run ends in `ProtocolStallError` | One of three things: a `(tool, error code)` signature recurred after a targeted correction; the trailing window filled with protocol rejections of mixed codes; or output was truncated repeatedly with no tool call. Read the message — the first two are tool-contract problems, the third needs a larger `max_tokens` in the `--provider-config` JSON. |
+| Run ends in `ProtocolStallError` | One of three things: a `(tool, error code)` signature recurred after a targeted correction; the trailing window filled with protocol rejections of mixed codes; or output was truncated repeatedly with no tool call. Read the message — the first two are tool-contract problems. For the third, the message states what the harness already tried (forcing a tool call, and any `max_tokens` backoff steps); what is left is raising `max_tokens` in the `--provider-config` JSON, or `--allow-truncation-backoff --truncation-max-tokens-ceiling N` to let the harness raise it for you. |
+| `checkpoint cannot be resumed because these changed: ...` | Expected after editing `agent/SKILL.md`, the tool schemas, an `--anchors` file, or any hashed flag. The named part is the one to restore — or start a new checkpoint path. |
+| `could not load prior hypotheses from ...` | `trajectories.jsonl` is present but does not validate. Do not delete it; a missing file only warns, so this is telling you the artifact is corrupt at the named line. |
 | `PydanticSerializationUnexpectedValue` warnings | Known nonfatal LiteLLM/Pydantic noise. Tool execution and trajectories still succeed. |

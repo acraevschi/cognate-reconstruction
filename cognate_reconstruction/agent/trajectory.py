@@ -69,6 +69,25 @@ class AgentNodeMetrics(WorkbenchModel):
     # already carry it, and `extra='forbid'` would make a rename unloadable.
     tool_failures_by_type: dict[str, int] = Field(default_factory=dict)
     truncated_response_count: int = Field(default=0, ge=0)
+    # Truncation recovery. Both are defaulted, and both exist so that a session
+    # which only reached a tool call because the harness intervened is legible
+    # as such instead of reading like a clean run.
+    forced_tool_choice_count: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Requests sent with tool_choice='required' after a truncated "
+            "response carried no tool call."
+        ),
+    )
+    truncation_backoff_applied: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Times the harness raised the effective max_tokens over the "
+            "user-supplied provider option, which needs --allow-truncation-backoff."
+        ),
+    )
     inspection_tool_calls: int = Field(ge=0)
     sound_law_tests: int = Field(ge=0)
     cascade_tests: int = Field(ge=0)
