@@ -436,9 +436,24 @@ per-rule `validation_call_id` may be omitted, in which case the harness resolves
 the unique same-session `test_sound_law` validation whose DSL, child scope, and
 segmentation overlay are identical, and stores the resolved ID in the request;
 zero or several matches are rejected rather than guessed. `supporting_form_ids`
-defaults to that validation's forms and `rationale` is optional. Rejected tool
-calls carry a `remediation` field listing the session's recorded
+defaults to that validation's forms. Rejected tool calls carry a `remediation`
+field listing the session's recorded
 `(validation_call_id, dsl, source_child_ids)` triples.
+
+`rationale` is optional on a **single-rule** commit, where the required
+top-level `summary` already states the reasoning for the one rule. On a commit
+carrying **more than one** rule every rule must supply one, because a single
+summary cannot attribute reasoning to an individual rule and a curation filter
+would otherwise have to discard every multi-rule commit for missing reasoning.
+The schema keeps the field optional; the tool enforces the multi-rule case and
+its `remediation` names the exact `rule_id`s that omitted it:
+
+```text
+error: 1 of 2 committed rules omit 'rationale'. It is required on every rule of
+a commit that carries more than one ...
+remediation: Add a 'rationale' to each of these rules: 'final-l'. A one-rule
+commit still needs none; the 'summary' carries it.
+```
 
 Sound laws are operational child-to-parent transformations:
 
@@ -477,6 +492,54 @@ cognate-reconstruct export-trajectories \
   --high-quality-only \
   --max-anomaly-rate 0.1
 ```
+
+`summarize-trajectories` also reports `schema_variants`: how many records carry
+each distinct `trajectory_schema_sha256`, with the digest this build writes
+marked `current` and repeated as `current_trajectory_schema_sha256`. That is how
+a curator tells a 2.0 record written before the failure counters from one
+written after, without hashing anything by hand — `schema_version` stays `2.0`
+across additive, defaulted fields on purpose.
+
+### Reading one run: `inspect-run`
+
+```bash
+cognate-reconstruct inspect-run --run-dir runs/family
+cognate-reconstruct inspect-run --run-dir runs/family --html runs/family/report.html
+cognate-reconstruct inspect-run --run-dir runs/family --all-forms
+```
+
+Reads `result.json` and `trajectories.jsonl`, plus `events.jsonl` when it is
+there, and prints plain text on stdout. Per node it reports the session shape
+(turns, tool calls, rejections split into protocol and exploratory and grouped
+by structural error code, truncations and recoveries, retries, duration, token
+usage), the committed hypothesis (each rule's DSL, child scope, confidence,
+resolved validation, supporting-form count, rationale, anomalies, summary), the
+deterministic diagnostics, the best reconstructed lexicon, and `high_quality`
+**with the specific condition it failed** when it failed. A family summary and
+any held-out historical target evaluation follow.
+
+Flags: `--run-dir` (required), `--html PATH` to also write one self-contained
+HTML file with no external CSS, JS, fonts or images, and `--all-forms` to list
+every reconstructed form instead of the first 40 per node.
+
+A missing `events.jsonl` only drops the event counts. A missing `result.json`
+falls back to the beams in the trajectories, so a run that failed before writing
+a result is still readable.
+
+**Cross-node consistency is reported, never scored.** The last section walks the
+committed rules across nodes and observes: one DSL committed at several nodes
+with materially different confidence, adjacent nodes mapping the same target in
+the same environment to different things, and a correspondence established below
+a node that the node itself never mentions. These are mechanical comparisons of
+rule text for a human to adjudicate. They do not affect `high_quality`, the
+beam, or any diagnostic, and whether cross-node inconsistency should ever affect
+scoring remains a research-owner decision.
+
+`inspect-run` is the supported artifact-facing report. The run-triage skill's
+`driver.py triage` remains the event-facing one — the turn-by-turn timeline and
+the failure taxonomy read out of `events.jsonl`, which is the only source for
+runs written before failure counters existed — and it shells out to
+`inspect-run` for the artifact sections rather than duplicating them.
 
 The export is generic multi-turn tool supervision, not a training backend.
 Legacy Stage-1/Stage-2 examples are not silently converted into this contract.

@@ -107,6 +107,8 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         "alignment-failed": ToolErrorCategory.PROTOCOL,
         # An anomaly cites a form or concept outside the active evidence.
         "anomaly-unknown-reference": ToolErrorCategory.PROTOCOL,
+        # A multi-rule commit left some rule without its own rationale.
+        "missing-rule-rationale": ToolErrorCategory.PROTOCOL,
         # The model called a tool that is not registered.
         "unknown-tool": ToolErrorCategory.PROTOCOL,
         # No structural code was attached; see UNCLASSIFIED_ERROR_CODE.

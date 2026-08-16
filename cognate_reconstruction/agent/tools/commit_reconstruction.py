@@ -126,6 +126,40 @@ def _resolve_validation(
     )
 
 
+def _require_rationales_on_multi_rule_commits(
+    rules: tuple[CommittedSoundRule, ...],
+) -> None:
+    """Require per-rule reasoning exactly where the summary cannot carry it.
+
+    `rationale` is optional in the schema because transcription burden on
+    `commit_reconstruction` was the harness's dominant failure mode, and the
+    measured friction was entirely on single-rule commits, where the required
+    top-level `summary` says everything a per-rule note would.
+
+    A multi-rule commit is the case that argument does not cover: one summary
+    cannot attribute reasoning to one of several rules, so a corpus filter would
+    have to discard *every* multi-rule commit for missing reasoning. That is a
+    worse outcome than one extra required string on the minority call.
+    """
+    if len(rules) <= 1:
+        return
+    missing = [rule.rule_id for rule in rules if rule.rationale is None]
+    if not missing:
+        return
+    raise ToolInputError(
+        f"{len(missing)} of {len(rules)} committed rules omit 'rationale'. It "
+        "is required on every rule of a commit that carries more than one, "
+        "because the single top-level 'summary' cannot attribute reasoning to "
+        "an individual rule",
+        code="missing-rule-rationale",
+        remediation=(
+            "Add a 'rationale' to each of these rules: "
+            + ", ".join(f"{rule_id!r}" for rule_id in missing)
+            + ". A one-rule commit still needs none; the 'summary' carries it."
+        ),
+    )
+
+
 def commit_reconstruction(
     raw_arguments: WorkbenchModel,
     context: AgentContext,
@@ -150,6 +184,7 @@ def commit_reconstruction(
             f"unknown segmentation overlay {arguments.segmentation_overlay_id!r}",
             code="unknown-overlay",
         )
+    _require_rationales_on_multi_rule_commits(arguments.rules)
     active_children = set(context.child_ids)
     parsed_rules: list[ReconstructionRule] = []
     resolved_rules: list[CommittedSoundRule] = []

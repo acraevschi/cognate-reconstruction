@@ -15,6 +15,14 @@ into a fresh run directory and then triages it.
 The triage report is the point of this driver. A run that ends with
 "accepted reconstruction commit" can still have burned most of its tool budget
 on schema errors; `infer` alone will not tell you that.
+
+Division of labour with the harness's own report: `triage` owns what only
+`events.jsonl` knows — the turn-by-turn timeline and the live failure taxonomy,
+including rejections from runs too old to have counted them. Everything derived
+from `result.json` and `trajectories.jsonl` — committed rules, diagnostics,
+reconstructed forms, the `high_quality` verdict and why it failed, and the
+cross-node observations — comes from `cognate-reconstruct inspect-run`, which
+this driver shells out to instead of duplicating.
 """
 
 from __future__ import annotations
@@ -338,11 +346,13 @@ def load_jsonl(path: Path) -> list[dict]:
 
 def triage(run_dir: Path) -> None:
     run_dir = Path(run_dir)
+    # Only events are read here now; the trajectories belong to `inspect-run`.
     events = load_jsonl(run_dir / "events.jsonl")
-    trajectories = load_jsonl(run_dir / "trajectories.jsonl")
 
     if not events:
-        print(f"\nno events at {run_dir / 'events.jsonl'}")
+        # No timeline to reconstruct, but the artifacts still say plenty.
+        print(f"\nno events at {run_dir / 'events.jsonl'}; artifact report only")
+        artifact_report(run_dir)
         return
 
     print("\n" + "=" * 74)
@@ -437,96 +447,31 @@ def triage(run_dir: Path) -> None:
             if not code.startswith("legacy:"):
                 print(f"        {examples[(name, code)]}")
 
-    # ---- per-node outcome ----------------------------------------------
-    print(f"\nTRAJECTORIES: {len(trajectories)}")
-    for trajectory in trajectories:
-        metrics = trajectory.get("metrics", {})
-        step = trajectory.get("reconstruction_step") or {}
-        diagnostics = step.get("diagnostics", {})
-        commit = trajectory.get("committed_reconstruction") or {}
-        rules = (commit.get("request") or {}).get("rules", [])
-        status = "completed" if trajectory.get("completed") else "FAILED"
-        print(f"\n  node {trajectory['node_id']}  [{status}]  "
-              f"model={trajectory.get('model_id')}")
-        if trajectory.get("failure"):
-            print(f"    failure: {trajectory['failure']}")
-        print(f"    turns={metrics.get('turn_count')} "
-              f"tool_calls={metrics.get('tool_call_count')} "
-              # absent in trajectories written before failure accounting: show
-              # "n/a" rather than a zero that contradicts the taxonomy above.
-              f"failed={metrics.get('failed_tool_call_count', 'n/a')} "
-              # None means the record predates the exploratory/protocol split,
-              # where the total stands in and the verdict is unchanged.
-              f"protocol={metrics.get('protocol_failure_count', 'n/a')} "
-              f"inspections={metrics.get('inspection_tool_calls')} "
-              f"law_tests={metrics.get('sound_law_tests')} "
-              f"cascades={metrics.get('cascade_tests')}")
-        if metrics.get("tool_failures_by_type"):
-            # Keyed on the structural error code, not the exception class.
-            print(f"    failures_by_code={metrics['tool_failures_by_type']}")
-        if metrics.get("truncated_response_count"):
-            print(f"    truncated_responses={metrics['truncated_response_count']}")
-        # A run that only reached a tool call because the harness intervened is
-        # not the same run as a clean one; say so rather than hiding it.
-        if metrics.get("forced_tool_choice_count") or metrics.get(
-            "truncation_backoff_applied"
-        ):
-            print("    truncation_recovery "
-                  f"forced_tool_choice={metrics.get('forced_tool_choice_count', 0)} "
-                  f"max_tokens_backoff={metrics.get('truncation_backoff_applied', 0)}")
-        print(f"    tokens in={metrics.get('input_tokens')} "
-              f"out={metrics.get('output_tokens')} "
-              f"duration={metrics.get('duration_seconds', 0):.1f}s")
-        for rule in rules:
-            print(f"    rule  {rule['dsl']!r}  scope={list(rule['source_child_ids'])} "
-                  f"conf={rule['confidence']}")
-        if diagnostics:
-            # coverage is applied / applicable: forms that never contained the
-            # target are vacuous for the rule and stay out of the denominator.
-            print(f"    diagnostics  rules={diagnostics.get('rule_count')} "
-                  f"coverage={diagnostics.get('rule_coverage', 0):.2f} "
-                  f"applied={diagnostics.get('successful_applications')}/"
-                  f"{diagnostics.get('applicable_rule_results', 'n/a')} applicable "
-                  f"of {diagnostics.get('rule_results_evaluated')} evaluated "
-                  f"target_absent={diagnostics.get('target_absent')} "
-                  f"anomalies={diagnostics.get('anomaly_count')}")
+    # ---- artifacts ------------------------------------------------------
+    # Committed rules, diagnostics, reconstructed forms and the high_quality
+    # verdict all live in `cognate-reconstruct inspect-run`, which is the
+    # supported artifact-facing report. This driver keeps only what it can do
+    # that inspect-run cannot: the turn-by-turn timeline and the live failure
+    # taxonomy, both of which come from events.jsonl.
+    artifact_report(run_dir)
 
-    # ---- reconstructed forms -------------------------------------------
-    result_path = run_dir / "result.json"
-    if result_path.exists():
-        result = json.loads(result_path.read_text())
-        print("\nRECONSTRUCTED FORMS")
-        for node in result.get("internal_nodes", []):
-            for form in (node.get("best_lexicon") or {}).get("forms", []):
-                print(f"  {node['node_id']:<20} {form['concept_id']:<16} "
-                      f"{' '.join(form['segments'])}")
 
-    # ---- quality --------------------------------------------------------
+def artifact_report(run_dir: Path) -> None:
+    """Print `inspect-run` for this directory rather than reimplementing it."""
     python = find_python()
-    summary = subprocess.run(
-        cli(python, "summarize-trajectories",
-            "--input", str(run_dir / "trajectories.jsonl")),
+    report = subprocess.run(
+        cli(python, "inspect-run", "--run-dir", str(run_dir)),
         cwd=REPO, capture_output=True, text=True,
     )
-    if summary.returncode == 0:
-        data = json.loads(summary.stdout)
-        print(f"\nQUALITY  high_quality={data.get('high_quality')}/"
-              f"{data.get('trajectory_count')}  "
-              f"completed={data.get('completed')} failed={data.get('failed')}")
-        print(f"  protocol_failure_rate={data.get('protocol_failure_rate', 0):.2f} "
-              f"(threshold {data.get('max_protocol_failure_rate')}) "
-              f"above_threshold="
-              f"{data.get('trajectories_above_protocol_failure_rate')}")
-        print(f"  failures: {data.get('total_protocol_failures')} protocol, "
-              f"{data.get('total_exploratory_failures')} exploratory, "
-              f"of {data.get('total_failed_tool_calls')} rejected calls")
-        if data.get("tool_failures_by_type"):
-            print(f"  failures_by_code={data['tool_failures_by_type']}")
-        # high_quality is a workflow filter, not a linguistic grade: it now
-        # counts rejected calls, but it still says nothing about correctness.
-        if data.get("high_quality"):
-            print("  Reminder: high_quality is a mechanical workflow filter. Read "
-                  "the timeline and the committed rules before exporting.")
+    if report.returncode == 0:
+        print()
+        print(report.stdout, end="")
+        print("  Reminder: high_quality is a mechanical workflow filter. Read "
+              "the timeline above and the committed rules before exporting.")
+        return
+    print(f"\n[driver] `inspect-run --run-dir {run_dir}` failed; the artifact "
+          "sections are missing. Its error was:")
+    print((report.stderr or report.stdout).strip()[:800])
 
 
 def cmd_triage(args: argparse.Namespace) -> int:

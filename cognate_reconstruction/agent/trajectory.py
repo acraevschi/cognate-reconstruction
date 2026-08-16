@@ -168,28 +168,58 @@ class AgentTrajectory(WorkbenchModel):
     @property
     def high_quality(self) -> bool:
         """Conservative filter for completed, inspected, reproducible sessions."""
-        if not self.completed or self.reconstruction_step is None:
-            return False
+        return not self.high_quality_failure_reasons
+
+    @property
+    def high_quality_failure_reasons(self) -> tuple[str, ...]:
+        """Why the workflow filter rejected this session, in the gate's own terms.
+
+        The gate is the single expensive thing a human wants explained: "not
+        high quality" sends a reader through five metrics to find which of them
+        it was. Stating the reasons is also the only honest way to report the
+        flag, since none of these are linguistic judgements.
+
+        This is the gate itself, not a description of it — `high_quality` is
+        true exactly when this is empty — so the report cannot drift from the
+        filter that curation actually applies.
+        """
+        if not self.completed:
+            return (f"the node did not complete: {self.failure}",)
+        if self.reconstruction_step is None:
+            return ("no deterministic reconstruction step was recorded",)
+        metrics = self.metrics
+        reasons: list[str] = []
         if self.committed_no_op_rule_count:
-            return False
-        if self.metrics.committed_without_inspection:
-            return False
+            reasons.append(
+                f"{self.committed_no_op_rule_count} committed rule(s) cannot "
+                "change any token sequence"
+            )
+        if metrics.committed_without_inspection:
+            reasons.append("the commit inspected no evidence first")
         if (
-            self.metrics.protocol_failures > MAX_FLOOR_PROTOCOL_FAILURES
-            and self.metrics.protocol_failure_rate > MAX_PROTOCOL_FAILURE_RATE
+            metrics.protocol_failures > MAX_FLOOR_PROTOCOL_FAILURES
+            and metrics.protocol_failure_rate > MAX_PROTOCOL_FAILURE_RATE
         ):
-            return False
+            reasons.append(
+                f"{metrics.protocol_failures} protocol failures in "
+                f"{metrics.tool_call_count} tool calls is "
+                f"{metrics.protocol_failure_rate:.2f}, above the "
+                f"{MAX_PROTOCOL_FAILURE_RATE} workflow threshold"
+            )
         if (
-            self.metrics.committed_rule_count > 0
-            and self.metrics.sound_law_tests < self.metrics.committed_rule_count
+            metrics.committed_rule_count > 0
+            and metrics.sound_law_tests < metrics.committed_rule_count
         ):
-            return False
-        if (
-            self.metrics.committed_rule_count > 1
-            and self.metrics.cascade_tests == 0
-        ):
-            return False
-        return True
+            reasons.append(
+                f"{metrics.committed_rule_count} rule(s) committed against only "
+                f"{metrics.sound_law_tests} same-session sound-law test(s)"
+            )
+        if metrics.committed_rule_count > 1 and metrics.cascade_tests == 0:
+            reasons.append(
+                f"{metrics.committed_rule_count} rules were committed without a "
+                "test_rule_cascade preview of their order"
+            )
+        return tuple(reasons)
 
     @property
     def committed_no_op_rule_count(self) -> int:

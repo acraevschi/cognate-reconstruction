@@ -1168,12 +1168,24 @@ def _pre_split_high_quality(trajectory: AgentTrajectory) -> bool:
     )
 
 
+FIXTURES = Path(__file__).parent / "fixtures"
+
+REAL_PRE_CHANGE_TRAJECTORY = FIXTURES / "trajectory_real_pre_change.jsonl"
+"""One genuine live run, committed verbatim from `runs/`.
+
+`runs/google-gemma-4-e4b-20260815-101423` is the pre-change commit-protocol
+baseline: seven tool calls, three of them rejected commit-schema errors that no
+counter existed to record, and `coverage 0.33` on a correct reconstruction. It
+was written by code that had never heard of the fields asserted here, which is
+exactly what the synthetic fixture beside it cannot be — a fixture written by
+the same person as the code can only fail in anticipated ways.
+"""
+
+
 def _pre_change_trajectory_line() -> str:
     """A 2.0 record as written before failure counters and coverage denominators."""
     payload = json.loads(
-        (
-            Path(__file__).parent / "fixtures" / "trajectory_pre_failure_metrics.json"
-        ).read_text(encoding="utf-8")
+        (FIXTURES / "trajectory_pre_failure_metrics.json").read_text(encoding="utf-8")
     )
     return json.dumps(payload)
 
@@ -1209,6 +1221,53 @@ def test_trajectories_written_before_these_counters_still_load(tmp_path) -> None
     assert cli._trajectory_summary(loaded)["total_failed_tool_calls"] == 0
 
 
+def test_a_real_pre_change_run_loads_and_keeps_its_verdict() -> None:
+    """The backward-compatibility guarantee, on evidence that cannot go missing.
+
+    This used to be asserted only against `runs/*/trajectories.jsonl`, which is
+    gitignored: clearing `runs/` reduced the parametrization to zero cases and
+    the suite stayed green with the guarantee silently gone. The same record is
+    now checked in, so the claim fails loudly when it stops holding.
+    """
+    raw = REAL_PRE_CHANGE_TRAJECTORY.read_text(encoding="utf-8")
+    # Written before any of these existed. If a future edit to the fixture makes
+    # one of them appear, it is no longer testing backward compatibility.
+    for field in (
+        "failed_tool_call_count",
+        "protocol_failure_count",
+        "tool_failures_by_type",
+        "truncated_response_count",
+        "forced_tool_choice_count",
+        "applicable_rule_results",
+    ):
+        assert field not in raw, field
+
+    loaded = TrajectoryDatasetBuilder.read_jsonl(REAL_PRE_CHANGE_TRAJECTORY)
+    assert len(loaded) == 1
+    trajectory = loaded[0]
+    assert trajectory.completed
+    assert trajectory.model_id == "openai/google/gemma-4-e4b"
+    assert trajectory.metrics.tool_call_count == 7
+    # The three rejected commits in this session were never counted, because
+    # nothing counted them yet. The absent protocol counter must therefore fall
+    # back to the total rather than read as zero.
+    assert trajectory.metrics.protocol_failure_count is None
+    assert (
+        trajectory.metrics.protocol_failures
+        == trajectory.metrics.failed_tool_call_count
+    )
+    assert trajectory.high_quality
+    assert trajectory.high_quality == _pre_split_high_quality(trajectory)
+
+    # Historical diagnostics keep the values they were written with: the
+    # coverage denominator changed afterwards, and 0.33 is what this run
+    # recorded for a rule scoped to all three children.
+    diagnostics = trajectory.reconstruction_step.diagnostics
+    assert diagnostics.rule_coverage == pytest.approx(1 / 3)
+    assert diagnostics.applicable_rule_results == 0
+    assert cli._trajectory_summary(loaded)["high_quality"] == 1
+
+
 @pytest.mark.parametrize(
     "path",
     sorted((REPO_ROOT / "runs").glob("*/trajectories.jsonl"))
@@ -1216,11 +1275,13 @@ def test_trajectories_written_before_these_counters_still_load(tmp_path) -> None
     else [],
 )
 def test_local_run_artifacts_load_and_keep_their_verdicts(path: Path) -> None:
-    """`runs/` is gitignored local evidence; validate it when it is present.
+    """Opportunistic extra coverage over gitignored local evidence.
 
-    Append-only auditability means more than "still parses": a record written
-    before the exploratory/protocol split must also come back with the exact
-    `high_quality` verdict it had, computed here from the pre-split gate.
+    The guarantee itself is pinned by
+    `test_a_real_pre_change_run_loads_and_keeps_its_verdict`; these cases add
+    whatever else a developer happens to have, written by code that predates the
+    fields under test. Zero cases here is not a failure — it is a machine with
+    an empty `runs/`.
     """
     loaded = TrajectoryDatasetBuilder.read_jsonl(path)
     assert loaded
