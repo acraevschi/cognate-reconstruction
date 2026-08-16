@@ -380,10 +380,37 @@ that has not been reconstructed yet. Session-local identifiers — validation ca
 IDs, supporting form IDs, overlay IDs — are excluded, because they mean nothing
 in another session.
 
-One limitation: these hypotheses live in the reconstructor for the duration of
-one process. Nodes restored from a checkpoint under `--resume` were never run in
-that process, so their committed rules are not retrievable after a resume even
-though their reconstructed lexicons are.
+Both survive `--resume`. Reconstructed lexicons always did, because they derive
+from the `ReconstructionStep`s in the checkpoint; committed hypotheses lived
+only in the reconstructor for the life of one process, so a resumed run used to
+lose half of what crosses a node boundary without saying so. `infer --resume`
+now reads `trajectories.jsonl` back and reseeds them, which promotes that file
+from a write-only audit artifact to a readable input.
+
+A trajectory is seeded only if it is **all four** of:
+
+- completed, with its `committed_reconstruction` present;
+- for a node in the checkpoint's completed set — a node that will be re-run is
+  not seeded, since it must not read a hypothesis for itself;
+- written under the same `configuration_sha256` as the current run, so a
+  hypothesis produced under a different model or a different instruction set
+  cannot leak into a resumed run; and
+- written under the same `run_id` as the checkpoint. The configuration hash
+  cannot tell two invocations apart — the same model over the same input with
+  the same settings hashes identically — and `--trajectories` defaults to a
+  single file in the working directory, so two runs append to it. Without this
+  filter a node's lexicon could come from the checkpoint's own step while its
+  rules came from a different invocation that happened to be written last, and
+  the model would read rules that did not produce the forms in front of it.
+  `--run-id` cannot change during `--resume`, so every legitimate record
+  already carries the checkpoint's run ID.
+
+The number seeded is printed. A missing or unreadable `trajectories.jsonl`
+warns and continues, because a resumed run without prior hypotheses is degraded
+rather than broken; a file that fails schema validation is an error, because
+silently seeding nothing from a corrupt audit artifact would hide the
+corruption. Seeding restores what is *retrievable*; it changes nothing about
+the fresh conversation each node gets, and nothing is pushed into any prompt.
 
 A normal successful node session is:
 
@@ -492,15 +519,19 @@ Provider failures, run-budget failures, and loop-limit failures write an
 incomplete trajectory before propagating the exception. Completed prior nodes
 remain checkpointed.
 
-Resume requires the same main input, normalized tree, and non-secret CLI
-configuration:
+Resume requires the same main input, normalized tree, non-secret CLI
+configuration, agent instructions, tool schemas, and `--anchors` file. When any
+of those changed, the run refuses and the message names which:
 
 ```bash
 cognate-reconstruct infer +  ... +  --checkpoint runs/family/checkpoint.json +  --resume
 ```
 
 The next unfinished node starts a new model session. There is no partial
-message/tool-loop checkpoint.
+message/tool-loop checkpoint. `trajectories.jsonl` is also read back on resume
+so the hypotheses committed at already-completed nodes stay retrievable through
+`get_node_reconstruction`; see "What crosses a node boundary" for the filters
+that decide which records qualify.
 
 Trajectory commands:
 
@@ -535,8 +566,10 @@ Anything unclassified is protocol; the split fails closed, and a test asserts
 that every code in the vocabulary is classified explicitly.
 
 `AgentNodeMetrics` records `failed_tool_call_count` (the total),
-`protocol_failure_count`, `tool_failures_by_type`, and
-`truncated_response_count`; `protocol_failure_rate` is
+`protocol_failure_count`, `tool_failures_by_type`,
+`truncated_response_count`, and the two truncation-recovery counters
+`forced_tool_choice_count` and `truncation_backoff_applied`;
+`protocol_failure_rate` is
 `protocol_failure_count / tool_call_count`. `tool_failures_by_type` keys on the
 structural error code, so a real run now reports
 `{"schema:rules[].confidence=missing": 4}` rather than `{"ValidationError": 4}`.
@@ -612,11 +645,12 @@ jq -r '
 
 ## Verification snapshot
 
-The following was re-run in `llm_reconstruction` on 2026-08-15:
+The following was re-run in `llm_reconstruction` on 2026-08-15, with the suite
+counts re-checked on 2026-08-16 after the seeding run-ID filter landed:
 
 | Check | Result |
 | --- | --- |
-| Supported suite: `pytest -q` | 141 passed (127 fixed tests, plus one per `runs/*/trajectories.jsonl` present locally; `pytest -q -k "not local_run_artifacts"` reports the fixed 127) |
+| Supported suite: `pytest -q` | 174 passed (158 fixed tests, plus one per `runs/*/trajectories.jsonl` present locally; `pytest -q -k "not local_run_artifacts"` reports the fixed 158, and the total drifts with `runs/`) |
 | `make smoke-lexibank` | 2 varieties, 4 tokenized forms, 2 concepts; supplied tree normalized successfully |
 | `make smoke-iecor-historical` | 6 evidence varieties, 1,029 tokenized forms, 170 concepts, 1 hidden historical binding; supplied tree normalized successfully |
 | CLI installation/help | `cognate-reconstruct` available; all seven CLI subcommands load |
@@ -651,6 +685,29 @@ one among them occupies a window slot without counting toward the trip. Two
 repository-hygiene checks guard the triage driver: its hand-copied exploratory
 set must equal the real classification, and the two checked-in copies of the
 skill must stay byte-identical.
+
+Truncation recovery is covered by asserting on what the provider actually
+received: that the request after a truncated no-tool response carries
+`tool_choice="required"`, that a backend raising on `"required"` falls back
+within the same turn without an extra stall, that a transient failure on the
+forced attempt is still retried as transient rather than silently downgraded,
+that forcing happens once per node, that no `max_tokens_override` is ever sent
+with backoff off, and — with it on — that the value doubles, clips at the
+ceiling, is skipped when the provider reports no output length, never mutates
+the adapter's stored options, and lands in the metrics. Resume integrity is
+covered end to end through `infer --resume`: a two-internal-node family whose
+first node is restored from a checkpoint, whose second retrieves its committed
+rules through `get_node_reconstruction`, and the same run without seeding to
+show the tool finding nothing. The `clear_run_results` ordering trap has its own
+test that pre-seeds, clears, and would fail if seeds were wiped. The filters
+each have one: a different `configuration_sha256`, a node absent from the
+checkpoint, an incomplete trajectory, a missing file (warns, still finishes both
+nodes), and a corrupt file (raises). Editing the agent instructions, narrowing
+the tool schema, adding an `--anchors` file, or changing a stall threshold each
+make an existing checkpoint refuse to resume and name what changed; changing
+nothing still resumes; a checkpoint with no component digests refuses
+generically; and the checkpoint's digests are asserted equal to the ones the
+trajectory records.
 
 Local ignored live-run artifacts also demonstrate both success and failure:
 
@@ -695,13 +752,30 @@ Local ignored live-run artifacts also demonstrate both success and failure:
   cascade call from the run above did not recur. That is suggestive rather than
   conclusive — one trial, and a local server is not bit-deterministic at
   temperature 0 — but the tool schema is the only input that changed;
+- `runs/google-gemma-4-26b-a4b-20260815-230711` and
+  `runs/google-gemma-4-26b-a4b-20260815-231544`, after the truncation-recovery
+  and resume work: the three-language input in 17s over five clean tool calls,
+  the same `p a` / `p u r`, `high_quality: 1/1`, `protocol=0`, twice with an
+  identical timeline. Nothing was truncated, so no recovery was exercised — the
+  point of these runs is that the changed request path did not disturb a clean
+  session;
+- a live two-internal-node resume under
+  `(language_a,(language_b,language_c)INNER)PROTO;` on the same model, run
+  outside `runs/`: `INNER` committed `f > p / #_`, its checkpoint was cut back
+  to that node, and the resumed process reported `seeded 1 prior committed
+  hypothesis` and finished `PROTO`. That model chose not to call
+  `get_node_reconstruction` in the resumed session, so retrieval itself is
+  demonstrated by the scripted end-to-end CLI test rather than by this run;
+  what the run shows is that seeding survives a real process boundary and that
+  `summarize_commit` round-trips a real gemma commit;
 - `runs/gemma-noop-fix.IKD1kR`: one completed `google/gemma-4-e4b`
   trajectory, five turns, five tool calls, one real rule, and
   `high_quality: 1`;
 - `runs/qwen35-tujia-20260810-094347`: a structurally valid failed
   `qwen3.6-35b-a3b` trajectory ending in `AgentLoopLimitError` after
-  response truncation prevented reliable tool use; the same run would now end
-  in `ProtocolStallError` with an explicit truncation event;
+  response truncation prevented reliable tool use; the same run would now be
+  retried once with `tool_choice="required"` and, failing that, end in
+  `ProtocolStallError` with explicit truncation and recovery events;
 - `runs/qwen36-tujia-20260810-102624`: a completed pre-fix trajectory whose
   12 identity-like no-op rules remain audit-readable but now produce
   `high_quality: 0`.
@@ -739,13 +813,47 @@ future ideas.
   reliable behavior from every LiteLLM provider or every model. A model may
   ignore tools, emit malformed arguments, reason indefinitely, or make weak
   linguistic decisions.
-- `finish_reason="length"` is now handled explicitly: it emits a
+- `finish_reason="length"` is handled explicitly: it emits a
   `response_truncated` event and, when the response carried no tool call, a
   specific instruction to reply with a smaller call. After
   `max_truncated_responses` such responses the node ends in
-  `ProtocolStallError`. What is still missing is any automatic recovery — the
-  harness names the condition rather than shrinking the request or continuing
-  the truncated output.
+  `ProtocolStallError`. The harness now also *recovers* rather than only naming
+  the condition. Most truncations are the model spending its whole output
+  budget on reasoning prose before emitting any call, so the turn immediately
+  after a truncated no-tool response is sent with `tool_choice="required"`
+  instead of `"auto"` — a change to how the harness builds its own request,
+  crossing no configuration boundary. Not every backend honours `"required"`:
+  it is attempted **once per node**, and if the provider raises or the response
+  still carries no tool call, the run falls back to the previous behaviour
+  rather than looping. Every attempt emits a `truncation_recovery` event and is
+  counted in `forced_tool_choice_count`, so a session that only reached a tool
+  call because the harness intervened does not read like a clean one.
+- The optional second recovery **overrides a user-supplied provider option and
+  is therefore off by default.** `--allow-truncation-backoff`, which requires
+  `--truncation-max-tokens-ceiling`, lets the harness double the effective
+  `max_tokens` for the rest of a node after a truncated no-tool response, never
+  above the ceiling. The default is off because `max_tokens` lives in the
+  user's `--provider-config` and the harness does not own it: a run that
+  quietly disagrees with its own configuration is worse than a run that stops
+  and says why. The user's stored options are never mutated — the value is
+  merged over them for the affected requests only — and the base is the
+  truncated response's *reported* output length, so a provider that reports no
+  usage gets no backoff at all rather than a raise that might land below what
+  the user configured. Each raise is recorded in `truncation_backoff_applied`
+  and in the event stream, so a run that only succeeded because of backoff is
+  legible in its own trajectory. Note that `--max-truncated-responses` bounds
+  how far backoff can ever get: at the defaults the node stops after the third
+  truncation, so at most two doublings (4x) apply and a ceiling set higher than
+  that is unreachable without raising both. What remains unhandled: a truncated
+  response is still discarded rather than continued.
+- **Whether truncation recovery should affect `high_quality` is undecided.** A
+  session that produced its only tool call because the harness forced one
+  currently passes the gate exactly like a session that never needed help. That
+  follows from the gate being about protocol failures, and the counters make
+  the difference visible, but nobody has decided whether an intervened-upon
+  session is the tool-use example the corpus wants to teach. Left open on
+  purpose; it belongs with the threshold calibration in "Research validity
+  next", not with an engineer's judgement call.
 - A tool rejection reproduced `max_repeated_tool_failures` times **within the
   trailing window of `stall_window_calls` tool calls** now triggers one targeted
   correction carrying the tool's remediation, and one further recurrence raises
@@ -779,11 +887,36 @@ future ideas.
 
 ### Resume and budget integrity
 
-- The checkpoint compatibility hash covers the main input text, normalized
-  tree, and public CLI/provider options. It does not currently include the
-  contents of a separate `--anchors` file, the loaded agent instruction text,
-  or tool-schema hashes. Changing those while using `--resume` is not detected
-  by the CLI checkpoint check.
+- The checkpoint compatibility hash covers the main input text, the normalized
+  tree, public CLI/provider options, **the loaded agent instruction text, the
+  tool schemas, and the contents of a separate `--anchors` file**. The stall
+  and truncation thresholds are now CLI flags
+  (`--max-repeated-tool-failures`, `--stall-window-calls`,
+  `--max-truncated-responses`, and the two truncation-backoff flags) and are
+  hashed with the rest, so a flag nobody hashes is no longer a flag that
+  silently changes a resumed run. `--max-window-protocol-failures` is still
+  orchestrator-only; the CLI never sets it, and its default is derived from two
+  values that *are* hashed, so it cannot change independently of them from the
+  command line. A checkpoint written before this change refuses to resume,
+  which is the point of making the hash honest.
+- The checkpoint also stores named digests of the parts of that hash, so a
+  refused resume says *which* input changed ("the agent instructions", "the
+  tool schemas", "the anchor file", "the provider and limit settings") rather
+  than only "the configuration". `configuration_sha256` remains the decision;
+  the components exist to make the message actionable. A checkpoint written
+  before they existed still refuses correctly and falls back to the generic
+  wording, because it never recorded the parts to compare.
+- A resume reads the whole trajectory file into memory to seed prior
+  hypotheses. That is a property of `TrajectoryDatasetBuilder.read_jsonl`
+  rather than of resume; see "Trajectory and training boundary" for the
+  measurements and the conditions under which it should be fixed.
+- **`--stall-window-calls 9` is not the same input as omitting it**, even
+  though the behaviour is identical: omitting it means "derive `3 ×
+  --max-repeated-tool-failures`", and the derived value is not what gets
+  hashed. Passing the default explicitly across a resume therefore refuses on a
+  configuration change that is not one. Deliberately conservative — a
+  compatibility hash that guesses when two spellings mean the same thing is a
+  hash that can be talked into resuming something it should not.
 - Total turn, tool-call, wall-time, and reported-cost counters are recreated
   when a process resumes. Current “total run” limits therefore bound one CLI
   invocation, not the cumulative history of a run across resumptions.
@@ -855,29 +988,57 @@ future ideas.
 - Append-only historical records remain readable even when newer quality rules
   would reject their commits. This is intentional for audit, so
   `valid: true` must not be confused with `high_quality: true`.
+- **`TrajectoryDatasetBuilder.read_jsonl` materializes an entire file**, and
+  four commands now use it: `validate-`, `summarize-`, and
+  `export-trajectories`, plus `--resume` seeding. `JsonlTrajectorySink` appends
+  "without retaining a family run in RAM"; nothing reads one back that way.
+
+  Measured on the 170-concept `qwen36-tujia` record: 434 KB on disk becomes
+  1.5 MB resident and 2.8 MB peak. Of that record, seeding uses 2.4 KB — the
+  `PriorNodeReconstruction` summary, 178x smaller — while `messages` (321 KB)
+  and `reconstruction_step` (123 KB, a copy of what the checkpoint already
+  holds) are loaded and dropped.
+
+  **This is deliberately not optimised.** A benchmark subfamily of 10–30
+  varieties is 10–30 internal nodes, so 4–13 MB on disk and 30–85 MB peak,
+  next to a local model holding several GB resident. Optimising that would also
+  invert this project's stated priorities, which are validity and reliability,
+  not throughput.
+
+  **When it does matter, fix it once at the reader, not at any one caller.** Add
+  an iterator variant of `read_jsonl` that validates every line — the check that
+  makes a corrupt record surface rather than being skipped — and yields them one
+  at a time, then convert all four callers. Seeding needs no API change for
+  this: `seed_prior_reconstructions` already takes an `Iterable` and retains
+  only the summary, so a generator reduces its peak to one record plus
+  summaries. The single obstacle there is the `seeded N` line, which is printed
+  before the run starts and so needs the count in advance.
+
+  Any one of these means it is time:
+
+  - `export-` or `summarize-trajectories` is pointed at more than one run's
+    output, which is the curation milestone and the case this will actually
+    bite;
+  - a single trajectory file passes ~100 MB;
+  - a third consumer of trajectories-as-input appears.
 
 ## Prioritized next work
 
 ### Reliability first
 
-1. Include external anchors, instruction hashes, and tool-schema hashes in
-   checkpoint compatibility; decide whether resumed budgets should be
-   cumulative. This became more pressing, not less. `agent/SKILL.md` and the
-   tool schemas both changed in this work, and `infer` builds its own
-   configuration hash in `_provider_and_configuration` that covers none of
-   them — nor the `max_repeated_tool_failures` / `stall_window_calls` /
-   `max_truncated_responses` / `max_window_protocol_failures` thresholds, none
-   of which has a CLI flag. A checkpoint written before this release still
-   resumes cleanly even though the model now receives different instructions and
-   a different tool schema. Do this as **one** change rather than adding the
-   missing inputs to the hash piecemeal: every addition invalidates every
-   existing checkpoint, so paying that cost repeatedly buys a fraction of the
-   safety each time. Exposing the stall thresholds as CLI flags belongs in the
-   same change, since a flag nobody hashes is a flag that silently changes a
-   resumed run.
-2. Recover from truncation rather than only naming it — the harness now
-   detects `finish_reason="length"` and stalls deliberately, but it cannot
-   shrink a request or continue a cut-off response.
+1. Decide whether resumed budgets should be cumulative across invocations.
+   Total turn, tool-call, wall-time, and cost counters are recreated when a
+   process resumes, so "total run" limits bound one CLI invocation rather than
+   the history of a run across resumptions. This needs a product decision about
+   what a budget is meant to bound, not an implementation. The other half of
+   this item — anchors, instruction and tool-schema hashes, and the stall
+   thresholds in checkpoint compatibility — is done, in one change, as it had to
+   be: every addition invalidates every existing checkpoint.
+2. Continue a truncated response rather than discarding it. Forcing a tool call
+   on the retry, and the optional token backoff, recover the common case where
+   the model reasoned past its output budget; neither salvages the reasoning
+   that was cut off, and neither helps a model whose *single* tool call does not
+   fit in the budget.
 3. Decide whether an exploratory rejection should ever end a node. Neither stall
    condition counts one today: repeats are caught per structural code, window
    saturation counts only protocol rejections, and a model that tests malformed
@@ -905,7 +1066,11 @@ future ideas.
    research decision, is to report the *distribution* of per-trajectory protocol
    rates from `summarize-trajectories` rather than only the pooled rate and a
    count above threshold; a threshold cannot be calibrated against a number that
-   has already been averaged.
+   has already been averaged. Decide in the same pass whether a session that
+   only reached a tool call because the harness forced one should still count as
+   `high_quality`. It does today, which is a default rather than a finding;
+   `forced_tool_choice_count` and `truncation_backoff_applied` are recorded per
+   node precisely so the question can be settled against real trajectories.
 4. Decide whether parsimony should affect scoring, and document the objective
    before implementing it.
 5. Add diagnostics for recurring correspondence support, residual mismatch,

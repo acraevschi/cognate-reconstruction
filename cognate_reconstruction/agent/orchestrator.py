@@ -80,6 +80,16 @@ class _RunState:
     protocol_failure_count: int = 0
     tool_failures_by_type: dict[str, int] = field(default_factory=dict)
     truncated_response_count: int = 0
+    forced_tool_choice_count: int = 0
+    truncation_backoff_count: int = 0
+    # Set by a truncated response that carried no tool call, consumed by the
+    # next request. Forcing is attempted once per node: a backend that ignores
+    # or rejects `"required"` will not start honouring it on the third try.
+    force_tool_choice_next: bool = False
+    forced_tool_choice_attempted: bool = False
+    # The raised ceiling in force for this node, or None while the user's own
+    # provider option is in effect untouched.
+    effective_max_tokens: int | None = None
     tool_names: list[str] = field(default_factory=list)
     successful_tool_names: list[str] = field(default_factory=list)
     provider_responses: list[ProviderResponseMetadata] = field(default_factory=list)
@@ -119,6 +129,8 @@ class AgentOrchestrator:
         stall_window_calls: int | None = None,
         max_window_protocol_failures: int | None = None,
         max_truncated_responses: int = 3,
+        allow_truncation_backoff: bool = False,
+        truncation_max_tokens_ceiling: int | None = None,
         instructions: str | None = None,
         trajectory_sink: TrajectorySink | None = None,
         event_sink: AgentEventSink | None = None,
@@ -160,6 +172,17 @@ class AgentOrchestrator:
                 "max_window_protocol_failures must be between 1 and "
                 "stall_window_calls, or it could never be reached"
             )
+        if allow_truncation_backoff and truncation_max_tokens_ceiling is None:
+            raise ValueError(
+                "allow_truncation_backoff requires "
+                "truncation_max_tokens_ceiling; an unbounded override of a "
+                "user-supplied provider option is not offered"
+            )
+        if (
+            truncation_max_tokens_ceiling is not None
+            and truncation_max_tokens_ceiling < 1
+        ):
+            raise ValueError("truncation_max_tokens_ceiling must be positive")
         self.provider = provider
         self.registry = registry or default_tool_registry()
         self.max_turns = max_turns
@@ -174,6 +197,8 @@ class AgentOrchestrator:
         self.stall_window_calls = window
         self.max_window_protocol_failures = saturation
         self.max_truncated_responses = max_truncated_responses
+        self.allow_truncation_backoff = allow_truncation_backoff
+        self.truncation_max_tokens_ceiling = truncation_max_tokens_ceiling
         self.instructions = instructions or load_agent_instructions()
         self.trajectory_sink = trajectory_sink
         self.event_sink = event_sink
@@ -199,6 +224,8 @@ class AgentOrchestrator:
             "stall_window_calls": window,
             "max_window_protocol_failures": saturation,
             "max_truncated_responses": max_truncated_responses,
+            "allow_truncation_backoff": allow_truncation_backoff,
+            "truncation_max_tokens_ceiling": truncation_max_tokens_ceiling,
             "instruction_sha256": hashlib.sha256(
                 self.instructions.encode()
             ).hexdigest(),
@@ -242,13 +269,20 @@ class AgentOrchestrator:
         node_id: str,
         messages: list[LLMMessage],
         state: _RunState,
+        *,
+        tool_choice: str = "auto",
     ) -> ProviderResponse:
         definitions = self.registry.definitions()
         for retry_index in range(self.max_retries + 1):
             self._check_run_budget()
             state.provider_attempts += 1
             try:
-                raw_response = self.provider.complete(messages, definitions)
+                raw_response = self.provider.complete(
+                    messages,
+                    definitions,
+                    tool_choice=tool_choice,
+                    max_tokens_override=state.effective_max_tokens,
+                )
                 response = (
                     raw_response
                     if isinstance(raw_response, ProviderResponse)
@@ -278,6 +312,151 @@ class AgentOrchestrator:
                 )
                 self.sleep_fn(delay)
         raise AssertionError("unreachable provider retry loop")
+
+    def _request_turn(
+        self,
+        node_id: str,
+        messages: list[LLMMessage],
+        state: _RunState,
+    ) -> tuple[ProviderResponse, str]:
+        """Request one turn, forcing a tool call if the last one was cut off.
+
+        Most truncations are the model spending its whole output budget on
+        reasoning prose before emitting any call, and `max_tokens` belongs to
+        the user's `--provider-config` rather than to the harness. What the
+        harness does own is how it builds the request, so the recovery that
+        crosses no configuration boundary is to stop letting the model choose
+        whether to call a tool at all.
+
+        Not every backend honours `"required"`. It is attempted exactly once
+        per node: one that rejects or ignores it will not change its mind, and
+        looping on it would burn the same budget the truncation already cost.
+        Returns the response and the `tool_choice` that actually produced it.
+        """
+        if not state.force_tool_choice_next:
+            return self._complete_with_retry(node_id, messages, state), "auto"
+        state.force_tool_choice_next = False
+        state.forced_tool_choice_attempted = True
+        state.forced_tool_choice_count += 1
+        self._emit(
+            AgentEventKind.TRUNCATION_RECOVERY,
+            node_id,
+            "requiring a tool call after a truncated response produced none",
+            action="forced_tool_choice",
+            tool_choice="required",
+            truncated_response_count=state.truncated_response_count,
+        )
+        try:
+            response = self._complete_with_retry(
+                node_id,
+                messages,
+                state,
+                tool_choice="required",
+            )
+        except (ProviderTransientError, RunBudgetExceeded):
+            # Neither is about `tool_choice`; retries and budgets own them.
+            raise
+        except Exception as error:
+            self._emit(
+                AgentEventKind.TRUNCATION_RECOVERY,
+                node_id,
+                "provider rejected a required tool call; retrying with auto",
+                action="forced_tool_choice_rejected",
+                error_type=type(error).__name__,
+                error=str(error),
+            )
+            return self._complete_with_retry(node_id, messages, state), "auto"
+        return response, "required"
+
+    def _apply_truncation_backoff(
+        self,
+        node_id: str,
+        state: _RunState,
+        response: ProviderResponse,
+    ) -> None:
+        """Raise the effective `max_tokens` for the rest of this node.
+
+        Off unless the operator asked for it, because `max_tokens` is the
+        user's own provider option and overriding it silently would make a run
+        differ from its own configuration. The base is the truncated response's
+        reported output length, which is what the effective limit actually was;
+        without a reported length there is no way to guarantee the raised value
+        stays above what the user configured, so nothing is applied.
+        """
+        ceiling = self.truncation_max_tokens_ceiling
+        # The constructor rejects the enabled-without-a-ceiling pairing, so the
+        # second half of this is belt and braces for a direct caller.
+        if not self.allow_truncation_backoff or ceiling is None:
+            return
+        current = state.effective_max_tokens
+        if current is None:
+            usage = response.metadata.usage
+            current = usage.output_tokens if usage is not None else None
+        if current is None:
+            self._emit(
+                AgentEventKind.TRUNCATION_RECOVERY,
+                node_id,
+                "cannot raise max_tokens: the provider reported no output "
+                "token count to raise it above",
+                action="truncation_backoff_skipped",
+                reason="no_reported_output_tokens",
+            )
+            return
+        raised = min(2 * current, ceiling)
+        if raised <= current:
+            self._emit(
+                AgentEventKind.TRUNCATION_RECOVERY,
+                node_id,
+                "cannot raise max_tokens further: the ceiling is already reached",
+                action="truncation_backoff_skipped",
+                reason="ceiling_reached",
+                effective_max_tokens=current,
+                ceiling=ceiling,
+            )
+            return
+        state.effective_max_tokens = raised
+        state.truncation_backoff_count += 1
+        self._emit(
+            AgentEventKind.TRUNCATION_RECOVERY,
+            node_id,
+            f"raised the effective max_tokens from {current} to {raised}",
+            action="truncation_backoff",
+            previous_max_tokens=current,
+            effective_max_tokens=raised,
+            ceiling=ceiling,
+            backoff_count=state.truncation_backoff_count,
+        )
+
+    def _truncation_stall_reason(self, state: _RunState) -> str:
+        """Say what was already tried, so the remaining remedy is the operator's.
+
+        A bare "raise max_tokens" was misleading once the harness started
+        intervening on its own: the reader needs to know whether forcing a tool
+        call and raising the budget were attempted and still failed.
+        """
+        reason = (
+            "model output was truncated "
+            f"{state.truncated_response_count} times without producing a tool "
+            "call"
+        )
+        attempted = []
+        if state.forced_tool_choice_attempted:
+            attempted.append("requiring a tool call")
+        if state.truncation_backoff_count:
+            attempted.append(
+                "raising max_tokens to "
+                f"{state.effective_max_tokens} over "
+                f"{state.truncation_backoff_count} backoff step(s)"
+            )
+        if attempted:
+            reason += f"; the harness already tried {' and '.join(attempted)}"
+        remedy = "raise the provider max_tokens option or use a smaller prompt"
+        if not self.allow_truncation_backoff:
+            remedy = (
+                "raise the provider max_tokens option, or enable "
+                "--allow-truncation-backoff with a ceiling"
+            )
+        return f"{reason}; {remedy}"
 
     def _record_call_signature(
         self,
@@ -493,6 +672,8 @@ class AgentOrchestrator:
             protocol_failure_count=state.protocol_failure_count,
             tool_failures_by_type=dict(sorted(state.tool_failures_by_type.items())),
             truncated_response_count=state.truncated_response_count,
+            forced_tool_choice_count=state.forced_tool_choice_count,
+            truncation_backoff_applied=state.truncation_backoff_count,
             inspection_tool_calls=inspection_count,
             sound_law_tests=sound_law_tests,
             cascade_tests=state.successful_tool_names.count("test_rule_cascade"),
@@ -677,8 +858,12 @@ class AgentOrchestrator:
                     f"requesting model turn {turn_index}",
                     message_count=len(messages),
                     tool_count=len(self.registry.definitions()),
+                    tool_choice=(
+                        "required" if state.force_tool_choice_next else "auto"
+                    ),
+                    max_tokens_override=state.effective_max_tokens,
                 )
-                response = self._complete_with_retry(
+                response, tool_choice = self._request_turn(
                     context.node_id,
                     messages,
                     state,
@@ -695,6 +880,7 @@ class AgentOrchestrator:
                     f"model returned {len(reply.tool_calls)} tool call(s)",
                     content=reply.content,
                     tool_names=[call.name for call in reply.tool_calls],
+                    tool_choice=tool_choice,
                     provider=response.metadata.provider_id,
                     model_id=response.metadata.model_id,
                     response_id=response.metadata.response_id,
@@ -714,6 +900,9 @@ class AgentOrchestrator:
                         truncated_response_count=state.truncated_response_count,
                         max_truncated_responses=self.max_truncated_responses,
                         had_tool_calls=bool(reply.tool_calls),
+                        forced_tool_choice_attempted=(
+                            state.forced_tool_choice_attempted
+                        ),
                     )
                     if (
                         state.truncated_response_count
@@ -721,10 +910,16 @@ class AgentOrchestrator:
                         and not reply.tool_calls
                     ):
                         raise ProtocolStallError(
-                            "model output was truncated "
-                            f"{state.truncated_response_count} times without "
-                            "producing a tool call; reduce reasoning length or "
-                            "raise the provider max_tokens option"
+                            self._truncation_stall_reason(state)
+                        )
+                    if not reply.tool_calls:
+                        # Recover before the next request rather than only
+                        # naming the condition: require a tool call, and raise
+                        # the token budget if the operator allowed it.
+                        if not state.forced_tool_choice_attempted:
+                            state.force_tool_choice_next = True
+                        self._apply_truncation_backoff(
+                            context.node_id, state, response
                         )
                 if not reply.tool_calls:
                     messages.append(

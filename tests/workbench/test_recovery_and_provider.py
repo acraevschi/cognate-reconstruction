@@ -81,6 +81,9 @@ class RetryThenCommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.calls += 1
@@ -118,6 +121,9 @@ class FailOnSecondNodeProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         node_id = _node_id(messages)
         self.nodes.append(node_id)
@@ -136,6 +142,9 @@ class CommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         node_id = _node_id(messages)
         self.nodes.append(node_id)

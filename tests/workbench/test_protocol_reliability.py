@@ -85,6 +85,9 @@ class MalformedThenValidProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -232,6 +235,9 @@ class AlwaysMalformedCommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -287,6 +293,9 @@ class AlternatingMalformedCommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -371,6 +380,9 @@ class VaryingMessageCommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -444,6 +456,9 @@ class SpacedFailureProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -593,6 +608,9 @@ class CyclingMalformedProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         name, arguments = self.SHAPES[self.turn % len(self.SHAPES)]
@@ -721,6 +739,9 @@ class TruncatedProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> ProviderResponse:
         assert tools
         self.turn += 1
@@ -820,6 +841,9 @@ class ExploratoryFailuresProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -903,6 +927,9 @@ class OneProtocolSlipProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -1164,6 +1191,10 @@ def test_trajectories_written_before_these_counters_still_load(tmp_path) -> None
     assert trajectory.metrics.failed_tool_call_count == 0
     assert trajectory.metrics.tool_failures_by_type == {}
     assert trajectory.metrics.truncated_response_count == 0
+    # Truncation recovery did not exist when this was written; an absent
+    # counter reads as "the harness never intervened", which is true.
+    assert trajectory.metrics.forced_tool_choice_count == 0
+    assert trajectory.metrics.truncation_backoff_applied == 0
     # The protocol counter is absent, not zero, and falls back to the total.
     assert trajectory.metrics.protocol_failure_count is None
     assert (

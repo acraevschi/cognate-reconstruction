@@ -466,6 +466,14 @@ def triage(run_dir: Path) -> None:
             print(f"    failures_by_code={metrics['tool_failures_by_type']}")
         if metrics.get("truncated_response_count"):
             print(f"    truncated_responses={metrics['truncated_response_count']}")
+        # A run that only reached a tool call because the harness intervened is
+        # not the same run as a clean one; say so rather than hiding it.
+        if metrics.get("forced_tool_choice_count") or metrics.get(
+            "truncation_backoff_applied"
+        ):
+            print("    truncation_recovery "
+                  f"forced_tool_choice={metrics.get('forced_tool_choice_count', 0)} "
+                  f"max_tokens_backoff={metrics.get('truncation_backoff_applied', 0)}")
         print(f"    tokens in={metrics.get('input_tokens')} "
               f"out={metrics.get('output_tokens')} "
               f"duration={metrics.get('duration_seconds', 0):.1f}s")

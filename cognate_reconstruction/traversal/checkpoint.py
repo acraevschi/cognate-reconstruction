@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.traversal import ReconstructionStep
@@ -20,6 +20,15 @@ class FamilyCheckpoint(WorkbenchModel):
     input_sha256: NonEmptyStr
     configuration_sha256: NonEmptyStr
     normalized_tree_sha256: NonEmptyStr
+    configuration_components: dict[str, NonEmptyStr] = Field(
+        default_factory=dict,
+        description=(
+            "Named digests of the parts of the configuration hash, so a "
+            "refused resume can say which part changed. Defaulted and purely "
+            "explanatory: 'configuration_sha256' remains the decision, and a "
+            "checkpoint written without these still resumes or refuses on it."
+        ),
+    )
     completed_steps: tuple[ReconstructionStep, ...] = ()
 
     @model_validator(mode="after")

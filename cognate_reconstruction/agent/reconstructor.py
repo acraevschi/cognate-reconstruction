@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.orchestrator import AgentOrchestrator
 from cognate_reconstruction.agent.schemas import PriorNodeReconstruction
 from cognate_reconstruction.agent.tools import summarize_commit
-from cognate_reconstruction.agent.trajectory import AgentRunResult
+from cognate_reconstruction.agent.trajectory import AgentRunResult, AgentTrajectory
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.alignment.protocol import AlignmentProvider
 from cognate_reconstruction.schemas.beam import NodeBeamState
@@ -112,6 +112,40 @@ class AgenticNodeReconstructor:
     def clear_run_results(self) -> None:
         self.run_results.clear()
         self.prior_reconstructions.clear()
+
+    def seed_prior_reconstructions(
+        self,
+        trajectories: Iterable[AgentTrajectory],
+    ) -> int:
+        """Restore hypotheses for nodes this process did not run itself.
+
+        Reconstructed lexicons survive a `--resume` because they come from the
+        checkpoint's `ReconstructionStep`s; committed hypotheses lived only in
+        this dictionary, so a resumed run silently lost half of what crosses a
+        node boundary. Trajectories already store the full commit, so replaying
+        them through the same `summarize_commit` the live path uses restores
+        exactly the record a live node would have produced — nothing is
+        reconstructed twice and no new conversion exists to drift.
+
+        Whether a seeded node is *visible* to a later node is still decided by
+        the traverser's reconstructed-evidence set, exactly as for a live one.
+        Returns the number of nodes seeded. Ordering matters: seeds written
+        before `clear_run_results` are wiped, so callers seed after it — which
+        is why `ReconstructionService` takes the trajectories rather than
+        letting a caller sequence the two itself.
+        """
+        seeded: set[str] = set()
+        for trajectory in trajectories:
+            commit = trajectory.committed_reconstruction
+            if not trajectory.completed or commit is None:
+                continue
+            # A node re-run after a failed resume appears more than once; the
+            # last record is the one the checkpoint's step came from.
+            self.prior_reconstructions[trajectory.node_id] = summarize_commit(
+                trajectory.node_id, commit
+            )
+            seeded.add(trajectory.node_id)
+        return len(seeded)
 
     def reconstruct(
         self,

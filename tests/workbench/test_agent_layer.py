@@ -298,6 +298,9 @@ class ScriptedProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         self.turn += 1
@@ -452,6 +455,9 @@ class AutoCommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert tools
         match = re.search(r'"node_id":\s*"([^"]+)"', messages[1].content or "")

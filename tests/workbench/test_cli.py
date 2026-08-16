@@ -26,6 +26,9 @@ class AutoCommitProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         match = re.search(r'"node_id":\s*"([^"]+)"', messages[1].content or "")
         assert match is not None and tools

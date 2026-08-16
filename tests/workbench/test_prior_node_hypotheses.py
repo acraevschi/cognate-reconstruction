@@ -58,6 +58,9 @@ class _RecordingProvider:
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[LLMToolDefinition],
+        *,
+        tool_choice: str = "auto",
+        max_tokens_override: int | None = None,
     ) -> LLMMessage:
         assert any(tool.name == "get_node_reconstruction" for tool in tools)
         payload = json.loads((messages[1].content or "").split("\n\n", 1)[1])
