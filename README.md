@@ -63,7 +63,8 @@ the runtime classification tree.
 | Supplied Newick | Implemented and recommended | Quoting, leaf validation, pruning, unary collapse, branch lengths, internal IDs, and unresolved polytomies are supported. |
 | Tree induction | Implemented, exploratory | LingPy LexStat SCA distances with neighbor joining or UPGMA; not an independent classification. |
 | Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. |
-| LLM tool loop | Implemented | Nine typed tools, bounded turns/calls, same-session rule validation, ordered cascade preview, exact commit checks, coded rejections with remediation, read-only prior-node hypotheses, and windowed stall/truncation handling. |
+| LLM tool loop | Implemented | Ten typed tools, bounded turns/calls, same-session rule validation, ordered cascade preview, exact commit checks, coded rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
+| Cost of looking at evidence | Reduced, and measured | A correspondence-set survey over all 46 concepts and ten daughters costs 28 KB. The same ten-node `get_alignments` request that returned 3034 KB for six concepts now returns 314 KB, and 782 KB for the 24 the raised cap allows. A scripted whole-benchmark run that surveys, re-surveys, and aligns at every one of seven nodes never exceeds a 31.9 KB prompt. See ["the cost of looking at the evidence"](#the-cost-of-looking-at-the-evidence). |
 | Deterministic reconstruction | Implemented | Literal token-rule cascades, n-ary beam combination, derivation provenance, diagnostics, and optional scored anchors. |
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
 | Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. No mid-node resume. |
@@ -85,7 +86,7 @@ cognate_reconstruction/
 ├── schemas/            strict serialized contracts
 ├── ingestion/          custom payload, CLDF, compatibility, tree preparation
 ├── tree/               self-contained Newick model and n-ary post-order walk
-├── alignment/          typed LingPy SCA alignment wrapper
+├── alignment/          typed LingPy SCA wrapper and correspondence-set aggregation
 ├── rules/              literal sound-law parser and token engine
 ├── traversal/          beams, deterministic reconstruction, checkpoints
 ├── inspect_run.py      readable run report and cross-node observations
@@ -312,11 +313,12 @@ retrieves evidence incrementally. It cannot execute arbitrary code.
 
 | Tool | Purpose and deterministic boundary |
 | --- | --- |
+| `summarize_correspondences` | Survey every recurring correspondence set over the whole evidence set at once, ordered by support, with the tail below `min_support` counted rather than hidden. |
 | `list_concepts` | Paginate concept IDs, glosses, counts, and available nodes. |
 | `search_forms` | Filter exact forms by semantics, tokens, cognacy, node, relation, or position. |
 | `list_available_nodes` | Show observed and already reconstructed evidence nodes, including descendants/outgroups and which have a retrievable hypothesis. |
 | `get_node_reconstruction` | Return the rules, anomalies, and summary committed at one already-reconstructed node, read-only. |
-| `get_alignments` | Produce LingPy n-way SCA alignments and pairwise correspondence summaries for an explicit bounded selection. |
+| `get_alignments` | Produce LingPy n-way SCA alignments once, plus one pairwise correspondence view per node pair referencing them by ID, for an explicit bounded selection. |
 | `segment_morphemes` | Create an immutable boundary-only overlay; phonetic tokens cannot be changed. |
 | `test_sound_law` | Parse one literal child-to-parent rule and return exact per-form applications and failures. |
 | `test_rule_cascade` | Preview the complete ordered branch-scoped cascade, every intermediate diff, and final forms. |
@@ -371,10 +373,132 @@ into one code costs nothing in auditability.
 - `confidence` stays required: it is a model judgement that the beam consumes as
   a score weight, and defaulting it would invent a claim the model never made.
 
-`get_alignments` requires an explicit selection of at most 12 concept IDs or
-48 exact form IDs. This bound is intentional even when the model has a very
-large context window: the model should work through small evidence batches,
-not load an entire family at once.
+### The cost of looking at the evidence
+
+A live 10-language, 46-concept benchmark could not be completed in three
+attempts, and the proximate cause was not reasoning: it was that **inspecting
+evidence cost more context than reasoning about it.** One `get_alignments` call
+for six concepts across two languages returned 31 KB and moved a session from
+5,003 to 34,286 tokens; by turn 26 a two-language node had reached 109,270 input
+tokens and died having never committed. The model inspected 5, 12, 12 and 8 of 46
+concepts before committing on the four nodes it reached — not from laziness, but
+because it could not afford more.
+
+Three things were wrong, and all three are fixed:
+
+- **Every pairwise view re-embedded the alignments.** With N nodes the same
+  alignments were serialized `1 + N·(N−1)/2` times, so ten nodes meant 46 copies.
+  `CorrespondenceMap` now carries `alignment_ids` and the alignments are held once
+  on the `MultipleAlignmentMap`. A validator keeps every reference resolvable, so
+  the ID is a pointer rather than a promise.
+- **Every correspondence carried the aligner's whole working trace.** The
+  `detail` argument now defaults to `"summary"`: a true occurrence `count` plus at
+  most three `(alignment_id, column_index)` references into alignments that are in
+  the payload anyway. `detail="full"` still returns every occurrence with its
+  neighbouring segments. `CorrespondenceSummary.observations` was renamed to
+  `example_observations` and its validator relaxed from `count == len(...)`,
+  because the old name and the old check together were what *forced* the trace to
+  be present; `count` remains the true count under both renderings.
+- **An alignment ID spelled out every participating variety.** Inside a payload
+  that lists `variety_ids` once, that was duplication charged once per reference,
+  and references are quadratic in the node count. IDs are now
+  `msa-<selection digest>:<concept>:<cognate set>`: the selection still has to be
+  in the ID, since the same cognate set aligned against different daughters is
+  different aligned material.
+
+Measured on the ten-daughter Polynesian benchmark, before and after, for one
+fixed request — the benchmark's first six concept IDs, which is why its "before"
+is 26.7 KB rather than the 31 KB the live session happened to fetch:
+
+| Request | Before | After (`summary`) | After (`full`) |
+| --- | --- | --- | --- |
+| 2 languages × 6 concepts | 26.7 KB | 13.6 KB | 17.3 KB |
+| 10 languages × 6 concepts | 3034.2 KB | 314.3 KB | 743.4 KB |
+
+`get_alignments` requires an explicit selection of at most 24 concept IDs or
+48 exact form IDs. The bound is intentional even when the model has a very large
+context window: the model should work through small evidence batches, not load an
+entire family at once. It was raised from 12 on the measurement above — 24
+concepts cost 41 KB across two nodes and 82 KB across three, which are the widths
+a node session actually aligns — and it deliberately bounds *concepts* rather than
+bytes, because at ten nodes the pairwise views dominate and doubling the concept
+list only adds 42% (551 KB → 782 KB). A wide survey belongs in
+`summarize_correspondences` instead, which covers all 46 concepts across all ten
+daughters in 28 KB.
+
+### The correspondence set
+
+The object a comparative linguist works from is the **correspondence set**: the
+n-tuple of aligned segments across every daughter, with the count of aligned
+columns showing it. It had no representation anywhere in the codebase, so
+recurrence — the thing that separates a sound law from residue — was invisible in
+any single batch of alignments.
+
+`summarize_correspondences` returns it over the whole evidence set at once, which
+is why it has no batching bound on its input and bounds its *output* by
+pagination instead. For the ten Polynesian daughters that is 216 distinct sets
+over 56 cognate-set alignments, 41 of them attested more than once:
+
+```text
+n   EFut EUve  Haw  Mri  Niu  NMq  Rar  Sam  Tah  Ton
+9      t    t    k    t    t    t    t    t    t    t
+8      l    l    l    r    l    ʔ    r    l    r    l
+4      k    k    ʔ    k    k    ʔ    k    ʔ    ʔ    k
+3      ʔ    ʔ    Ø    Ø    Ø    Ø    Ø    Ø    Ø    ʔ
+3      f    f    h    h    f    h    ʔ    f    h    f
+```
+
+`min_support` defaults to 2 and the 175 singletons are reported as
+`suppressed_below_min_support` rather than dropped silently, because a
+correspondence occurring once is residue — compound material, a loan, a
+segmentation artefact — and a model that sees thirty rows has to know there is a
+tail. An optional `segment` filter, with `segment_node_id`, answers "every set in
+which Tongan shows `ʔ`", which is how a merger gets polarized; `Ø` asks for a gap,
+as in the DSL.
+
+`ReconstructionStep.correspondence_maps` is populated from the same compact
+rendering. It had been declared, serialized as `[]` into every artifact by every
+run, and populated by nothing, which made a reconstruction impossible to audit
+against its own evidence.
+
+The cost, measured on a scripted whole-benchmark run over the seven-node
+Polynesian tree: **448 KB of a 10,017 KB `result.json`, or +4.5%.** A
+`ReconstructionStep` is serialized twice — once in `snapshot.steps` and once as
+the completed trajectory's `reconstruction_step` — so the maps appear 14 times for
+7 nodes, and 232 KB on the 2222 KB snapshot alone is *half* the real figure.
+Checkpoints carry the same steps and grow with them. On the three-child example
+fixture it is 3.0 KB per node. The maps are recorded only when the traverser
+supplies an evidence context, so a deterministic caller that passes none — such as
+the analysis scripts in `tools/` — still gets `()` and pays nothing. Nothing in it
+reaches a rule, a candidate, or the beam.
+
+### Trimming the live prompt
+
+Nothing was ever released from the orchestrator's `messages`: an alignment
+payload fetched on turn 4 was still charged on turn 26. When a read-only evidence
+call re-requests a selection an earlier call already covered in full, that earlier
+tool message is now replaced in the *live prompt* by
+`{"compacted": true, "tool": ..., "call_id": ..., "superseded_by": ...}`.
+
+The rule is deliberately strict, because taking back evidence the model may still
+be reasoning from is worse than paying for it. Supersession requires the later
+call to cover the earlier selection completely — concepts 1 and 2 followed by
+concepts 3 and 4 supersedes nothing — and every non-selection argument, including
+pagination and `detail`, must match exactly. The most recent result for a tool is
+never compacted, so the model never ends a turn with no copy of what it asked
+for; rejections are never compacted, since they carry the correction; and
+`test_sound_law`, `test_rule_cascade`, `segment_morphemes`, and
+`commit_reconstruction` results are never eligible at all, because a validation
+ID, an overlay ID, and a commit are not re-derivable from a later call. Only
+message *content* is replaced, so every tool call is still immediately followed by
+its own tool message.
+
+**The trajectory keeps the full content.** The audit record and the live prompt
+are deliberately allowed to diverge — a trajectory whose results had been replaced
+by placeholders would be worthless both as a record and as supervision — and the
+`context_compaction` events plus the per-node `compacted_tool_results` metric say
+where they differed, so a session that only fit inside its context because the
+harness dropped evidence is legible as such.
 
 ### What crosses a node boundary
 
@@ -750,13 +874,29 @@ The following was re-run in `llm_reconstruction` on 2026-08-16:
 
 | Check | Result |
 | --- | --- |
-| Supported suite: `pytest -q -k "not local_run_artifacts"` | **178 passed.** This is the authoritative count: it is the fixed suite, and it does not depend on `runs/`. Plain `pytest -q` adds one opportunistic case per `runs/*/trajectories.jsonl` present locally, so its total drifts with local evidence — it changed twice during this session's own live runs — and should not be quoted as the suite size. |
+| Supported suite: `pytest -q -k "not local_run_artifacts"` | **202 passed** (2026-08-17; 178 before the evidence-cost work added 24 cases). This is the authoritative count: it is the fixed suite, and it does not depend on `runs/`. Plain `pytest -q` adds one opportunistic case per `runs/*/trajectories.jsonl` present locally, so its total drifts with local evidence — it changed twice during this session's own live runs — and should not be quoted as the suite size. |
 | `make smoke-lexibank` | 2 varieties, 4 tokenized forms, 2 concepts; supplied tree normalized successfully |
 | `make smoke-iecor-historical` | 6 evidence varieties, 1,029 tokenized forms, 170 concepts, 1 hidden historical binding; supplied tree normalized successfully |
 | CLI installation/help | `cognate-reconstruct` available; all eight CLI subcommands load |
 | Core/agent versions in the environment | harness 0.2.0, LiteLLM 1.81.16, Pydantic 2.13.4, LingPy 2.6.14 |
 | LM Studio discovery | Local `/v1/models` discovery succeeded |
 | Archived-code import audit | No runtime import of `cognate_reflexes`; the package has no dependency on archived corpus code |
+
+Re-run on **2026-08-17** for the evidence-cost work. Everything here reads the
+Polynesian benchmark rebuilt by `tools/build_polynesian_benchmark.py`; the `make`
+targets above were *not* re-run, because every one of them shells out through
+`conda run`:
+
+| Check | Result |
+| --- | --- |
+| Supported suite, and plain `pytest -q` | 202 passed; 223 passed with local run artifacts included, so every checked-in and locally recorded pre-change trajectory still loads |
+| `get_alignments`, one fixed six-concept request | 2 nodes 26.7 → 13.6 KB; 10 nodes 3034.2 → 308.8 KB. At `detail="full"`: 17.3 KB and 743.4 KB |
+| `get_alignments` at the raised cap | 24 concepts: 41.5 KB over 2 nodes, 82.0 KB over 3, 782.2 KB over 10 |
+| `summarize_correspondences` against `tools/correspondence_inventory.py` | Identical: 216 distinct sets over 56 alignments, 41 at support ≥ 2, 175 singletons. 27.9 KB for the whole inventory, 4.8 KB for the default page |
+| `tools/oracle_ceiling.py` | Unchanged: top-1 54.3%, beam-exact 84.8%, **selection gap 30.4%** — the beam and scorer were not touched |
+| `tools/tiebreak_probe.py` | Unchanged: cases A and B still agree, so nothing is decided by Unicode order |
+| Scripted whole-benchmark agent run, 7 internal nodes | 0.6s; largest prompt seen by the provider 31.9 KB with a survey, a repeated survey, and an alignment call at every node; one compaction per node; `correspondence_maps` populated at all 7; `result.json` 10,017 KB of which the maps are 448 KB |
+| Live `google/gemma-4-26b-a4b` run on the same benchmark | 4 of 7 nodes committed, against 0–3 in the three pre-change attempts. On `tongic`, which had failed all three times, peak prompt **22,020 tokens against 109,270 before**, and the model opened every node with `summarize_correspondences` unprompted. The run still ends short of the root: `central_eastern` died on `ProtocolStallError` with 8 of its last 9 calls rejected in the commit protocol, so no `result.json` and no held-out accuracy exists for this run. Both remaining failure classes belong to the loop-resilience and directionality work, not to payload cost |
 
 The supported suite includes a scripted end-to-end provider that performs
 evidence inspection, alignment, sound-law testing, cascade preview, commit,
@@ -944,6 +1084,26 @@ future ideas.
   reliable behavior from every LiteLLM provider or every model. A model may
   ignore tools, emit malformed arguments, reason indefinitely, or make weak
   linguistic decisions.
+- **A slow turn is indistinguishable from a hung one from the outside, and the
+  effective timeout is about 3× what you configured.** Measured 2026-08-17 on a
+  live `google/gemma-4-26b-a4b` benchmark run: `model_turn` → `model_response`
+  gaps of 1.2 to 7.3 minutes that all returned normally, and one genuine hang that
+  surfaced as `litellm.Timeout` after **901 seconds against `--timeout 300`** —
+  consistent with LiteLLM retrying internally before raising. The harness handles
+  that correctly: the timeout is classified transient, `provider_retry` is
+  emitted, and the node fails only after `--max-retries` further attempts. So the
+  bound at default flags is roughly 15 minutes per attempt, not infinity.
+
+  Two things are nonetheless missing. The harness cannot interrupt a call in
+  flight — `_check_run_budget()` runs before and after an attempt and never
+  during it, so `--max-run-seconds` does not end a slow turn — and nothing
+  reports "still waiting", so a run that is working normally is
+  indistinguishable from a stuck one without reading event timestamps. Both
+  knobs that would help (`max_tokens` in `--provider-config`, a lower
+  `--timeout`) are hashed into `configuration_sha256` and therefore have to be
+  chosen before the first node: they cannot be added to a checkpoint that has
+  already run. This belongs with the loop-resilience work; the run-triage skill
+  carries the operational procedure meanwhile.
 - `finish_reason="length"` is handled explicitly: it emits a
   `response_truncated` event and, when the response carried no tool call, a
   specific instruction to reply with a smaller call. After
@@ -1002,10 +1162,17 @@ future ideas.
   same window: when `max_window_protocol_failures` of the last
   `stall_window_calls` calls were *protocol* rejections — whatever their
   codes — the harness injects one correction naming them and then raises
-  `ProtocolStallError`. Exploratory rejections are excluded, so a model working
-  through malformed sound laws is never stopped for it however many it gets
-  wrong. What remains unhandled: two genuinely different mistakes that happen to
-  share a code are counted as one. Triage makes that visible by reporting the
+  `ProtocolStallError`. Exploratory rejections are excluded **from this second
+  condition only**. They are not excluded from the per-signature rule above,
+  which keys on `(tool name, code)` without consulting the category, so a model
+  that gets the same exploratory rejection `max_repeated_tool_failures` times
+  is corrected and then killed like any other repeat. That is not hypothetical:
+  on the 2026-08-17 benchmark run the `tongic` session spent three calls trying
+  to express an insertion the DSL cannot represent (`Ø > ʔ / #_`, `∅ > ʔ / #_`,
+  `Ø > ʔ`), drew the correction, and stopped one recurrence short of ending the
+  node — for proposing the linguistically correct change. What remains
+  unhandled: two genuinely different mistakes that happen to share a code are
+  counted as one. Triage makes that visible by reporting the
   number of distinct messages behind each code, which is the evidence for
   splitting a code rather than a fault in itself.
 - With the currently observed LiteLLM/Pydantic combination, live LM Studio
@@ -1015,6 +1182,26 @@ future ideas.
   pin.
 - Provider retries cover normalized transient transport/status failures. They
   do not retry a technically successful but linguistically unhelpful response.
+- **Two commit-validation rejections discriminate where nothing distinguishes.**
+  Both were isolated by replaying the `central_eastern` session of the
+  2026-08-17 run, which died with 8 of its last 9 calls rejected.
+  - `validation-ambiguous` fires when a rule matches more than one recorded
+    validation, but the match key is already DSL, child scope, and overlay, and
+    a node's forms do not change inside a session — so the matches are the same
+    experiment run twice. Verified on that run: the two `r > l / _` validations
+    serialize identically apart from `validation_call_id`. Re-testing a rule
+    while iterating is therefore penalized, and the model that did so was pushed
+    onto the explicit-ID path where it then mispaired an ID.
+  - A vacuous environment makes a rule a different rule. `t > k` and `t > k / _`
+    parse to the same target, replacement, and empty `RuleEnvironment`, but
+    `rule_id` is `sha256` of the source string and resolution compares that
+    string, so validating one and committing the other is
+    `validation-mismatch`. The same session produced both spellings, and `/ _`
+    was the majority style.
+
+  Neither is a soundness problem — no unvalidated rule can be committed — and
+  both belong with the loop-resilience work, which also has to let a
+  `test_rule_cascade` validation satisfy the per-rule requirement.
 
 ### Resume and budget integrity
 
@@ -1030,6 +1217,13 @@ future ideas.
   values that *are* hashed, so it cannot change independently of them from the
   command line. A checkpoint written before this change refuses to resume,
   which is the point of making the hash honest.
+- **Every checkpoint written before the evidence-cost work refuses to resume.**
+  The instruction text changed (the required workflow now starts from the
+  correspondence survey) and so did the tool schemas (`summarize_correspondences`
+  was added, `get_alignments` gained `detail` and a higher concept cap), and both
+  are hashed. That is correct rather than unfortunate: a run resumed across that
+  change would reconstruct its remaining nodes under a different workflow from the
+  ones already in the checkpoint, and the refusal names which input changed.
 - The checkpoint also stores named digests of the parts of that hash, so a
   refused resume says *which* input changed ("the agent instructions", "the
   tool schemas", "the anchor file", "the provider and limit settings") rather
@@ -1089,6 +1283,26 @@ future ideas.
 
 ### Data and user experience
 
+- **Inspecting evidence is affordable now, not cheap.** A ten-node
+  `get_alignments` call at the 24-concept cap is still 782 KB, because the payload
+  carries one pairwise view per node pair and that term is quadratic in the node
+  count however compact each view is. The concept cap does not bound bytes, and
+  nothing rejects a wide-node call on size; what exists instead is a cheaper tool
+  for the case that needs breadth (`summarize_correspondences`, 28 KB for all 46
+  concepts across all ten daughters) and instructions that send the model there
+  first. A model that ignores them can still spend its context in one call.
+- Correspondence support counts at a node whose children are themselves
+  reconstructed are inflated by the beam: the child "lexicon" is every retained
+  candidate, so one concept contributes up to `beam_width²` column pairs instead
+  of one. This is consistent — it is exactly what the evidence tools show the
+  model for those children — but a count of 12 at such a node is not comparable to
+  a count of 12 at a node with observed children.
+- Prompt compaction only fires on a *repeated* selection. A model that works
+  through 46 concepts in four disjoint alignment batches, never re-requesting one,
+  gets no relief at all: every payload is still charged on every later turn.
+  Widening that would mean dropping evidence the model never asked for again but
+  might still be using, which needs a graded corpus to justify rather than a
+  guess.
 - There is no general CSV importer, guided family selector, or
   Glottolog-to-dataset mapping workflow. Supported entry points are strict JSON
   and existing local CLDF.
@@ -1185,12 +1399,24 @@ future ideas.
    the model reasoned past its output budget; neither salvages the reasoning
    that was cut off, and neither helps a model whose *single* tool call does not
    fit in the budget.
-3. Decide whether an exploratory rejection should ever end a node. Neither stall
-   condition counts one today: repeats are caught per structural code, window
-   saturation counts only protocol rejections, and a model that tests malformed
-   sound laws indefinitely is bounded by the turn limit alone. That is the
-   deliberate choice — exploration is what the trajectories are meant to teach —
-   but it has not been checked against a session that exploits it.
+3. Decide whether an exploratory rejection should ever end a node. **It already
+   can, and this was previously documented backwards here.** Window saturation
+   counts only protocol rejections, but the per-signature rule in
+   `_record_tool_failure` does not consult the category at all: three rejections
+   sharing one `(tool, code)` signature draw a targeted correction and a fourth
+   raises `ProtocolStallError`, `dsl-parse-error` included. A model that tests
+   malformed sound laws is therefore *not* bounded by the turn limit alone.
+
+   A live `gemma-4-26b-a4b` run on the Polynesian benchmark showed why this
+   matters, and it is worse than a bookkeeping error. On the `tongic` node the
+   correct child-to-parent operation for Niuean is to restore a lost `ʔ`
+   (`ʔ a l e l o` against Niuean `a l e l o`), which the DSL forbids because it
+   has no insertion. The model proposed exactly that on its third turn, was
+   rejected with `dsl-parse-error`, and a session that had persisted with the
+   right idea in a second spelling would have had its node ended for
+   persistence. The interaction, not either half, is the finding: the stall
+   detector punishes repetition, and the DSL's inexpressiveness is what makes
+   the correct hypothesis repeatable.
 4. Remove or narrowly suppress the known LiteLLM/Pydantic serializer warning
    only after confirming response fields remain intact.
 5. Add one maintained live-provider contract test for each provider/model
@@ -1222,7 +1448,15 @@ future ideas.
 4. Decide whether parsimony should affect scoring, and document the objective
    before implementing it.
 5. Add diagnostics for recurring correspondence support, residual mismatch,
-   support across concepts/branches, and calibrated uncertainty.
+   support across concepts/branches, and calibrated uncertainty. Half of the
+   enabling work is done: correspondence support is now *observable* — the model
+   can survey it with `summarize_correspondences`, and every step records the
+   children's correspondence counts — but nothing computes a diagnostic from it.
+   The open question is not how to measure support; it is whether a committed
+   rule's support belongs in `ReconstructionDiagnostics` as a reported number or
+   would end up gating trajectory export, which is the decision
+   [`docs/report_reject_or_score.md`](docs/report_reject_or_score.md) exists to
+   frame.
 6. Decide which DSL extensions are scientifically necessary without turning
    model input into arbitrary executable patterns.
 

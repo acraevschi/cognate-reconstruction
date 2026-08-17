@@ -67,6 +67,126 @@ _FailureSignature = tuple[str, str]
 _SUCCESS_SIGNATURE: _FailureSignature = ("", "<success>")
 """Placeholder recorded for an accepted call so it occupies a window slot."""
 
+COMPACTABLE_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "get_alignments",
+        "summarize_correspondences",
+        "search_forms",
+        "list_concepts",
+        "list_available_nodes",
+        "get_node_reconstruction",
+    }
+)
+"""Tools whose superseded results may be dropped from the live prompt.
+
+Read-only evidence, and nothing else. A `test_sound_law` or `test_rule_cascade`
+result carries the validation ID a commit is checked against, `segment_morphemes`
+carries an overlay ID, and a `commit_reconstruction` result ends the session:
+none of those are re-derivable from a later call, so none are eligible however
+much context they cost.
+"""
+
+_SELECTION_ARGUMENT_KEYS: frozenset[str] = frozenset(
+    {"node_ids", "node_id", "concept_ids", "form_ids", "cognate_set_ids"}
+)
+"""Arguments that name *what* was asked for, rather than how.
+
+These are compared as sets, with absent or empty meaning "everything", so a
+widening call supersedes a narrower one. Every other argument — pagination,
+`detail`, filters, flags, overlays — must match exactly, because a later call
+that changed one of them asked a different question.
+"""
+
+
+def _selection_values(value: object) -> frozenset[str] | None:
+    """One selection argument as a set, or None for "unrestricted"."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return frozenset({value})
+    if isinstance(value, (list, tuple)):
+        return frozenset(map(str, value)) or None
+    return frozenset({str(value)})
+
+
+def _supersedes(later: dict[str, object], earlier: dict[str, object]) -> bool:
+    """Does a later call re-request everything an earlier one asked for?
+
+    Deliberately strict. Two calls that overlap without one covering the other —
+    concepts 1 and 2, then concepts 3 and 4 — are *not* superseded: the earlier
+    result still holds evidence the later one never returned, and dropping it
+    would silently take back something the model may still be reasoning from.
+    Absent and empty are treated alike for selections, since both mean "no
+    filter" across this tool surface.
+    """
+    for key in set(later) | set(earlier):
+        if key in _SELECTION_ARGUMENT_KEYS:
+            later_selection = _selection_values(later.get(key))
+            if later_selection is None:
+                continue
+            earlier_selection = _selection_values(earlier.get(key))
+            if earlier_selection is None or not earlier_selection <= later_selection:
+                return False
+        elif later.get(key) != earlier.get(key):
+            return False
+    return True
+
+
+def _compaction_placeholder(name: str, call_id: str, superseded_by: str) -> str:
+    return json.dumps(
+        {
+            "compacted": True,
+            "tool": name,
+            "call_id": call_id,
+            "superseded_by": superseded_by,
+            "note": (
+                f"The result of this {name} call was removed from the "
+                f"conversation to save context, because the later {name} call "
+                f"{superseded_by} requested the same evidence and its result is "
+                "still here. Call the tool again if you need it back."
+            ),
+        }
+    )
+
+
+@dataclass(frozen=True)
+class _ToolResultRecord:
+    """Where one compactable tool result sits, and what it asked for."""
+
+    index: int
+    call_id: str
+    name: str
+    arguments: dict[str, object]
+
+
+@dataclass
+class _MessageLog:
+    """The conversation in the two forms it has to exist in.
+
+    `audit` is complete and is what the trajectory records. `prompt` is what the
+    provider is sent, and is the only one compaction touches: an alignment
+    payload fetched on turn 4 was still being charged for on turn 26, which is
+    how a two-language node reached 109k input tokens without committing.
+
+    They are deliberately allowed to diverge. A trajectory whose tool results
+    had been replaced by placeholders would be worthless both as an audit record
+    and as supervision, so the full content stays there and the
+    `context_compaction` events say where the live prompt differed.
+    """
+
+    audit: list[LLMMessage] = field(default_factory=list)
+    prompt: list[LLMMessage] = field(default_factory=list)
+
+    def append(self, message: LLMMessage) -> int:
+        self.audit.append(message)
+        self.prompt.append(message)
+        return len(self.prompt) - 1
+
+    def replace_prompt_content(self, index: int, content: str) -> None:
+        self.prompt[index] = self.prompt[index].model_copy(
+            update={"content": content}
+        )
+
 
 @dataclass
 class _RunState:
@@ -103,6 +223,10 @@ class _RunState:
         default_factory=set
     )
     corrected_window_saturation: bool = False
+    # Accepted results of read-only evidence tools that are still live in the
+    # prompt, oldest first, and how many have been replaced by a placeholder.
+    live_tool_results: list[_ToolResultRecord] = field(default_factory=list)
+    compacted_tool_results: int = 0
 
 
 def _sha256_json(value: object) -> str:
@@ -131,6 +255,7 @@ class AgentOrchestrator:
         max_truncated_responses: int = 3,
         allow_truncation_backoff: bool = False,
         truncation_max_tokens_ceiling: int | None = None,
+        compact_superseded_tool_results: bool = True,
         instructions: str | None = None,
         trajectory_sink: TrajectorySink | None = None,
         event_sink: AgentEventSink | None = None,
@@ -199,6 +324,7 @@ class AgentOrchestrator:
         self.max_truncated_responses = max_truncated_responses
         self.allow_truncation_backoff = allow_truncation_backoff
         self.truncation_max_tokens_ceiling = truncation_max_tokens_ceiling
+        self.compact_superseded_tool_results = compact_superseded_tool_results
         self.instructions = instructions or load_agent_instructions()
         self.trajectory_sink = trajectory_sink
         self.event_sink = event_sink
@@ -226,6 +352,7 @@ class AgentOrchestrator:
             "max_truncated_responses": max_truncated_responses,
             "allow_truncation_backoff": allow_truncation_backoff,
             "truncation_max_tokens_ceiling": truncation_max_tokens_ceiling,
+            "compact_superseded_tool_results": compact_superseded_tool_results,
             "instruction_sha256": hashlib.sha256(
                 self.instructions.encode()
             ).hexdigest(),
@@ -614,6 +741,53 @@ class AgentOrchestrator:
         )
         return correction, None
 
+    def _compact_superseded_results(
+        self,
+        context: AgentContext,
+        state: _RunState,
+        messages: _MessageLog,
+        call: LLMToolCall,
+    ) -> None:
+        """Drop from the live prompt what this call just re-requested.
+
+        Looking at the evidence costs more context than reasoning about it, and
+        nothing was ever released: every payload stayed in the prompt for the
+        rest of the node. This reclaims only the safe part of that — a result
+        whose selection a later call covers in full, for a read-only tool that
+        can be called again — and leaves the newest result for each tool in
+        place, so the model never ends a turn with no copy of what it asked for.
+
+        The replacement is content-only. Message order is untouched, so every
+        tool call is still immediately followed by its own tool message.
+        """
+        if not self.compact_superseded_tool_results:
+            return
+        if call.name not in COMPACTABLE_TOOL_NAMES:
+            return
+        superseded = [
+            record
+            for record in state.live_tool_results
+            if record.name == call.name
+            and record.call_id != call.call_id
+            and _supersedes(call.arguments, record.arguments)
+        ]
+        for record in superseded:
+            messages.replace_prompt_content(
+                record.index,
+                _compaction_placeholder(record.name, record.call_id, call.call_id),
+            )
+            state.live_tool_results.remove(record)
+            state.compacted_tool_results += 1
+            self._emit(
+                AgentEventKind.CONTEXT_COMPACTION,
+                context.node_id,
+                f"dropped a superseded {record.name} result from the prompt",
+                tool_name=record.name,
+                call_id=record.call_id,
+                superseded_by=call.call_id,
+                compacted_tool_results=state.compacted_tool_results,
+            )
+
     @staticmethod
     def _usage_total(
         responses: list[ProviderResponseMetadata],
@@ -649,6 +823,7 @@ class AgentOrchestrator:
             "list_concepts",
             "search_forms",
             "list_available_nodes",
+            "summarize_correspondences",
             "get_alignments",
         }
         cost_values = [
@@ -674,6 +849,7 @@ class AgentOrchestrator:
             truncated_response_count=state.truncated_response_count,
             forced_tool_choice_count=state.forced_tool_choice_count,
             truncation_backoff_applied=state.truncation_backoff_count,
+            compacted_tool_results=state.compacted_tool_results,
             inspection_tool_calls=inspection_count,
             sound_law_tests=sound_law_tests,
             cascade_tests=state.successful_tool_names.count("test_rule_cascade"),
@@ -815,8 +991,11 @@ class AgentOrchestrator:
             anchor_policy=context.anchor_policy,
             anchors=context.anchors,
         )
-        messages = [
-            LLMMessage(role=MessageRole.SYSTEM, content=self.instructions),
+        messages = _MessageLog()
+        messages.append(
+            LLMMessage(role=MessageRole.SYSTEM, content=self.instructions)
+        )
+        messages.append(
             LLMMessage(
                 role=MessageRole.USER,
                 content=(
@@ -824,8 +1003,8 @@ class AgentOrchestrator:
                     "iteratively and finish with commit_reconstruction.\n\n"
                     + payload.model_dump_json(indent=2)
                 ),
-            ),
-        ]
+            )
+        )
         state = _RunState(
             started_at=datetime.now(UTC),
             started_monotonic=time.monotonic(),
@@ -856,7 +1035,7 @@ class AgentOrchestrator:
                     AgentEventKind.MODEL_TURN,
                     context.node_id,
                     f"requesting model turn {turn_index}",
-                    message_count=len(messages),
+                    message_count=len(messages.prompt),
                     tool_count=len(self.registry.definitions()),
                     tool_choice=(
                         "required" if state.force_tool_choice_next else "auto"
@@ -865,7 +1044,7 @@ class AgentOrchestrator:
                 )
                 response, tool_choice = self._request_turn(
                     context.node_id,
-                    messages,
+                    messages.prompt,
                     state,
                 )
                 reply = response.message
@@ -986,7 +1165,7 @@ class AgentOrchestrator:
                         ),
                         result=result.model_dump(mode="json"),
                     )
-                    messages.append(
+                    index = messages.append(
                         LLMMessage(
                             role=MessageRole.TOOL,
                             content=result.model_dump_json(),
@@ -994,6 +1173,22 @@ class AgentOrchestrator:
                             name=call.name,
                         )
                     )
+                    if result.ok:
+                        # Only an accepted read-only result is ever dropped: a
+                        # rejection is small and carries the correction the model
+                        # still has to read.
+                        self._compact_superseded_results(
+                            context, state, messages, call
+                        )
+                        if call.name in COMPACTABLE_TOOL_NAMES:
+                            state.live_tool_results.append(
+                                _ToolResultRecord(
+                                    index=index,
+                                    call_id=call.call_id,
+                                    name=call.name,
+                                    arguments=dict(call.arguments),
+                                )
+                            )
                     if context.commit is not None:
                         self._emit(
                             AgentEventKind.NODE_COMMIT,
@@ -1013,7 +1208,7 @@ class AgentOrchestrator:
                         trajectory = self._trajectory(
                             context,
                             payload,
-                            messages,
+                            messages.audit,
                             state,
                             completed=True,
                             write_to_sink=False,
@@ -1039,7 +1234,7 @@ class AgentOrchestrator:
             self._trajectory(
                 context,
                 payload,
-                messages,
+                messages.audit,
                 state,
                 completed=False,
                 failure=failure,

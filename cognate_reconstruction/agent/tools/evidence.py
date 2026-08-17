@@ -50,11 +50,17 @@ def _concept_text(concept: ConceptMetadata) -> str:
     ).casefold()
 
 
-def _selected_evidence(
+def selected_evidence(
     context: AgentContext,
     scope: EvidenceScope,
     node_ids: tuple[str, ...],
 ) -> tuple[NodeEvidence, ...]:
+    """Resolve one scope-and-node selection, rejecting nodes it cannot see.
+
+    Shared by every tool that takes an `EvidenceScope`, so that "active
+    children" and "available tree" mean exactly one thing across the tool
+    surface and an out-of-scope node is refused the same way everywhere.
+    """
     selected_ids = set(node_ids)
     evidence_by_id = {item.node_id: item for item in context.evidence}
     if scope is EvidenceScope.AVAILABLE_TREE:
@@ -100,7 +106,7 @@ def list_concepts(
     call_id: str,  # noqa: ARG001
 ) -> ListConceptsResult:
     arguments = ListConceptsArgs.model_validate(raw_arguments)
-    evidence = _selected_evidence(context, arguments.scope, arguments.node_ids)
+    evidence = selected_evidence(context, arguments.scope, arguments.node_ids)
     catalog = _concept_catalog(context)
     occurrences: dict[str, list[str]] = defaultdict(list)
     for item in evidence:
@@ -153,7 +159,7 @@ def search_forms(
     call_id: str,  # noqa: ARG001
 ) -> SearchFormsResult:
     arguments = SearchFormsArgs.model_validate(raw_arguments)
-    evidence = _selected_evidence(context, arguments.scope, arguments.node_ids)
+    evidence = selected_evidence(context, arguments.scope, arguments.node_ids)
     catalog = _concept_catalog(context)
     selected_concepts = set(arguments.concept_ids)
     selected_cognates = set(arguments.cognate_set_ids)

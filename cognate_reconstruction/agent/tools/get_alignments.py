@@ -52,6 +52,7 @@ def get_alignments(
             lexicons,
             anchors,
             respect_cognate_sets=arguments.respect_cognate_sets,
+            correspondence_detail=arguments.detail,
         )
     except ToolInputError:
         raise

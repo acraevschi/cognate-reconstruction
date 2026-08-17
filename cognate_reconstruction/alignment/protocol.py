@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
-from cognate_reconstruction.schemas.alignment import CorrespondenceMap, MultipleAlignmentMap
+from cognate_reconstruction.schemas.alignment import (
+    CorrespondenceDetail,
+    CorrespondenceMap,
+    MultipleAlignmentMap,
+)
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 
 
@@ -23,4 +27,5 @@ class AlignmentProvider(Protocol):
         anchors: tuple[LexicalForm, ...] = (),
         *,
         respect_cognate_sets: bool = True,
+        correspondence_detail: CorrespondenceDetail = CorrespondenceDetail.FULL,
     ) -> MultipleAlignmentMap: ...

@@ -559,7 +559,9 @@ def _session_rows(
             "evidence work",
             f"{metrics.inspection_tool_calls} inspections, "
             f"{metrics.sound_law_tests} sound-law tests, "
-            f"{metrics.cascade_tests} cascade previews",
+            f"{metrics.cascade_tests} cascade previews, "
+            f"{metrics.compacted_tool_results} superseded result(s) dropped "
+            "from the prompt",
         )
     )
     truncation = (

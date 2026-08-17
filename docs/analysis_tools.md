@@ -65,17 +65,23 @@ Case B is the one to read. It is case A with the minority segment renamed to one
 earlier in Unicode. If A and B disagree about which form wins, the winner is being chosen by
 string ordering rather than by evidence.
 
-## `correspondence_inventory.py` — the view the agent cannot ask for
+## `correspondence_inventory.py` — the independent check on the survey tool
 
 Builds the complete correspondence-set inventory over every cognate set at once, sorted by
 support: the n-tuple of aligned segments across all daughters, how often it recurs, and
-example concepts. This is the object the comparative method actually operates on, and the
-shape a `summarize_correspondences` tool should return.
+example concepts. This is the object the comparative method actually operates on.
+
+It began as the prototype for the view the agent could not ask for. The agent can ask for it
+now — `summarize_correspondences` produces the same sets through the typed tool surface — so
+what the script is *for* has changed: it is the second implementation, forty lines long and
+reading nothing but `LingPyAligner.align_multiple`, that the tool can be checked against
+when the aggregation or the aligner changes.
 
 For ten Polynesian daughters it produces 216 sets in about 22 KB — smaller than a single
 `get_alignments` call for six concepts across two languages. Most of the tail is
 compound-boundary noise, which is why `--min-support` defaults to 2: a correspondence
-occurring once is residue, not evidence.
+occurring once is residue, not evidence. The tool agrees: 216 distinct sets, 41 at support
+≥ 2, 175 singletons.
 
 ## `branch_recoverability.py` — what the DSL cannot reach
 
@@ -96,6 +102,7 @@ proto-forms assembled from several branches at once.
   what happened to the selection gap in the change description.
 - **Any change to tie-breaking or candidate merging** → `tiebreak_probe.py`.
 - **Any change to alignment or evidence tools** → `correspondence_inventory.py`, to check the
-  inventory is still coherent and still small.
+  inventory is still coherent and still small, and that `summarize_correspondences` still
+  agrees with it set for set.
 - **Any change to the DSL** → `branch_recoverability.py`, since expressiveness changes move
   the reachability split directly.

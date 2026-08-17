@@ -36,10 +36,10 @@ def test_anomaly_requires_form_or_concept() -> None:
 def test_alignment_request_requires_a_bounded_evidence_selection() -> None:
     with pytest.raises(ValidationError, match="explicit bounded"):
         GetAlignmentsArgs(node_ids=("A", "B"))
-    with pytest.raises(ValidationError, match="at most 12"):
+    with pytest.raises(ValidationError, match="at most 24"):
         GetAlignmentsArgs(
             node_ids=("A", "B"),
-            concept_ids=tuple(f"concept-{index}" for index in range(13)),
+            concept_ids=tuple(f"concept-{index}" for index in range(25)),
         )
 
 

@@ -8,12 +8,16 @@ from cognate_reconstruction.agent.schemas import (
     ListConceptsArgs,
     SearchFormsArgs,
     SegmentMorphemesArgs,
+    SummarizeCorrespondencesArgs,
     TestRuleCascadeArgs,
     TestSoundLawArgs,
 )
 from cognate_reconstruction.agent.tools.commit_reconstruction import (
     commit_reconstruction,
     describe_session_validations,
+)
+from cognate_reconstruction.agent.tools.correspondences import (
+    summarize_correspondences,
 )
 from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.agent.tools.get_alignments import get_alignments
@@ -36,12 +40,34 @@ def default_tool_registry() -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(
         ToolSpec(
+            name="summarize_correspondences",
+            description=(
+                "Survey every recurring segment correspondence across the whole "
+                "evidence set at once: the n-tuple of aligned segments over the "
+                "selected nodes, its support count, and example concepts, "
+                "ordered by support. Start here. Filter with min_support "
+                "(default 2, because a correspondence attested once is residue) "
+                "or with segment/segment_node_id to ask which sets show one "
+                "segment in one node, then pull get_alignments for the concepts "
+                "a set names."
+            ),
+            args_model=SummarizeCorrespondencesArgs,
+            handler=summarize_correspondences,
+        )
+    )
+    registry.register(
+        ToolSpec(
             name="get_alignments",
             description=(
                 "Align forms from any two or more available nodes and return an "
-                "n-way MSA plus derived pairwise correspondences. Requires an "
-                "explicit small selection: at most 12 concept_ids or 48 "
-                "form_ids; never request the whole vocabulary at once."
+                "n-way MSA plus derived pairwise correspondences. For specific "
+                "cognate sets, after summarize_correspondences has shown which "
+                "are worth looking at: this call needs an explicit selection of "
+                "at most 24 concept_ids or 48 form_ids, and never shows "
+                "recurrence across the whole evidence set. detail='summary' "
+                "(the default) returns correspondence counts with example "
+                "column references; detail='full' adds every column occurrence "
+                "with its contexts and is orders of magnitude larger."
             ),
             args_model=GetAlignmentsArgs,
             handler=get_alignments,
@@ -156,4 +182,5 @@ __all__ = [
     "default_tool_registry",
     "describe_session_validations",
     "summarize_commit",
+    "summarize_correspondences",
 ]

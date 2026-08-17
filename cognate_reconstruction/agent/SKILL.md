@@ -94,37 +94,62 @@ what was tested. Permitted anomaly types are `loanword`,
 
 ## Required workflow
 
-1. Call `list_concepts` or `search_forms` to select evidence. You may search by
-   gloss, concept ID, cognate set, segment sequence, or word position.
-2. Select a small, explicit evidence batch (normally 3--8 concept IDs) and pass
-   those `concept_ids` or exact `form_ids` to `get_alignments`. Never request
-   every cognate set merely because the provider has a large context window.
-   Work through additional batches incrementally. Prefer an n-way MSA when
-   shared columns across a polytomy matter; use pairwise views for focused
-   branch comparisons.
-3. Use `list_available_nodes` and `search_forms(scope="available_tree")` when
+1. Call `summarize_correspondences` first, with no arguments. It surveys **every
+   cognate set at once** and returns the correspondence sets across the active
+   children — the n-tuple of aligned segments, with the count of aligned columns
+   showing it — ordered by support. This is the object the comparative method
+   reasons from, and one call over the whole evidence set costs less than
+   alignments for a handful of concepts.
+2. Read it by support. A set attested many times is a correspondence; **a set
+   with support 1 is residue, not evidence** — a compound boundary, a loan, a
+   segmentation artefact — which is why `min_support` defaults to 2 and the tail
+   is reported as `suppressed_below_min_support` instead of being returned. Never
+   propose a rule whose only support is a single set.
+3. Narrow the survey where a specific change is at stake: `segment` with
+   `segment_node_id` returns every set in which one child shows one segment,
+   which is how you polarize a merger. Use `Ø` for an alignment gap. Raise
+   `offset` to see the tail rather than assuming the first page is all of it.
+4. Only now pull alignments, and only for the sets under investigation: pass the
+   `example_concept_ids` of the rows you are working on to `get_alignments`. A
+   batch of 3--8 concepts is normal, 24 is the ceiling, and a wide selection is a
+   sign you should have stayed in the inventory. Use `detail="full"` only for a
+   correspondence whose conditioning you are actively working out; the default
+   `"summary"` already gives every count.
+5. Use `list_concepts` and `search_forms` to resolve glosses, find the forms
+   behind a concept, or retrieve forms by segment sequence or word position.
+6. Use `list_available_nodes` and `search_forms(scope="available_tree")` when
    observed outgroups or already reconstructed nodes can help polarize a change.
    Never treat a reconstructed form as direct attestation. Where a node below
    this one has already been reconstructed, `get_node_reconstruction` shows what
    it claimed, so a correspondence established there can inform — never
    substitute for — the one you test here.
-4. Identify recurring correspondences and their environments.
-5. If necessary, use `segment_morphemes` to make a temporary boundary-only
+7. State the environment for any correspondence that is not unconditional, using
+   the alignments you pulled in step 4 to find it.
+8. If necessary, use `segment_morphemes` to make a temporary boundary-only
    overlay. Never change the phonetic tokens or move boundaries merely to force a
    rule to fit.
-6. Call `test_sound_law` for every proposed DSL rule and exact child scope.
-7. Read the complete diff: applications, absent targets, context mismatches,
+9. Call `test_sound_law` for every proposed DSL rule and exact child scope.
+10. Read the complete diff: applications, absent targets, context mismatches,
    anchor matches, anchor mismatches, and exact token outputs.
-8. Refine and retest weak hypotheses.
-9. When committing more than one rule, call `test_rule_cascade` on the complete
+11. Refine and retest weak hypotheses.
+12. When committing more than one rule, call `test_rule_cascade` on the complete
    proposed order and inspect every intermediate diff and final form.
-10. Call `commit_reconstruction` only after every committed rule has a successful
+13. Call `commit_reconstruction` only after every committed rule has a successful
    validation call in this node session. Per rule you need only `dsl`,
    `source_child_ids`, and `confidence`; the harness binds each rule to its own
    validation. When the commit carries more than one rule, add a `rationale` to
    each of them as well.
 
 ## Tool guidance
+
+`summarize_correspondences` is the survey tool and the one to start from. Each row
+is one correspondence set: its `segments` positional against the returned
+`node_ids`, its `support`, the number of concepts it occurs in, and up to three
+example concept IDs to follow up on. Support is the whole reason it exists —
+recurrence is what separates a correspondence from residue, and it is invisible in
+any one batch of alignments. `total_set_count`, `matched_set_count`, and
+`suppressed_below_min_support` tell you whether there is a tail behind the page
+you were given.
 
 `list_concepts` returns readable concept metadata with pagination. `search_forms`
 can retrieve forms such as every item with word-initial `n` without loading the
@@ -144,12 +169,21 @@ proposing agrees with one already claimed below this node, and say so in your
 summary when you knowingly contradict one. Retrieve one node at a time and only
 when it bears on the change you are testing.
 
-`get_alignments` aligns forms from any two or more available nodes. Alignment
-payloads can be large, so every call requires an explicit bounded selection of
-at most 12 `concept_ids` or at most 48 exact `form_ids`; prefer smaller batches.
-It returns one n-way alignment and derived pairwise summaries. Respect known
-cognate-set grouping unless you deliberately select forms for an exploratory
-comparison.
+`get_alignments` shows you the columns themselves, for the sets the survey told
+you to look at. Its payload grows with the number of concepts *and* with the
+square of the number of nodes, since it returns one pairwise view per node pair,
+so prefer far smaller batches than the 24-concept ceiling and prefer fewer
+nodes — usually just the children whose correspondence you are testing. The n-way
+alignments are held once and the pairwise views point into them by
+`alignment_id`, so an `example_columns` entry resolves inside the same payload.
+Respect known cognate-set grouping unless you deliberately select forms for an
+exploratory comparison.
+
+Evidence results may be dropped from the conversation when you re-request the
+same selection: a tool result replaced by `{"compacted": true, ...}` names the
+later call that superseded it, and can be fetched again if you still need it.
+Re-reading evidence you already have is what exhausts a session's context, so
+extract what you need from a result when you get it.
 
 `segment_morphemes` creates an immutable session overlay. Use the returned overlay
 ID consistently in later alignment and rule tests.

@@ -4,8 +4,12 @@ from cognate_reconstruction.schemas.anchors import AnchorFile
 from cognate_reconstruction.schemas.alignment import (
     AlignmentMember,
     AlignmentResult,
+    CorrespondenceDetail,
+    CorrespondenceExample,
+    CorrespondenceInventory,
     CorrespondenceMap,
     CorrespondenceObservation,
+    CorrespondenceSet,
     CorrespondenceSummary,
     MultipleAlignmentMap,
 )

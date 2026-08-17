@@ -88,6 +88,17 @@ class AgentNodeMetrics(WorkbenchModel):
             "user-supplied provider option, which needs --allow-truncation-backoff."
         ),
     )
+    compacted_tool_results: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Tool results replaced by a placeholder in the live prompt after a "
+            "later call to the same tool re-requested their selection. Defaulted "
+            "and recorded per node so a session that only fit inside its context "
+            "because the harness dropped evidence is legible as such. The "
+            "trajectory's own messages keep the full content."
+        ),
+    )
     inspection_tool_calls: int = Field(ge=0)
     sound_law_tests: int = Field(ge=0)
     cascade_tests: int = Field(ge=0)

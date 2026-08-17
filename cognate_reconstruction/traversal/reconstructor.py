@@ -7,7 +7,13 @@ from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
+from cognate_reconstruction.alignment.protocol import AlignmentProvider
 from cognate_reconstruction.rules.engine import RuleEngine
+from cognate_reconstruction.schemas.alignment import (
+    CorrespondenceDetail,
+    CorrespondenceMap,
+)
 from cognate_reconstruction.schemas.beam import CandidateDerivation, NodeBeamState
 from cognate_reconstruction.schemas.lexicon import LexicalForm
 from cognate_reconstruction.schemas.rules import (
@@ -129,12 +135,16 @@ class RuleBasedReconstructor:
         anchor_policy: AnchorPolicy | str = AnchorPolicy.ADVISORY,
         anchor_match_factor: float = 100.0,
         engine: RuleEngine | None = None,
+        aligner: AlignmentProvider | None = None,
     ) -> None:
         if beam_width < 1:
             raise ValueError("beam_width must be positive")
         if not math.isfinite(anchor_match_factor) or anchor_match_factor < 1.0:
             raise ValueError("anchor_match_factor must be finite and at least 1")
         self.beam_width = beam_width
+        # Used only to record what the children's evidence showed. Nothing it
+        # returns reaches a score; see `_correspondence_maps`.
+        self.aligner = aligner or LingPyAligner()
         self.anchor_policy = AnchorPolicy(anchor_policy)
         self.anchor_match_factor = anchor_match_factor
         self.anchor_match_log_boost = (
@@ -222,6 +232,50 @@ class RuleBasedReconstructor:
             reports,
         )
 
+    def _correspondence_maps(
+        self,
+        child_ids: tuple[str, ...],
+        evidence_context: NodeReconstructionContext | None,
+    ) -> tuple[CorrespondenceMap, ...]:
+        """Record what this node's children corresponded in, pair by pair.
+
+        Diagnostics, not scoring: no count here reaches a rule, a candidate, or
+        the beam. `ReconstructionStep.correspondence_maps` was declared and
+        serialized as `[]` into every artifact by every run, which made a
+        reconstruction impossible to audit against its own evidence without
+        re-running the aligner by hand.
+
+        The compact rendering is deliberate. The full trace is one record per
+        aligned column per node pair, so recording it would put a payload in
+        every step that no reader asked for; the counts are the auditable claim,
+        and `alignment_ids` reproduce exactly — they are derived from the child
+        IDs, the concept, and the cognate set — for a reader who wants the
+        columns back.
+
+        The source is the evidence context's own child lexicons, so this is the
+        same view the evidence tools give the model for these children,
+        reconstructed child beams included. A caller that supplies no evidence
+        context gets nothing rather than a guess: the input beams alone carry
+        every retained candidate with no cognate-set grouping, which is not the
+        evidence the node was reasoning about.
+        """
+        if evidence_context is None:
+            return ()
+        lexicons_by_id = {
+            item.node_id: item.lexicon for item in evidence_context.available_nodes
+        }
+        lexicons = [
+            lexicons_by_id[child_id]
+            for child_id in child_ids
+            if child_id in lexicons_by_id
+        ]
+        if len(lexicons) < 2:
+            return ()
+        return self.aligner.align_multiple(
+            lexicons,
+            correspondence_detail=CorrespondenceDetail.SUMMARY,
+        ).pairwise_correspondences
+
     def reconstruct(
         self,
         parent_node_id: str,
@@ -230,7 +284,7 @@ class RuleBasedReconstructor:
         rules: Sequence[ReconstructionRule | ParsedSoundRule] = (),
         anomalies: Sequence[AnomalyReport] = (),
         anchors: Sequence[LexicalForm] = (),
-        evidence_context: NodeReconstructionContext | None = None,  # noqa: ARG002
+        evidence_context: NodeReconstructionContext | None = None,
     ) -> ReconstructionStep:
         child_beams = tuple(children)
         if len(child_beams) < 2:
@@ -453,6 +507,9 @@ class RuleBasedReconstructor:
             parent_node_id=parent_node_id,
             child_node_ids=child_ids,
             input_beams=child_beams,
+            correspondence_maps=self._correspondence_maps(
+                child_ids, evidence_context
+            ),
             output_beam=output_beam,
             rule_reports=tuple(all_reports),
             anomaly_reports=tuple(anomalies),

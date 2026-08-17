@@ -732,6 +732,9 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
         "truncation_backoffs": sum(
             item.metrics.truncation_backoff_applied for item in trajectories
         ),
+        "compacted_tool_results": sum(
+            item.metrics.compacted_tool_results for item in trajectories
+        ),
         "total_retries": sum(item.metrics.retry_count for item in trajectories),
         "committed_rules": sum(
             item.metrics.committed_rule_count for item in completed
