@@ -68,7 +68,8 @@ the runtime classification tree.
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
 | Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. No mid-node resume. |
 | Trajectory curation | Implemented at a mechanical level | Version 2.0 validation, summaries, workflow-quality filtering, and generic tool-training export. No expert linguistic grader or deterministic replay command. |
-| Research-grade evaluation | Partial | Exact held-out historical target evaluation exists; broad curated family benchmarks and a validated quality objective do not. |
+| Research-grade evaluation | Partial | Exact held-out historical target evaluation exists; broad curated family benchmarks and a validated quality objective do not. Graded metrics (edit distance, B-Cubed) are still absent, so a near-miss and an unrelated form score alike. |
+| Reconstruction quality | Measured, and bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and reported 54.3% of the time: **30 points are lost in how a parent is chosen from child evidence, after the model has finished.** See [the analysis tools](docs/analysis_tools.md). |
 | Training backend | Not implemented | Trajectory export is the boundary for later work; no TRL/Unsloth training pipeline is included. |
 | Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. There is still no interactive trace browser, and the turn-by-turn timeline lives in the run-triage skill. |
 
@@ -99,14 +100,28 @@ cognate_reconstruction/
 
 tests/workbench/        supported product tests
 examples/               strict JSON, anchor, tree, and minimal CLDF fixtures
+tools/                  unowned analysis scripts; no LLM, no network
 docs/running_inference.md
+docs/analysis_tools.md
 MIGRATION.md
 ```
+
+`tools/` is deliberately outside the package. The test suite proves the harness
+is mechanically correct and says nothing about whether it reconstructs *well*;
+these four scripts measure the second thing against a gold proto-language, and
+`tools/build_polynesian_benchmark.py` rebuilds the benchmark they all read. They
+are analysis instruments rather than product surface: not importable, not
+covered by the suite, and safe to change. See
+[the analysis tools](docs/analysis_tools.md) for what each measures, the current
+baselines, and when to re-run them.
 
 Start with:
 
 - [the full inference/CLI guide](docs/running_inference.md) for schemas,
   commands, provider options, and artifact contracts;
+- [the analysis tools](docs/analysis_tools.md) for the reconstruction-quality
+  measurements, including the oracle ceiling that bounds what any model can
+  score under the current architecture;
 - [report, reject, or score](docs/report_reject_or_score.md) for where a new
   signal belongs — the reasoning behind the mechanical/workflow/linguistic
   split, and why a report and a gate are different kinds of decision;
