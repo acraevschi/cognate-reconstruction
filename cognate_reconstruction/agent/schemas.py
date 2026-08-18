@@ -549,12 +549,41 @@ class CascadeFinalForm(WorkbenchModel):
     form: LexicalForm
 
 
+class ConceptConvergenceReport(WorkbenchModel):
+    concept_id: NonEmptyStr
+    converged: bool
+    parent_forms: tuple[tuple[NonEmptyStr, ...], ...]
+    """Distinct parent forms the children produced, sorted. One means agreement."""
+    child_count: int = Field(ge=0)
+
+
+class ChildConvergenceSummary(WorkbenchModel):
+    """Did this cascade make the children agree on a parent form?
+
+    Reported, never enforced. A hypothesis under which some children still
+    disagree can be entirely legitimate — an unexplained residue is a normal
+    state of a comparative argument — so no tool rejects a commit for diverging.
+    The model previously had to work this out by eyeballing intermediate forms.
+    """
+
+    concepts_evaluated: int = Field(ge=0)
+    converged_concepts: int = Field(ge=0)
+    child_convergence_rate: float = Field(ge=0.0, le=1.0)
+    divergent_concept_ids: tuple[NonEmptyStr, ...] = ()
+    """A bounded sample; `concepts_evaluated - converged_concepts` is the count."""
+    concepts: tuple[ConceptConvergenceReport, ...] = ()
+    """Per-concept detail, omitted on the commit summary to keep the result small."""
+
+
 class TestRuleCascadeResult(WorkbenchModel):
     validation_call_id: NonEmptyStr
     rules: tuple[ReconstructionRule, ...]
     segmentation_overlay_id: NonEmptyStr | None = None
     reports: tuple[RuleApplicationReport, ...]
     final_forms: tuple[CascadeFinalForm, ...]
+    # Defaulted so cascade results recorded before convergence was reported stay
+    # loadable inside older trajectories.
+    convergence: ChildConvergenceSummary | None = None
 
 
 class MorphemeSegmentation(WorkbenchModel):
@@ -738,6 +767,9 @@ class CommittedReconstruction(WorkbenchModel):
 class CommitReconstructionResult(WorkbenchModel):
     status: Literal["committed"] = "committed"
     reconstruction: CommittedReconstruction
+    # The session's last observation should be what its hypothesis actually
+    # produced, not just that the commit parsed. Defaulted for older records.
+    convergence: ChildConvergenceSummary | None = None
 
 
 class NodeLexiconSummary(WorkbenchModel):

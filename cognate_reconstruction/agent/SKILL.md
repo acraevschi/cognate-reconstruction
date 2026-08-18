@@ -199,6 +199,17 @@ set when the evidence supports identity reconstruction.
 all selected forms. Use its validation-call ID in the commit so the backend can
 verify that the committed DSL, child scopes, overlay, and order are identical.
 
+Its `convergence` block answers the question the intermediate diffs only imply:
+for each concept, whether every active child now yields the same parent form,
+plus the divergent concept IDs and an overall rate. `commit_reconstruction`
+returns the same summary over the whole node. Read it — a cascade in which every
+rule fires perfectly can still leave the branches disagreeing, and a rule that
+raises convergence is doing the work the comparative method is for.
+
+Divergence is never rejected, and you must not manufacture rules to remove it. A
+correspondence you cannot yet explain belongs in `anomalies`; inventing a rule
+per exception produces a cascade that fits this lexicon and nothing else.
+
 `commit_reconstruction` must contain the active node ID, the ordered
 branch-scoped rules with their child scopes and confidences in `(0, 1]`, all
 unresolved anomalies, and a concise summary. If segmentation was used, commit

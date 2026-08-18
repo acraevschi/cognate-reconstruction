@@ -29,7 +29,12 @@ from cognate_reconstruction.schemas.traversal import (
     NodeReconstructionContext,
     ReconstructionStep,
 )
-from cognate_reconstruction.traversal.beam import RawCandidate, normalize_and_prune
+from cognate_reconstruction.traversal.beam import (
+    RawCandidate,
+    decided_by_tie_break,
+    normalize_and_prune,
+)
+from cognate_reconstruction.traversal.convergence import report_convergence
 
 
 @dataclass(frozen=True)
@@ -40,14 +45,29 @@ class _TransformedCandidate:
     matched_anchor_ids: tuple[str, ...]
 
 
+BranchSupports = tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]
+"""Per distinct parent output, the active children that produced it."""
+
+
 @dataclass(frozen=True)
 class _PartialCombination:
-    """A bounded Cartesian-product state over children processed so far."""
+    """A bounded Cartesian-product state over children processed so far.
 
-    outputs: tuple[tuple[str, ...], ...]
+    `branch_supports` replaced a set of distinct outputs. A set records *which*
+    forms the children proposed and throws away *how many* proposed each, so a
+    form backed by four branches and a form backed by one were indistinguishable
+    by the time they were scored.
+    """
+
+    branch_supports: BranchSupports
     anchor_matches: tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]
     log_score: float
     derivations: tuple[CandidateDerivation, ...]
+
+    @property
+    def total_support(self) -> int:
+        """Active children folded into this state; one output each."""
+        return sum(len(child_ids) for _, child_ids in self.branch_supports)
 
 
 def _logsumexp(values: Sequence[float]) -> float:
@@ -57,6 +77,50 @@ def _logsumexp(values: Sequence[float]) -> float:
 
 def _ordered_unique(values: Sequence[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(values))
+
+
+def _extend_supports(
+    existing: BranchSupports,
+    output: tuple[str, ...],
+    child_id: str,
+) -> BranchSupports:
+    supports = {segments: list(child_ids) for segments, child_ids in existing}
+    supports.setdefault(output, []).append(child_id)
+    return tuple(
+        (segments, tuple(child_ids))
+        for segments, child_ids in sorted(supports.items())
+    )
+
+
+def _support_signature(
+    branch_supports: BranchSupports,
+) -> tuple[tuple[tuple[str, ...], int], ...]:
+    """The score-relevant content of a support map: outputs and their counts.
+
+    Two partial states scoring identically from here on should merge, and the
+    score depends on the counts rather than on which child contributed which
+    form. Keying on the counts keeps `{X: c1, Y: c2}` and `{X: c2, Y: c1}` a
+    single state, exactly as the old output-set key did, while separating the
+    states the old key wrongly conflated — a four-branch form and a one-branch
+    form of the same shape.
+    """
+    return tuple(
+        (segments, len(child_ids)) for segments, child_ids in branch_supports
+    )
+
+
+def _branch_log_weight(support: int, total_support: int) -> float:
+    """Log share of a partial's mass going to a form `support` children produced.
+
+    Operational heuristic, not a probabilistic model of sound change: a parent
+    candidate takes the share of its state's mass that matches the share of
+    active children proposing it. It is a strict generalization of the flat
+    `-log(len(outputs))` branch penalty it replaces — the two agree exactly
+    whenever every distinct output has equal support, which is every binary node
+    whose children disagree — and it differs only where the old rule handed the
+    same score to a form four branches attest and a form one branch attests.
+    """
+    return math.log(support) - math.log(total_support)
 
 
 def _extend_anchor_matches(
@@ -78,19 +142,30 @@ def _merge_and_prune_partials(
     beam_width: int,
     anchor_match_log_boost: float,
 ) -> list[_PartialCombination]:
-    """Merge equivalent partial states and prune after each child expansion."""
+    """Merge equivalent partial states and prune after each child expansion.
+
+    States are equivalent when they carry the same per-output support counts and
+    the same anchor matches, since those are what the remaining scoring reads.
+    The merged state keeps the *highest-scoring* member's child-ID attribution:
+    equal counts can come from different children, and provenance is bounded here
+    the same way `derivations` is rather than accumulating every attribution.
+    """
     grouped: dict[
         tuple[
-            tuple[tuple[str, ...], ...],
+            tuple[tuple[tuple[str, ...], int], ...],
             tuple[tuple[tuple[str, ...], tuple[str, ...]], ...],
         ],
         list[_PartialCombination],
     ] = defaultdict(list)
     for partial in partials:
-        grouped[(partial.outputs, partial.anchor_matches)].append(partial)
+        grouped[
+            (_support_signature(partial.branch_supports), partial.anchor_matches)
+        ].append(partial)
     merged = [
         _PartialCombination(
-            outputs=outputs,
+            branch_supports=max(
+                items, key=lambda item: item.log_score
+            ).branch_supports,
             anchor_matches=anchor_matches,
             log_score=_logsumexp([item.log_score for item in items]),
             # Bound provenance growth along with hypothesis growth.
@@ -100,7 +175,7 @@ def _merge_and_prune_partials(
                 for derivation in item.derivations
             )[:beam_width],
         )
-        for (outputs, anchor_matches), items in grouped.items()
+        for (_signature, anchor_matches), items in grouped.items()
     ]
     return sorted(
         merged,
@@ -110,7 +185,7 @@ def _merge_and_prune_partials(
                 + max((len(ids) for _, ids in item.anchor_matches), default=0)
                 * anchor_match_log_boost
             ),
-            item.outputs,
+            _support_signature(item.branch_supports),
             item.anchor_matches,
         ),
     )[:beam_width]
@@ -285,7 +360,15 @@ class RuleBasedReconstructor:
         anomalies: Sequence[AnomalyReport] = (),
         anchors: Sequence[LexicalForm] = (),
         evidence_context: NodeReconstructionContext | None = None,
+        inspected_concept_ids: Sequence[str] | None = None,
     ) -> ReconstructionStep:
+        """Combine child beams under a committed cascade.
+
+        `inspected_concept_ids` are the concepts a session actually looked at.
+        Only the agent layer knows them, and only that layer passes them; `None`
+        means "nobody recorded this", which is what a purely deterministic run
+        should say rather than claiming it inspected nothing.
+        """
         child_beams = tuple(children)
         if len(child_beams) < 2:
             raise ValueError("reconstruction requires at least two child beams")
@@ -307,6 +390,11 @@ class RuleBasedReconstructor:
 
         output_distributions = []
         all_reports: list[RuleApplicationReport] = []
+        # What each child's best candidate became after its own scoped cascade,
+        # which is what "the children agreed" is a claim about.
+        convergence_outputs: dict[str, dict[str, tuple[tuple[str, ...], ...]]] = {}
+        winning_support: list[float] = []
+        tie_broken_concepts = 0
         for concept_id in concept_ids:
             available = [
                 (child, distributions[concept_id])
@@ -316,6 +404,7 @@ class RuleBasedReconstructor:
                 if concept_id in distributions
             ]
             partials: list[_PartialCombination] = []
+            child_top_outputs: dict[str, tuple[str, ...]] = {}
             for child_index, (child, distribution) in enumerate(available):
                 transformed_candidates = []
                 for candidate in distribution.candidates:
@@ -330,6 +419,11 @@ class RuleBasedReconstructor:
                     )
                     all_reports.extend(reports)
                     transformed_candidates.append((candidate, transformed))
+                # Candidates are sorted by descending mass, so the first is the
+                # form this child would report on its own.
+                child_top_outputs[child.node_id] = transformed_candidates[0][
+                    1
+                ].segments
 
                 expanded: list[_PartialCombination] = []
                 if child_index == 0:
@@ -341,7 +435,9 @@ class RuleBasedReconstructor:
                             )
                         expanded.append(
                             _PartialCombination(
-                                outputs=(transformed.segments,),
+                                branch_supports=(
+                                    (transformed.segments, (child.node_id,)),
+                                ),
                                 anchor_matches=(
                                     (
                                         transformed.segments,
@@ -366,8 +462,10 @@ class RuleBasedReconstructor:
                 else:
                     for partial in partials:
                         for candidate, transformed in transformed_candidates:
-                            outputs = tuple(
-                                sorted(set(partial.outputs) | {transformed.segments})
+                            branch_supports = _extend_supports(
+                                partial.branch_supports,
+                                transformed.segments,
+                                child.node_id,
                             )
                             anchor_matches = _extend_anchor_matches(
                                 partial.anchor_matches,
@@ -396,7 +494,7 @@ class RuleBasedReconstructor:
                             )
                             expanded.append(
                                 _PartialCombination(
-                                    outputs=outputs,
+                                    branch_supports=branch_supports,
                                     anchor_matches=anchor_matches,
                                     log_score=(
                                         partial.log_score
@@ -414,26 +512,46 @@ class RuleBasedReconstructor:
 
             raw: list[RawCandidate] = []
             for partial in partials:
-                branch_penalty = -math.log(len(partial.outputs))
+                total_support = partial.total_support
                 anchor_matches = dict(partial.anchor_matches)
-                for output in partial.outputs:
+                for output, supporting_child_ids in partial.branch_supports:
                     raw.append(
                         (
                             output,
                             partial.log_score
-                            + branch_penalty
+                            + _branch_log_weight(
+                                len(supporting_child_ids), total_support
+                            )
                             + len(anchor_matches.get(output, ()))
                             * self.anchor_match_log_boost,
-                            partial.derivations[0],
+                            # One derivation per output, naming the branches that
+                            # produced exactly this form.
+                            partial.derivations[0].model_copy(
+                                update={
+                                    "supporting_child_ids": supporting_child_ids
+                                }
+                            ),
                         )
                     )
-            output_distributions.append(
-                normalize_and_prune(
-                    parent_node_id,
-                    concept_id,
-                    raw,
-                    beam_width=self.beam_width,
+            distribution = normalize_and_prune(
+                parent_node_id,
+                concept_id,
+                raw,
+                beam_width=self.beam_width,
+            )
+            output_distributions.append(distribution)
+            tie_broken_concepts += decided_by_tie_break(distribution)
+            convergence_outputs[concept_id] = {
+                child_id: (segments,)
+                for child_id, segments in child_top_outputs.items()
+            }
+            winning_segments = distribution.candidates[0].segments
+            winning_support.append(
+                sum(
+                    segments == winning_segments
+                    for segments in child_top_outputs.values()
                 )
+                / len(child_beams)
             )
 
         output_beam = NodeBeamState(
@@ -480,6 +598,7 @@ class RuleBasedReconstructor:
             for rule in scoped_rules
         )
         concept_count = len(output_distributions)
+        convergence = report_convergence(convergence_outputs)
         diagnostics = ReconstructionDiagnostics(
             rule_count=len(scoped_rules),
             rule_complexity_cost=complexity,
@@ -502,6 +621,25 @@ class RuleBasedReconstructor:
             anomaly_count=len(anomalies),
             anomaly_rate=len(anomalies) / concept_count if concept_count else 0.0,
             identity_reconstruction=not scoped_rules,
+            # A node with no concepts has nothing to agree or disagree about;
+            # 0.0 would read as total divergence rather than as no evidence.
+            child_convergence_rate=convergence.rate if concept_count else None,
+            divergent_concept_count=(
+                convergence.divergent_concept_count if concept_count else None
+            ),
+            divergent_concept_ids=convergence.reported_divergent_concept_ids,
+            mean_branch_support=(
+                sum(winning_support) / len(winning_support)
+                if winning_support
+                else None
+            ),
+            concepts_inspected=(
+                len(set(inspected_concept_ids) & set(concept_ids))
+                if inspected_concept_ids is not None
+                else None
+            ),
+            concepts_available=len(concept_ids),
+            tie_broken_concept_count=tie_broken_concepts,
         )
         return ReconstructionStep(
             parent_node_id=parent_node_id,

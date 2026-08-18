@@ -65,12 +65,12 @@ the runtime classification tree.
 | Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. |
 | LLM tool loop | Implemented | Ten typed tools, bounded turns/calls, same-session rule validation, ordered cascade preview, exact commit checks, coded rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
 | Cost of looking at evidence | Reduced, and measured | A correspondence-set survey over all 46 concepts and ten daughters costs 28 KB. The same ten-node `get_alignments` request that returned 3034 KB for six concepts now returns 314 KB, and 782 KB for the 24 the raised cap allows. A scripted whole-benchmark run that surveys, re-surveys, and aligns at every one of seven nodes never exceeds a 31.9 KB prompt. See ["the cost of looking at the evidence"](#the-cost-of-looking-at-the-evidence). |
-| Deterministic reconstruction | Implemented | Literal token-rule cascades, n-ary beam combination, derivation provenance, diagnostics, and optional scored anchors. |
+| Deterministic reconstruction | Implemented | Literal token-rule cascades, n-ary beam combination weighted by branch support, named tie-break policy, derivation provenance naming the supporting children, convergence diagnostics, and optional scored anchors. |
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
 | Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. No mid-node resume. |
 | Trajectory curation | Implemented at a mechanical level | Version 2.0 validation, summaries, workflow-quality filtering, and generic tool-training export. No expert linguistic grader or deterministic replay command. |
 | Research-grade evaluation | Partial | Exact held-out historical target evaluation exists; broad curated family benchmarks and a validated quality objective do not. Graded metrics (edit distance, B-Cubed) are still absent, so a near-miss and an unrelated form score alike. |
-| Reconstruction quality | Measured, and bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and reported 54.3% of the time: **30 points are lost in how a parent is chosen from child evidence, after the model has finished.** See [the analysis tools](docs/analysis_tools.md). |
+| Reconstruction quality | Measured, partly improved, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and is now reported 58.7% of the time, up from 54.3% once branch support reached the score — top-1 rose at every beam width and beam-exact fell at none. **26 points are still lost in how a parent is chosen from child evidence, after the model has finished.** Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. See [the analysis tools](docs/analysis_tools.md). |
 | Training backend | Not implemented | Trajectory export is the boundary for later work; no TRL/Unsloth training pipeline is included. |
 | Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. There is still no interactive trace browser, and the turn-by-turn timeline lives in the run-triage skill. |
 
@@ -619,16 +619,61 @@ For each concept:
 2. branch-scoped rules transform retained child candidates in order;
 3. child log scores and the confidence of rules that actually applied are
    combined;
-4. disagreeing child outputs receive a transparent branch penalty;
+4. each distinct parent output takes the share of its state's mass matching the
+   share of active children that produced it;
 5. exact scored-anchor matches optionally add the configured boost;
 6. identical outputs are merged with log-sum-exp, normalized, and pruned to
    `beam_width`.
 
-Every candidate retains derivation and child-candidate provenance. The output
-probabilities are normalized heuristic beam mass, not calibrated Bayesian
-posteriors. Model confidence, the disagreement penalty, and optional anchor
-boost are operational scoring choices rather than a validated linguistic
-theory.
+Every candidate retains derivation and child-candidate provenance, including the
+child IDs whose cascade produced exactly that form. The output probabilities are
+normalized heuristic beam mass, not calibrated Bayesian posteriors. Model
+confidence, the branch-support weight, and the optional anchor boost are
+operational scoring choices rather than a validated linguistic theory.
+
+### Branch support, and how equal scores are broken
+
+Step 4 is the rule that decides which parent form a node reports when its
+children disagree. It is `log(support) - log(total_support)`, where `support` is
+the number of active children whose scoped cascade produced that exact form and
+`total_support` is the number folded into that combination state. Mass is
+therefore redistributed among a state's outputs in proportion to branch support,
+and the state's total is unchanged.
+
+This replaced a flat `-log(len(outputs))` applied identically to every distinct
+output. The old rule was a strict special case of the new one: where every
+output has equal support the two agree exactly, which includes every binary node
+whose two children disagree. They differ only where the old rule scored a form
+four branches attest and a form one branch attests identically — and, because
+`normalize_and_prune` sorted equal scores by the segment tuple, let Unicode order
+pick the winner. Renaming the minority segment from `ʔ` to `W` in
+`tools/tiebreak_probe.py` was enough to flip which form the node reported.
+
+It is still an operational heuristic and not a probabilistic model of sound
+change. Branch agreement is evidence in the comparative method, but the number
+of daughters showing a form is not its posterior probability: a shared
+innovation is attested by every branch that inherited it, which is why a naive
+per-column majority vote across children scores *worse* than this — eight of ten
+Polynesian daughters lost `*ʔ`, so the majority is wrong exactly where the
+reconstruction is interesting. Support weights candidates; it does not
+adjudicate them.
+
+Ties still happen — two branches, one form each, is the common case — and how
+they resolve is now a named policy rather than a side effect. `TIE_BREAK_POLICY`
+in `traversal/beam.py` is **ascending lexicographic order of the segment
+tuple**, and it is documented there as deliberately arbitrary: it exists so runs
+reproduce, and it carries no linguistic claim. Choosing between equally supported
+reconstructions on linguistic grounds is a real and separate problem that belongs
+with directionality, not in a sort key.
+
+How often that fires is now counted rather than assumed. `tie_broken_concept_count`
+records the concepts whose reported form was picked by segment order, and
+`inspect-run` prints it beside the convergence numbers. The beam shows two
+probabilities of 0.50 whether a form won on support or on the order of its first
+differing segment, so without the count a reader cannot tell an evidenced
+reconstruction from a coin-flip. Under oracle rules on the Polynesian benchmark
+it fires on 22 of 46 concepts at `tongic`, 18 at `marquesic`, and 16 at
+`futunic` — all leaf-adjacent binary nodes.
 
 Each completed node reports:
 
@@ -636,11 +681,59 @@ Each completed node reports:
 - evaluated rule results and successful applications;
 - target-absent, context-mismatch, and anchor-mismatch counts;
 - mechanical rule coverage over applicable results;
-- anomaly count/rate; and
-- whether the result was an empty identity reconstruction.
+- anomaly count/rate;
+- whether the result was an empty identity reconstruction; and
+- **child convergence**: `child_convergence_rate`, `divergent_concept_count`
+  with a bounded sample of the IDs, `mean_branch_support`, and
+  `concepts_inspected` / `concepts_available`; and
+- `tie_broken_concept_count`, how many reported forms were chosen by segment
+  order rather than by mass.
 
 Rule complexity is diagnostic only. It does not currently change the default
 beam score.
+
+### Child convergence
+
+Every counter above except the last group measures the *rules*. None of them
+measured whether the children ended up agreeing on a parent, which is the only
+thing a reconstruction is for. A node can apply a flawless cascade — full
+`rule_coverage`, no anomalies, no protocol failures — and leave every branch
+saying something different. One live node committed `f > p / _eː` scoped to
+Tongan and `p > f / _e` scoped to Niuean: contradictory claims about the same
+correspondence, both validated, both at confidence 1.0, guaranteeing divergence,
+and passing every check the harness had.
+
+- `child_convergence_rate` — share of concepts on which every attesting active
+  child, contributing its highest-scoring candidate transformed by its own
+  scoped cascade, produced the identical parent form. A concept only one child
+  attests counts as converged; there is no second branch to disagree with it.
+  This is the headline number in `inspect-run`, printed next to `rule_coverage`.
+- `mean_branch_support` — averaged over concepts, the share of *all* the node's
+  active children standing behind the winning candidate. This is what separates
+  "all five children said this" from "one child said this and the rest were
+  silent", which the rate alone cannot.
+- `concepts_inspected` / `concepts_available` — evidence coverage, derived from
+  concept and form IDs named in tool arguments during the session, with a call
+  that explicitly scopes to the whole lexicon counting as such. Live runs
+  committed on 5, 12, 12 and 8 concepts out of 46 available and nothing recorded
+  it.
+
+The same summary is returned to the model, by `test_rule_cascade` per concept
+and by `commit_reconstruction` over the whole node, so the session's last
+observation is what its hypothesis actually produced rather than only that the
+commit parsed.
+
+**Divergence is reported and scored, never rejected.** A linguist may
+legitimately commit a hypothesis under which some children disagree — an
+unexplained residue belongs in `anomalies`, and rejecting divergence would
+reward inventing a rule per exception until everything lines up. For the same
+reason convergence is deliberately *not* wired into `high_quality`, which is
+documented as protocol hygiene making no linguistic claim. See
+[`docs/report_reject_or_score.md`](docs/report_reject_or_score.md).
+
+All convergence fields are `None`-defaulted, so a step written before they
+existed loads and reads as "not recorded" rather than as a node on which nothing
+ever diverged.
 
 `rule_coverage` is `successful_applications / applicable_rule_results`, where
 `applicable_rule_results` excludes evaluated results whose form never contained
@@ -897,6 +990,31 @@ targets above were *not* re-run, because every one of them shells out through
 | `tools/tiebreak_probe.py` | Unchanged: cases A and B still agree, so nothing is decided by Unicode order |
 | Scripted whole-benchmark agent run, 7 internal nodes | 0.6s; largest prompt seen by the provider 31.9 KB with a survey, a repeated survey, and an alignment call at every node; one compaction per node; `correspondence_maps` populated at all 7; `result.json` 10,017 KB of which the maps are 448 KB |
 | Live `google/gemma-4-26b-a4b` run on the same benchmark | 4 of 7 nodes committed, against 0–3 in the three pre-change attempts. On `tongic`, which had failed all three times, peak prompt **22,020 tokens against 109,270 before**, and the model opened every node with `summarize_correspondences` unprompted. The run still ends short of the root: `central_eastern` died on `ProtocolStallError` with 8 of its last 9 calls rejected in the commit protocol, so no `result.json` and no held-out accuracy exists for this run. Both remaining failure classes belong to the loop-resilience and directionality work, not to payload cost |
+
+Re-run on **2026-08-18** for the branch-support and convergence work, on the
+same Polynesian benchmark:
+
+| Check | Result |
+| --- | --- |
+| Supported suite: `pytest -q -k "not local_run_artifacts"` | **221 passed** (202 before; 19 new cases for branch support, convergence, evidence coverage, tie-break counting, append-only readability, and the tool-script path binding) |
+| `tools/oracle_ceiling.py`, beam width 5 | **top-1 54.3% → 58.7%**, beam-exact **84.8% → 84.8%**, selection gap **30.4% → 26.1%** |
+| `tools/oracle_ceiling.py`, widths 1/3/10 | top-1 32.6→47.8%, 54.3→56.5%, 54.3→56.5%; beam-exact 32.6→47.8%, 78.3→78.3%, 84.8→84.8%. Top-1 up at every width, beam-exact down at none — a selection fix, not candidates traded away |
+| `tools/tiebreak_probe.py` | Cases A and B now agree: the four-branch form wins both at p=0.80 against p=0.20, where before every candidate scored p=0.50 and case B reported `a W a`. Case C collapses to one candidate at p=1.00 |
+| Per-node convergence under oracle rules | Divergence is real and widespread, not an artifact: `child_convergence_rate` runs 0.28–0.63 across the seven nodes, and 23 of 46 concepts diverge at the root |
+| Backward compatibility | `tests/workbench/fixtures/trajectory_real_pre_change.jsonl` still loads; its step reports every new diagnostic as "not recorded" rather than as zero |
+
+| Tie-break incidence under oracle rules | 22 of 46 reported forms at `tongic`, 18 at `marquesic`, 16 at `futunic`, 1 at the root — the arbitrary choices are made at the leaf-adjacent binary nodes and harden into mass on the way up |
+| `tools/*.py` bind to their own checkout | Running the oracle in a worktree of the pre-change commit now reports `measuring: <worktree>/cognate_reconstruction` and 54.3%, with no `PYTHONPATH` set |
+
+One measurement hazard was found while producing that table and is now fixed
+rather than documented as a caveat: `python tools/oracle_ceiling.py` puts
+`tools/` on `sys.path[0]`, so the script imported `cognate_reconstruction`
+through the editable install — the working tree — even when run from a `git
+worktree` of an older commit, and a before/after comparison done that way
+silently measured the same code twice. `tools/_bootstrap.py` now puts each
+script's own repository root first, and every measurement prints a `measuring:`
+line naming the source it loaded. See
+[the analysis tools](docs/analysis_tools.md).
 
 The supported suite includes a scripted end-to-end provider that performs
 evidence inspection, alignment, sound-law testing, cascade preview, commit,
@@ -1270,7 +1388,77 @@ future ideas.
   what counts as a valid reconstruction — but it does mean a mechanically clean
   run can still be internally incoherent.
 - Beam probabilities are normalized heuristic scores and should not be
-  interpreted as calibrated uncertainty.
+  interpreted as calibrated uncertainty. Branch support now weights them, which
+  is evidence in the comparative method but is not a posterior: a shared
+  innovation is attested by every branch that inherited it, so support can be
+  confidently wrong exactly where a reconstruction is interesting.
+- **Most of the selection gap is still open, and it originates at the binary
+  nodes nearest the leaves.** With oracle rules the correct Proto-Polynesian
+  form is in the beam 84.8% of the time and reported 58.7% of the time. Branch
+  support closed 4.3 of the 30.4 points; the rest survives because five of the
+  benchmark's seven nodes are binary, where two disagreeing children are
+  one-to-one and support says nothing, so `TIE_BREAK_POLICY` — segment order,
+  deliberately arbitrary — decides. `tie_broken_concept_count` shows where:
+  22 of 46 concepts at `tongic`, 18 at `marquesic`, 16 at `futunic`, but only 1
+  at the root. **The coin-flips happen low in the tree and harden into
+  accumulated mass on the way up** — by the root only one miss is still an exact
+  tie, yet 12 of its 19 misses have the correct form in the beam. A node that
+  reports no ties is therefore not evidence that its inputs were chosen on
+  evidence.
+- **A better tie-break is nearly exhausted as a lever, and that is the more
+  useful finding.** Of the 22 ties at `tongic`, the proto-form is one of the two
+  candidates in only 10; in the other 12 *neither* candidate is right, so no
+  tie-break can win them. A trial policy — fewest morph boundaries first, then
+  most segments — resolves **10 of those 10**, and is therefore already optimal
+  at that node, yet moves root top-1 only from 58.7% to 60.9%. It is not
+  committed: a two-point gain from an exhausted lever is not worth freezing a
+  scoring policy the research owner has not ruled on.
+- **The remaining gap is mostly selection, not missing capability.** Of the 19
+  root misses, 12 have the correct form in the beam and 7 do not — so the
+  architecture already computes the right answer for 39 of 46 concepts and fails
+  to report it for 12 of them. Only **one** of those 12 is an exact tie; in the
+  other 11 the reported form carries strictly *more* mass than the correct one,
+  which makes mass accumulation through the tree, not tie-breaking, the largest
+  single lever. Of the 7 the beam never contains, three have a daughter retaining
+  every gold segment and one (`walk`: `ʔ a l u` / `h a e l e` against `f a n o`)
+  is lexical replacement that no phonological method recovers.
+- **Out-group evidence would break many of these ties, and is not wired in.**
+  `tools/outgroup_probe.py` scores it against the withheld gold: over the 66
+  ties across all seven nodes, segment order gets 18 right, out-group presence
+  counted per clade gets 23, and 25 with the morph-boundary rule first, against
+  a ceiling of 29. The harness already computes which nodes are out-groups
+  ([traverser.py:92](cognate_reconstruction/traversal/traverser.py:92)) and
+  exposes them to the model; the deterministic scorer never sees them. Two
+  caveats the probe exists to keep visible: counting per *daughter* instead of
+  per clade scores exactly what segment order scores, because it becomes a
+  majority vote over shared innovations, and treating a segment's *absence* as
+  out-group evidence scores below segment order. Nothing here is committed —
+  changing which candidate wins the beam is a research-owner decision.
+- **Do not read `oracle_ceiling.py` as a bound on the rule language.** Its oracle
+  map is context-free — one target per source segment, globally — while the DSL
+  has contexts. Forms it cannot reach may still be reachable: `ʔ e l e l o` →
+  `ʔ a l e l o` needs only `e > a / ʔ_`. An earlier revision of this entry
+  claimed the leftover ties needed segments from two daughters at once and that
+  cross-branch composition was where the gap lived. Both were artifacts of the
+  oracle's weakness, and the correction is recorded in
+  `prompts/06-proto-inventory.md`.
+- Two weightings that look like the obvious fix are traps, and neither is
+  implemented: weighting branches by descendant-leaf count would give
+  `nuclear_polynesian` 8:2 over `tongic` at the root, and per-column majority
+  voting scores worse than the current rule outright. Both entrench shared
+  innovations — eight of ten Polynesian daughters lost `*ʔ` — so both are
+  confidently wrong exactly where a reconstruction is interesting. Weighting
+  support by the *mass* of the supporting children's candidates rather than by
+  their count would separate a confident child from an unconfident one at a
+  binary node and degenerates to the current rule when masses are equal; it is
+  a scoring-policy change and belongs with the branch penalty under
+  "Decisions that require research-owner input".
+- Child convergence is *measured* and scored into the beam only through branch
+  support; it gates nothing. A node whose committed rules make its children
+  contradict each other outright gets the same `high_quality` verdict as one
+  whose branches agree completely. That is deliberate — see
+  [`docs/report_reject_or_score.md`](docs/report_reject_or_score.md) — but it
+  means `child_convergence_rate` has to be read, not assumed.
 - Rule confidence is supplied by the model. There is no independent
   calibration or learned likelihood model.
 - Rule complexity is visible but does not penalize the beam. No agreed

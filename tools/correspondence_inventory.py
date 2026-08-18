@@ -17,6 +17,8 @@ import collections
 import json
 from pathlib import Path
 
+import _bootstrap  # noqa: F401  (bind to this checkout; see module)
+
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 

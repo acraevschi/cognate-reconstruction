@@ -139,7 +139,9 @@ def default_tool_registry() -> ToolRegistry:
                 "and return every intermediate diff plus final forms. No-op "
                 "rules are invalid; an empty cascade represents identity. Each "
                 "rule takes only dsl and source_child_ids: this call is itself "
-                "the test, so a rule here carries no validation_call_id."
+                "the test, so a rule here carries no validation_call_id. The "
+                "result also reports, per concept, whether the children now "
+                "agree on one parent form, and lists those that do not."
             ),
             args_model=TestRuleCascadeArgs,
             handler=test_rule_cascade,
@@ -165,7 +167,9 @@ def default_tool_registry() -> ToolRegistry:
                 "validation with the identical DSL and child scope. "
                 "supporting_form_ids defaults to that validation's forms. "
                 "Set cascade_validation_call_id only to an ID returned by "
-                "test_rule_cascade; omit it if no cascade preview was run."
+                "test_rule_cascade; omit it if no cascade preview was run. A "
+                "successful commit reports how far the children converged on "
+                "one parent form; divergence is recorded, never rejected."
             ),
             args_model=CommitReconstructionArgs,
             handler=commit_reconstruction,

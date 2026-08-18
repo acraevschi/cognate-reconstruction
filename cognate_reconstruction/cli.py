@@ -8,6 +8,7 @@ import json
 import sys
 import uuid
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -757,6 +758,65 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
         "reported_cost_usd": sum(
             item.metrics.cost_usd or 0.0 for item in trajectories
         ),
+        # Reported, not gated. `high_quality` stays a protocol-hygiene filter;
+        # whether the branches agreed is closer to a linguistic claim, so it is
+        # printed for a reader and changes nothing downstream. See
+        # docs/report_reject_or_score.md.
+        **_convergence_summary(completed),
+    }
+
+
+def _convergence_summary(
+    completed: Sequence[AgentTrajectory],
+) -> dict[str, object]:
+    """Aggregate what the deterministic steps recorded about child agreement.
+
+    Only steps that actually carry the measure are averaged. Steps written before
+    it existed are counted separately rather than folded in as zeroes, which
+    would report a corpus of old records as maximally divergent.
+    """
+    rates = [
+        step.diagnostics.child_convergence_rate
+        for step in (item.reconstruction_step for item in completed)
+        if step is not None and step.diagnostics.child_convergence_rate is not None
+    ]
+    supports = [
+        step.diagnostics.mean_branch_support
+        for step in (item.reconstruction_step for item in completed)
+        if step is not None and step.diagnostics.mean_branch_support is not None
+    ]
+    divergent = sum(
+        step.diagnostics.divergent_concept_count or 0
+        for step in (item.reconstruction_step for item in completed)
+        if step is not None
+    )
+    inspected = [
+        (
+            step.diagnostics.concepts_inspected,
+            step.diagnostics.concepts_available,
+        )
+        for step in (item.reconstruction_step for item in completed)
+        if step is not None
+        and step.diagnostics.concepts_inspected is not None
+        and step.diagnostics.concepts_available is not None
+    ]
+    tie_broken = sum(
+        step.diagnostics.tie_broken_concept_count or 0
+        for step in (item.reconstruction_step for item in completed)
+        if step is not None
+    )
+    return {
+        "nodes_with_convergence_recorded": len(rates),
+        "tie_broken_concepts": tie_broken,
+        "mean_child_convergence_rate": (
+            sum(rates) / len(rates) if rates else None
+        ),
+        "divergent_concepts": divergent,
+        "mean_branch_support": (
+            sum(supports) / len(supports) if supports else None
+        ),
+        "concepts_inspected": sum(count for count, _ in inspected),
+        "concepts_available": sum(total for _, total in inspected),
     }
 
 

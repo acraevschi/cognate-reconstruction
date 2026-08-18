@@ -22,6 +22,7 @@ from cognate_reconstruction.agent.events import (
     AgentEventKind,
     AgentEventSink,
 )
+from cognate_reconstruction.agent.inspection import inspected_concept_ids
 from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.providers import ProviderTransientError
 from cognate_reconstruction.agent.providers.protocol import LLMProvider
@@ -227,6 +228,9 @@ class _RunState:
     # prompt, oldest first, and how many have been replaced by a placeholder.
     live_tool_results: list[_ToolResultRecord] = field(default_factory=list)
     compacted_tool_results: int = 0
+    # Concepts named in tool arguments over the session, so a commit made after
+    # looking at 5 of 46 concepts is legible as such.
+    inspected_concept_ids: set[str] = field(default_factory=set)
 
 
 def _sha256_json(value: object) -> str:
@@ -834,6 +838,7 @@ class AgentOrchestrator:
         inspection_count = sum(
             name in inspection_names for name in state.successful_tool_names
         )
+        available_concept_ids = {form.concept_id for form in context.all_forms}
         sound_law_tests = state.successful_tool_names.count("test_sound_law")
         return AgentNodeMetrics(
             started_at=state.started_at,
@@ -851,6 +856,10 @@ class AgentOrchestrator:
             truncation_backoff_applied=state.truncation_backoff_count,
             compacted_tool_results=state.compacted_tool_results,
             inspection_tool_calls=inspection_count,
+            concepts_inspected=len(
+                state.inspected_concept_ids & available_concept_ids
+            ),
+            concepts_available=len(available_concept_ids),
             sound_law_tests=sound_law_tests,
             cascade_tests=state.successful_tool_names.count("test_rule_cascade"),
             input_tokens=self._usage_total(
@@ -974,6 +983,7 @@ class AgentOrchestrator:
         return AgentRunResult(
             reconstruction=run_result.reconstruction,
             trajectory=trajectory,
+            inspected_concept_ids=run_result.inspected_concept_ids,
         )
 
     def run(self, context: AgentContext) -> AgentRunResult:
@@ -1137,6 +1147,17 @@ class AgentOrchestrator:
                     state.tool_call_count += 1
                     self._total_tool_calls += 1
                     state.tool_names.append(call.name)
+                    state.inspected_concept_ids |= inspected_concept_ids(
+                        call.name,
+                        call.arguments,
+                        concepts_by_form_id={
+                            form.form_id: form.concept_id
+                            for form in context.all_forms
+                        },
+                        available_concept_ids={
+                            form.concept_id for form in context.all_forms
+                        },
+                    )
                     self._emit(
                         AgentEventKind.TOOL_CALL,
                         context.node_id,
@@ -1216,6 +1237,9 @@ class AgentOrchestrator:
                         return AgentRunResult(
                             reconstruction=context.commit,
                             trajectory=trajectory,
+                            inspected_concept_ids=tuple(
+                                sorted(state.inspected_concept_ids)
+                            ),
                         )
                 if pending_stall is not None:
                     raise ProtocolStallError(pending_stall)

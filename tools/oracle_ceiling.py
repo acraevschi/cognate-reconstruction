@@ -25,6 +25,8 @@ import json
 import sys
 from pathlib import Path
 
+import _bootstrap  # noqa: F401  (bind to this checkout; see module)
+
 from cognate_reconstruction.rules.parser import parse_rule, NoOpRuleError
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 from cognate_reconstruction.schemas.rules import ReconstructionRule
@@ -192,6 +194,10 @@ def run(payload_path: Path, beam_width: int) -> int:
             beam_hits += 1
 
     print(f"benchmark: {payload_path}")
+    # State which source produced the number. A figure quoted from this tool is
+    # meaningless without it: the script and the package it measures can come
+    # from different checkouts. See tools/_bootstrap.py.
+    print(f"measuring: {_bootstrap.loaded_package_path()}")
     print(f"root node: {root_id}   beam width: {beam_width}   concepts: {evaluated}")
     print()
     print(f"  top  exact  {top_hits:>3}/{evaluated}  {top_hits / evaluated:6.1%}   "

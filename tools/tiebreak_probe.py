@@ -13,6 +13,8 @@ Usage:
 
 from __future__ import annotations
 
+import _bootstrap  # noqa: F401  (bind to this checkout; see module)
+
 from cognate_reconstruction.rules.parser import parse_rule
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.rules import ReconstructionRule
@@ -50,6 +52,7 @@ def report(label: str, children: list[LanguageLexicon], rules=()) -> None:
 
 
 def main() -> None:
+    print(f"measuring: {_bootstrap.loaded_package_path()}\n")
     majority = [lexicon(f"c{i}", "aka") for i in range(1, 5)]
 
     report(

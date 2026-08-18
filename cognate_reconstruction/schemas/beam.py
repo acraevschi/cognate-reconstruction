@@ -14,6 +14,17 @@ class CandidateDerivation(WorkbenchModel):
     child_candidate_ids: tuple[NonEmptyStr, ...]
     rule_ids: tuple[NonEmptyStr, ...] = ()
     alignment_ids: tuple[NonEmptyStr, ...] = ()
+    # Defaulted for append-only readability: derivations written before branch
+    # support was retained name no supporters, which reads as "not recorded".
+    supporting_child_ids: tuple[NonEmptyStr, ...] = ()
+    """Active children whose scoped cascade produced this exact parent form.
+
+    Branch agreement is evidence in the comparative method, so the count behind
+    a candidate is part of its derivation, not a summary statistic derived from
+    it. `traversal/reconstructor.py` scores a candidate by how many of these
+    there are; naming them lets a reader check the claim against the input
+    beams.
+    """
     note: NonEmptyStr | None = None
 
 

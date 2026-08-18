@@ -10,6 +10,7 @@ from cognate_reconstruction.agent.schemas import (
     CommittedSoundRule,
     TestSoundLawResult,
 )
+from cognate_reconstruction.agent.tools.convergence import commit_convergence
 from cognate_reconstruction.agent.tools.errors import (
     ToolInputError,
     parse_rule_or_reject,
@@ -332,4 +333,14 @@ def commit_reconstruction(
         parsed_rules=tuple(parsed_rules),
     )
     context.commit = reconstruction
-    return CommitReconstructionResult(reconstruction=reconstruction)
+    # The last thing the session sees should be what its hypothesis produced,
+    # not only that the commit passed its checks. This never rejects: a commit
+    # whose children still disagree is a legitimate hypothesis with a residue.
+    return CommitReconstructionResult(
+        reconstruction=reconstruction,
+        convergence=commit_convergence(
+            context,
+            parsed_rules,
+            segmentation_overlay_id=arguments.segmentation_overlay_id,
+        ),
+    )

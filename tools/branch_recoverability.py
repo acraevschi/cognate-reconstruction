@@ -19,6 +19,8 @@ import argparse
 import collections
 from pathlib import Path
 
+import _bootstrap  # noqa: F401  (bind to this checkout; see module)
+
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 
 from oracle_ceiling import align_pair  # noqa: E402  (same directory)
