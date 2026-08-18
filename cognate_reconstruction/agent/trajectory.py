@@ -88,7 +88,28 @@ class AgentNodeMetrics(WorkbenchModel):
             "user-supplied provider option, which needs --allow-truncation-backoff."
         ),
     )
+    compacted_tool_results: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Tool results replaced by a placeholder in the live prompt after a "
+            "later call to the same tool re-requested their selection. Defaulted "
+            "and recorded per node so a session that only fit inside its context "
+            "because the harness dropped evidence is legible as such. The "
+            "trajectory's own messages keep the full content."
+        ),
+    )
     inspection_tool_calls: int = Field(ge=0)
+    concepts_inspected: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Distinct concepts this session brought into view, by ID named in a "
+            "tool argument or by an explicitly unscoped whole-lexicon call. None "
+            "means the record predates the counter, not that nothing was read."
+        ),
+    )
+    concepts_available: int | None = Field(default=None, ge=0)
     sound_law_tests: int = Field(ge=0)
     cascade_tests: int = Field(ge=0)
     input_tokens: int | None = Field(default=None, ge=0)
@@ -241,6 +262,13 @@ class AgentTrajectory(WorkbenchModel):
 class AgentRunResult(WorkbenchModel):
     reconstruction: CommittedReconstruction
     trajectory: AgentTrajectory
+    inspected_concept_ids: tuple[NonEmptyStr, ...] = ()
+    """Concepts the session named, for the deterministic step to record.
+
+    Carried here rather than only as the count in `metrics` because the step
+    intersects them with the concepts it actually reconstructs. This is a live
+    hand-off between the two layers and is never persisted on its own.
+    """
 
 
 class TrajectorySink(Protocol):

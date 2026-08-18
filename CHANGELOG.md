@@ -260,6 +260,77 @@ rejected commit-schema errors.
   and a human reads a line; score it and a correct reconstruction is excluded
   from the corpus.
 
+### Making linguistic evidence affordable to look at
+
+Driven by a 10-language, 46-concept Polynesian benchmark that could not be
+completed in three attempts. One `get_alignments` call for six concepts across
+two languages returned 31 KB and moved a session from 5,003 to 34,286 tokens; the
+same call across ten languages returned 2,885 KB. Inspecting evidence cost more
+context than reasoning about it, so the model committed on 5, 12, 12 and 8 of 46
+concepts.
+
+- Stopped re-embedding the alignments in every pairwise view.
+  `CorrespondenceMap.alignments` became `alignment_ids`, with the alignments held
+  once on `MultipleAlignmentMap` and a validator that keeps every reference —
+  pairwise IDs and example columns alike — resolvable against them. With N nodes
+  the alignments were previously serialized `1 + N·(N−1)/2` times.
+- Added `detail` to `GetAlignmentsArgs`, defaulting to `"summary"`: correspondence
+  records carry a true occurrence `count` plus at most three
+  `(alignment_id, column_index)` references into alignments that are in the
+  payload anyway. `"full"` still returns every column occurrence with its
+  contexts.
+- Renamed `CorrespondenceSummary.observations` to `example_observations`, added
+  `example_columns`, and relaxed `validate_counts` from `count == len(...)` to
+  bounding the samples by the count. The old field name and the old validator
+  together were what *forced* the full trace to be present; `count` is the true
+  count under both renderings, and no sample is ever passed off as complete.
+- Shortened `alignment_id` from every participating variety spelled out to
+  `msa-<selection digest>:<concept>:<cognate set>`. The selection stays in the ID
+  because the same cognate set aligned against different daughters is different
+  aligned material, but 308 characters repeated once per reference was 700 KB of a
+  single ten-node call.
+- Raised the `get_alignments` concept cap from 12 to 24 on measurement, not
+  preference: 24 concepts cost 41 KB across two nodes and 82 KB across three. The
+  docstring states what the cap does not do — it bounds concepts, not bytes, since
+  the pairwise term is quadratic in the node count.
+- Added `summarize_correspondences`, the tenth tool: correspondence sets over the
+  whole evidence set at once — the n-tuple of aligned segments across the selected
+  nodes with its support count — ordered by support, with `min_support` defaulting
+  to 2, an optional `segment`/`segment_node_id` filter (`Ø` for a gap, as in the
+  DSL), and `list_concepts`-style pagination. It deliberately takes no batching
+  bound on its input, because recurrence is invisible in a batch; the output is
+  bounded instead. `total_set_count`, `matched_set_count`, and
+  `suppressed_below_min_support` are reported so a page of thirty rows says
+  whether there is a tail. 216 sets over ten Polynesian daughters and all 46
+  concepts, 28 KB, matching `tools/correspondence_inventory.py` set for set.
+- Populated `ReconstructionStep.correspondence_maps`, which had been declared,
+  serialized as `[]` into every artifact by every run, and populated by nothing.
+  It uses the compact rendering and is recorded only when the traverser supplies
+  an evidence context, so the analysis scripts in `tools/` still pay nothing.
+  448 KB of a 10,017 KB `result.json` on the seven-node Polynesian benchmark
+  (+4.5%), which is twice the 232 KB the snapshot alone shows: a step is
+  serialized both in `snapshot.steps` and as the trajectory's
+  `reconstruction_step`. Nothing in it reaches a rule, a candidate, or the beam.
+- Dropped superseded evidence results from the live prompt. When a read-only
+  evidence call re-requests a selection an earlier call covered in full, the
+  earlier tool message content is replaced by a `{"compacted": true, ...}`
+  placeholder naming the tool, its call ID, and the call that superseded it;
+  `compacted_tool_results` counts it per node and a `context_compaction` event
+  records it. Supersession requires full coverage, not overlap, and every
+  non-selection argument must match exactly. The most recent result for a tool,
+  rejections, validations, cascade previews, overlays, and commits are never
+  eligible. **The trajectory keeps the full content**: only the live prompt
+  shrinks, and the two are allowed to diverge because a record edited to fit is
+  worthless as a record.
+- Rewrote the required workflow in `SKILL.md`: survey the correspondence
+  inventory, read it by support, narrow it by segment, and only then pull
+  alignments for the concepts a set names — and said plainly that a correspondence
+  with support 1 is residue rather than evidence. The instruction text and the
+  tool schemas are both hashed into checkpoint compatibility, so **every existing
+  checkpoint refuses to resume**. That is correct: a resumed run would otherwise
+  finish its remaining nodes under a different workflow from the ones already in
+  the checkpoint.
+
 ## 0.2.0
 
 - Refocused the installed project on `cognate_reconstruction`.

@@ -17,6 +17,33 @@ from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 
 RawCandidate = tuple[tuple[str, ...], float, CandidateDerivation]
 
+TIE_BREAK_POLICY = "segment-lexicographic"
+"""How equal-mass candidates are ordered, chosen rather than inherited.
+
+Candidates that score exactly the same still have to come out of the sort in
+some order, and whichever comes first wins the node. That order used to be a
+side effect of putting `segments` in the sort key for determinism; naming it
+makes it a decision someone can disagree with.
+
+The policy is: **ascending lexicographic order of the segment tuple, by Unicode
+code point.** It is arbitrary. It is not parsimony, not markedness, not
+directionality, and it carries no linguistic claim whatsoever — under it `a W a`
+beats `a k a` because `W` sorts before `k`, which is a fact about Unicode and
+about nothing else.
+
+It is kept because reproducibility is worth more here than a guess: the same
+inputs must produce the same beam on every machine and every run, and an
+arbitrary rule stated out loud is safer than a plausible-sounding rule that
+would quietly encode a theory of sound change into the scorer. Choosing among
+equally supported reconstructions on linguistic grounds is a real problem and a
+separate one — it belongs with directionality, not in a sort key.
+
+Ties reaching this policy are now rarer than they were: branch support weighting
+in `traversal/reconstructor.py` separates candidates the flat branch penalty used
+to leave exactly equal. What remains genuinely tied — two branches, one each —
+is decided here, blindly and on purpose.
+"""
+
 
 def _logsumexp(values: Iterable[float]) -> float:
     materialized = tuple(values)
@@ -29,6 +56,40 @@ def _candidate_id(node_id: str, concept_id: str, segments: tuple[str, ...]) -> s
     return f"{node_id}:{concept_id}:{digest}"
 
 
+TIE_BREAK_EPSILON = 1e-9
+"""Log-mass difference below which two candidates count as tied.
+
+Exact ties come out bit-identical when the arithmetic is symmetric, but log-sum-
+exp over differently ordered inputs need not be, so equality is not tested with
+`==`. The tolerance is far below any score difference the scorer produces on
+purpose and far above float noise.
+"""
+
+
+def _tie_break_key(segments: tuple[str, ...]) -> tuple[str, ...]:
+    """The `TIE_BREAK_POLICY` sort key: the segment tuple itself."""
+    return segments
+
+
+def decided_by_tie_break(distribution: ConceptCandidateDistribution) -> bool:
+    """Was this concept's reported form chosen by `TIE_BREAK_POLICY`?
+
+    True when the top two candidates carry the same mass, so the winner was
+    picked by segment order and nothing else. Counting these is the only way a
+    reader can tell an evidenced reconstruction from an arbitrary one — the beam
+    prints two probabilities of 0.50 either way, and on the Polynesian benchmark
+    this fires on 22 of 46 concepts at one leaf-adjacent binary node.
+
+    A report, never a score: nothing consumes it, and a tie is not a defect. It
+    is the honest output when the evidence genuinely does not separate two
+    reconstructions.
+    """
+    candidates = distribution.candidates
+    if len(candidates) < 2:
+        return False
+    return abs(candidates[0].log_score - candidates[1].log_score) < TIE_BREAK_EPSILON
+
+
 def normalize_and_prune(
     node_id: str,
     concept_id: str,
@@ -36,7 +97,15 @@ def normalize_and_prune(
     *,
     beam_width: int,
 ) -> ConceptCandidateDistribution:
-    """Merge identical strings, retain top N by log mass, and normalize."""
+    """Merge identical strings, retain top N by log mass, and normalize.
+
+    Ordering is by descending log mass, and equal masses are broken by
+    `TIE_BREAK_POLICY` — ascending lexicographic order of the segment tuple.
+    That tie-break is deliberate and deliberately arbitrary: it exists so runs
+    reproduce, and it asserts nothing about which of two equally supported
+    reconstructions is the better historical hypothesis. Read `TIE_BREAK_POLICY`
+    before treating the winner of a tie as a finding.
+    """
     grouped_scores: dict[tuple[str, ...], list[float]] = defaultdict(list)
     grouped_derivations: dict[tuple[str, ...], list[CandidateDerivation]] = defaultdict(list)
     for segments, log_score, derivation in raw_candidates:
@@ -48,7 +117,7 @@ def normalize_and_prune(
         raise ValueError(f"no viable candidates for concept {concept_id!r}")
     merged = sorted(
         ((segments, _logsumexp(scores)) for segments, scores in grouped_scores.items()),
-        key=lambda item: (-item[1], item[0]),
+        key=lambda item: (-item[1], _tie_break_key(item[0])),
     )[:beam_width]
     normalizer = _logsumexp(score for _, score in merged)
     candidates = tuple(

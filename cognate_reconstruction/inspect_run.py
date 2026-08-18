@@ -510,8 +510,8 @@ NOTABLE_EVENT_KINDS = (
 )
 
 
-def _reported(value: int | None) -> str:
-    """A provider that reported no usage said nothing, which is not zero."""
+def _reported(value: object | None) -> str:
+    """A counter that was never recorded said nothing, which is not zero."""
     return "not reported" if value is None else str(value)
 
 
@@ -559,7 +559,9 @@ def _session_rows(
             "evidence work",
             f"{metrics.inspection_tool_calls} inspections, "
             f"{metrics.sound_law_tests} sound-law tests, "
-            f"{metrics.cascade_tests} cascade previews",
+            f"{metrics.cascade_tests} cascade previews, "
+            f"{metrics.compacted_tool_results} superseded result(s) dropped "
+            "from the prompt",
         )
     )
     truncation = (
@@ -615,6 +617,25 @@ def _diagnostic_rows(trajectory: AgentTrajectory) -> tuple[tuple[str, str], ...]
             f"{diagnostics.rule_results_evaluated} evaluated"
         )
     )
+    # The one diagnostic that measures the reconstruction instead of the rules,
+    # printed beside the rule numbers so the contrast is visible. It is a report:
+    # a hypothesis under which some children disagree may be perfectly good.
+    if diagnostics.child_convergence_rate is None:
+        convergence = "not recorded (step predates the measure)"
+    else:
+        convergence = f"{diagnostics.child_convergence_rate:.2f}"
+        if diagnostics.divergent_concept_count:
+            convergence += (
+                f" — {diagnostics.divergent_concept_count} concept(s) diverge"
+            )
+            if diagnostics.divergent_concept_ids:
+                shown = ", ".join(diagnostics.divergent_concept_ids)
+                more = diagnostics.divergent_concept_count - len(
+                    diagnostics.divergent_concept_ids
+                )
+                convergence += f": {shown}" + (f", +{more} more" if more else "")
+        else:
+            convergence += " — every active child agreed"
     return (
         (
             "rules",
@@ -625,6 +646,42 @@ def _diagnostic_rows(trajectory: AgentTrajectory) -> tuple[tuple[str, str], ...]
         # applied / applicable: a child that never showed the target is vacuous
         # for the rule, not a counterexample to it.
         ("rule coverage", f"{diagnostics.rule_coverage:.2f}"),
+        ("child convergence", convergence),
+        (
+            "branch support",
+            "not recorded"
+            if diagnostics.mean_branch_support is None
+            else (
+                f"{diagnostics.mean_branch_support:.2f} of the active children "
+                "stood behind the winning form"
+            ),
+        ),
+        (
+            "evidence coverage",
+            "not recorded"
+            if diagnostics.concepts_available is None
+            else (
+                f"{_reported(diagnostics.concepts_inspected)} of "
+                f"{diagnostics.concepts_available} concepts inspected"
+            ),
+        ),
+        # How much of this node's output was arbitrary. A tie is not a defect,
+        # but a reader should not have to assume every reported form was chosen
+        # on evidence.
+        (
+            "tie-broken forms",
+            "not recorded"
+            if diagnostics.tie_broken_concept_count is None
+            else (
+                f"{diagnostics.tie_broken_concept_count}"
+                + (
+                    f" of {diagnostics.concepts_available}"
+                    if diagnostics.concepts_available is not None
+                    else ""
+                )
+                + " chosen by segment order, not mass"
+            ),
+        ),
         (
             "misses",
             f"target absent {diagnostics.target_absent}, context mismatches "

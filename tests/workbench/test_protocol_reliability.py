@@ -34,6 +34,7 @@ from cognate_reconstruction.agent.trajectory import (
 )
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.rules import parse_rule
+from cognate_reconstruction.schemas.alignment import CorrespondenceDetail
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.rules import ReconstructionRule
 from cognate_reconstruction.traversal import RuleBasedReconstructor
@@ -1006,7 +1007,14 @@ def test_the_floor_does_not_forgive_a_second_protocol_failure(tmp_path) -> None:
 class _RefusingAligner:
     """Stands in for a LingPy refusal without depending on how to provoke one."""
 
-    def align_multiple(self, lexicons, anchors, *, respect_cognate_sets=True):
+    def align_multiple(
+        self,
+        lexicons,
+        anchors,
+        *,
+        respect_cognate_sets=True,
+        correspondence_detail=CorrespondenceDetail.FULL,
+    ):
         raise ValueError("alignment requires at least two distinct lexicons")
 
 

@@ -278,6 +278,66 @@ errors.
   calibration question, not a verdict — and `--max-truncated-responses` caps how
   far backoff can escalate, so at the defaults you get at most two doublings
   before the node stops.
+- **A slow provider call looks exactly like a wedged one. Do not kill it.**
+  Measured 2026-08-17 on `google/gemma-4-26b-a4b` over the 7-node Polynesian
+  benchmark: individual `model_turn` → `model_response` gaps of 1.2, 1.3, 1.4,
+  2.3, 5.1, 6.3, 6.6 and 7.3 minutes, **all of which returned normally.** On the
+  widest nodes this model simply takes minutes per turn, and while it does the
+  process sleeps, CPU sits near zero, `netstat` shows an ESTABLISHED socket to
+  :1234 with empty queues both ways, and LM Studio still answers a fresh `curl`
+  in under a second because it serves requests concurrently. **None of those
+  observations distinguish slow from stuck** — a mistake worth not repeating: a
+  10-minute silence was read as an unbounded hang and killed 5 minutes before it
+  would have resolved itself.
+
+  A call that really does hang is bounded, and the harness handles it:
+
+  ```text
+  16:28:19Z model_turn      tahitic
+  16:43:20Z provider_retry  tahitic | Timeout: litellm.Timeout: APITimeoutError
+  ```
+
+  901 seconds against `--timeout 300` — about 3×, consistent with LiteLLM
+  retrying internally before surfacing anything. The harness classifies
+  `litellm.Timeout` as transient, emits `provider_retry`, and retries
+  `--max-retries` times (default 2) before the node fails. So the real bound with
+  default flags is roughly **15 minutes per attempt, ~45 minutes per turn**, not
+  infinity. **The most efficient strategy, in order:**
+
+  1. **Wait, unless the silence exceeds the bound.** Compare event staleness
+     against ~15 minutes per attempt, not against your patience. Anything
+     shorter is a slow generation, and killing it throws away the node.
+
+     ```bash
+     find runs/<dir>/events.jsonl -mmin +16 -print   # prints = past one timeout
+     ```
+
+  2. **Make turns shorter, before the first node.** Cap `max_tokens` in
+     `--provider-config` (2048–4096 leaves room for one tool call). A reasoning
+     model with no cap can generate until the context is exhausted; a cap turns a
+     15-minute turn into `finish_reason="length"`, which the harness already
+     recovers from by forcing a tool call.
+  3. **Make the bound tighter, before the first node.** Lower `--timeout` so a
+     genuine hang surfaces in minutes rather than a quarter of an hour. Note
+     `--max-run-seconds` does *not* help: `_check_run_budget()` runs before and
+     after an attempt and never during it, so no harness budget interrupts a call
+     in flight.
+  4. **Both knobs are hashed, so they are up-front decisions.**
+     `--provider-config` and `--timeout` feed `configuration_sha256`: you cannot
+     add a cap or shorten the timeout and still resume a checkpoint written
+     without them. `driver.py run` sets neither, so use the human `infer` path
+     when you want them.
+  5. **If you must stop it, `kill -INT` and verify before resuming.** The
+     checkpoint costs you only the current node, but a truncated JSONL line
+     becomes `could not load prior hypotheses` and stops the resume:
+
+     ```bash
+     /opt/anaconda3/envs/llm_reconstruction/bin/python -c "
+     from cognate_reconstruction.traversal.checkpoint import CheckpointStore
+     from cognate_reconstruction.agent.trajectory import TrajectoryDatasetBuilder
+     print([s.parent_node_id for s in CheckpointStore('runs/<dir>/checkpoint.json').load().completed_steps])
+     print(len(TrajectoryDatasetBuilder.read_jsonl('runs/<dir>/trajectories.jsonl')))"
+     ```
 - **Thresholds are CLI flags and *are* covered by the resume hash.**
   `--max-repeated-tool-failures`, `--stall-window-calls`,
   `--max-truncated-responses`, and both truncation-backoff flags are hashed into
@@ -298,6 +358,7 @@ errors.
 | `curl` to :1234 returns nothing, exit 000 | LM Studio server is off: `~/.lmstudio/bin/lms server start`. |
 | `model 'X' is not reported by LM Studio` | Model is not loaded. Check `driver.py preflight` for loaded IDs. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |
+| Run makes no progress but the process is alive | Almost certainly a slow turn, not a hang — this model returned after 5–7 minutes repeatedly. **Wait.** A real hang surfaces as `provider_retry` with `litellm.Timeout` after ~15 min per attempt with `--timeout 300`. Only investigate past that: `find runs/<dir>/events.jsonl -mmin +16 -print`. Prevent long turns next run with `max_tokens` in `--provider-config` and a lower `--timeout`; both are hashed, so they must be set before the first node. See the gotcha above. |
 | Run ends in `AgentLoopLimitError` | Model never produced a valid commit and never failed densely enough to trip either stall condition — typically a session that keeps exploring, since exploratory rejections never count. Triage it; raise `--max-turns` or use a stronger model. |
 | Run ends in `ProtocolStallError` | One of three things: a `(tool, error code)` signature recurred after a targeted correction; the trailing window filled with protocol rejections of mixed codes; or output was truncated repeatedly with no tool call. Read the message — the first two are tool-contract problems. For the third, the message states what the harness already tried (forcing a tool call, and any `max_tokens` backoff steps); what is left is raising `max_tokens` in the `--provider-config` JSON, or `--allow-truncation-backoff --truncation-max-tokens-ceiling N` to let the harness raise it for you. |
 | `checkpoint cannot be resumed because these changed: ...` | Expected after editing `agent/SKILL.md`, the tool schemas, an `--anchors` file, or any hashed flag. The named part is the one to restore — or start a new checkpoint path. |

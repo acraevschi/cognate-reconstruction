@@ -84,6 +84,58 @@ cognate set is wrong, or it is ordinary chronological layering is exactly the
 linguistic-truth question this harness cannot answer. Printing it is honest;
 scoring it would be the harness claiming expertise it does not have.
 
+## The second worked example: child convergence
+
+`child_convergence_rate` measures the share of concepts on which every active
+child, after its own scoped cascade, produced the identical parent form. It is
+the first diagnostic that measures the reconstruction rather than the rules, and
+it was classified as a **score and a report**, not a rejection. That decision is
+recorded here because it is the sort of thing a later reader will want to
+re-litigate.
+
+The case for rejecting looks strong at first. A live node committed
+`f > p / _eː` scoped to Tongan **and** `p > f / _e` scoped to Niuean —
+contradictory claims about one correspondence, guaranteeing that the branches
+could not agree. Both rules were validated, both were accepted at confidence 1.0,
+no protocol failure was recorded, and the session passed `high_quality`. Every
+rule diagnostic reported a flawless node.
+
+Run that through the question in the pocket: **what happens when this fires on a
+correct run?**
+
+It fires constantly, and correctly. A comparative argument routinely leaves a
+residue — forms the regular correspondences do not yet explain — and the honest
+hypothesis is the one that says so, in `anomalies`, rather than the one that
+invents a rule per exception until everything lines up. Rejecting divergence at
+the tool boundary would reward exactly the padding the anomaly channel exists to
+avoid. And an identity commit at a node whose children genuinely differ is a
+legitimate, conservative claim: nothing yet explains this, so nothing is
+asserted. Deterministic code cannot tell that apart from the Tongan/Niuean case,
+because the difference is whether the rules are *true*, which is question three.
+
+So it lands on rule 2 of the decision rule below: a fact about the session that a
+human wants, where "bad" needs judgement. It is reported to the model in the
+`test_rule_cascade` and `commit_reconstruction` results, recorded in
+`ReconstructionDiagnostics`, and printed by `inspect-run` and
+`summarize-trajectories`. It is deliberately **not** a condition of
+`high_quality`: that flag is documented as protocol hygiene making no linguistic
+claim, and convergence is much closer to linguistic than to protocol. Adding it
+would quietly change what `--high-quality-only` selects for, in the direction of
+over-fitted rule sets, and — per the asymmetry above — corpora selected by it
+cannot be un-selected.
+
+Note what *is* a rejection in the same area, and why. A rule that cannot change
+any token sequence is refused by the parser: that is question one, provable by
+deterministic code, no judgement involved. "These children still disagree" is
+not.
+
+There is one place convergence does change what a machine does, and it is worth
+naming rather than eliding: branch support now weights the beam, so how many
+children back a form affects which form wins the node. That is scoring, it is
+the subject of a separate entry in "Decisions that require research-owner
+input", and it is bounded — it orders candidates the harness already computed.
+It does not decide whether a run is valid, and no trajectory is filtered by it.
+
 ## The decision rule
 
 For anything new, in order:

@@ -8,7 +8,11 @@ from typing import Any, Literal
 
 from pydantic import Field, model_validator
 
-from cognate_reconstruction.schemas.alignment import MultipleAlignmentMap
+from cognate_reconstruction.schemas.alignment import (
+    CorrespondenceDetail,
+    CorrespondenceSet,
+    MultipleAlignmentMap,
+)
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.lexicon import LexicalForm
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata
@@ -137,10 +141,62 @@ class ToolExecutionResult(WorkbenchModel):
         return self
 
 
+MAX_ALIGNMENT_CONCEPTS = 24
+"""Concept IDs one `get_alignments` call may request.
+
+Raised from 12 once the default payload stopped carrying the aligner's working
+trace, and measured rather than guessed. On the ten-daughter Polynesian
+benchmark, `detail="summary"` costs 41 KB for 24 concepts across two nodes and
+82 KB across three — the widths a node session actually aligns, since a rule is
+committed against active children.
+
+What the cap does *not* bound is bytes. The payload also carries one pairwise
+view per node pair, so cost grows quadratically in the node count: the same
+24-concept request across ten nodes is 782 KB. Doubling the cap costs 42% there
+(551 KB at 12 concepts) because the pairwise segment inventory saturates long
+before the concept list does, which is exactly why the concept count is the
+wrong lever for that call — `summarize_correspondences` covers all 46 concepts
+across all ten nodes in 22 KB and is what a wide survey should use.
+"""
+
+MAX_ALIGNMENT_FORMS = 48
+"""Exact form IDs one `get_alignments` call may request."""
+
+
 class GetAlignmentsArgs(WorkbenchModel):
+    """One bounded alignment request over two or more evidence nodes.
+
+    `detail` decides how much of the aligner's trace comes back and defaults to
+    the compact rendering; see `CorrespondenceDetail`.
+    """
+
     node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
-    concept_ids: tuple[NonEmptyStr, ...] = Field(default=(), max_length=12)
-    form_ids: tuple[NonEmptyStr, ...] = Field(default=(), max_length=48)
+    concept_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        max_length=MAX_ALIGNMENT_CONCEPTS,
+        description=(
+            "Concept IDs to align, at most 24. Prefer far smaller batches: this "
+            "is a ceiling on one call, not a target. Use "
+            "summarize_correspondences to decide which concepts are worth "
+            "aligning."
+        ),
+    )
+    form_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        max_length=MAX_ALIGNMENT_FORMS,
+        description="Exact form IDs to align, at most 48.",
+    )
+    detail: CorrespondenceDetail = Field(
+        default=CorrespondenceDetail.SUMMARY,
+        description=(
+            "'summary' returns each correspondence with its true occurrence "
+            "count and a few example column references into the alignments "
+            "already in the payload. 'full' additionally returns every column "
+            "occurrence with its contexts, which is the aligner's working trace "
+            "and is orders of magnitude larger; ask for it only for a "
+            "correspondence you are actively conditioning."
+        ),
+    )
     segmentation_overlay_id: NonEmptyStr | None = None
     respect_cognate_sets: bool = True
     include_anchors: bool = False
@@ -221,6 +277,122 @@ class FormSearchHit(WorkbenchModel):
 class SearchFormsResult(WorkbenchModel):
     hits: tuple[FormSearchHit, ...]
     next_offset: int | None = Field(default=None, ge=0)
+
+
+DEFAULT_MIN_CORRESPONDENCE_SUPPORT = 2
+"""Occurrences a correspondence set needs before it is shown by default.
+
+A correspondence attested once is residue: a compound boundary, a loan, a
+segmentation artefact. Recurrence is what the comparative method reasons from,
+so the tail is suppressed by default and counted rather than hidden.
+"""
+
+
+class SummarizeCorrespondencesArgs(WorkbenchModel):
+    """Request the correspondence-set inventory over the whole evidence set.
+
+    Unlike `get_alignments` this deliberately has no batching bound on its
+    input: recurrence is only visible across every cognate set at once, and the
+    inventory over all of them is smaller than a handful of alignments. The
+    *output* is bounded by pagination instead.
+    """
+
+    node_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Nodes to compare, in the order their segments appear in every "
+            "returned set. Defaults to every node in scope, which for the "
+            "default scope is the active children."
+        ),
+    )
+    scope: EvidenceScope = EvidenceScope.ACTIVE_CHILDREN
+    concept_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Optional narrowing to specific concepts. Omit it: the point of "
+            "this tool is the inventory over every concept at once."
+        ),
+    )
+    min_support: int = Field(
+        default=DEFAULT_MIN_CORRESPONDENCE_SUPPORT,
+        ge=1,
+        description=(
+            "Least number of aligned columns a set must show to be returned. "
+            "Sets below it are counted in 'suppressed_below_min_support' rather "
+            "than dropped silently. Use 1 only to inspect residue."
+        ),
+    )
+    segment: NonEmptyStr | None = Field(
+        default=None,
+        description=(
+            "Return only sets containing this segment. Use 'Ø' or '∅' for an "
+            "alignment gap. With 'segment_node_id' the segment must appear in "
+            "that node; without it, in any node in scope."
+        ),
+    )
+    segment_node_id: NonEmptyStr | None = Field(
+        default=None,
+        description=(
+            "Restrict the 'segment' filter to one node, for example every set "
+            "in which Tongan shows 'ʔ'. Requires 'segment'."
+        ),
+    )
+    segmentation_overlay_id: NonEmptyStr | None = None
+    respect_cognate_sets: bool = True
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=30, ge=1, le=200)
+    # There is deliberately no include_anchors. An anchor is a form attached to
+    # the parent, not one of the compared nodes, so it can never be a column of a
+    # correspondence set; admitting one would only perturb how the columns align
+    # while contributing nothing a caller could read. Anchors stay visible
+    # through get_alignments.
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> SummarizeCorrespondencesArgs:
+        if len(set(self.node_ids)) != len(self.node_ids):
+            raise ValueError("summarize_correspondences node IDs must be unique")
+        if len(set(self.concept_ids)) != len(self.concept_ids):
+            raise ValueError("summarize_correspondences concept IDs must be unique")
+        if self.node_ids and len(self.node_ids) < 2:
+            raise ValueError(
+                "a correspondence inventory compares at least two nodes; omit "
+                "node_ids to use every node in scope"
+            )
+        if self.segment_node_id is not None and self.segment is None:
+            raise ValueError("segment_node_id requires a segment to filter on")
+        return self
+
+
+class SummarizeCorrespondencesResult(WorkbenchModel):
+    node_ids: tuple[NonEmptyStr, ...] = Field(
+        description="Column order of every returned set's 'segments'."
+    )
+    alignment_count: int = Field(
+        ge=0,
+        description="Cognate-set alignments the inventory was built from.",
+    )
+    total_set_count: int = Field(
+        ge=0,
+        description="Distinct correspondence sets found, before any filtering.",
+    )
+    suppressed_below_min_support: int = Field(
+        ge=0,
+        description=(
+            "Sets that passed the segment filter but fell below min_support. "
+            "Residue rather than evidence, counted so it is never silent."
+        ),
+    )
+    matched_set_count: int = Field(
+        ge=0,
+        description=(
+            "Sets satisfying both min_support and the segment filter. Those "
+            "beyond 'limit' are reachable through 'next_offset'."
+        ),
+    )
+    min_support: int = Field(ge=1)
+    sets: tuple[CorrespondenceSet, ...]
+    next_offset: int | None = Field(default=None, ge=0)
+    segmentation_overlay_id: NonEmptyStr | None = None
 
 
 class ListAvailableNodesArgs(WorkbenchModel):
@@ -377,12 +549,41 @@ class CascadeFinalForm(WorkbenchModel):
     form: LexicalForm
 
 
+class ConceptConvergenceReport(WorkbenchModel):
+    concept_id: NonEmptyStr
+    converged: bool
+    parent_forms: tuple[tuple[NonEmptyStr, ...], ...]
+    """Distinct parent forms the children produced, sorted. One means agreement."""
+    child_count: int = Field(ge=0)
+
+
+class ChildConvergenceSummary(WorkbenchModel):
+    """Did this cascade make the children agree on a parent form?
+
+    Reported, never enforced. A hypothesis under which some children still
+    disagree can be entirely legitimate — an unexplained residue is a normal
+    state of a comparative argument — so no tool rejects a commit for diverging.
+    The model previously had to work this out by eyeballing intermediate forms.
+    """
+
+    concepts_evaluated: int = Field(ge=0)
+    converged_concepts: int = Field(ge=0)
+    child_convergence_rate: float = Field(ge=0.0, le=1.0)
+    divergent_concept_ids: tuple[NonEmptyStr, ...] = ()
+    """A bounded sample; `concepts_evaluated - converged_concepts` is the count."""
+    concepts: tuple[ConceptConvergenceReport, ...] = ()
+    """Per-concept detail, omitted on the commit summary to keep the result small."""
+
+
 class TestRuleCascadeResult(WorkbenchModel):
     validation_call_id: NonEmptyStr
     rules: tuple[ReconstructionRule, ...]
     segmentation_overlay_id: NonEmptyStr | None = None
     reports: tuple[RuleApplicationReport, ...]
     final_forms: tuple[CascadeFinalForm, ...]
+    # Defaulted so cascade results recorded before convergence was reported stay
+    # loadable inside older trajectories.
+    convergence: ChildConvergenceSummary | None = None
 
 
 class MorphemeSegmentation(WorkbenchModel):
@@ -566,6 +767,9 @@ class CommittedReconstruction(WorkbenchModel):
 class CommitReconstructionResult(WorkbenchModel):
     status: Literal["committed"] = "committed"
     reconstruction: CommittedReconstruction
+    # The session's last observation should be what its hypothesis actually
+    # produced, not just that the commit parsed. Defaulted for older records.
+    convergence: ChildConvergenceSummary | None = None
 
 
 class NodeLexiconSummary(WorkbenchModel):

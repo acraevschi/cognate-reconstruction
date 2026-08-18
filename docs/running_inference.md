@@ -417,11 +417,12 @@ is retrieved on demand.
 
 | Tool | Deterministic result |
 | --- | --- |
+| `summarize_correspondences` | Correspondence sets over every cognate set at once, by support, paginated. |
 | `list_concepts` | Paginated concepts, glosses, counts, and node IDs. |
 | `search_forms` | Exact semantic/segment/cognate/node filtering. |
 | `list_available_nodes` | Observed and completed internal evidence only, flagging nodes with a retrievable hypothesis. |
 | `get_node_reconstruction` | Rules, anomalies, and summary committed at one already-reconstructed node; read-only and never scored. |
-| `get_alignments` | LingPy MSA plus pairwise correspondence summaries. |
+| `get_alignments` | LingPy MSA held once, plus one pairwise correspondence view per node pair referencing it by ID. |
 | `segment_morphemes` | Immutable boundary-only overlay; phonetic tokens cannot change. |
 | `test_sound_law` | Parsed literal DSL and exact per-form diff. |
 | `test_rule_cascade` | Ordered, branch-scoped full-cascade preview and final forms. |
@@ -467,10 +468,36 @@ anchors, merges equivalent outputs, and prunes.
 
 Alignment inspection is deliberately incremental. The hypothesis-manager
 prompt tells the model to work in small concept batches, and the
-`get_alignments` schema requires an explicit selection of at most 12 concept
+`get_alignments` schema requires an explicit selection of at most 24 concept
 IDs or 48 exact form IDs. An unfiltered whole-family alignment request is
 rejected as a tool error even when the provider offers a 128k-or-larger
 context window.
+
+The *survey* is not incremental, because recurrence cannot be seen in a batch.
+`summarize_correspondences` runs over every cognate set at once and returns
+correspondence sets — the n-tuple of aligned segments across the selected nodes,
+with the number of aligned columns showing it — ordered by support, with the
+output bounded by pagination rather than the input by batching. For the ten
+Polynesian daughters that is 216 sets over 46 concepts in 28 KB, of which 41 are
+attested more than once; `min_support` defaults to 2 and reports the rest as
+`suppressed_below_min_support`, because a correspondence occurring once is
+residue rather than evidence.
+
+Both tools default to a compact correspondence rendering: a true occurrence
+`count` plus up to three `(alignment_id, column_index)` references into the
+alignments already in the payload. `get_alignments(detail="full")` returns the
+aligner's complete working trace instead — every column occurrence with its
+neighbouring segments — which on ten nodes is roughly twice the compact payload
+and was previously the only available shape.
+
+Superseded evidence results are dropped from the live prompt. When a call to one
+of the read-only evidence tools re-requests a selection an earlier call already
+covered, the earlier tool message is replaced by
+`{"compacted": true, "tool": ..., "call_id": ..., "superseded_by": ...}` in what
+is sent to the provider, counted in `compacted_tool_results`, and reported as a
+`context_compaction` event. The trajectory keeps the full content: only the live
+prompt shrinks. Validations, cascade previews, overlays, and commits are never
+compacted, and neither is the most recent result for any tool.
 
 ## Outputs and trajectory curation
 

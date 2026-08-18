@@ -26,6 +26,7 @@ class AgentEventKind(StrEnum):
     PROVIDER_RETRY = "provider_retry"
     RESPONSE_TRUNCATED = "response_truncated"
     TRUNCATION_RECOVERY = "truncation_recovery"
+    CONTEXT_COMPACTION = "context_compaction"
     PROTOCOL_CORRECTION = "protocol_correction"
     NODE_FAILED = "node_failed"
 

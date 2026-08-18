@@ -39,7 +39,8 @@ def test_lingpy_alignment_returns_correspondences() -> None:
     result = LingPyAligner().align(
         lexicon("A", ("p", "a")), lexicon("B", ("b", "a"))
     )
-    assert len(result.alignments) == 1
+    # The pairwise view references its alignments rather than embedding them.
+    assert len(result.alignment_ids) == 1
     pairs = {(item.left_segment, item.right_segment) for item in result.correspondences}
     assert ("p", "b") in pairs
     assert ("a", "a") in pairs

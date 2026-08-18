@@ -95,6 +95,56 @@ class ReconstructionDiagnostics(WorkbenchModel):
     anomaly_count: int = Field(ge=0)
     anomaly_rate: float = Field(ge=0.0)
     identity_reconstruction: bool
+    # Convergence. Every counter above measures the *rules*; these measure
+    # whether the children ended up agreeing on a parent, which is the only
+    # thing a reconstruction is for. All are `None`-defaulted so steps written
+    # before they existed stay loadable and read as "not recorded" rather than
+    # as a node on which no child ever disagreed.
+    #
+    # Divergence is scored and reported, never rejected: a linguist may commit a
+    # hypothesis under which some children disagree. See
+    # `docs/report_reject_or_score.md`.
+    child_convergence_rate: float | None = Field(default=None, ge=0.0, le=1.0)
+    """Share of concepts on which every attesting active child produced one form.
+
+    Each child contributes its highest-scoring candidate, transformed by its own
+    scoped cascade. A concept only one child attests counts as converged — there
+    is no second branch to disagree with it — so this measures agreement and not
+    coverage. `mean_branch_support` is the number that separates "all five
+    children said this" from "one child said this and the rest were silent".
+    """
+    divergent_concept_count: int | None = Field(default=None, ge=0)
+    divergent_concept_ids: tuple[NonEmptyStr, ...] = ()
+    """A bounded sample of the divergent concepts; the count is authoritative.
+
+    Truncated at `traversal.convergence.MAX_REPORTED_DIVERGENT_CONCEPTS` so a
+    node over a large lexicon cannot put hundreds of IDs in every artifact.
+    """
+    mean_branch_support: float | None = Field(default=None, ge=0.0, le=1.0)
+    """Mean share of the node's active children standing behind the winning form.
+
+    Averaged over concepts, of the active children whose scoped cascade produced
+    the top-scoring parent candidate, divided by *all* active children of the
+    node rather than by the ones attesting the concept. A concept attested by one
+    of five children therefore scores 0.2 even though it converged trivially.
+    """
+    concepts_inspected: int | None = Field(default=None, ge=0)
+    """Concepts the session actually looked at, by ID named in a tool argument.
+
+    Known only to the agent layer and plumbed in, because a commit over 46
+    concepts made after inspecting 5 of them is a different object from one made
+    after inspecting all 46, and nothing recorded the difference.
+    """
+    concepts_available: int | None = Field(default=None, ge=0)
+    tie_broken_concept_count: int | None = Field(default=None, ge=0)
+    """Reported forms chosen by `traversal.beam.TIE_BREAK_POLICY`, not by mass.
+
+    A tie means the evidence did not separate the top two candidates and segment
+    order picked the winner. That is a legitimate outcome, and it was previously
+    invisible: the beam prints the same two probabilities whether one form won on
+    support or on the order of its first differing segment. Counting them lets a
+    reader tell how much of a node's output is arbitrary.
+    """
 
 
 class TraversalSnapshot(WorkbenchModel):

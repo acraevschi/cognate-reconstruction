@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "bindings": [
+    {
+      "source_variety_id": "walworthpolynesian:Polynesian",
+      "node_id": "proto_polynesian",
+      "role": "target",
+      "source_reference": "Walworth Polynesian CLDF: Proto-Polynesian reconstructions held out as evaluation target"
+    }
+  ]
+}

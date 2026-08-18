@@ -8,6 +8,7 @@ from cognate_reconstruction.agent.schemas import (
     TestRuleCascadeArgs,
     TestRuleCascadeResult,
 )
+from cognate_reconstruction.agent.tools.convergence import cascade_convergence
 from cognate_reconstruction.agent.tools.errors import (
     ToolInputError,
     parse_rule_or_reject,
@@ -88,6 +89,12 @@ def test_rule_cascade(
         segmentation_overlay_id=arguments.segmentation_overlay_id,
         reports=tuple(reports),
         final_forms=tuple(final_forms),
+    )
+    # Whether the branches now agree on a parent is the point of the cascade, and
+    # working it out from the intermediate diffs was left to the model. It is
+    # reported, never enforced: divergence is not a protocol error.
+    result = result.model_copy(
+        update={"convergence": cascade_convergence(result)}
     )
     context.cascade_validations[call_id] = result
     return result

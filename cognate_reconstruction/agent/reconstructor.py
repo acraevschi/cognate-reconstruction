@@ -205,6 +205,9 @@ class AgenticNodeReconstructor:
             anomalies=committed.request.anomalies,
             anchors=anchors,
             evidence_context=evidence_context,
+            # Only this layer knows what the session looked at; the step is
+            # where a reader goes looking for it.
+            inspected_concept_ids=run_result.inspected_concept_ids,
         )
         finalized = self.orchestrator.finalize(run_result, step)
         self.run_results.append(finalized)
