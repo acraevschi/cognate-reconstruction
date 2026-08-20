@@ -55,6 +55,26 @@ class RunBudgetExceeded(RuntimeError):
     pass
 
 
+NODE_TRAJECTORY_ATTRIBUTE = "node_trajectory"
+"""Attribute carrying the trajectory of the node session an exception ended.
+
+Set on the exception itself rather than kept on the orchestrator, which runs
+every node and would overwrite it. A caller that decides whether one dead node
+ends the whole run needs the record of *that* node, and re-deriving it from the
+JSONL the sink just wrote would be a second source of truth.
+"""
+
+
+def failed_node_trajectory(error: BaseException) -> AgentTrajectory | None:
+    """The trajectory of the node session this exception ended, when it has one.
+
+    `None` for anything raised outside a node session, and for the rare
+    exception type that refuses attributes.
+    """
+    trajectory = getattr(error, NODE_TRAJECTORY_ATTRIBUTE, None)
+    return trajectory if isinstance(trajectory, AgentTrajectory) else None
+
+
 class ProtocolStallError(RuntimeError):
     """The model kept repeating one rejected call after a targeted correction.
 
@@ -204,10 +224,15 @@ class _RunState:
     forced_tool_choice_count: int = 0
     truncation_backoff_count: int = 0
     # Set by a truncated response that carried no tool call, consumed by the
-    # next request. Forcing is attempted once per node: a backend that ignores
-    # or rejects `"required"` will not start honouring it on the third try.
+    # next request. Every such truncation gets its own attempt, because the
+    # first one is not the one that ends the node; only a backend that *refused*
+    # `"required"` is written off, since it will not start honouring it later.
     force_tool_choice_next: bool = False
     forced_tool_choice_attempted: bool = False
+    forced_tool_choice_refused: bool = False
+    # Reported output length of each truncated response, in order. `None` for a
+    # provider that reported no usage, which is not the same as zero.
+    truncated_output_tokens: list[int | None] = field(default_factory=list)
     # The raised ceiling in force for this node, or None while the user's own
     # provider option is in effect untouched.
     effective_max_tokens: int | None = None
@@ -459,9 +484,15 @@ class AgentOrchestrator:
         crosses no configuration boundary is to stop letting the model choose
         whether to call a tool at all.
 
-        Not every backend honours `"required"`. It is attempted exactly once
-        per node: one that rejects or ignores it will not change its mind, and
+        Not every backend honours `"required"`, and one that *refuses* it is
+        written off for the rest of the node: it will not change its mind, and
         looping on it would burn the same budget the truncation already cost.
+        Short of a refusal the intervention is offered to every truncated
+        no-tool response rather than once per node. Once per node meant that a
+        node ending on its third truncation got help on the first and nothing
+        on the two that followed — and the later ones are the expensive ones,
+        because they are what ends the node.
+
         Returns the response and the `tool_choice` that actually produced it.
         """
         if not state.force_tool_choice_next:
@@ -488,10 +519,12 @@ class AgentOrchestrator:
             # Neither is about `tool_choice`; retries and budgets own them.
             raise
         except Exception as error:
+            state.forced_tool_choice_refused = True
             self._emit(
                 AgentEventKind.TRUNCATION_RECOVERY,
                 node_id,
-                "provider rejected a required tool call; retrying with auto",
+                "provider rejected a required tool call; retrying with auto "
+                "and not requiring one again on this node",
                 action="forced_tool_choice_rejected",
                 error_type=type(error).__name__,
                 error=str(error),
@@ -570,6 +603,28 @@ class AgentOrchestrator:
             f"{state.truncated_response_count} times without producing a tool "
             "call"
         )
+        # The operator's remaining lever is `max_tokens`, and choosing a new
+        # value by guesswork is what the previous message left them to do. What
+        # the model actually spent is recorded on every truncated response.
+        observed = [
+            tokens for tokens in state.truncated_output_tokens if tokens is not None
+        ]
+        if observed:
+            reason += (
+                "; those responses reported "
+                + ", ".join(str(tokens) for tokens in observed)
+                + f" output tokens (max {max(observed)})"
+            )
+            if state.effective_max_tokens is not None:
+                reason += (
+                    " against an effective max_tokens of "
+                    f"{state.effective_max_tokens}"
+                )
+        elif state.truncated_output_tokens:
+            reason += (
+                "; the provider reported no output token count for them, so "
+                "how far past the budget the model was reaching is unknown"
+            )
         attempted = []
         if state.forced_tool_choice_attempted:
             attempted.append("requiring a tool call")
@@ -931,6 +986,30 @@ class AgentOrchestrator:
             self.trajectory_sink.write(trajectory)
         return trajectory
 
+    def emit_node_fallback(
+        self,
+        node_id: str,
+        *,
+        error_type: str,
+        reason: str,
+        failed_node_count: int,
+        max_failed_nodes: int | None,
+    ) -> None:
+        """Record that the traversal continued over a dead node.
+
+        `node_failed` says the session ended; this says what the run did next,
+        which is the part an operator reading the timeline cannot infer.
+        """
+        self._emit(
+            AgentEventKind.NODE_FALLBACK,
+            node_id,
+            "committing an identity fallback for a failed node and continuing",
+            error_type=error_type,
+            reason=reason,
+            failed_node_count=failed_node_count,
+            max_failed_nodes=max_failed_nodes,
+        )
+
     def finalize(
         self,
         run_result: AgentRunResult,
@@ -1082,6 +1161,11 @@ class AgentOrchestrator:
                 truncated = response.metadata.finish_reason == "length"
                 if truncated:
                     state.truncated_response_count += 1
+                    state.truncated_output_tokens.append(
+                        response.metadata.usage.output_tokens
+                        if response.metadata.usage is not None
+                        else None
+                    )
                     self._emit(
                         AgentEventKind.RESPONSE_TRUNCATED,
                         context.node_id,
@@ -1092,6 +1176,7 @@ class AgentOrchestrator:
                         forced_tool_choice_attempted=(
                             state.forced_tool_choice_attempted
                         ),
+                        output_tokens=state.truncated_output_tokens[-1],
                     )
                     if (
                         state.truncated_response_count
@@ -1105,7 +1190,7 @@ class AgentOrchestrator:
                         # Recover before the next request rather than only
                         # naming the condition: require a tool call, and raise
                         # the token budget if the operator allowed it.
-                        if not state.forced_tool_choice_attempted:
+                        if not state.forced_tool_choice_refused:
                             state.force_tool_choice_next = True
                         self._apply_truncation_backoff(
                             context.node_id, state, response
@@ -1255,7 +1340,7 @@ class AgentOrchestrator:
             )
         except Exception as error:
             failure = f"{type(error).__name__}: {error}"
-            self._trajectory(
+            trajectory = self._trajectory(
                 context,
                 payload,
                 messages.audit,
@@ -1263,6 +1348,12 @@ class AgentOrchestrator:
                 completed=False,
                 failure=failure,
             )
+            try:
+                setattr(error, NODE_TRAJECTORY_ATTRIBUTE, trajectory)
+            except AttributeError:
+                # An exception type that forbids attributes must still
+                # propagate; losing the hand-off is better than masking it.
+                pass
             self._emit(
                 AgentEventKind.NODE_FAILED,
                 context.node_id,

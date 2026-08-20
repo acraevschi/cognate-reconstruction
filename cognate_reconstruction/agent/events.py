@@ -29,6 +29,7 @@ class AgentEventKind(StrEnum):
     CONTEXT_COMPACTION = "context_compaction"
     PROTOCOL_CORRECTION = "protocol_correction"
     NODE_FAILED = "node_failed"
+    NODE_FALLBACK = "node_fallback"
 
 
 class AgentEvent(WorkbenchModel):

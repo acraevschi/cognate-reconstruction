@@ -23,10 +23,14 @@ class FamilyCheckpoint(WorkbenchModel):
     configuration_components: dict[str, NonEmptyStr] = Field(
         default_factory=dict,
         description=(
-            "Named digests of the parts of the configuration hash, so a "
-            "refused resume can say which part changed. Defaulted and purely "
-            "explanatory: 'configuration_sha256' remains the decision, and a "
-            "checkpoint written without these still resumes or refuses on it."
+            "Named digests of the configuration parts, so a resume can say "
+            "which one changed. Defaulted and purely explanatory: "
+            "'configuration_sha256' remains the decision, and a checkpoint "
+            "written without these still resumes or refuses on it. Most "
+            "components are parts of that hash; the advisory ones (see "
+            "cli.ADVISORY_CONFIGURATION_COMPONENTS) are deliberately not, and "
+            "are recorded here so a resume can report a change that does not "
+            "block it."
         ),
     )
     completed_steps: tuple[ReconstructionStep, ...] = ()

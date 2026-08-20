@@ -298,8 +298,11 @@ Relevant controls:
 
 The cost budget is enforced only when response metadata reports a cost.
 
-The thresholds that decide when a stuck node gives up are also flags, and all
-of them are part of the checkpoint compatibility hash:
+The thresholds that decide when a stuck node gives up are also flags, and none
+of them is part of the checkpoint compatibility hash. They cannot change a
+committed rule or a beam, only how long the harness keeps trying, so they can
+be loosened on a `--resume` — which is exactly what a stall invites you to do.
+The resume prints a note saying they changed:
 
 ```text
 --max-repeated-tool-failures    rejections sharing one (tool, error code)
@@ -308,17 +311,33 @@ of them are part of the checkpoint compatibility hash:
                                 included (default 3x the above)
 --max-truncated-responses       truncated responses carrying no tool call
                                 before the node stops (default 3)
+--fail-fast                     end the run at the first failed node instead
+                                of falling back over it
+--max-failed-nodes              failed nodes to fall back over before the run
+                                stops (default 3; 0 means --fail-fast)
 ```
+
+### When a node fails
+
+By default the run does not end. The failure is recorded in `result.json` under
+`node_failures`, an identity fallback parent is committed so the walk continues,
+and the step is marked `diagnostics.failure_fallback`. The node and everything
+above it are left out of the checkpoint, so `--resume` re-runs them.
+`inspect-run` names the fallback nodes at the top of its report, and they are
+excluded from `high_quality` and from trajectory export.
 
 ### Truncation recovery
 
 A response with `finish_reason="length"` and no tool call is usually the model
 spending its whole output budget on reasoning prose. The turn immediately after
 one is sent with `tool_choice="required"` instead of `"auto"`. This needs no
-configuration, is attempted once per node, and falls back to the ordinary
-request if the provider raises or still returns no tool call. It appears in the
-event stream as `truncation_recovery` and in the metrics as
-`forced_tool_choice_count`.
+configuration and is attempted on every truncated no-tool response, bounded by
+`--max-truncated-responses`. It falls back to the ordinary request if the
+provider raises or still returns no tool call, and a provider that *refuses*
+`"required"` is not asked again on that node. It appears in the event stream as
+`truncation_recovery` and in the metrics as `forced_tool_choice_count`. When a
+node does stall on truncation, the error names the output token counts the
+truncated responses reported, so a new `max_tokens` is not a guess.
 
 The second recovery is opt-in because it overrides an option you supplied:
 

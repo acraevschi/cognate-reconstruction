@@ -15,6 +15,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from cognate_reconstruction.agent import (
+    DEFAULT_MAX_FAILED_NODES,
     MAX_PROTOCOL_FAILURE_RATE,
     AgenticNodeReconstructor,
     AgentOrchestrator,
@@ -309,6 +310,34 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
     }
 
 
+GIVE_UP_COMPONENT = "the give-up thresholds"
+"""Name under which the give-up thresholds are recorded in a checkpoint."""
+
+ADVISORY_CONFIGURATION_COMPONENTS = frozenset({GIVE_UP_COMPONENT})
+"""Configuration components recorded in a checkpoint but *not* hashed into it.
+
+These decide when the harness stops trying, and nothing else: they cannot
+change a committed rule, a validated cascade, or a beam. Hashing them meant
+that the one configuration change a stall invites — loosen the thresholds and
+resume — was the change that invalidated the checkpoint, so recovering from a
+protocol stall required re-running the whole family. They stay recorded so a
+resume can *report* that they moved; they are simply not grounds to refuse one.
+"""
+
+
+def _give_up_thresholds(args: argparse.Namespace) -> dict[str, Any]:
+    """The settings that decide when the harness gives up on a call or a node."""
+    return {
+        "max_repeated_tool_failures": args.max_repeated_tool_failures,
+        "stall_window_calls": args.stall_window_calls,
+        "max_truncated_responses": args.max_truncated_responses,
+        "allow_truncation_backoff": args.allow_truncation_backoff,
+        "truncation_max_tokens_ceiling": args.truncation_max_tokens_ceiling,
+        "fail_fast": args.fail_fast,
+        "max_failed_nodes": args.max_failed_nodes,
+    }
+
+
 def _provider_and_configuration(
     args: argparse.Namespace,
 ) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
@@ -363,14 +392,8 @@ def _provider_and_configuration(
         "max_total_tool_calls": args.max_total_tool_calls,
         "max_run_seconds": args.max_run_seconds,
         "max_total_cost_usd": args.max_total_cost_usd,
-        # Thresholds that decide when a node gives up. A flag nobody hashes is
-        # a flag that silently changes a resumed run.
-        "max_repeated_tool_failures": args.max_repeated_tool_failures,
-        "stall_window_calls": args.stall_window_calls,
-        "max_truncated_responses": args.max_truncated_responses,
-        "allow_truncation_backoff": args.allow_truncation_backoff,
-        "truncation_max_tokens_ceiling": args.truncation_max_tokens_ceiling,
     }
+    give_up_settings = _give_up_thresholds(args)
     digests = _behavioural_input_digests(args)
     public = {
         **settings,
@@ -381,6 +404,7 @@ def _provider_and_configuration(
     components = {
         **digests,
         "the provider and limit settings": _hash_json(settings),
+        GIVE_UP_COMPONENT: _hash_json(give_up_settings),
     }
     return provider, _hash_json(public), public, components
 
@@ -437,10 +461,31 @@ def _resume_mismatches(
         changed = [
             name
             for name, digest in components.items()
-            if checkpoint.configuration_components.get(name, digest) != digest
+            if name not in ADVISORY_CONFIGURATION_COMPONENTS
+            and checkpoint.configuration_components.get(name, digest) != digest
         ]
         mismatches.extend(changed or ["the configuration"])
     return mismatches
+
+
+def _changed_advisory_components(
+    checkpoint: FamilyCheckpoint,
+    components: dict[str, str],
+) -> list[str]:
+    """Components that moved since the checkpoint but do not refuse a resume.
+
+    Reported rather than enforced. A resumed run that gives up sooner or later
+    than the one that wrote the checkpoint is still reconstructing the same
+    thing from the same evidence, but an operator should not have to remember
+    that they changed a flag.
+    """
+    return [
+        name
+        for name in sorted(ADVISORY_CONFIGURATION_COMPONENTS)
+        if name in components
+        and checkpoint.configuration_components.get(name, components[name])
+        != components[name]
+    ]
 
 
 def _seed_trajectories(
@@ -553,6 +598,14 @@ def _command_infer(args: argparse.Namespace) -> None:
                 "checkpoint cannot be resumed because these changed: "
                 + ", ".join(mismatches)
             )
+        for name in _changed_advisory_components(checkpoint, components):
+            print(
+                f"note: {name} changed since this checkpoint was written. They "
+                "decide when the harness gives up, not what it reconstructs, "
+                "so the resume proceeds; the checkpoint keeps the values the "
+                "original run used.",
+                file=sys.stderr,
+            )
         run_id = checkpoint.run_id
         seed_trajectories = _seed_trajectories(
             args.trajectories, checkpoint, configuration_sha256
@@ -603,6 +656,8 @@ def _command_infer(args: argparse.Namespace) -> None:
         AgenticNodeReconstructor(
             orchestrator,
             deterministic=deterministic,
+            fail_fast=args.fail_fast,
+            max_failed_nodes=args.max_failed_nodes,
         )
     )
 
@@ -630,11 +685,21 @@ def _command_infer(args: argparse.Namespace) -> None:
         on_step_complete=save_step,
     )
     _write_json(args.output, result.model_dump_json(indent=2))
+    reconstructed = len(result.internal_nodes) - len(result.node_failures)
     print(
-        f"wrote {args.output}: {len(result.internal_nodes)} reconstructed "
+        f"wrote {args.output}: {reconstructed} reconstructed "
         f"internal nodes (run {run_id})",
         file=sys.stderr,
     )
+    # A run with fallback nodes is not a run with that many reconstructions,
+    # and the count above is the number people quote.
+    for failure in result.node_failures:
+        print(
+            f"FAILED NODE {failure.node_id}: {failure.error_type}. Its parent "
+            "is an identity fallback, not a reconstruction, and it is not in "
+            "the checkpoint; --resume re-runs it.",
+            file=sys.stderr,
+        )
     print(
         f"appended {len(result.trajectories)} new trajectories to "
         f"{args.trajectories}",
@@ -1026,6 +1091,24 @@ def _parser() -> argparse.ArgumentParser:
         help=(
             "Truncated responses carrying no tool call before the node ends "
             "in ProtocolStallError."
+        ),
+    )
+    infer.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help=(
+            "End the whole run at the first node whose session fails, instead "
+            "of recording the failure, committing an identity fallback for "
+            "that node, and continuing the traversal."
+        ),
+    )
+    infer.add_argument(
+        "--max-failed-nodes",
+        type=int,
+        default=DEFAULT_MAX_FAILED_NODES,
+        help=(
+            "Node failures to fall back over before the run stops. 0 is "
+            f"equivalent to --fail-fast. Default {DEFAULT_MAX_FAILED_NODES}."
         ),
     )
     infer.add_argument(

@@ -16,7 +16,11 @@ from cognate_reconstruction.agent.orchestrator import (
     ProtocolStallError,
 )
 from cognate_reconstruction.agent.providers import LLMProvider, LiteLLMProvider
-from cognate_reconstruction.agent.reconstructor import AgenticNodeReconstructor
+from cognate_reconstruction.agent.reconstructor import (
+    DEFAULT_MAX_FAILED_NODES,
+    AgenticNodeReconstructor,
+    TooManyNodeFailuresError,
+)
 from cognate_reconstruction.agent.service import ReconstructionService
 from cognate_reconstruction.agent.tools import default_tool_registry
 from cognate_reconstruction.agent.trajectory import (
@@ -30,6 +34,7 @@ from cognate_reconstruction.agent.trajectory import (
 )
 
 __all__ = [
+    "DEFAULT_MAX_FAILED_NODES",
     "MAX_FLOOR_PROTOCOL_FAILURES",
     "MAX_PROTOCOL_FAILURE_RATE",
     "TOOL_ERROR_CODES",
@@ -41,6 +46,7 @@ __all__ = [
     "CompositeEventSink",
     "AgentOrchestrator",
     "AgenticNodeReconstructor",
+    "TooManyNodeFailuresError",
     "LLMProvider",
     "LiteLLMProvider",
     "ReconstructionService",

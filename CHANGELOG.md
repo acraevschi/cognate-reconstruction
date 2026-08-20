@@ -2,6 +2,46 @@
 
 ## Unreleased
 
+Loop resilience, driven by a 7-node Polynesian benchmark that failed three ways
+in three attempts and never reached the root.
+
+- Let a `test_rule_cascade` preview satisfy the per-rule validation
+  requirement. The cascade applied the rule to real forms *and* in its
+  committed order, which is strictly more evidence than a standalone test. The
+  workflow `SKILL.md` prescribes — test, cascade, refine, commit — previously
+  had no legal path through the commit contract. The bound record and its
+  `validation_kind` are stored in the commit.
+- Derived the validation match key from the parsed rule instead of the DSL
+  source string, so `t > k` and `t > k / _` — identical to the engine — no
+  longer reject each other. `rule_id` stays lexical; it is persisted.
+- Narrowed `validation-ambiguous` to matches that disagree about which forms
+  the rule applied to. Matches that agree are one experiment run twice and now
+  resolve deterministically, preferring a cascade record and then the most
+  recent.
+- Made a rule-specific rejection answer the question it raised: the remediation
+  names that rule's own DSL, the near matches that differ only in environment
+  (the refinement case), and the call that would unblock the commit, before the
+  session catalogue.
+- Made a node failure non-fatal. The failure is recorded in
+  `result.json:node_failures`, an identity fallback is committed so the walk
+  continues, and the step is marked `diagnostics.failure_fallback` — distinct
+  from `identity_reconstruction`, which it does not overload. Fallback nodes are
+  excluded from the reconstructed-node counts, from `high_quality`, and from
+  trajectory export, and are surfaced by `inspect-run` at the top of its report.
+  Added `--fail-fast` and `--max-failed-nodes` (default 3). A run-budget failure
+  is never absorbed into a fallback.
+- Kept a fallback node, and every node above it, out of the checkpoint, so
+  `--resume` re-runs exactly the nodes whose reconstruction a failure cost.
+- Removed the give-up thresholds from `configuration_sha256`. They cannot change
+  a committed rule or a beam, and hashing them meant the one change a stall
+  invites — loosen and resume — was the change that invalidated the checkpoint.
+  They stay recorded, and a resume reports that they moved. **This and the added
+  `validation_kind` field invalidate existing checkpoints.**
+- Forced a tool call after *every* truncated no-tool response rather than once
+  per node, stopping only if the backend refuses `tool_choice="required"`, and
+  named the observed output token counts in the truncation stall so a new
+  `max_tokens` is not a guess.
+
 Reliability work driven by live `google/gemma-4-e4b` runs in which every
 reconstruction was linguistically correct but 43–71% of tool calls were
 rejected commit-schema errors.

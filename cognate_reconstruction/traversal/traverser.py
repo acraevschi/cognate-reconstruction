@@ -74,6 +74,13 @@ class TreeTraverser:
         if unknown := sorted(set(resumed) - valid_internal_ids):
             raise ValueError(f"checkpoint contains unknown internal node IDs: {unknown}")
         reconstructed_evidence: dict[str, tuple[LanguageLexicon, tuple[str, ...]]] = {}
+        # Nodes whose beam came from, or was built on, a failure fallback. They
+        # are deliberately kept out of the checkpoint: a resumed run must
+        # re-run the node that failed, and every node above it was combined
+        # from a beam that node did not produce. Checkpointing them would make
+        # the failure permanent — which is exactly backwards, since loosening
+        # the give-up thresholds and resuming is the recovery the stall invites.
+        fallback_tainted: set[str] = set()
         for children, parent in postorder_groups(root):
             parent_id = node_ids[id(parent)]
             active_child_ids = tuple(node_ids[id(child)] for child in children)
@@ -134,7 +141,11 @@ class TreeTraverser:
                     anchors=node_anchors.get(parent_id, ()),
                     evidence_context=evidence_context,
                 )
-                if on_step_complete is not None:
+                if step.diagnostics.failure_fallback or any(
+                    child_id in fallback_tainted for child_id in active_child_ids
+                ):
+                    fallback_tainted.add(parent_id)
+                elif on_step_complete is not None:
                     on_step_complete(step)
             beams[id(parent)] = step.output_beam
             reconstructed_evidence[parent_id] = (

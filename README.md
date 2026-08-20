@@ -63,11 +63,11 @@ the runtime classification tree.
 | Supplied Newick | Implemented and recommended | Quoting, leaf validation, pruning, unary collapse, branch lengths, internal IDs, and unresolved polytomies are supported. |
 | Tree induction | Implemented, exploratory | LingPy LexStat SCA distances with neighbor joining or UPGMA; not an independent classification. |
 | Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. |
-| LLM tool loop | Implemented | Ten typed tools, bounded turns/calls, same-session rule validation, ordered cascade preview, exact commit checks, coded rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
+| LLM tool loop | Implemented | Ten typed tools, bounded turns/calls, same-session rule validation satisfied by a standalone test or a cascade preview, ordered cascade preview, exact commit checks, rule-specific rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
 | Cost of looking at evidence | Reduced, and measured | A correspondence-set survey over all 46 concepts and ten daughters costs 28 KB. The same ten-node `get_alignments` request that returned 3034 KB for six concepts now returns 314 KB, and 782 KB for the 24 the raised cap allows. A scripted whole-benchmark run that surveys, re-surveys, and aligns at every one of seven nodes never exceeds a 31.9 KB prompt. See ["the cost of looking at the evidence"](#the-cost-of-looking-at-the-evidence). |
 | Deterministic reconstruction | Implemented | Literal token-rule cascades, n-ary beam combination weighted by branch support, named tie-break policy, derivation provenance naming the supporting children, convergence diagnostics, and optional scored anchors. |
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
-| Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. No mid-node resume. |
+| Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. A failed node is recorded and walked over with a marked identity fallback rather than ending the run; `--fail-fast` and `--max-failed-nodes` bound that. No mid-node resume. |
 | Trajectory curation | Implemented at a mechanical level | Version 2.0 validation, summaries, workflow-quality filtering, and generic tool-training export. No expert linguistic grader or deterministic replay command. |
 | Research-grade evaluation | Partial | Exact held-out historical target evaluation exists; broad curated family benchmarks and a validated quality objective do not. Graded metrics (edit distance, B-Cubed) are still absent, so a near-miss and an unrelated form score alike. |
 | Reconstruction quality | Measured, partly improved, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and is now reported 58.7% of the time, up from 54.3% once branch support reached the score — top-1 rose at every beam width and beam-exact fell at none. **26 points are still lost in how a parent is chosen from child evidence, after the model has finished.** Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. See [the analysis tools](docs/analysis_tools.md). |
@@ -328,7 +328,11 @@ A rejected tool call returns `{error_type, message, code, remediation}`.
 `remediation` is deterministic text derived from recorded session state — for a
 rejected commit it lists every `(validation_call_id, dsl, source_child_ids)`
 triple the session recorded — so a model that has to join two records is shown
-the join key instead of a bare Pydantic dump.
+the join key instead of a bare Pydantic dump. When the rejection is about one
+specific rule, the remediation leads with *that rule*: its own DSL, the
+recorded validations that are near matches for it, and the call that would
+unblock the commit. A model that refined an overapplying rule has moved past
+everything in the catalogue, and reading the catalogue again told it nothing.
 
 `code` is a stable machine identifier for *what was wrong*, drawn from the closed
 vocabulary in
@@ -348,13 +352,40 @@ into one code costs nothing in auditability.
 `source_child_ids`, and the model's own `confidence`:
 
 - `validation_call_id` may be omitted. The harness then resolves it by looking
-  for a successful same-session `test_sound_law` validation whose parsed rule
-  source, child scope, and segmentation overlay are all identical to the
-  committed rule, and resolves only on a unique match. Zero or multiple matches
-  are rejected with the remediation list above; nothing is guessed. **The
+  for a successful same-session validation whose parsed rule, child scope, and
+  segmentation overlay are all identical to the committed rule. **The
   same-session-validation invariant is unchanged** — resolution removes the
   transcription step, not the check. The resolved ID is written into the stored
-  request, so the trajectory stays explicit about which validation was used.
+  request, along with `validation_kind`, so the trajectory stays explicit about
+  which validation was used and what kind of call it was.
+- **A `test_rule_cascade` preview validates each rule it contains.** The cascade
+  applied that rule to the same forms and returned its diff, which is the
+  evidence the per-rule requirement exists to guarantee, and it did so *in the
+  committed order* — strictly more evidence than a standalone test, not less.
+  Before this, the workflow the instructions prescribe had no legal path through
+  the commit contract: step 9 asks the model to refine an overapplying rule, a
+  refined rule first exists inside the cascade preview, and only a
+  `test_sound_law` call counted. A live Tahitic node validated `ʔ > k` and
+  `ʔ > ŋ`, watched them collide in the cascade, refined them into `ʔ > k / _i`,
+  `ʔ > ŋ / i_o`, and `ʔ > ŋ / i_a`, and was rejected four times for doing
+  exactly what it was told to do until the stall detector ended the node.
+- **A rule is matched by what it does, not by how it was spelled.** `t > k` and
+  `t > k / _` parse to the same target, replacement, and empty environment —
+  the engine cannot tell them apart — so the match key is derived from the
+  parse. `rule_id` stays lexical, because it is persisted in trajectories and
+  normalizing it would rewrite existing records. No rule semantics change; only
+  the identity used for matching does.
+- **Two validations are ambiguous only when a reviewer could act on the
+  difference.** The match key is already the rule, the child scope, and the
+  overlay, and a node's forms do not change inside a session, so the only thing
+  a commit can differ by is which forms the rule applied to. When that agrees,
+  the records are one experiment run twice — a model re-testing while
+  iterating — and the old rejection asked for a choice with no content. Matches
+  that agree resolve deterministically, preferring a cascade record (so the
+  bound record is the one that exercised the committed order) and then the most
+  recent. Matches that disagree are still rejected, and the remediation now
+  lists the candidates with the forms each supports rather than the whole
+  session catalogue.
 - `supporting_form_ids` may be omitted and defaults to the resolved
   validation's forms. Those are deterministic engine output, not a model claim;
   a supplied list must still be a subset of them, and a rule that applied to no
@@ -759,18 +790,70 @@ A normal run writes four artifacts:
 
 | Artifact | Meaning |
 | --- | --- |
-| `result.json` | Full traversal snapshot, internal beams/best lexicons, diagnostics, and optional historical-target evaluation. |
+| `result.json` | Full traversal snapshot, internal beams/best lexicons, diagnostics, any `node_failures`, and optional historical-target evaluation. |
 | `trajectories.jsonl` | Append-only versioned model/tool/commit/deterministic records, one record per attempted node. |
 | `events.jsonl` | Append-only chronological operational events for console/application monitoring. |
 | `checkpoint.json` | Atomic completed-node deterministic state for resume. |
 
-Provider failures, run-budget failures, and loop-limit failures write an
-incomplete trajectory before propagating the exception. Completed prior nodes
-remain checkpointed.
+Every attempted node writes a trajectory, complete or not. What happens to the
+*run* when one fails is described next.
+
+### A failed node does not discard the run
+
+A node session that fails — a protocol stall, a loop limit, a provider error —
+used to propagate and end the traversal before `result.json` was written. On a
+seven-node benchmark that meant three attempts produced nothing evaluable, and
+the three clean commits of the first attempt were discarded along with the node
+that stalled. It is the build system that deletes every object file because one
+translation unit failed.
+
+By default the harness now:
+
+- records the failure — reason, error type, and the failed session's trajectory
+  ID — in `result.json` under `node_failures`, and keeps the incomplete
+  trajectory in `trajectories.jsonl` exactly as before;
+- commits a deterministic **identity fallback** for the node so its parent beam
+  is defined and the walk can continue;
+- marks the step `diagnostics.failure_fallback`. This is *not*
+  `identity_reconstruction`, which says a session looked at the evidence and
+  concluded the parent equals its children. Both are true of a fallback step,
+  and only the new flag says no reconstruction was ever proposed;
+- leaves the node, and every node above it, out of the checkpoint, so
+  `--resume` re-runs them;
+- emits a `node_fallback` event after the `node_failed` one, so a timeline says
+  what the run did next and not only that a session ended.
+
+Nothing lets a fallback read as a reconstruction. The CLI prints
+`FAILED NODE <id>` per failure and excludes them from the "reconstructed
+internal nodes" count; `inspect-run` opens with a banner naming them, marks the
+node `FAILED - IDENTITY FALLBACK`, and subtracts them from its own counts. The
+failed trajectory is incomplete, so it carries no deterministic step, fails
+`high_quality` on the first reason, and is excluded from `export-trajectories`
+unless `--include-incomplete` explicitly asks for incomplete sessions — where
+it appears as what it is, a session with no step.
+
+Two bounds:
+
+- `--fail-fast` restores the previous behaviour exactly: the first node failure
+  propagates and no `result.json` is written.
+- `--max-failed-nodes` (default 3, `0` being equivalent to `--fail-fast`) stops
+  a run that is failing everywhere with `TooManyNodeFailuresError`, naming
+  every node that died. A run producing an identity tree is not a
+  reconstruction and should say so by stopping.
+
+**A run-budget failure is never absorbed into a fallback.** `--max-run-seconds`
+and `--max-total-cost-usd` are statements about the whole run, so falling back
+over one would spend the rest of the tree fabricating identity nodes and report
+a stopped run as a completed one.
+
+### Resume
 
 Resume requires the same main input, normalized tree, non-secret CLI
 configuration, agent instructions, tool schemas, and `--anchors` file. When any
-of those changed, the run refuses and the message names which:
+of those changed, the run refuses and the message names which. The thresholds
+that decide when the harness gives up are the exception: they are recorded,
+reported when they change, and never grounds to refuse — see "Resume and budget
+integrity" for why that asymmetry is the right one.
 
 ```bash
 cognate-reconstruct infer +  ... +  --checkpoint runs/family/checkpoint.json +  --resume
@@ -1231,12 +1314,20 @@ future ideas.
   budget on reasoning prose before emitting any call, so the turn immediately
   after a truncated no-tool response is sent with `tool_choice="required"`
   instead of `"auto"` — a change to how the harness builds its own request,
-  crossing no configuration boundary. Not every backend honours `"required"`:
-  it is attempted **once per node**, and if the provider raises or the response
-  still carries no tool call, the run falls back to the previous behaviour
-  rather than looping. Every attempt emits a `truncation_recovery` event and is
-  counted in `forced_tool_choice_count`, so a session that only reached a tool
-  call because the harness intervened does not read like a clean one.
+  crossing no configuration boundary. **Every such truncation gets its own
+  attempt**, bounded by `--max-truncated-responses`: forcing once per node
+  meant the second and third truncated responses drew no intervention at all,
+  and the third is the one that ends the node. A backend that *refuses*
+  `"required"` is written off for the rest of the node, since it will not
+  change its mind; a backend that accepted it and truncated anyway is asked
+  again. Every attempt emits a `truncation_recovery` event and is counted in
+  `forced_tool_choice_count`, so a session that only reached a tool call
+  because the harness intervened does not read like a clean one.
+- **The truncation stall names the output lengths it observed.** `max_tokens`
+  is the operator's lever and the previous message left them to guess at a new
+  value; the error now reports the output token count of each truncated
+  response and the largest of them, or says explicitly that the provider
+  reported none.
 - The optional second recovery **overrides a user-supplied provider option and
   is therefore off by default.** `--allow-truncation-backoff`, which requires
   `--truncation-max-tokens-ceiling`, lets the harness double the effective
@@ -1300,41 +1391,71 @@ future ideas.
   pin.
 - Provider retries cover normalized transient transport/status failures. They
   do not retry a technically successful but linguistically unhelpful response.
-- **Two commit-validation rejections discriminate where nothing distinguishes.**
-  Both were isolated by replaying the `central_eastern` session of the
-  2026-08-17 run, which died with 8 of its last 9 calls rejected.
-  - `validation-ambiguous` fires when a rule matches more than one recorded
-    validation, but the match key is already DSL, child scope, and overlay, and
-    a node's forms do not change inside a session — so the matches are the same
-    experiment run twice. Verified on that run: the two `r > l / _` validations
-    serialize identically apart from `validation_call_id`. Re-testing a rule
-    while iterating is therefore penalized, and the model that did so was pushed
-    onto the explicit-ID path where it then mispaired an ID.
-  - A vacuous environment makes a rule a different rule. `t > k` and `t > k / _`
-    parse to the same target, replacement, and empty `RuleEnvironment`, but
-    `rule_id` is `sha256` of the source string and resolution compares that
-    string, so validating one and committing the other is
-    `validation-mismatch`. The same session produced both spellings, and `/ _`
-    was the majority style.
+- **Two commit-validation rejections used to discriminate where nothing
+  distinguished. Both are fixed**, and both were isolated by replaying the
+  `central_eastern` session of the 2026-08-17 run, which died with 8 of its
+  last 9 calls rejected.
+  - `validation-ambiguous` fired whenever a rule matched more than one recorded
+    validation, but the match key was already DSL, child scope, and overlay,
+    and a node's forms do not change inside a session — so the matches were the
+    same experiment run twice. Verified on that run: the two `r > l / _`
+    validations serialize identically apart from `validation_call_id`.
+    Re-testing a rule while iterating was penalized, and the model that did so
+    was pushed onto the explicit-ID path where it then mispaired an ID. Letting
+    cascades count would have made it strictly more common. It now rejects only
+    when the matches disagree about which forms the rule applied to, which is
+    the only difference a choice between them could express.
+  - A vacuous environment made a rule a different rule: `t > k` and `t > k / _`
+    parse identically but `rule_id` is `sha256` of the source string, and
+    resolution compared that string. The same session produced both spellings,
+    and `/ _` was the majority style. Matching is now derived from the parse.
 
-  Neither is a soundness problem — no unvalidated rule can be committed — and
-  both belong with the loop-resilience work, which also has to let a
-  `test_rule_cascade` validation satisfy the per-rule requirement.
+  Neither was a soundness problem — no unvalidated rule could be committed — and
+  both are described under ["the commit contract"](#the-commit-contract). What
+  remains unhandled: `rule_id` is still lexical, so two spellings of one rule
+  still produce two IDs in a trajectory. Normalizing it would rewrite records
+  that already exist, which is a worse trade than a cosmetic duplicate.
 
 ### Resume and budget integrity
 
 - The checkpoint compatibility hash covers the main input text, the normalized
   tree, public CLI/provider options, **the loaded agent instruction text, the
-  tool schemas, and the contents of a separate `--anchors` file**. The stall
-  and truncation thresholds are now CLI flags
-  (`--max-repeated-tool-failures`, `--stall-window-calls`,
-  `--max-truncated-responses`, and the two truncation-backoff flags) and are
-  hashed with the rest, so a flag nobody hashes is no longer a flag that
-  silently changes a resumed run. `--max-window-protocol-failures` is still
-  orchestrator-only; the CLI never sets it, and its default is derived from two
-  values that *are* hashed, so it cannot change independently of them from the
-  command line. A checkpoint written before this change refuses to resume,
-  which is the point of making the hash honest.
+  tool schemas, and the contents of a separate `--anchors` file**.
+- **The thresholds that decide when the harness gives up are recorded but not
+  hashed.** `--max-repeated-tool-failures`, `--stall-window-calls`,
+  `--max-truncated-responses`, the two truncation-backoff flags, `--fail-fast`,
+  and `--max-failed-nodes` cannot change a committed rule, a validated cascade,
+  or a beam: they decide only how long a node keeps trying before the harness
+  stops it. Hashing them had a specific perverse consequence — the one
+  configuration change a stall *invites* was the change that invalidated the
+  checkpoint:
+
+  ```
+  $ cognate-reconstruct infer --resume --max-repeated-tool-failures 6 …
+  error: checkpoint cannot be resumed because these changed: the provider and
+  limit settings
+  ```
+
+  Recovering from a protocol stall therefore meant re-running the whole family.
+  They are still recorded in `configuration_components` under "the give-up
+  thresholds", so a resume that changes them prints a note saying so and
+  proceeds; the checkpoint keeps the values the original run used, which is why
+  the note repeats on every resume that keeps the new ones. Everything
+  genuinely semantic — provider, model, temperature, beam width, anchor policy,
+  agent instructions, tool schemas, anchors, normalized tree, input — is hashed
+  exactly as before, and `--temperature 0.9` still refuses.
+
+  The boundary is "can this change what a node produces", not "is this a
+  limit": `--max-turns`, `--max-tool-calls`, and the `--max-total-*` budgets
+  stay hashed, because a node given more turns can commit a different
+  reconstruction rather than the same one more reliably.
+- **This change invalidates every existing checkpoint**, since the hashed set
+  itself changed, as does the added `validation_kind` field on a committed rule
+  (the tool schemas are hashed). That is correct rather than unfortunate, and
+  it is the last time these two changes cost anything.
+- `--max-window-protocol-failures` is still orchestrator-only; the CLI never
+  sets it, and its default is derived from two values that are recorded, so it
+  cannot change independently of them from the command line.
 - **Every checkpoint written before the evidence-cost work refuses to resume.**
   The instruction text changed (the required workflow now starts from the
   correspondence survey) and so did the tool schemas (`summarize_correspondences`
@@ -1365,6 +1486,14 @@ future ideas.
   invocation, not the cumulative history of a run across resumptions.
 - Checkpoints are node-boundary snapshots only. Work inside the failed active
   node is retained in its trajectory but replayed from a fresh model session.
+- **A node the harness fell back over is deliberately not checkpointed, and
+  neither is any node above it.** A fallback parent is not a reconstruction, so
+  recording it would freeze the failure into the run permanently; and every
+  ancestor was combined from a beam the failed node did not produce, so
+  checkpointing those would leave the checkpoint internally inconsistent with
+  the node it will re-run. `--resume` therefore re-runs the failed node and
+  everything above it, and nodes below it — which are unaffected — are restored
+  from the checkpoint as usual.
 - Cost limits work only when the provider reports cost metadata.
 
 ### Quality and scoring
@@ -1579,14 +1708,16 @@ future ideas.
    process resumes, so "total run" limits bound one CLI invocation rather than
    the history of a run across resumptions. This needs a product decision about
    what a budget is meant to bound, not an implementation. The other half of
-   this item — anchors, instruction and tool-schema hashes, and the stall
-   thresholds in checkpoint compatibility — is done, in one change, as it had to
-   be: every addition invalidates every existing checkpoint.
+   this item — anchors, instruction and tool-schema hashes in checkpoint
+   compatibility — is done. The give-up thresholds are deliberately *not* in
+   that hash; see "Resume and budget integrity".
 2. Continue a truncated response rather than discarding it. Forcing a tool call
-   on the retry, and the optional token backoff, recover the common case where
-   the model reasoned past its output budget; neither salvages the reasoning
-   that was cut off, and neither helps a model whose *single* tool call does not
-   fit in the budget.
+   on every truncated no-tool response, and the optional token backoff, recover
+   the common case where the model reasoned past its output budget; neither
+   salvages the reasoning that was cut off, and neither helps a model whose
+   *single* tool call does not fit in the budget. The stall now reports the
+   observed output lengths, so choosing a new `max_tokens` is no longer
+   guesswork.
 3. Decide whether an exploratory rejection should ever end a node. **It already
    can, and this was previously documented backwards here.** Window saturation
    counts only protocol rejections, but the per-signature rule in
@@ -1594,6 +1725,11 @@ future ideas.
    sharing one `(tool, code)` signature draw a targeted correction and a fourth
    raises `ProtocolStallError`, `dsl-parse-error` included. A model that tests
    malformed sound laws is therefore *not* bounded by the turn limit alone.
+
+   One node's stall is no longer fatal to the run — the traversal falls back
+   over it and `--resume` re-runs it — so the cost of getting this threshold
+   wrong is now a lost node rather than a lost family. That lowers the stakes;
+   it does not answer the question.
 
    A live `gemma-4-26b-a4b` run on the Polynesian benchmark showed why this
    matters, and it is worse than a bookkeeping error. On the `tongic` node the
