@@ -184,6 +184,9 @@ class RuleCommitProvider:
 
 
 def _service(provider, trajectory_path: Path) -> ReconstructionService:
+    # `fail_fast` because these cases simulate an *interrupted* run: the node
+    # that fails must stop the traversal, which is what leaves a checkpoint
+    # with earlier nodes in it and nothing above them.
     return ReconstructionService(
         AgenticNodeReconstructor(
             AgentOrchestrator(
@@ -192,7 +195,8 @@ def _service(provider, trajectory_path: Path) -> ReconstructionService:
                 trajectory_sink=JsonlTrajectorySink(trajectory_path),
                 run_id="run-test",
                 configuration_sha256="config-hash",
-            )
+            ),
+            fail_fast=True,
         )
     )
 
@@ -406,6 +410,8 @@ def _half_finished_checkpoint(tmp_path: Path, monkeypatch) -> FamilyCheckpoint:
             monkeypatch,
             "--run-id",
             "run-test",
+            # An interruption, not a node the harness could fall back over.
+            "--fail-fast",
             provider=InterruptedFirstPassProvider(),
         )
     checkpoint = CheckpointStore(tmp_path / "checkpoint.json").load()
@@ -588,12 +594,47 @@ def test_a_changed_anchor_file_refuses_to_resume_and_says_so(
     assert "the anchor file" in capsys.readouterr().err
 
 
-def test_a_changed_stall_threshold_refuses_to_resume(
+def test_a_changed_stall_threshold_resumes_and_says_it_changed(
     tmp_path, monkeypatch, capsys
 ) -> None:
+    """The one change a stall invites must not be the one that refuses.
+
+    Loosening a give-up threshold cannot change a committed rule, a validated
+    cascade, or a beam: it decides only how long the harness keeps trying. When
+    it was hashed, recovering from a protocol stall meant re-running the entire
+    family, which is how three attempts at a seven-node benchmark produced no
+    evaluable result at all.
+    """
+    _half_finished_checkpoint(tmp_path, monkeypatch)
+    _infer(
+        tmp_path,
+        monkeypatch,
+        "--resume",
+        "--max-truncated-responses",
+        "9",
+        "--max-repeated-tool-failures",
+        "6",
+        "--stall-window-calls",
+        "24",
+    )
+    err = capsys.readouterr().err
+    # Reported, never silent: a resumed run must not disagree with its own
+    # configuration without saying so.
+    assert "the give-up thresholds changed" in err
+    assert "the provider and limit settings" not in err
+    assert [
+        step.parent_node_id
+        for step in CheckpointStore(tmp_path / "checkpoint.json").load().completed_steps
+    ] == ["X", "ROOT"]
+
+
+def test_a_changed_semantic_setting_still_refuses_to_resume(
+    tmp_path, monkeypatch, capsys
+) -> None:
+    """The split is between give-up thresholds and everything else."""
     _half_finished_checkpoint(tmp_path, monkeypatch)
     with pytest.raises(SystemExit) as caught:
-        _infer(tmp_path, monkeypatch, "--resume", "--max-truncated-responses", "9")
+        _infer(tmp_path, monkeypatch, "--resume", "--temperature", "0.9")
     assert caught.value.code == 2
     assert "the provider and limit settings" in capsys.readouterr().err
 

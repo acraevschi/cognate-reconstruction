@@ -186,7 +186,10 @@ def test_checkpoint_resume_skips_completed_nodes_and_keeps_failed_trajectory(
                 trajectory_sink=JsonlTrajectorySink(trajectory_path),
                 run_id="run-test",
                 configuration_sha256="config-hash",
-            )
+            ),
+            # The interrupted-run shape this case is about: without it the
+            # traversal falls back over the dead node and reaches the root.
+            fail_fast=True,
         )
     )
     with pytest.raises(ProviderTransientError):

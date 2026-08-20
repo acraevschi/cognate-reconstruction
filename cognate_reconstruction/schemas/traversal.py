@@ -95,6 +95,18 @@ class ReconstructionDiagnostics(WorkbenchModel):
     anomaly_count: int = Field(ge=0)
     anomaly_rate: float = Field(ge=0.0)
     identity_reconstruction: bool
+    # Defaulted false so every step written before node-failure fallback
+    # existed reads as what it was: a node that actually ran.
+    failure_fallback: bool = False
+    """This node's session failed and the harness committed identity for it.
+
+    Not a linguistic claim, and deliberately *not* `identity_reconstruction`,
+    which says a session inspected the evidence and concluded that the parent
+    equals its children. Both are true of a fallback step — no rule was
+    applied — and only this one says no reconstruction was ever proposed. It
+    exists so a run with two dead nodes cannot read as a run with seven
+    reconstructions.
+    """
     # Convergence. Every counter above measures the *rules*; these measure
     # whether the children ended up agreeing on a parent, which is the only
     # thing a reconstruction is for. All are `None`-defaulted so steps written
@@ -145,6 +157,22 @@ class ReconstructionDiagnostics(WorkbenchModel):
     support or on the order of its first differing segment. Counting them lets a
     reader tell how much of a node's output is arbitrary.
     """
+
+
+class NodeFailureRecord(WorkbenchModel):
+    """One node whose session failed, and what the traversal did about it.
+
+    Kept beside the results rather than in place of them: the walk continued
+    over an identity fallback, so the parent beam exists and every node above
+    it was still reconstructed. The trajectory of the failed session is written
+    to `trajectories.jsonl` exactly as before and is named here by ID.
+    """
+
+    node_id: NonEmptyStr
+    child_node_ids: tuple[NonEmptyStr, ...] = ()
+    error_type: NonEmptyStr
+    reason: NonEmptyStr
+    trajectory_id: NonEmptyStr | None = None
 
 
 class TraversalSnapshot(WorkbenchModel):

@@ -66,10 +66,10 @@ Studio models; exits nonzero if anything is missing.
 
 ## Run: deterministic path (no model, no network)
 
-Fastest way to confirm the core still works. Runs the unit suite (178 fixed
+Fastest way to confirm the core still works. Runs the unit suite (249 fixed
 tests, plus one opportunistic backward-compatibility case per
 `runs/*/trajectories.jsonl` you have locally, so the total you see is higher and
-drifts as you do runs) and the CLDF fixture ingestion. The fixed 178 is the
+drifts as you do runs) and the CLDF fixture ingestion. The fixed 249 is the
 number to quote: run
 `pytest -q -k "not local_run_artifacts"` for it. The guarantee those extra cases
 used to carry alone is now pinned by a checked-in real pre-change trajectory, so
@@ -266,8 +266,8 @@ errors.
   `max_truncated_responses` (default 3) truncated no-tool responses.
 - **Truncation now has a real remedy, and triage says when it was used.** After
   a truncated response with no tool call, the *next* request goes out with
-  `tool_choice="required"` — once per node, then it gives up and behaves as
-  before. Optionally, `--allow-truncation-backoff` with
+  `tool_choice="required"` — on every such truncation, until the backend
+  refuses the option outright. Optionally, `--allow-truncation-backoff` with
   `--truncation-max-tokens-ceiling` doubles the effective `max_tokens` for the
   rest of the node; it is **off by default** because `max_tokens` is your
   `--provider-config` option, not the harness's. Triage prints
@@ -326,7 +326,8 @@ errors.
      `--provider-config` and `--timeout` feed `configuration_sha256`: you cannot
      add a cap or shorten the timeout and still resume a checkpoint written
      without them. `driver.py run` sets neither, so use the human `infer` path
-     when you want them.
+     when you want them. The give-up thresholds are the exception and can be
+     changed across a resume.
   5. **If you must stop it, `kill -INT` and verify before resuming.** The
      checkpoint costs you only the current node, but a truncated JSONL line
      becomes `could not load prior hypotheses` and stops the resume:
@@ -338,15 +339,19 @@ errors.
      print([s.parent_node_id for s in CheckpointStore('runs/<dir>/checkpoint.json').load().completed_steps])
      print(len(TrajectoryDatasetBuilder.read_jsonl('runs/<dir>/trajectories.jsonl')))"
      ```
-- **Thresholds are CLI flags and *are* covered by the resume hash.**
-  `--max-repeated-tool-failures`, `--stall-window-calls`,
-  `--max-truncated-responses`, and both truncation-backoff flags are hashed into
-  `configuration_sha256`, along with the `agent/SKILL.md` text, the tool
-  schemas, and any `--anchors` file. Changing any of them makes an existing
-  checkpoint refuse to resume, and the error names which one
-  ("the agent instructions", "the tool schemas", "the anchor file", "the
-  provider and limit settings"). Checkpoints written before 2026-08-15 refuse
-  too, but can only say "the configuration" — they never recorded the parts.
+- **The give-up thresholds are CLI flags and are deliberately *not* in the
+  resume hash.** `--max-repeated-tool-failures`, `--stall-window-calls`,
+  `--max-truncated-responses`, both truncation-backoff flags, `--fail-fast`,
+  and `--max-failed-nodes` decide only how long the harness keeps trying, so
+  loosening them and resuming is allowed — the resume prints a note that "the
+  give-up thresholds changed" and proceeds. Everything semantic *is* hashed:
+  the `agent/SKILL.md` text, the tool schemas, any `--anchors` file, the model,
+  temperature, timeout, beam width, and the turn/tool-call budgets. Changing
+  one of those makes an existing checkpoint refuse to resume, and the error
+  names which ("the agent instructions", "the tool schemas", "the anchor file",
+  "the provider and limit settings"). Checkpoints written before 2026-08-15
+  refuse too, but can only say "the configuration" — they never recorded the
+  parts.
   `max_window_protocol_failures` still has no flag; the CLI never sets it and
   its default derives from two flags that are hashed.
 
@@ -359,6 +364,8 @@ errors.
 | `model 'X' is not reported by LM Studio` | Model is not loaded. Check `driver.py preflight` for loaded IDs. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |
 | Run makes no progress but the process is alive | Almost certainly a slow turn, not a hang — this model returned after 5–7 minutes repeatedly. **Wait.** A real hang surfaces as `provider_retry` with `litellm.Timeout` after ~15 min per attempt with `--timeout 300`. Only investigate past that: `find runs/<dir>/events.jsonl -mmin +16 -print`. Prevent long turns next run with `max_tokens` in `--provider-config` and a lower `--timeout`; both are hashed, so they must be set before the first node. See the gotcha above. |
+| A node ends in any error | The run continues by default: the node is recorded in `result.json:node_failures`, its parent is an identity fallback, and neither it nor anything above it is checkpointed. `inspect-run` names them at the top. Triage the node, then `--resume` — the give-up thresholds are not hashed, so you may loosen them on the way. `--fail-fast` restores the old abort; `--max-failed-nodes` (default 3) stops a run that is failing everywhere. |
+| Run ends in `TooManyNodeFailuresError` | More nodes failed than `--max-failed-nodes` tolerates, and the message names each one. `result.json` was *not* written. The checkpoint holds every node below the first failure; triage before resuming. |
 | Run ends in `AgentLoopLimitError` | Model never produced a valid commit and never failed densely enough to trip either stall condition — typically a session that keeps exploring, since exploratory rejections never count. Triage it; raise `--max-turns` or use a stronger model. |
 | Run ends in `ProtocolStallError` | One of three things: a `(tool, error code)` signature recurred after a targeted correction; the trailing window filled with protocol rejections of mixed codes; or output was truncated repeatedly with no tool call. Read the message — the first two are tool-contract problems. For the third, the message states what the harness already tried (forcing a tool call, and any `max_tokens` backoff steps); what is left is raising `max_tokens` in the `--provider-config` JSON, or `--allow-truncation-backoff --truncation-max-tokens-ceiling N` to let the harness raise it for you. |
 | `checkpoint cannot be resumed because these changed: ...` | Expected after editing `agent/SKILL.md`, the tool schemas, an `--anchors` file, or any hashed flag. The named part is the one to restore — or start a new checkpoint path. |

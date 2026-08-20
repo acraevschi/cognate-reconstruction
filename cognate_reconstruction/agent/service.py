@@ -18,7 +18,10 @@ from cognate_reconstruction.schemas.historical import (
 )
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.traversal import TraversalSnapshot
-from cognate_reconstruction.schemas.traversal import ReconstructionStep
+from cognate_reconstruction.schemas.traversal import (
+    NodeFailureRecord,
+    ReconstructionStep,
+)
 from cognate_reconstruction.traversal.traverser import TreeTraverser
 
 
@@ -33,6 +36,14 @@ class FamilyReconstructionResult(WorkbenchModel):
     internal_nodes: tuple[InternalNodeVocabulary, ...]
     trajectories: tuple[AgentTrajectory, ...]
     historical_target_evaluations: tuple[HistoricalTargetEvaluation, ...] = ()
+    node_failures: tuple[NodeFailureRecord, ...] = ()
+    """Nodes whose session failed and whose parent is an identity fallback.
+
+    Defaulted empty so results written before the fallback existed still load.
+    The corresponding steps carry `diagnostics.failure_fallback`, so a reader
+    that only has the snapshot can still tell them apart; this is where the
+    reason and the failed trajectory's ID live.
+    """
 
 
 def _best_lexicon(beam: NodeBeamState) -> LanguageLexicon:
@@ -195,6 +206,10 @@ class ReconstructionService:
             )
             for step in snapshot.steps
         )
+        # A fallback node still has a beam — that is the point of it — so it is
+        # still an internal node here. What separates it from a reconstruction
+        # is the step's `failure_fallback` flag and this list.
+        node_failures = tuple(self.reconstructor.node_failures)
         steps_by_node = {
             step.parent_node_id: step for step in snapshot.steps
         }
@@ -206,8 +221,7 @@ class ReconstructionService:
         return FamilyReconstructionResult(
             snapshot=snapshot,
             internal_nodes=internal_nodes,
-            trajectories=tuple(
-                result.trajectory for result in self.reconstructor.run_results
-            ),
+            trajectories=tuple(self.reconstructor.trajectories),
             historical_target_evaluations=target_evaluations,
+            node_failures=node_failures,
         )

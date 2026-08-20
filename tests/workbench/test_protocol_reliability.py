@@ -359,7 +359,7 @@ def test_the_correction_message_carries_the_tool_remediation() -> None:
     assert len(captured) == 1
     content = captured[0].content or ""
     assert "rejected for the same reason" in content
-    assert "No test_sound_law validation has succeeded" in content
+    assert "No test_sound_law validation and no test_rule_cascade" in content
 
 
 class VaryingMessageCommitProvider:

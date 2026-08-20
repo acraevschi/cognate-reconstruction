@@ -426,6 +426,7 @@ class NodeReport:
     status: str
     model_id: str
     failure: str | None
+    failure_fallback: bool
     session: tuple[tuple[str, str], ...]
     summary: str | None
     rules: tuple[RuleRow, ...]
@@ -446,6 +447,13 @@ class RunReport:
     historical: tuple[str, ...]
     observations: tuple[CrossNodeObservation, ...]
     notes: tuple[str, ...] = field(default_factory=tuple)
+    fallback_nodes: tuple[str, ...] = field(default_factory=tuple)
+    """Nodes the traversal walked over on an identity fallback.
+
+    Surfaced at the top of the report, not only per node: a reader who takes
+    "7 internal nodes" at face value has been told something false, and the
+    per-node status is too far down the page to prevent that.
+    """
 
 
 def _segments(tokens: Iterable[str]) -> str:
@@ -491,6 +499,22 @@ def _best_forms(
     ]
 
 
+def _failure_fallback_node_ids(result: Mapping[str, Any] | None) -> set[str]:
+    """Nodes recorded as failure fallbacks by the run that wrote result.json.
+
+    Read from the artifact rather than inferred from an incomplete trajectory:
+    a trajectory says the session failed, and only the result says whether the
+    traversal continued over it. A run that aborted has neither.
+    """
+    if result is None:
+        return set()
+    return {
+        str(failure["node_id"])
+        for failure in result.get("node_failures", [])
+        if failure.get("node_id")
+    }
+
+
 def _event_counts(
     events: Sequence[Mapping[str, Any]],
 ) -> dict[str, Counter[str]]:
@@ -507,6 +531,7 @@ NOTABLE_EVENT_KINDS = (
     "truncation_recovery",
     "protocol_correction",
     "node_failed",
+    "node_fallback",
 )
 
 
@@ -723,6 +748,7 @@ def _node_report(
     events: Counter[str] | None,
     *,
     form_limit: int | None,
+    failure_fallback: bool = False,
 ) -> NodeReport:
     commit = trajectory.committed_reconstruction
     forms = _best_forms(trajectory, result)
@@ -737,11 +763,18 @@ def _node_report(
             f"({anomaly.form_id or anomaly.concept_id}): {anomaly.explanation}"
             for anomaly in commit.request.anomalies
         )
+    if trajectory.completed:
+        status = "completed"
+    elif failure_fallback:
+        status = "FAILED - IDENTITY FALLBACK"
+    else:
+        status = "FAILED"
     return NodeReport(
         node_id=trajectory.node_id,
-        status="completed" if trajectory.completed else "FAILED",
+        status=status,
         model_id=trajectory.model_id or "unknown",
         failure=trajectory.failure,
+        failure_fallback=failure_fallback,
         session=_session_rows(trajectory, events),
         summary=commit.request.summary if commit is not None else None,
         rules=_rule_rows(trajectory),
@@ -778,14 +811,20 @@ def build_report(
 ) -> RunReport:
     trajectories = artifacts.trajectories
     events = _event_counts(artifacts.events)
+    fallbacks = _failure_fallback_node_ids(artifacts.result)
     nodes = tuple(
         _node_report(
             trajectory,
             artifacts.result,
             events.get(trajectory.node_id),
             form_limit=form_limit,
+            failure_fallback=trajectory.node_id in fallbacks,
         )
         for trajectory in trajectories
+    )
+    fallback_nodes = tuple(
+        sorted(fallbacks & {trajectory.node_id for trajectory in trajectories})
+        or sorted(fallbacks)
     )
     run_ids = sorted({trajectory.run_id for trajectory in trajectories})
     models = sorted({trajectory.model_id or "unknown" for trajectory in trajectories})
@@ -802,10 +841,22 @@ def build_report(
         (
             "artifacts",
             f"{len(trajectories)} trajectory record(s), "
-            f"{len(artifacts.result.get('internal_nodes', [])) if artifacts.result else 0} "
+            f"{(len(artifacts.result.get('internal_nodes', [])) if artifacts.result else 0) - len(fallback_nodes)} "
             f"reconstructed internal node(s), {len(artifacts.events)} event(s)",
         ),
     )
+    if fallback_nodes:
+        header += (
+            (
+                "FAILURE FALLBACKS",
+                f"{len(fallback_nodes)} node(s) were NOT reconstructed: "
+                + ", ".join(fallback_nodes)
+                + ". Their parent beams are identity fallbacks committed by "
+                "the harness after the session failed, not linguistic claims. "
+                "They are excluded from the counts above and from trajectory "
+                "export.",
+            ),
+        )
     completed = [item for item in trajectories if item.completed]
     total_calls = sum(item.metrics.tool_call_count for item in trajectories)
     total_failed = sum(item.metrics.failed_tool_call_count for item in trajectories)
@@ -817,7 +868,13 @@ def build_report(
         (
             "nodes",
             f"{len(trajectories)} attempted, {len(completed)} completed, "
-            f"{len(trajectories) - len(completed)} failed",
+            f"{len(trajectories) - len(completed)} failed"
+            + (
+                f" ({len(fallback_nodes)} of them walked over as identity "
+                "fallbacks)"
+                if fallback_nodes
+                else ""
+            ),
         ),
         (
             "high quality",
@@ -853,6 +910,7 @@ def build_report(
         historical=_historical_lines(artifacts.result),
         observations=cross_node_observations(trajectories, artifacts.result),
         notes=artifacts.notes,
+        fallback_nodes=fallback_nodes,
     )
 
 
@@ -902,6 +960,17 @@ def render_text(report: RunReport) -> str:
         f"RUN REPORT  {report.run_dir}",
         "=" * TEXT_WIDTH,
     ]
+    if report.fallback_nodes:
+        lines.extend(
+            [
+                "!" * TEXT_WIDTH,
+                f"{len(report.fallback_nodes)} NODE(S) WERE NOT RECONSTRUCTED: "
+                + ", ".join(report.fallback_nodes),
+                "The traversal continued over an identity fallback at each of "
+                "them.",
+                "!" * TEXT_WIDTH,
+            ]
+        )
     lines.extend(_fact_lines(report.header, indent="  ", label_width=16))
     for note in report.notes:
         lines.extend(_wrapped("  note            ", note))
@@ -917,6 +986,15 @@ def render_text(report: RunReport) -> str:
         )
         if node.failure:
             lines.extend(_wrapped("  failure: ", node.failure))
+        if node.failure_fallback:
+            lines.extend(
+                _wrapped(
+                    "  fallback: ",
+                    "this node has no reconstruction. The harness committed an "
+                    "identity parent so the walk could continue, and left the "
+                    "node out of the checkpoint so --resume re-runs it.",
+                )
+            )
         lines.append("  SESSION SHAPE")
         lines.extend(_fact_lines(node.session, indent="    ", label_width=18))
         lines.append("  COMMITTED HYPOTHESIS")
@@ -1103,9 +1181,20 @@ def render_html(report: RunReport) -> str:
         f"<title>Run report {_e(report.run_dir)}</title>",
         f"<style>{_HTML_STYLE}</style></head><body><main>",
         f"<h1>Run report</h1><p class='mono note'>{_e(report.run_dir)}</p>",
-        "<section class='panel'>",
-        _facts(report.header),
     ]
+    if report.fallback_nodes:
+        parts.append(
+            "<section class='panel'><h2 class='bad'>"
+            f"{len(report.fallback_nodes)} node(s) were not reconstructed</h2>"
+            f"<p>{_e(', '.join(report.fallback_nodes))} — the traversal "
+            "continued over an identity fallback at each of them.</p></section>"
+        )
+    parts.extend(
+        [
+            "<section class='panel'>",
+            _facts(report.header),
+        ]
+    )
     if report.notes:
         parts.append(
             "<ul>" + "".join(f"<li>{_e(note)}</li>" for note in report.notes) + "</ul>"
@@ -1125,6 +1214,13 @@ def render_html(report: RunReport) -> str:
         )
         if node.failure:
             parts.append(f"<p class='note'>failure: {_e(node.failure)}</p>")
+        if node.failure_fallback:
+            parts.append(
+                "<p class='note'>This node has no reconstruction. The harness "
+                "committed an identity parent so the walk could continue, and "
+                "left the node out of the checkpoint so <code>--resume</code> "
+                "re-runs it.</p>"
+            )
         parts.append("<h3>Session shape</h3>")
         parts.append(_facts(node.session))
         parts.append("<h3>Committed hypothesis</h3>")

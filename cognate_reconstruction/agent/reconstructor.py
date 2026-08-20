@@ -5,7 +5,11 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 
 from cognate_reconstruction.agent.context import AgentContext
-from cognate_reconstruction.agent.orchestrator import AgentOrchestrator
+from cognate_reconstruction.agent.orchestrator import (
+    AgentOrchestrator,
+    RunBudgetExceeded,
+    failed_node_trajectory,
+)
 from cognate_reconstruction.agent.schemas import PriorNodeReconstruction
 from cognate_reconstruction.agent.tools import summarize_commit
 from cognate_reconstruction.agent.trajectory import AgentRunResult, AgentTrajectory
@@ -19,7 +23,10 @@ from cognate_reconstruction.schemas.rules import (
     ReconstructionRule,
 )
 from cognate_reconstruction.schemas.traversal import EvidenceKind, ReconstructionStep
-from cognate_reconstruction.schemas.traversal import NodeReconstructionContext
+from cognate_reconstruction.schemas.traversal import (
+    NodeFailureRecord,
+    NodeReconstructionContext,
+)
 from cognate_reconstruction.traversal.beam import beam_to_lexicon
 from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
 
@@ -90,8 +97,43 @@ def _overlay_candidate_segments(
     return next(iter(outputs))
 
 
+DEFAULT_MAX_FAILED_NODES = 3
+"""Dead nodes a family run tolerates before it stops.
+
+A bound rather than a policy: one node that stalls should not discard the work
+of the nodes that succeeded, but a run failing everywhere is producing an
+identity tree, not a reconstruction, and should say so by stopping. Small and
+fixed because the number that matters is "how many nodes am I willing to read
+as unreconstructed", which does not scale with the tree.
+"""
+
+
+class TooManyNodeFailuresError(RuntimeError):
+    """More nodes failed than the run was willing to fall back over.
+
+    Carries the records so a caller does not have to re-read the event log to
+    say which nodes died.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        failures: Sequence[NodeFailureRecord] = (),
+    ) -> None:
+        super().__init__(message)
+        self.failures = tuple(failures)
+
+
 class AgenticNodeReconstructor:
-    """Run one hypothesis-manager session, then invoke deterministic scoring."""
+    """Run one hypothesis-manager session, then invoke deterministic scoring.
+
+    A node session that fails does not, by default, end the family run. The
+    failure is recorded, an identity reconstruction is committed for the node so
+    the parent beam is defined, and the walk continues — the alternative being a
+    build that deletes every object file because one translation unit failed.
+    Set `fail_fast` to restore propagation, and `max_failed_nodes` to bound how
+    far a run that is failing everywhere gets.
+    """
 
     def __init__(
         self,
@@ -99,11 +141,22 @@ class AgenticNodeReconstructor:
         *,
         deterministic: RuleBasedReconstructor | None = None,
         aligner: AlignmentProvider | None = None,
+        fail_fast: bool = False,
+        max_failed_nodes: int | None = DEFAULT_MAX_FAILED_NODES,
     ) -> None:
+        if max_failed_nodes is not None and max_failed_nodes < 0:
+            raise ValueError("max_failed_nodes must be non-negative")
         self.orchestrator = orchestrator
         self.deterministic = deterministic or RuleBasedReconstructor()
         self.aligner = aligner or LingPyAligner()
+        self.fail_fast = fail_fast
+        self.max_failed_nodes = max_failed_nodes
         self.run_results: list[AgentRunResult] = []
+        # Every attempted node in traversal order, failures included. The
+        # successes are also in `run_results`; this is what a run artifact
+        # reports, and a node that died belongs in it.
+        self.trajectories: list[AgentTrajectory] = []
+        self.node_failures: list[NodeFailureRecord] = []
         # Committed hypotheses from nodes already completed in this family run.
         # Each node still gets a fresh conversation; this is retrieved through a
         # bounded tool, not merged into the prompt.
@@ -111,6 +164,8 @@ class AgenticNodeReconstructor:
 
     def clear_run_results(self) -> None:
         self.run_results.clear()
+        self.trajectories.clear()
+        self.node_failures.clear()
         self.prior_reconstructions.clear()
 
     def seed_prior_reconstructions(
@@ -188,7 +243,21 @@ class AgenticNodeReconstructor:
                 evidence_context
             ),
         )
-        run_result = self.orchestrator.run(context)
+        try:
+            run_result = self.orchestrator.run(context)
+        except RunBudgetExceeded:
+            # A budget is a statement about the whole run, not about this node.
+            # Falling back over it would spend the rest of the tree fabricating
+            # identity nodes and report a stopped run as a completed one.
+            raise
+        except Exception as error:
+            return self._fallback_step(
+                parent_node_id,
+                child_beams,
+                error,
+                anchors=anchors,
+                evidence_context=evidence_context,
+            )
         committed = run_result.reconstruction
         scored_children = tuple(
             _apply_overlay(
@@ -211,10 +280,77 @@ class AgenticNodeReconstructor:
         )
         finalized = self.orchestrator.finalize(run_result, step)
         self.run_results.append(finalized)
+        self.trajectories.append(finalized.trajectory)
         self.prior_reconstructions[parent_node_id] = summarize_commit(
             parent_node_id, committed
         )
         return step
+
+    def _fallback_step(
+        self,
+        parent_node_id: str,
+        child_beams: tuple[NodeBeamState, ...],
+        error: Exception,
+        *,
+        anchors: Sequence[LexicalForm],
+        evidence_context: NodeReconstructionContext | None,
+    ) -> ReconstructionStep:
+        """Record a dead node and keep the walk going over an identity parent.
+
+        The fallback is deterministic and claims nothing: no rule is applied, so
+        the parent beam is the combination of the children as they stand. It is
+        marked `failure_fallback` in the step's diagnostics precisely so nothing
+        downstream can mistake it for a reconstruction that concluded identity.
+
+        No hypothesis is recorded for the node, so a later node asking
+        `get_node_reconstruction` about it is truthfully told there is none.
+        """
+        if self.fail_fast:
+            raise error
+        trajectory = failed_node_trajectory(error)
+        record = NodeFailureRecord(
+            node_id=parent_node_id,
+            child_node_ids=tuple(beam.node_id for beam in child_beams),
+            error_type=type(error).__name__,
+            reason=str(error) or type(error).__name__,
+            trajectory_id=trajectory.trajectory_id if trajectory else None,
+        )
+        self.node_failures.append(record)
+        if trajectory is not None:
+            self.trajectories.append(trajectory)
+        if (
+            self.max_failed_nodes is not None
+            and len(self.node_failures) > self.max_failed_nodes
+        ):
+            raise TooManyNodeFailuresError(
+                f"{len(self.node_failures)} nodes failed, more than the "
+                f"{self.max_failed_nodes} this run tolerates: "
+                + ", ".join(
+                    f"{item.node_id} ({item.error_type})"
+                    for item in self.node_failures
+                ),
+                self.node_failures,
+            ) from error
+        self.orchestrator.emit_node_fallback(
+            parent_node_id,
+            error_type=record.error_type,
+            reason=record.reason,
+            failed_node_count=len(self.node_failures),
+            max_failed_nodes=self.max_failed_nodes,
+        )
+        step = self.deterministic.reconstruct(
+            parent_node_id,
+            child_beams,
+            evidence_context=evidence_context,
+            anchors=anchors,
+        )
+        return step.model_copy(
+            update={
+                "diagnostics": step.diagnostics.model_copy(
+                    update={"failure_fallback": True}
+                )
+            }
+        )
 
     def _visible_prior_reconstructions(
         self,

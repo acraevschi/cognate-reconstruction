@@ -603,6 +603,18 @@ class SegmentMorphemesResult(WorkbenchModel):
     rationale: NonEmptyStr
 
 
+class ValidationKind(StrEnum):
+    """Which kind of same-session call applied a committed rule to real forms.
+
+    Recorded on the committed rule so a trajectory says what backed it. A
+    cascade preview is not a weaker record than a standalone test: it applied
+    the rule to the same forms *and* in its committed order.
+    """
+
+    SOUND_LAW = "test_sound_law"
+    RULE_CASCADE = "test_rule_cascade"
+
+
 class CommittedSoundRule(WorkbenchModel):
     rule_id: NonEmptyStr | None = Field(
         default=None,
@@ -644,14 +656,24 @@ class CommittedSoundRule(WorkbenchModel):
     validation_call_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "The validation_call_id returned by the test_sound_law call that "
-            "tested this exact dsl and this exact source_child_ids. It is "
-            "per-rule and is never the top-level cascade_validation_call_id, "
-            "which only ever holds a test_rule_cascade ID. Optional: when "
-            "omitted the harness resolves it automatically, but only when "
-            "exactly one successful same-session test_sound_law validation "
-            "matches this rule's DSL, child scope, and segmentation overlay. "
-            "Supply it explicitly when several validations would match."
+            "The validation_call_id of the call that applied this exact rule "
+            "to this exact source_child_ids: either a test_sound_law call, or "
+            "a test_rule_cascade call whose order contains this rule. "
+            "Optional: when omitted the harness resolves it from the "
+            "same-session validation whose rule, child scope, and segmentation "
+            "overlay are identical to this one. Supply it explicitly only when "
+            "several matching validations disagree about which forms the rule "
+            "applied to. Setting it here does not make the commit an ordered "
+            "cascade; cascade_validation_call_id still means the whole "
+            "committed order was previewed."
+        ),
+    )
+    validation_kind: ValidationKind | None = Field(
+        default=None,
+        description=(
+            "Written by the harness, ignored on input: which kind of call the "
+            "resolved validation was. Defaulted so records written before it "
+            "existed stay loadable."
         ),
     )
     supporting_form_ids: tuple[NonEmptyStr, ...] = Field(

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import (
     CommitReconstructionArgs,
     CommitReconstructionResult,
     CommittedReconstruction,
     CommittedSoundRule,
-    TestSoundLawResult,
+    ValidationKind,
 )
 from cognate_reconstruction.agent.tools.convergence import commit_convergence
 from cognate_reconstruction.agent.tools.errors import (
@@ -16,7 +18,127 @@ from cognate_reconstruction.agent.tools.errors import (
     parse_rule_or_reject,
 )
 from cognate_reconstruction.schemas.common import WorkbenchModel
-from cognate_reconstruction.schemas.rules import ReconstructionRule
+from cognate_reconstruction.schemas.rules import ParsedSoundRule, ReconstructionRule
+
+_RuleIdentity = tuple[
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, ...],
+    tuple[str, ...],
+    bool,
+    bool,
+]
+"""What makes two rules the same rule to the engine that applies them."""
+
+
+def _rule_identity(rule: ParsedSoundRule) -> _RuleIdentity:
+    """Identify a rule by what it does, not by how it was spelled.
+
+    `t > k` and `t > k / _` parse to the same target, the same replacement, and
+    the same all-empty environment: the engine cannot tell them apart, and a
+    live session produced both spellings for one rule and was rejected for it.
+    `rule_id` stays lexical — it is persisted in trajectories and normalizing it
+    would rewrite existing records — so the identity used for matching is
+    derived from the parse instead. This changes no rule semantics; the parse
+    was already identical.
+    """
+    environment = rule.environment
+    return (
+        rule.target.tokens,
+        rule.replacement.tokens,
+        environment.left.tokens if environment.left is not None else (),
+        environment.right.tokens if environment.right is not None else (),
+        environment.word_initial,
+        environment.word_final,
+    )
+
+
+def _change_identity(rule: ParsedSoundRule) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The target and replacement alone, ignoring the environment.
+
+    Two rules that share this and differ in identity are the same change under
+    different conditioning — which is exactly what refining an overapplying rule
+    produces, and what the rejection has to be able to name.
+    """
+    return (rule.target.tokens, rule.replacement.tokens)
+
+
+@dataclass(frozen=True)
+class _ValidationRecord:
+    """One same-session application of one rule to real forms.
+
+    A `test_sound_law` result is one of these. So is each rule of a successful
+    `test_rule_cascade`: the cascade applied that rule to the same forms, in the
+    order it is being committed in, and returned its diff. That is the evidence
+    the per-rule requirement exists to guarantee, so both kinds satisfy it.
+    """
+
+    call_id: str
+    kind: ValidationKind
+    parsed_rule: ParsedSoundRule
+    source_child_ids: tuple[str, ...]
+    segmentation_overlay_id: str | None
+    supporting_form_ids: tuple[str, ...]
+
+    @property
+    def identity(self) -> _RuleIdentity:
+        return _rule_identity(self.parsed_rule)
+
+    def describe(self) -> str:
+        scope = ", ".join(self.source_child_ids)
+        overlay = (
+            f" on overlay {self.segmentation_overlay_id}"
+            if self.segmentation_overlay_id is not None
+            else ""
+        )
+        return (
+            f'"{self.call_id}" ({self.kind.value}) tested '
+            f'"{self.parsed_rule.source}" on [{scope}]{overlay}'
+        )
+
+
+def _session_validations(context: AgentContext) -> tuple[_ValidationRecord, ...]:
+    """Every rule this session has actually applied to forms, with its diff.
+
+    Standalone validations come first in call order, then each cascade's rules
+    in call order. Ordering is load-bearing only for the tie-break in
+    `_choose_validation`, which prefers the most recent record of a kind.
+    """
+    records = [
+        _ValidationRecord(
+            call_id=call_id,
+            kind=ValidationKind.SOUND_LAW,
+            parsed_rule=validation.parsed_rule,
+            source_child_ids=validation.source_child_ids,
+            segmentation_overlay_id=validation.segmentation_overlay_id,
+            supporting_form_ids=validation.supporting_form_ids,
+        )
+        for call_id, validation in context.validations.items()
+    ]
+    for call_id, cascade in context.cascade_validations.items():
+        # A cascade reports one diff per (child, rule) pair, so a rule's
+        # supporting forms are collected across every report that names it.
+        supporting: dict[str, list[str]] = {}
+        for report in cascade.reports:
+            for result in report.results:
+                if result.locations:
+                    supporting.setdefault(report.rule.rule_id, []).append(
+                        result.form_id
+                    )
+        records.extend(
+            _ValidationRecord(
+                call_id=call_id,
+                kind=ValidationKind.RULE_CASCADE,
+                parsed_rule=rule.rule,
+                source_child_ids=rule.source_child_ids,
+                segmentation_overlay_id=cascade.segmentation_overlay_id,
+                supporting_form_ids=tuple(
+                    dict.fromkeys(supporting.get(rule.rule.rule_id, ()))
+                ),
+            )
+            for rule in cascade.rules
+        )
+    return tuple(records)
 
 
 def describe_session_validations(context: AgentContext) -> str:
@@ -44,87 +166,273 @@ def describe_session_validations(context: AgentContext) -> str:
             )
             for call_id, validation in context.validations.items()
         )
+    elif not context.cascade_validations:
         lines.append(
-            "Per-rule validation_call_id is optional: omit it and the harness "
-            "resolves the unique same-session validation whose DSL, child "
-            "scope, and overlay are identical to the committed rule. "
-            "supporting_form_ids may be omitted too; it then defaults to that "
-            "validation's forms."
-        )
-    else:
-        lines.append(
-            "No test_sound_law validation has succeeded in this session. Every "
-            "committed rule needs one; call test_sound_law first, or commit "
-            '"rules": [] for an identity reconstruction.'
+            "No test_sound_law validation and no test_rule_cascade preview has "
+            "succeeded in this session. Every committed rule needs one; call "
+            'test_sound_law or test_rule_cascade first, or commit "rules": [] '
+            "for an identity reconstruction."
         )
     if context.cascade_validations:
         lines.append(
-            "Successful test_rule_cascade validations "
-            "(the only valid cascade_validation_call_id values):"
+            "Successful test_rule_cascade validations. Each rule below also "
+            "counts as that rule's own validation, so a rule you refined "
+            "inside a cascade preview can be committed directly:"
         )
-        lines.extend(
-            f'  - "{call_id}" for the order '
-            + " then ".join(f'"{rule.rule.source}"' for rule in cascade.rules)
-            for call_id, cascade in context.cascade_validations.items()
+        for call_id, cascade in context.cascade_validations.items():
+            lines.append(
+                f'  - "{call_id}" for the order '
+                + " then ".join(f'"{rule.rule.source}"' for rule in cascade.rules)
+                + (
+                    f" on overlay {cascade.segmentation_overlay_id}"
+                    if cascade.segmentation_overlay_id is not None
+                    else ""
+                )
+            )
+            lines.extend(
+                f'      ("{call_id}", "{rule.rule.source}", '
+                f"[{', '.join(rule.source_child_ids)}])"
+                for rule in cascade.rules
+            )
+        lines.append(
+            "Only these IDs are valid in cascade_validation_call_id, which "
+            "still means the whole committed order was previewed."
         )
     else:
         lines.append(
             "No test_rule_cascade call has succeeded in this session, so "
             "cascade_validation_call_id must be omitted."
         )
+    if context.validations or context.cascade_validations:
+        lines.append(
+            "Per-rule validation_call_id is optional: omit it and the harness "
+            "resolves the same-session validation — of either kind — whose "
+            "rule, child scope, and overlay are identical to the committed "
+            "rule. supporting_form_ids may be omitted too; it then defaults to "
+            "that validation's forms."
+        )
     return "\n".join(lines)
+
+
+def _describe_validation_gap(
+    committed: CommittedSoundRule,
+    parsed: ParsedSoundRule,
+    context: AgentContext,
+    overlay_id: str | None,
+    records: tuple[_ValidationRecord, ...],
+) -> str:
+    """Answer the question the rejection actually raised, about *this* rule.
+
+    Listing every recorded validation answers "what did I validate", which is
+    not what a rule rejected for having no validation needs to know. A model
+    that refined an overapplying rule inside a cascade preview has moved past
+    the validations that list contains, and reading them again told it nothing.
+
+    The near-match case is the one worth naming: a recorded validation with the
+    same target and replacement but a different environment *is* the
+    unrefined ancestor of this rule, and saying so points at the one call that
+    unblocks the commit. The full catalogue still follows, because the rejection
+    may also be a mistyped reference to a validation that does exist.
+    """
+    scope = set(committed.source_child_ids)
+    identity = _rule_identity(parsed)
+    change = _change_identity(parsed)
+    lines = [
+        f"Rule {committed.rule_id!r} is \"{parsed.source}\" on "
+        f"[{', '.join(committed.source_child_ids)}]"
+        + (f" with overlay {overlay_id}" if overlay_id is not None else "")
+        + ". No same-session validation applied that exact rule to that exact "
+        "child scope and overlay."
+    ]
+    refinements = [
+        record
+        for record in records
+        if _change_identity(record.parsed_rule) == change
+        and record.identity != identity
+    ]
+    rescoped = [
+        record
+        for record in records
+        if record.identity == identity
+        and (
+            set(record.source_child_ids) != scope
+            or record.segmentation_overlay_id != overlay_id
+        )
+    ]
+    if refinements:
+        lines.append(
+            "These validations tested the same change in a different "
+            "environment, so this rule looks like a refinement of one of them:"
+        )
+        lines.extend(f"  - {record.describe()}" for record in refinements)
+        lines.append(
+            f'Validate the refined form: call test_sound_law with dsl '
+            f'"{parsed.source}" and source_child_ids '
+            f"[{', '.join(committed.source_child_ids)}], or include it in a "
+            "test_rule_cascade preview of the committed order. Either one "
+            "counts as this rule's validation; the earlier, unconditioned "
+            "validation does not."
+        )
+    if rescoped:
+        lines.append(
+            "This exact rule was validated, but not for the committed child "
+            "scope or overlay:"
+        )
+        lines.extend(f"  - {record.describe()}" for record in rescoped)
+        lines.append(
+            "Commit the scope and overlay that was validated, or re-test the "
+            "rule on the scope and overlay you intend to commit."
+        )
+    if not refinements and not rescoped:
+        lines.append(
+            "Nothing recorded in this session is close to it. Call "
+            "test_sound_law on this exact rule and child scope before "
+            "committing it."
+        )
+    lines.append(describe_session_validations(context))
+    return "\n".join(lines)
+
+
+def _choose_validation(
+    matches: list[_ValidationRecord],
+) -> _ValidationRecord | None:
+    """Pick between validations that a reviewer could not tell apart.
+
+    Two records matching one rule agree by construction on the rule, the child
+    scope, and the overlay; a node's forms do not change inside a session, so
+    the only thing left that a commit could differ by is which forms the rule
+    applied to. When even that agrees, the records are the same experiment run
+    twice — a model re-testing a rule while iterating, or refining it across two
+    cascade previews — and asking the model to choose between them asks for a
+    decision with no content. It is also the case letting cascades count makes
+    common, so rejecting it would punish exactly the careful work this contract
+    is meant to encourage.
+
+    Returns `None` only when the matches genuinely disagree, which is the one
+    situation an explicit `validation_call_id` can resolve. Otherwise a cascade
+    record wins over a standalone one, so the bound record is the one that
+    exercised the rule in its committed order, and the most recent of a kind
+    wins over an earlier one.
+    """
+    if len(matches) == 1:
+        return matches[0]
+    if len({record.supporting_form_ids for record in matches}) > 1:
+        return None
+    cascades = [
+        record for record in matches if record.kind is ValidationKind.RULE_CASCADE
+    ]
+    return (cascades or matches)[-1]
+
+
+def _reject_ambiguous(
+    committed: CommittedSoundRule,
+    matches: list[_ValidationRecord],
+) -> ToolInputError:
+    return ToolInputError(
+        f"rule {committed.rule_id!r} matches {len(matches)} same-session "
+        "validations that disagree about which forms it applied to; name the "
+        "intended one in validation_call_id",
+        code="validation-ambiguous",
+        remediation=(
+            "These validations all match this rule's DSL, child scope, and "
+            "overlay, but each supports a different set of forms:\n"
+            + "\n".join(
+                f"  - {record.describe()}, supporting "
+                f"{list(record.supporting_form_ids)}"
+                for record in matches
+            )
+            + "\nSet validation_call_id on this rule to the one you mean."
+        ),
+    )
 
 
 def _resolve_validation(
     committed: CommittedSoundRule,
-    parsed_source: str,
+    parsed: ParsedSoundRule,
     context: AgentContext,
     overlay_id: str | None,
-) -> tuple[str, TestSoundLawResult]:
+) -> _ValidationRecord:
     """Bind one committed rule to its exact same-session validation.
 
-    Explicit IDs are looked up directly. An omitted ID is resolved only by exact
-    equality of DSL, child scope, and segmentation overlay, and only when that
-    match is unique: this removes a transcription step, never a check.
+    Explicit IDs are looked up directly, and a named call still has to have
+    tested this rule, this child scope, and this overlay — the three checks keep
+    their own rejection codes. An omitted ID is resolved by exact equality of
+    the parsed rule, child scope, and segmentation overlay: this removes a
+    transcription step, never a check.
     """
+    records = _session_validations(context)
+    scope = set(committed.source_child_ids)
+    identity = _rule_identity(parsed)
     if committed.validation_call_id is not None:
-        try:
-            return (
-                committed.validation_call_id,
-                context.validations[committed.validation_call_id],
-            )
-        except KeyError as error:
+        named = [
+            record
+            for record in records
+            if record.call_id == committed.validation_call_id
+        ]
+        if not named:
             raise ToolInputError(
                 f"rule {committed.rule_id!r} references an unknown validation "
                 f"call {committed.validation_call_id!r}",
                 code="validation-unknown",
                 remediation=describe_session_validations(context),
-            ) from error
-    scope = set(committed.source_child_ids)
-    matches = [
-        (call_id, validation)
-        for call_id, validation in context.validations.items()
-        if validation.parsed_rule.source == parsed_source
-        and set(validation.source_child_ids) == scope
-        and validation.segmentation_overlay_id == overlay_id
-    ]
-    if len(matches) == 1:
-        return matches[0]
-    if not matches:
-        raise ToolInputError(
-            f"rule {committed.rule_id!r} omitted validation_call_id and no "
-            "same-session test_sound_law validation matches its exact DSL, "
-            "child scope, and segmentation overlay",
-            code="validation-unresolved",
-            remediation=describe_session_validations(context),
-        )
-    raise ToolInputError(
-        f"rule {committed.rule_id!r} omitted validation_call_id but "
-        f"{len(matches)} same-session validations match its DSL, child scope, "
-        "and overlay; name the intended one explicitly",
-        code="validation-ambiguous",
-        remediation=describe_session_validations(context),
-    )
+            )
+        matches = [record for record in named if record.identity == identity]
+        if not matches:
+            raise ToolInputError(
+                f"rule {committed.rule_id!r} was not validated with this exact DSL",
+                code="validation-mismatch",
+                remediation=_describe_validation_gap(
+                    committed, parsed, context, overlay_id, records
+                ),
+            )
+        scoped = [
+            record for record in matches if set(record.source_child_ids) == scope
+        ]
+        if not scoped:
+            raise ToolInputError(
+                f"rule {committed.rule_id!r} was not validated for this child scope",
+                code="scope-mismatch",
+                remediation=_describe_validation_gap(
+                    committed, parsed, context, overlay_id, records
+                ),
+            )
+        matches = [
+            record
+            for record in scoped
+            if record.segmentation_overlay_id == overlay_id
+        ]
+        if not matches:
+            raise ToolInputError(
+                f"rule {committed.rule_id!r} was not validated on the committed "
+                "segmentation overlay",
+                code="overlay-mismatch",
+                remediation=_describe_validation_gap(
+                    committed, parsed, context, overlay_id, records
+                ),
+            )
+    else:
+        matches = [
+            record
+            for record in records
+            if record.identity == identity
+            and set(record.source_child_ids) == scope
+            and record.segmentation_overlay_id == overlay_id
+        ]
+        if not matches:
+            raise ToolInputError(
+                f"rule {committed.rule_id!r} omitted validation_call_id and no "
+                "same-session test_sound_law validation or test_rule_cascade "
+                "preview applied this exact rule to this exact child scope and "
+                "segmentation overlay",
+                code="validation-unresolved",
+                remediation=_describe_validation_gap(
+                    committed, parsed, context, overlay_id, records
+                ),
+            )
+    chosen = _choose_validation(matches)
+    if chosen is None:
+        raise _reject_ambiguous(committed, matches)
+    return chosen
 
 
 def _require_rationales_on_multi_rule_commits(
@@ -197,31 +505,12 @@ def commit_reconstruction(
                 code="inactive-children",
             )
         parsed = parse_rule_or_reject(committed.dsl, rule_id=committed.rule_id)
-        validation_call_id, validation = _resolve_validation(
+        validation = _resolve_validation(
             committed,
-            parsed.source,
+            parsed,
             context,
             arguments.segmentation_overlay_id,
         )
-        if parsed.source != validation.parsed_rule.source:
-            raise ToolInputError(
-                f"rule {committed.rule_id!r} was not validated with this exact DSL",
-                code="validation-mismatch",
-                remediation=describe_session_validations(context),
-            )
-        if set(committed.source_child_ids) != set(validation.source_child_ids):
-            raise ToolInputError(
-                f"rule {committed.rule_id!r} was not validated for this child scope",
-                code="scope-mismatch",
-                remediation=describe_session_validations(context),
-            )
-        if validation.segmentation_overlay_id != arguments.segmentation_overlay_id:
-            raise ToolInputError(
-                f"rule {committed.rule_id!r} was not validated on the committed "
-                "segmentation overlay",
-                code="overlay-mismatch",
-                remediation=describe_session_validations(context),
-            )
         # Deterministic engine output, not a model claim: an omitted list is
         # filled in from the validation rather than retyped by the model.
         supporting = (
@@ -235,7 +524,7 @@ def commit_reconstruction(
                 f"rule {committed.rule_id!r} cites unsupported forms: {unsupported}",
                 code="unsupported-forms",
                 remediation=(
-                    f"validation {validation_call_id!r} supports only "
+                    f"validation {validation.call_id!r} supports only "
                     f"{list(validation.supporting_form_ids)}. Omit "
                     "supporting_form_ids to use exactly that list."
                 ),
@@ -243,7 +532,7 @@ def commit_reconstruction(
         if not supporting:
             raise ToolInputError(
                 f"rule {committed.rule_id!r} applied to no form in validation "
-                f"{validation_call_id!r} and cannot be committed",
+                f"{validation.call_id!r} and cannot be committed",
                 code="rule-unsupported",
                 remediation=(
                     "Retest the rule against forms it actually changes, widen "
@@ -253,7 +542,8 @@ def commit_reconstruction(
         resolved_rules.append(
             committed.model_copy(
                 update={
-                    "validation_call_id": validation_call_id,
+                    "validation_call_id": validation.call_id,
+                    "validation_kind": validation.kind,
                     "supporting_form_ids": tuple(supporting),
                 }
             )
@@ -266,7 +556,8 @@ def commit_reconstruction(
             )
         )
     # The stored request records the resolved IDs, so the trajectory stays
-    # explicit about which validation backs each committed rule.
+    # explicit about which validation backs each committed rule and which kind
+    # of call it was.
     arguments = arguments.model_copy(update={"rules": tuple(resolved_rules)})
 
     if arguments.cascade_validation_call_id is not None:
@@ -290,14 +581,14 @@ def commit_reconstruction(
             )
         committed_signature = tuple(
             (
-                rule.rule.source,
+                _rule_identity(rule.rule),
                 rule.source_child_ids,
             )
             for rule in parsed_rules
         )
         validated_signature = tuple(
             (
-                rule.rule.source,
+                _rule_identity(rule.rule),
                 rule.source_child_ids,
             )
             for rule in cascade.rules

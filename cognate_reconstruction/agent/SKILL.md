@@ -131,7 +131,11 @@ what was tested. Permitted anomaly types are `loanword`,
 9. Call `test_sound_law` for every proposed DSL rule and exact child scope.
 10. Read the complete diff: applications, absent targets, context mismatches,
    anchor matches, anchor mismatches, and exact token outputs.
-11. Refine and retest weak hypotheses.
+11. Refine and retest weak hypotheses. Two unconditioned rules that collide, or
+   one that overapplies, are refined by adding an environment — and the refined
+   rule may be tested either with `test_sound_law` or inside the cascade of the
+   next step. Both count as its validation, so refining inside a cascade
+   preview is a complete path to a commit.
 12. When committing more than one rule, call `test_rule_cascade` on the complete
    proposed order and inspect every intermediate diff and final form.
 13. Call `commit_reconstruction` only after every committed rule has a successful
@@ -199,6 +203,11 @@ set when the evidence supports identity reconstruction.
 all selected forms. Use its validation-call ID in the commit so the backend can
 verify that the committed DSL, child scopes, overlay, and order are identical.
 
+A cascade preview also validates each rule it contains. It applied that rule to
+the same forms *and* in the order you are committing it in, which is strictly
+more evidence than a standalone test, so a rule you only ever ran inside a
+cascade needs no separate `test_sound_law` before it can be committed.
+
 Its `convergence` block answers the question the intermediate diffs only imply:
 for each concept, whether every active child now yields the same parent form,
 plus the divergent concept IDs and an overall rate. `commit_reconstruction`
@@ -215,9 +224,10 @@ branch-scoped rules with their child scopes and confidences in `(0, 1]`, all
 unresolved anomalies, and a concise summary. If segmentation was used, commit
 its overlay ID and validate every rule against that final overlay.
 
-Every non-empty committed rule still requires a successful `test_sound_law`
-validation from this session with the identical DSL, child scope, and overlay.
-You do not have to transcribe it. This is a complete, accepted commit:
+Every non-empty committed rule still requires a successful validation from this
+session — a `test_sound_law` call or a `test_rule_cascade` preview containing
+it — with the identical rule, child scope, and overlay. You do not have to
+transcribe it. This is a complete, accepted commit:
 
     {
       "node_id": "<the node_id from the payload>",
@@ -232,9 +242,15 @@ You do not have to transcribe it. This is a complete, accepted commit:
       "summary": "Parent initial p; language_b shows regular f."
     }
 
-- `validation_call_id` is optional. Omit it and the harness resolves the unique
-  same-session validation matching the rule exactly. Supply it only when several
-  validations would match, and then only with a `test_sound_law` ID.
+- `validation_call_id` is optional. Omit it and the harness resolves the
+  same-session validation matching the rule exactly, of either kind, preferring
+  a cascade preview when both exist. Testing the same rule twice is not an
+  ambiguity: matches that agree on which forms the rule applied to resolve
+  without you choosing. Supply an ID only when the rejection tells you that
+  matching validations disagree, and it may be a `test_sound_law` or a
+  `test_rule_cascade` ID.
+- A rule is matched by what it does, not by how you spelled it: `t > k` and
+  `t > k / _` are the same rule and validate each other.
 - `supporting_form_ids` is optional and defaults to the resolved validation's
   forms. Supply it only to cite a subset of them.
 - `rationale` is optional **when you commit a single rule**: the required

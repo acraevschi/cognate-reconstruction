@@ -257,7 +257,12 @@ def test_a_transient_failure_on_the_forced_attempt_is_still_a_transient_failure(
     assert provider.tool_choices == ["auto", "required", "required"]
 
 
-def test_forcing_is_attempted_once_and_then_the_node_stalls_as_before() -> None:
+def test_every_truncation_gets_its_own_forced_tool_call() -> None:
+    """The later truncations are the ones that end the node.
+
+    Forcing once per node meant the second and third truncated responses drew
+    no intervention at all, which is backwards: the node dies on the third.
+    """
     provider = RecordingProvider(truncations=99)
     with pytest.raises(ProtocolStallError, match="truncated 3 times") as caught:
         AgentOrchestrator(
@@ -266,10 +271,56 @@ def test_forcing_is_attempted_once_and_then_the_node_stalls_as_before() -> None:
             max_turns=32,
             max_truncated_responses=3,
         ).run(_context())
-    # A backend that ignored "required" once will not honour it on the third
-    # try; the fallback is the pre-existing behaviour, not a loop.
-    assert provider.tool_choices == ["auto", "required", "auto"]
+    assert provider.tool_choices == ["auto", "required", "required"]
     assert "requiring a tool call" in str(caught.value)
+
+
+def test_a_backend_that_refuses_required_is_not_asked_again() -> None:
+    """A refusal is a property of the backend, not of one turn."""
+    provider = RecordingProvider(truncations=99, reject_required=True)
+    sink = _CollectingSink()
+    with pytest.raises(ProtocolStallError):
+        AgentOrchestrator(
+            provider,
+            instructions="Commit.",
+            max_turns=32,
+            max_truncated_responses=3,
+            event_sink=sink,
+        ).run(_context())
+    # One attempt, one refusal, then the ordinary path for the rest of the node.
+    assert provider.tool_choices == ["auto", "required", "auto", "auto"]
+    refusals = [
+        event
+        for event in sink.recoveries()
+        if event.details["action"] == "forced_tool_choice_rejected"
+    ]
+    assert len(refusals) == 1
+
+
+def test_the_truncation_stall_names_the_observed_output_lengths() -> None:
+    """`max_tokens` is the operator's lever; guessing at it was the cost."""
+    provider = RecordingProvider(truncations=99, output_tokens=2048)
+    with pytest.raises(ProtocolStallError) as caught:
+        AgentOrchestrator(
+            provider,
+            instructions="Commit.",
+            max_turns=32,
+            max_truncated_responses=3,
+        ).run(_context())
+    message = str(caught.value)
+    assert "reported 2048, 2048, 2048 output tokens (max 2048)" in message
+
+
+def test_an_unreported_output_length_is_said_to_be_unknown() -> None:
+    provider = RecordingProvider(truncations=99, output_tokens=None)
+    with pytest.raises(ProtocolStallError) as caught:
+        AgentOrchestrator(
+            provider,
+            instructions="Commit.",
+            max_turns=32,
+            max_truncated_responses=2,
+        ).run(_context())
+    assert "reported no output token count" in str(caught.value)
 
 
 def test_no_max_tokens_override_is_ever_sent_by_default() -> None:
