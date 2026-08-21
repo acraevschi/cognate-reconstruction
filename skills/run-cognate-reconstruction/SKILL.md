@@ -146,8 +146,16 @@ The underlying command the driver wraps:
 ```
 
 Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
-`prepare-lexibank`, `inspect-run`, `validate-trajectories`,
+`prepare-lexibank`, `build-benchmark`, `run-benchmark`, `build-synthetic`,
+`score-synthetic`, `inspect-run`, `validate-trajectories`,
 `summarize-trajectories`, `export-trajectories`.
+
+For evaluation work, prefer the benchmark path over a hand-assembled run:
+`build-benchmark --name polynesian` builds the input, `run-benchmark` runs N
+seeds into one aggregate that reports spread rather than a single quotable
+number, and `build-synthetic --name synthetic_regular` gives a leakage-free
+family whose changes and direction can be scored with `score-synthetic`. See
+`docs/benchmarks.md`.
 
 ```bash
 /opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli summarize-trajectories --input runs/google-gemma-4-e4b-20260814-184836/trajectories.jsonl

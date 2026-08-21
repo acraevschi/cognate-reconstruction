@@ -197,8 +197,10 @@ def test_inspect_run_reports_both_nodes_and_the_quality_reason(
     assert "contrast loss" in report
     assert "delete or merge a distinction" in report
     # The one number in the block not computed over the evidence the rules were
-    # fitted to.
-    assert "held out" in report
+    # fitted to. Named "held-out concepts" rather than "held out" because a
+    # second, unrelated thing is now also held out at these nodes: the gold
+    # proto-forms, which are the answer key and never leave the node split.
+    assert "held-out concepts" in report
     # The part that saves the most human time: not just that the gate failed
     # but which condition failed it.
     assert "high_quality" in report

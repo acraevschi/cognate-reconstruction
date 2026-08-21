@@ -1,6 +1,6 @@
 # Analysis tools
 
-Four standalone scripts under `tools/`. None needs a model, a provider, or the network:
+Five standalone scripts under `tools/`. None needs a model, a provider, or the network:
 they exercise the deterministic layer directly, so they run in seconds and can be pointed at
 any prepared benchmark input.
 
@@ -13,20 +13,35 @@ Run them with the environment's interpreter:
 /opt/anaconda3/envs/llm_reconstruction/bin/python tools/<script>.py <benchmark-input.json>
 ```
 
+Each script also takes a **benchmark name** wherever it takes a path, and each has a
+`--json` mode so the multi-seed runner can consume the measurement instead of
+re-implementing it:
+
+```bash
+python tools/oracle_ceiling.py polynesian --json
+```
+
 A benchmark input is a `WorkbenchPayload` carrying a `historical_form_bindings` entry with
 role `target` — the gold proto-forms, withheld from the model.
 
-The baselines quoted below all come from the Proto-Polynesian benchmark. Rebuild it first:
+The baselines quoted below all come from the Proto-Polynesian benchmark. Build it first:
 
 ```bash
-/opt/anaconda3/envs/llm_reconstruction/bin/python tools/build_polynesian_benchmark.py
+python -m cognate_reconstruction.cli build-benchmark --name polynesian
 ```
 
-That reads `data/lexibank/walworthpolynesian`, selects the 46 concepts where all ten chosen
-daughters share a cognate set with the Proto-Polynesian entry, binds the proto variety as a
-hidden `target`, and writes `runs/benchmarks/polynesian.json`. The payload is ~1.3 MB and
-derived, so it is gitignored; the recipe is the script plus
-`examples/polynesian_benchmark_tree.nwk` and `examples/polynesian_benchmark_bindings.json`.
+That reads `benchmarks/polynesian.json`, loads `data/lexibank/walworthpolynesian`, selects
+the 46 concepts where all ten chosen daughters share a cognate set with the Proto-Polynesian
+entry, binds the proto variety as a hidden `target`, and writes
+`runs/benchmarks/polynesian.json`. The payload is ~1.3 MB and derived, so it is gitignored;
+the recipe is the definition plus `examples/polynesian_benchmark_tree.nwk`. See
+[benchmarks and evaluation](benchmarks.md) for definitions, the multi-seed runner, and the
+synthetic families.
+
+`tools/build_polynesian_benchmark.py` still exists and still works; it is now a thin wrapper
+around that subcommand, kept because the documented invocation references it. The selection
+logic it used to hold is `cognate_reconstruction/benchmarks/builder.py`, driven by a
+declarative file, so a second family is a definition rather than a second script.
 
 ## `oracle_ceiling.py` — what a flawless model would score
 
@@ -35,13 +50,24 @@ directly against the withheld gold, then runs the real `RuleBasedReconstructor` 
 Whatever it reports is the accuracy no model can beat under the current architecture,
 because the model's only job — choosing rules — has been done perfectly.
 
-It prints three numbers. The third is the point:
+It prints three exact numbers — the third is the point — and the graded distances beside
+them:
 
 ```
 top  exact   27/46   58.7%   what the beam reports
 beam exact   39/46   84.8%   correct form present anywhere in the beam
 selection gap            26.1%   computed but not chosen
+
+graded, against the same gold (lower is better for NED):
+  top  NED    0.158   mean normalized edit distance of the reported form
+  beam NED    0.043   best any retained candidate reached
+  NED gap     0.115   distance recoverable by choosing better
+  B-Cubed F1  0.960   structural agreement, higher is better
 ```
+
+The graded row exists because the exact counts move in steps of 1/46. A change that leaves
+every concept in the same match/miss bucket while making the misses worse would not move
+them at all, and normalized edit distance would.
 
 **The selection gap is the headline.** The deterministic layer holds the correct proto-form
 far more often than it reports one, which means accuracy is being lost after the model has
@@ -67,6 +93,21 @@ Top-1 was flat at 54.3% for every width of 3 or more before the change, and beam
 saturates at 84.8% by width 5 — so the remaining 26.1 points do not close by widening the
 beam either. Note that width 10 now scores *below* width 5: an ordinary beam-search artifact,
 where a wider beam keeps a distractor that accumulates enough mass to win.
+
+**These figures are now pinned in the test suite.**
+`tests/workbench/test_oracle_ceiling_regression.py` asserts top-1, beam-exact, *and the gap
+between them* at beam width 5, plus the whole width curve, against a checked-in fixture that
+is the real benchmark with per-form provenance stripped — the oracle reads only segments, the
+tree, and the gold binding, so the fixture reproduces the full-dataset numbers exactly, and a
+skipped test verifies that against `runs/benchmarks/polynesian.json` when the local corpus is
+present. The gap is asserted and not only the accuracies: a change that raises top-1 while
+lowering beam-exact has traded candidates away rather than chosen better among them, and an
+accuracy-only assertion would call that a win. The test imports `measure()` from this script,
+so the number the suite pins and the number the script prints come from one implementation.
+
+Why a regression test rather than a habit: prompt 04 edited `traversal/reconstructor.py` — it
+added `contrast_reducing_rule_count` to the diagnostics — and the only thing that showed the
+score was untouched was a human remembering to run this script.
 
 The oracle is honest about what it cannot express: rules whose ordering would form a cycle
 are dropped with a warning, and morphological boundaries are skipped because the DSL forbids
@@ -100,6 +141,10 @@ measuring: /path/to/the/checkout/cognate_reconstruction
 
 Check that line before quoting a number. A before/after comparison across two worktrees is now
 just running the script in each, and the two `measuring:` lines prove they were different.
+
+`--json` carries the same field. A machine consumer is exactly the reader least able to
+notice that a number came from the wrong checkout, so `measuring` is in every JSON object
+these scripts emit, alongside `benchmark`.
 
 ## `tiebreak_probe.py` — does branch support decide anything?
 
@@ -206,6 +251,14 @@ from none; per-branch deletion losses run from 7/46 (Tongan) to 17/46 (North Mar
 The middle number bounds what any amount of better *selection* can achieve. Closing it needs
 proto-forms assembled from several branches at once.
 
+The script names the concepts in each class rather than only counting them, in text and in
+`--json`: the 8 are `1028, 1212, 1217, 1221, 1408, 1439, 1443, 646` and the unreachable one
+is `778`. That list is the concrete prediction any change to the combination model has to
+move — see `prompts/06-proto-inventory.md`, which uses it as a falsification condition.
+Note what this measures: a property of the gold and the daughters' forms under the current
+DSL, **not** of the harness. A better scorer cannot move it; a different representation of
+what gets committed is what would.
+
 ## When to re-run
 
 - **Any change to the beam, the scorer, or rule application** → `oracle_ceiling.py`, and say
@@ -221,3 +274,6 @@ proto-forms assembled from several branches at once.
   majority vote.
 - **Any change to the DSL** → `branch_recoverability.py`, since expressiveness changes move
   the reachability split directly.
+- **Any change to benchmark selection or preparation** → rebuild both definitions with
+  `build-benchmark` and check the concept counts here still hold (46 for Polynesian, 900 for
+  Romance). A silent change in selection would move every baseline on this page at once.

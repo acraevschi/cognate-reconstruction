@@ -13,20 +13,26 @@ Two numbers matter, and it is the gap between them that this exists to watch:
 A large gap means the combination/selection step is discarding answers the
 system already computed.
 
+`measure()` is importable by the regression test in `tests/workbench`, so the
+number the suite pins and the number this script prints come from one
+implementation. The script stays the runnable form for the full benchmark.
+
 Usage:
     python tools/oracle_ceiling.py <benchmark-input.json> [--beam-width 5]
+    python tools/oracle_ceiling.py polynesian --json
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
-import json
 import sys
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import _bootstrap  # noqa: F401  (bind to this checkout; see module)
 
+from cognate_reconstruction.evaluation.metrics import compare_to_nearest
 from cognate_reconstruction.rules.parser import parse_rule, NoOpRuleError
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 from cognate_reconstruction.schemas.rules import ReconstructionRule
@@ -132,18 +138,80 @@ def build_rules(child_id: str, mapping: dict[str, str]) -> list[ReconstructionRu
     return rules
 
 
-def run(payload_path: Path, beam_width: int) -> int:
-    payload = WorkbenchPayload.model_validate_json(
-        payload_path.read_text(encoding="utf-8")
+@dataclass(frozen=True)
+class OracleMeasurement:
+    """What a flawless hypothesis manager would score under this architecture.
+
+    Exact counts and graded distances side by side. The graded numbers matter
+    for the same reason they matter for a live run: a top-1 miss that is one
+    segment away and a top-1 miss that is unrelated are different failures, and
+    the exact counters cannot tell them apart.
+    """
+
+    root_node_id: str
+    beam_width: int
+    evaluated: int
+    top_exact: int
+    beam_exact: int
+    mean_top_normalized_edit_distance: float
+    mean_beam_best_normalized_edit_distance: float
+    mean_top_bcubed_f1: float
+    misses: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = field(
+        default=()
     )
+
+    @property
+    def top_exact_rate(self) -> float:
+        return self.top_exact / self.evaluated if self.evaluated else 0.0
+
+    @property
+    def beam_exact_rate(self) -> float:
+        return self.beam_exact / self.evaluated if self.evaluated else 0.0
+
+    @property
+    def selection_gap(self) -> float:
+        """Beam-exact minus top-1: answers computed and then not reported."""
+        return self.beam_exact_rate - self.top_exact_rate
+
+    @property
+    def normalized_edit_distance_selection_gap(self) -> float:
+        return (
+            self.mean_top_normalized_edit_distance
+            - self.mean_beam_best_normalized_edit_distance
+        )
+
+    def as_dict(self) -> dict:
+        return {
+            "root_node_id": self.root_node_id,
+            "beam_width": self.beam_width,
+            "evaluated_concepts": self.evaluated,
+            "top_exact": self.top_exact,
+            "beam_exact": self.beam_exact,
+            "top_exact_rate": self.top_exact_rate,
+            "beam_exact_rate": self.beam_exact_rate,
+            "selection_gap": self.selection_gap,
+            "mean_top_normalized_edit_distance": (
+                self.mean_top_normalized_edit_distance
+            ),
+            "mean_beam_best_normalized_edit_distance": (
+                self.mean_beam_best_normalized_edit_distance
+            ),
+            "normalized_edit_distance_selection_gap": (
+                self.normalized_edit_distance_selection_gap
+            ),
+            "mean_top_bcubed_f1": self.mean_top_bcubed_f1,
+        }
+
+
+def measure(payload: WorkbenchPayload, beam_width: int = 5) -> OracleMeasurement:
+    """Run the real reconstructor with a perfect rule set on every branch."""
     bindings = [
         binding
         for binding in payload.historical_form_bindings
         if binding.role.value == "target"
     ]
     if not bindings:
-        print("input has no historical target binding to score against")
-        return 1
+        raise SystemExit("input has no historical target binding to score against")
     binding = bindings[0]
     gold = {form.concept_id: form.segments for form in binding.forms}
 
@@ -180,6 +248,9 @@ def run(payload_path: Path, beam_width: int) -> int:
 
     top_hits = beam_hits = evaluated = 0
     misses = []
+    top_neds: list[float] = []
+    beam_neds: list[float] = []
+    bcubed_scores: list[float] = []
     for distribution in beams[id(root)].distributions:
         target = gold.get(distribution.concept_id)
         if target is None:
@@ -192,33 +263,113 @@ def run(payload_path: Path, beam_width: int) -> int:
             misses.append((distribution.concept_id, candidates[0], target))
         if target in candidates:
             beam_hits += 1
+        top = compare_to_nearest(candidates[0], (target,))
+        top_neds.append(top.normalized_edit_distance)
+        bcubed_scores.append(top.bcubed_f1)
+        beam_neds.append(
+            min(
+                compare_to_nearest(segments, (target,)).normalized_edit_distance
+                for segments in candidates
+            )
+        )
+    return OracleMeasurement(
+        root_node_id=root_id,
+        beam_width=beam_width,
+        evaluated=evaluated,
+        top_exact=top_hits,
+        beam_exact=beam_hits,
+        mean_top_normalized_edit_distance=(
+            sum(top_neds) / len(top_neds) if top_neds else 0.0
+        ),
+        mean_beam_best_normalized_edit_distance=(
+            sum(beam_neds) / len(beam_neds) if beam_neds else 0.0
+        ),
+        mean_top_bcubed_f1=(
+            sum(bcubed_scores) / len(bcubed_scores) if bcubed_scores else 0.0
+        ),
+        misses=tuple(misses),
+    )
 
+
+def run(payload_path: Path, beam_width: int, *, as_json: bool = False) -> int:
+    payload = WorkbenchPayload.model_validate_json(
+        payload_path.read_text(encoding="utf-8")
+    )
+    result = measure(payload, beam_width)
+    if as_json:
+        _bootstrap.emit_json(
+            {
+                **_bootstrap.measurement_envelope(payload_path),
+                "measurement": "oracle_ceiling",
+                **result.as_dict(),
+            }
+        )
+        return 0
     print(f"benchmark: {payload_path}")
     # State which source produced the number. A figure quoted from this tool is
     # meaningless without it: the script and the package it measures can come
     # from different checkouts. See tools/_bootstrap.py.
     print(f"measuring: {_bootstrap.loaded_package_path()}")
-    print(f"root node: {root_id}   beam width: {beam_width}   concepts: {evaluated}")
+    print(
+        f"root node: {result.root_node_id}   beam width: {beam_width}   "
+        f"concepts: {result.evaluated}"
+    )
     print()
-    print(f"  top  exact  {top_hits:>3}/{evaluated}  {top_hits / evaluated:6.1%}   "
-          "what the beam reports")
-    print(f"  beam exact  {beam_hits:>3}/{evaluated}  {beam_hits / evaluated:6.1%}   "
-          "correct form present anywhere in the beam")
-    print(f"  selection gap                {(beam_hits - top_hits) / evaluated:6.1%}   "
-          "computed but not chosen")
+    print(
+        f"  top  exact  {result.top_exact:>3}/{result.evaluated}  "
+        f"{result.top_exact_rate:6.1%}   what the beam reports"
+    )
+    print(
+        f"  beam exact  {result.beam_exact:>3}/{result.evaluated}  "
+        f"{result.beam_exact_rate:6.1%}   correct form present anywhere in the beam"
+    )
+    print(
+        f"  selection gap                {result.selection_gap:6.1%}   "
+        "computed but not chosen"
+    )
+    print()
+    print("  graded, against the same gold (lower is better for NED):")
+    print(
+        f"    top  NED   {result.mean_top_normalized_edit_distance:6.3f}   "
+        "mean normalized edit distance of the reported form"
+    )
+    print(
+        f"    beam NED   {result.mean_beam_best_normalized_edit_distance:6.3f}   "
+        "best any retained candidate reached"
+    )
+    print(
+        f"    NED gap    {result.normalized_edit_distance_selection_gap:6.3f}   "
+        "distance recoverable by choosing better"
+    )
+    print(
+        f"    B-Cubed F1 {result.mean_top_bcubed_f1:6.3f}   "
+        "structural agreement, higher is better"
+    )
     print()
     print("first 12 misses (reported | gold):")
-    for concept_id, got, want in misses[:12]:
+    for concept_id, got, want in result.misses[:12]:
         print(f"  {concept_id:<10} {' '.join(got):<22} | {' '.join(want)}")
     return 0
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path)
+    parser.add_argument(
+        "input",
+        help="A prepared benchmark payload, or the name of a defined benchmark.",
+    )
     parser.add_argument("--beam-width", type=int, default=5)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit one machine-readable object, including the measured source.",
+    )
     args = parser.parse_args()
-    return run(args.input, args.beam_width)
+    return run(
+        _bootstrap.resolve_benchmark(args.input),
+        args.beam_width,
+        as_json=args.json,
+    )
 
 
 if __name__ == "__main__":

@@ -177,3 +177,82 @@ def test_lm_studio_endpoint_discovery_normalizes_model_ids(monkeypatch) -> None:
         "authorization": "Bearer local-key",
         "timeout": 10,
     }
+
+
+def test_build_synthetic_writes_the_answer_key_beside_the_payload_never_into_it(
+    tmp_path,
+) -> None:
+    """The answer key is the one artifact that must not reach a model.
+
+    Keeping it a separate file makes an accidental inclusion a visible mistake
+    rather than a silent one, and writing it over the payload is refused
+    outright.
+    """
+    payload_path = tmp_path / "family.json"
+    key_path = tmp_path / "family.answer-key.json"
+    cli.main(
+        [
+            "build-synthetic",
+            "--definition",
+            "benchmarks/synthetic/synthetic_regular.json",
+            "--output",
+            str(payload_path),
+            "--answer-key",
+            str(key_path),
+        ]
+    )
+    payload = WorkbenchPayload.model_validate_json(
+        payload_path.read_text(encoding="utf-8")
+    )
+    assert len(payload.lexicons) == 4
+    assert payload.historical_form_bindings
+    written = payload_path.read_text(encoding="utf-8")
+    # The cascade is not in the payload under any spelling.
+    assert "inverse_rules" not in written
+    assert "branches" not in written
+
+    key = json.loads(key_path.read_text(encoding="utf-8"))
+    assert {branch["node_id"] for branch in key["branches"]} == {
+        "d1",
+        "d2",
+        "d3",
+        "d4",
+        "inner_a",
+        "inner_b",
+    }
+
+    with pytest.raises(SystemExit) as caught:
+        cli.main(
+            [
+                "build-synthetic",
+                "--definition",
+                "benchmarks/synthetic/synthetic_regular.json",
+                "--output",
+                str(payload_path),
+                "--answer-key",
+                str(payload_path),
+            ]
+        )
+    assert caught.value.code == 2
+
+
+def test_build_benchmark_requires_exactly_one_of_name_or_definition(
+    tmp_path, capsys
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        cli.main(["build-benchmark", "--output", str(tmp_path / "x.json")])
+    assert caught.value.code == 2
+    assert "exactly one of --name or --definition" in capsys.readouterr().err
+
+
+def test_summarize_trajectories_reports_distributions_and_per_node_rows(
+    tmp_path, capsys
+) -> None:
+    """A threshold cannot be calibrated against an already-averaged number."""
+    trajectories = Path("tests/workbench/fixtures/trajectory_real_pre_change.jsonl")
+    cli.main(["summarize-trajectories", "--input", str(trajectories)])
+    summary = json.loads(capsys.readouterr().out)
+    assert "protocol_failure_rate_distribution" in summary
+    assert summary["per_node"]
+    row = summary["per_node"][0]
+    assert {"node_id", "protocol_failure_rate", "rule_coverage"} <= set(row)

@@ -1,7 +1,7 @@
 # Cognate Reconstruction Harness
 
 > Current-state guide for developers and coding agents. Last verified:
-> 2026-08-16, package version 0.2.0.
+> 2026-08-21, package version 0.2.0.
 
 `cognate_reconstruction` is the supported product in this repository. It is
 an auditable historical-linguistics harness in which an LLM manages
@@ -62,7 +62,7 @@ the runtime classification tree.
 | Local Lexibank/CLDF | Implemented and smoke-tested | Dataset-scoped IDs, conservative segmentation, cognacy memberships, partial slices, and provenance are retained. |
 | Supplied Newick | Implemented and recommended | Quoting, leaf validation, pruning, unary collapse, branch lengths, internal IDs, and unresolved polytomies are supported. |
 | Tree induction | Implemented, exploratory | LingPy LexStat SCA distances with neighbor joining or UPGMA; not an independent classification. |
-| Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. |
+| Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. Several internal nodes may carry gold in one run, each evaluated separately, and every binding records whether its gold is attested, a published reconstruction, or synthetic. |
 | LLM tool loop | Implemented | Eleven typed tools, bounded turns/calls, same-session rule validation satisfied by a standalone test or a cascade preview, ordered cascade preview, exact commit checks, rule-specific rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
 | Direction of change | Asked, recorded, and reported | `polarize` retrieves the out-group evidence that polarizes a correspondence; a rule that deletes or merges must carry a `directionality_rationale`, rejected on absence and never on content; discarded material is counted against the available nodes; concepts are held out per node. No sound-change table, typology data, or naturalness score exists anywhere in the repository, deliberately. See [Directionality](#directionality-which-branch-innovated). |
 | Cost of looking at evidence | Reduced, and measured | A correspondence-set survey over all 46 concepts and ten daughters costs 28 KB. The same ten-node `get_alignments` request that returned 3034 KB for six concepts now returns 314 KB, and 782 KB for the 24 the raised cap allows. A scripted whole-benchmark run that surveys, re-surveys, and aligns at every one of seven nodes never exceeds a 31.9 KB prompt. See ["the cost of looking at the evidence"](#the-cost-of-looking-at-the-evidence). |
@@ -70,8 +70,8 @@ the runtime classification tree.
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
 | Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. A failed node is recorded and walked over with a marked identity fallback rather than ending the run; `--fail-fast` and `--max-failed-nodes` bound that. No mid-node resume. |
 | Trajectory curation | Implemented at a mechanical level | Version 2.0 validation, summaries, workflow-quality filtering, and generic tool-training export. No expert linguistic grader or deterministic replay command. |
-| Research-grade evaluation | Partial | Exact held-out historical target evaluation exists; broad curated family benchmarks and a validated quality objective do not. Graded metrics (edit distance, B-Cubed) are still absent, so a near-miss and an unrelated form score alike. |
-| Reconstruction quality | Measured, partly improved, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and is now reported 58.7% of the time, up from 54.3% once branch support reached the score — top-1 rose at every beam width and beam-exact fell at none. **26 points are still lost in how a parent is chosen from child evidence, after the model has finished.** Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. See [the analysis tools](docs/analysis_tools.md). |
+| Research-grade evaluation | Implemented and graded; still one model, few seeds | Held-out gold evaluation reports edit distance, normalized edit distance, and B-Cubed F1 beside exact match, per concept and per node, with distributions rather than pooled means, and a beam-aware best-NED next to the top candidate's. Every node carrying gold is evaluated, not only the root. `build-benchmark` turns a declarative definition plus local CLDF into a runnable input, and two are checked in (Polynesian, Romance/Ab Antiquo). `run-benchmark` runs N seeds and aggregates with spread. `build-synthetic` generates a family from a known cascade, so the *changes* and their *direction* can be scored, not only the forms. A validated quality objective still does not exist and nothing here gates anything. See [benchmarks and evaluation](docs/benchmarks.md). |
+| Reconstruction quality | Measured, pinned, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and is reported 58.7% of the time; graded, mean NED is 0.158 at the top against 0.043 anywhere in the beam. **26 points, and 0.115 NED, are still lost in how a parent is chosen from child evidence, after the model has finished.** Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. Both numbers *and the gap between them* are now pinned by a regression test, so a beam change cannot quietly make reconstructions worse while every test passes. See [the analysis tools](docs/analysis_tools.md). |
 | Training backend | Not implemented | Trajectory export is the boundary for later work; no TRL/Unsloth training pipeline is included. |
 | Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. There is still no interactive trace browser, and the turn-by-turn timeline lives in the run-triage skill. |
 
@@ -90,6 +90,9 @@ cognate_reconstruction/
 ├── alignment/          typed LingPy SCA wrapper and correspondence-set aggregation
 ├── rules/              literal sound-law parser, token engine, contrast detection
 ├── traversal/          beams, deterministic reconstruction, checkpoints
+├── evaluation/         edit distance, normalized edit distance, B-Cubed F1
+├── benchmarks/         declarative benchmark definitions, builder, multi-seed sweep
+├── synthesis/          generate a family from a known cascade, and score against it
 ├── inspect_run.py      readable run report and cross-node observations
 └── agent/
     ├── providers/      provider protocol and LiteLLM adapter
@@ -103,25 +106,38 @@ cognate_reconstruction/
 
 tests/workbench/        supported product tests
 examples/               strict JSON, anchor, tree, and minimal CLDF fixtures
+benchmarks/             checked-in benchmark definitions (published and synthetic)
 tools/                  unowned analysis scripts; no LLM, no network
 docs/running_inference.md
+docs/benchmarks.md
 docs/analysis_tools.md
 MIGRATION.md
 ```
 
 `tools/` is deliberately outside the package. The test suite proves the harness
 is mechanically correct and says nothing about whether it reconstructs *well*;
-these four scripts measure the second thing against a gold proto-language, and
-`tools/build_polynesian_benchmark.py` rebuilds the benchmark they all read. They
-are analysis instruments rather than product surface: not importable, not
-covered by the suite, and safe to change. See
+these five scripts measure the second thing against a gold proto-language. Each
+takes a benchmark name as well as a path and has a `--json` mode, so the
+multi-seed runner consumes them rather than re-implementing the measurements.
+They are analysis instruments rather than product surface: not covered by the
+suite and safe to change — with one deliberate exception, `oracle_ceiling.py`,
+whose `measure()` the oracle-ceiling regression test imports so that the number
+the suite pins and the number the script prints come from one implementation.
+`tools/build_polynesian_benchmark.py` is now a thin wrapper around
+`build-benchmark --name polynesian`. See
 [the analysis tools](docs/analysis_tools.md) for what each measures, the current
-baselines, and when to re-run them.
+baselines, and when to re-run them, and
+[benchmarks and evaluation](docs/benchmarks.md) for how a benchmark is defined,
+run over several seeds, and generated synthetically.
 
 Start with:
 
 - [the full inference/CLI guide](docs/running_inference.md) for schemas,
   commands, provider options, and artifact contracts;
+- [benchmarks and evaluation](docs/benchmarks.md) for how a benchmark is
+  defined, what its gold actually is, the multi-seed runner, the graded metrics,
+  and the synthetic families whose changes and direction are known by
+  construction;
 - [the analysis tools](docs/analysis_tools.md) for the reconstruction-quality
   measurements, including the oracle ceiling that bounds what any model can
   score under the current architecture;
@@ -185,7 +201,15 @@ A small example is checked in at
 ```bash
 export MY_PROVIDER_API_KEY='...'
 
-conda run --no-capture-output -n llm_reconstruction +  cognate-reconstruct infer +  --input examples/reconstruction_input.json +  --model '<litellm-model-identifier>' +  --api-key-env MY_PROVIDER_API_KEY +  --output runs/example/result.json +  --trajectories runs/example/trajectories.jsonl +  --events runs/example/events.jsonl +  --checkpoint runs/example/checkpoint.json
+conda run --no-capture-output -n llm_reconstruction \
+  cognate-reconstruct infer \
+  --input examples/reconstruction_input.json \
+  --model '<litellm-model-identifier>' \
+  --api-key-env MY_PROVIDER_API_KEY \
+  --output runs/example/result.json \
+  --trajectories runs/example/trajectories.jsonl \
+  --events runs/example/events.jsonl \
+  --checkpoint runs/example/checkpoint.json
 ```
 
 Use a fresh trajectory/checkpoint path for a new experiment. Trajectories and
@@ -196,12 +220,24 @@ events are append-only, while an existing checkpoint requires `--resume`.
 LM Studio is a preset, not the conceptual default provider:
 
 ```bash
-conda run --no-capture-output -n llm_reconstruction +  cognate-reconstruct lm-studio-models
+conda run --no-capture-output -n llm_reconstruction \
+  cognate-reconstruct lm-studio-models
 
 LM_RUN_DIR="runs/lm-studio-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$LM_RUN_DIR"
 
-conda run --no-capture-output -n llm_reconstruction +  cognate-reconstruct infer +  --preset lm-studio +  --model '<loaded-tool-capable-model-id>' +  --input examples/lm_studio_smoke_input.json +  --output "$LM_RUN_DIR/result.json" +  --trajectories "$LM_RUN_DIR/trajectories.jsonl" +  --events "$LM_RUN_DIR/events.jsonl" +  --checkpoint "$LM_RUN_DIR/checkpoint.json" +  --temperature 0 +  --max-turns 16 +  --max-tool-calls 32
+conda run --no-capture-output -n llm_reconstruction \
+  cognate-reconstruct infer \
+  --preset lm-studio \
+  --model '<loaded-tool-capable-model-id>' \
+  --input examples/lm_studio_smoke_input.json \
+  --output "$LM_RUN_DIR/result.json" \
+  --trajectories "$LM_RUN_DIR/trajectories.jsonl" \
+  --events "$LM_RUN_DIR/events.jsonl" \
+  --checkpoint "$LM_RUN_DIR/checkpoint.json" \
+  --temperature 0 \
+  --max-turns 16 \
+  --max-tool-calls 32
 ```
 
 The CLI is verbose unless `--quiet` is supplied. With `conda run`, keep
@@ -212,6 +248,35 @@ Provider options such as `max_tokens` are model-specific. In particular,
 is a deliberately bounded 1,024-token example. Reasoning models may spend that
 entire allowance before emitting a tool call. Do not reuse it when unrestricted
 reasoning/output is intended.
+
+### 4. Measure something, rather than run something
+
+`infer` reconstructs one family once. Evaluation is a different workflow, and it
+starts from a benchmark rather than from a hand-assembled payload:
+
+```bash
+# a published family: a declarative definition plus local CLDF
+cognate-reconstruct build-benchmark --name polynesian
+
+# N seeds, aggregated with spread — a single run is not a measurement
+cognate-reconstruct run-benchmark \
+  --benchmark polynesian \
+  --model '<loaded-tool-capable-model-id>' \
+  --preset lm-studio \
+  --seeds 5 \
+  --out-dir runs/sweep-polynesian
+
+# a family whose gold *and whose sound changes* are known by construction
+cognate-reconstruct build-synthetic --name synthetic_hard
+cognate-reconstruct score-synthetic \
+  --answer-key runs/benchmarks/synthetic_hard.answer-key.json \
+  --run-dir runs/my-run
+```
+
+The synthetic path is the only one without a leakage problem, and the only one
+that can score the *changes* and their *direction* rather than only the forms.
+See [benchmarks and evaluation](docs/benchmarks.md) for what each kind of gold
+is evidence for.
 
 ## Input contracts
 
@@ -236,9 +301,15 @@ The supported adapter reads existing CLDF. It does not clone a repository or
 run `lexibank makecldf`.
 
 ```bash
-cognate-reconstruct list-lexibank-varieties +  --dataset examples/lexibank_fixture
+cognate-reconstruct list-lexibank-varieties \
+  --dataset examples/lexibank_fixture
 
-cognate-reconstruct prepare-lexibank +  --dataset examples/lexibank_fixture +  --newick-file examples/lexibank_fixture/tree.nwk +  --concept-id 948 +  --concept-id 221 +  --output runs/fixture-input.json
+cognate-reconstruct prepare-lexibank \
+  --dataset examples/lexibank_fixture \
+  --newick-file examples/lexibank_fixture/tree.nwk \
+  --concept-id 948 \
+  --concept-id 221 \
+  --output runs/fixture-input.json
 ```
 
 Important ingestion guarantees:
@@ -286,9 +357,27 @@ Historical forms can be removed from observed leaf evidence and explicitly
 bound to a named internal node:
 
 - `target`: hidden from the model and evaluated after deterministic
-  reconstruction with exact top-candidate and beam-level token matches;
+  reconstruction — exact top-candidate and beam-level token matches, and graded
+  beside them: edit distance, normalized edit distance, and B-Cubed F1 against
+  the nearest gold alternative, plus the best NED any retained candidate
+  reached. Per concept, per node, and aggregated as distributions rather than
+  pooled means. **Several internal nodes may carry targets in one run**, so a
+  dataset that supplies proto-forms for intermediate nodes gets a score at each;
 - `anchor`: included in the prompt/tools/trajectory and handled according to
   `ignore`, `advisory`, or `scored`.
+
+A binding also records **what its gold is**, through `gold_evidence_kind`:
+`attested`, `reconstructed`, or `synthetic`. That distinction is carried into
+every reported score, because scoring against Proto-Polynesian measures
+agreement with Walworth's analysis while scoring against Latin measures
+agreement with an attested language, and neither is the same claim as scoring
+against a proto-lexicon written in this repository. The field is `None` by
+default and deliberately not defaulted to `attested`: silence must not read as
+the stronger claim.
+
+None of these numbers gates anything. See
+[benchmarks and evaluation](docs/benchmarks.md) and
+[report, reject, or score](docs/report_reject_or_score.md).
 
 Use either:
 
@@ -726,6 +815,26 @@ in the prompt payload rather than hidden, because inspecting a held-out concept
 is comparative work rather than cheating, and a split the session cannot see
 only produces a number it cannot act on.
 
+**Whether the claim rested on evidence is now reported, structurally.** The
+harness still never reads a rationale — it cannot, and a content check would be
+the harness grading a linguistic claim by keyword — but `inspect-run` prints, per
+node, how many `polarize` calls the session made, how many returned an out-group
+at all, and how many committed rules carry a rationale. `polarize` tags every
+node it reports with a `relation`, so "this call returned no out-group" is a fact
+about the tool result. It catches the exact shape the first live run produced at
+`proto_polynesian`: a rationale citing out-group support where the tool had
+returned none, because the root has no out-group and every available node was a
+descendant. That line always fires at the root and is only interesting below it,
+which the multi-seed aggregate splits out. It gates nothing, and whether a
+particular rationale is *wrong* still needs a human.
+
+**On a synthetic family the claim can be checked outright**, because the branch
+that innovated is the branch the definition gave a rule to. `score-synthetic`
+reports every rule scoped to a branch the answer key left empty. That is the one
+measurement speaking directly to the failure this section exists to prevent, and
+it is available nowhere else; see
+[benchmarks and evaluation](docs/benchmarks.md).
+
 One failure this prompt does **not** fix. At `tongic` a later run proposed
 `Ø > ʔ / #_` — the correct direction, Niuean being the branch that lost the
 segment — and was rejected `dsl-parse-error` three times, because the DSL has no
@@ -766,6 +875,16 @@ required child-to-parent mapping explicitly.
 Not implemented in the DSL: feature bundles, phonological classes, wildcards,
 regular expressions, optional segments, backreferences, empty-target
 insertion, non-local environments, or automatic rule inversion.
+
+The missing insertion is the one with measured consequences, and it now has a
+controlled testbed rather than only an anecdote. The synthetic generator writes
+its families in this same DSL, so a change it cannot state is a change the
+generator cannot make either; `benchmarks/synthetic/synthetic_hard.json` uses
+that deliberately, losing a segment in every branch but one, and its answer key
+records the losing branches as ones **no child-to-parent cascade can undo**. The
+segment is still reachable — through the one branch that kept it, via the beam —
+which is exactly the distinction between "hard" and "unreachable" that a
+benchmark has to preserve.
 
 ## Deterministic beam and diagnostics
 
@@ -985,7 +1104,10 @@ reported when they change, and never grounds to refuse — see "Resume and budge
 integrity" for why that asymmetry is the right one.
 
 ```bash
-cognate-reconstruct infer +  ... +  --checkpoint runs/family/checkpoint.json +  --resume
+cognate-reconstruct infer \
+  ... \
+  --checkpoint runs/family/checkpoint.json \
+  --resume
 ```
 
 The next unfinished node starts a new model session. There is no partial
@@ -997,11 +1119,17 @@ that decide which records qualify.
 Trajectory commands:
 
 ```bash
-cognate-reconstruct validate-trajectories +  --input runs/family/trajectories.jsonl
+cognate-reconstruct validate-trajectories \
+  --input runs/family/trajectories.jsonl
 
-cognate-reconstruct summarize-trajectories +  --input runs/family/trajectories.jsonl
+cognate-reconstruct summarize-trajectories \
+  --input runs/family/trajectories.jsonl
 
-cognate-reconstruct export-trajectories +  --input runs/family/trajectories.jsonl +  --output runs/family/high-quality-examples.jsonl +  --high-quality-only +  --max-anomaly-rate 0.1
+cognate-reconstruct export-trajectories \
+  --input runs/family/trajectories.jsonl \
+  --output runs/family/high-quality-examples.jsonl \
+  --high-quality-only \
+  --max-anomaly-rate 0.1
 ```
 
 The current `high_quality` flag is a conservative workflow filter. It requires
@@ -1091,15 +1219,41 @@ cognate-reconstruct inspect-run --run-dir runs/family --html runs/family/report.
 `inspect-run` reads `result.json` and `trajectories.jsonl`, plus `events.jsonl`
 when present, and prints a readable report: per node the session shape (turns,
 tool calls, rejections split protocol/exploratory and grouped by structural
-error code, truncations and recoveries, retries, duration, tokens), the
-committed hypothesis (each rule's DSL, child scope, confidence, resolved
-validation, supporting-form count, rationale, plus anomalies and summary), the
-deterministic diagnostics, the best reconstructed lexicon, and `high_quality`
-**with the specific condition it failed**. A family summary and any held-out
-historical target evaluation follow. `--html` writes one self-contained file —
+error code, whether the directionality claim rested on retrieved evidence,
+truncations and recoveries, retries, duration, tokens), the committed hypothesis
+(each rule's DSL, child scope, confidence, resolved validation, supporting-form
+count, rationale, plus anomalies and summary), the deterministic diagnostics,
+the best reconstructed lexicon, and `high_quality` **with the specific condition
+it failed**. A family summary and any held-out historical target evaluation
+follow. `--html` writes one self-contained file —
 no external CSS, JS, fonts, or images — readable in light and dark, with wide
 rule tables scrolling inside their own container. `--all-forms` lifts the
 40-form-per-node cap.
+
+**Where a node carries gold, its accuracy is inside the deterministic block,
+not above it.** `gold exact`, `gold distance` (normalized edit distance, lower
+is better), `gold beam best`, and `gold b-cubed` sit below `rule coverage`,
+`contrast loss`, `child convergence`, `held-out concepts`, `branch support`,
+`evidence coverage`, and `tie-broken forms` — because an accuracy is the number
+most likely to be quoted alone, and a node can be exact on half its concepts by
+discarding a distinction its sisters preserved. Read the block. Where the node
+was walked over as an identity fallback, a `gold caveat` line says the score
+measures the fallback rather than a reconstruction.
+
+The line above them, `held-out concepts`, is a different thing and is named
+apart on purpose: it is a split of the *session's own* concepts, measuring
+whether the children still agree on concepts the rules were not fitted to. It
+makes no claim about correctness. See
+[benchmarks and evaluation](docs/benchmarks.md).
+
+**Whether a directionality claim rested on evidence is reported structurally.**
+The `directionality` line in each session block counts `polarize` calls, how
+many returned an out-group at all, and how many committed rules carry a
+rationale. `polarize` tags every node it reports with a `relation`, so "this
+call returned no out-group" is a fact about the tool result and never a reading
+of the model's prose — which the harness does not read, here or anywhere. At the
+root the line always fires, because nothing lies outside the root; below it, it
+is worth attention.
 
 The quality reasons are the gate itself rather than a description of it:
 `high_quality` is true exactly when `high_quality_failure_reasons` is empty, so
@@ -1145,7 +1299,8 @@ installed:
 RUN_DIR="runs/family"
 
 # Compact operational timeline
-jq -r '[.timestamp, .kind, .message] | @tsv' +  "$RUN_DIR/events.jsonl" | less -S
+jq -r '[.timestamp, .kind, .message] | @tsv' \
+  "$RUN_DIR/events.jsonl" | less -S
 
 # Committed rule DSL, scope, and confidence
 jq -r '
@@ -1171,7 +1326,98 @@ jq -r '
   [$node, .concept_id, (.segments | join(" "))] |
   @tsv
 ' "$RUN_DIR/result.json"
+
+# Graded accuracy per node against withheld gold; NED is better when lower
+jq -r '
+  .historical_target_evaluations[] |
+  [
+    .node_id,
+    (.gold_evidence_kind // "unspecified"),
+    (.failure_fallback | tostring),
+    "\(.top_exact_matches)/\(.evaluated_concepts)",
+    (.graded.top_normalized_edit_distance.mean // "n/a" | tostring),
+    (.graded.top_bcubed_f1.mean // "n/a" | tostring)
+  ] | @tsv
+' "$RUN_DIR/result.json"
+
+# The concepts the reconstruction missed by the most segments
+jq -r '
+  .historical_target_evaluations[].concepts[] |
+  select(.top_exact_match == false) |
+  [
+    .concept_id,
+    (.top_candidate_segments // [] | join(" ")),
+    (.nearest_target_segments // [] | join(" ")),
+    (.top_edit_distance | tostring)
+  ] | @tsv
+' "$RUN_DIR/result.json" | sort -k4 -nr | head -20
 ```
+
+## Evaluation and benchmarks
+
+Running a family and *measuring* one are different workflows. The full guide is
+[benchmarks and evaluation](docs/benchmarks.md); this is the shape of it.
+
+**Three things are called a benchmark here, and they answer different
+questions.**
+
+| Kind | Gold is | Answers | Leakage |
+| --- | --- | --- | --- |
+| Published (`benchmarks/*.json`) | a published proto-form, or an attested ancestor | how the harness compares to the literature and to published baselines | severe, and not fixable |
+| Synthetic (`benchmarks/synthetic/*.json`) | a proto-lexicon written in this repository | whether the harness recovers changes it cannot have memorized | none by construction |
+| Oracle ceiling (`tools/oracle_ceiling.py`) | the same gold, with perfect rules supplied | what a flawless model could score under this architecture | not applicable |
+
+**An oracle number bounds the architecture; a live number measures a model.**
+They are never interchangeable, and the multi-seed report prints them in
+separate blocks for that reason.
+
+```bash
+cognate-reconstruct build-benchmark --name polynesian     # or --name romance
+cognate-reconstruct run-benchmark --benchmark polynesian --model ... --seeds 5 \
+  --out-dir runs/sweep-polynesian
+cognate-reconstruct build-synthetic --name synthetic_hard
+cognate-reconstruct score-synthetic --answer-key ... --run-dir ...
+```
+
+**Graded, because exact match cannot say whether a change helped.** A
+reconstruction one segment from `ʔ a l e l o` and one sharing nothing with it
+both score zero under token equality. Every held-out evaluation now carries edit
+distance, normalized edit distance (lower is better), and B-Cubed F1 (higher is
+better, and *structural*: `p a` against `b e` scores 1.0 because the
+correspondence is consistent), plus the best NED any retained candidate reached.
+Per concept, per node, as distributions rather than pooled means. The gap
+between top NED and beam-best NED is the graded selection gap and is the single
+most useful number for telling a selection problem from a generation problem.
+
+**Several nodes may carry gold in one run**, so a family whose root is good and
+whose lower nodes are bad is distinguishable from a uniformly mediocre one.
+
+**Seeds, because the same input fails differently every run.** `run-benchmark`
+runs N repetitions in separate subprocesses and emits one aggregate in which
+every rate carries its spread. A run that finished with losses and one that was
+abandoned are counted apart, and **a fallback node is never a completion**.
+
+**On a synthetic family the changes and their direction are scored, not only the
+forms.** A run that reaches the right proto-forms via the wrong changes is a
+different result from one that got both, and nothing could tell them apart
+before. A live two-seed sweep showed exactly that: the seed that committed all
+three nodes scored 10/16 with one rule pointed at a branch that did not
+innovate, and the seed that lost two nodes scored a perfect 16/16 with a rule
+precision of 0.25 — right forms, wrong history.
+
+**None of it gates anything.** These are the closest this repository comes to
+grading linguistic truth, which is exactly why none of them filters a
+trajectory, weights a candidate, or decides whether a run was valid. See
+[report, reject, or score](docs/report_reject_or_score.md).
+
+**Every published benchmark has a leakage problem and it is not fixable.** The
+harness deliberately keeps directionality judgement in the model's weights, so a
+model that has read the literature on Polynesian can produce `*ʔ` from memory.
+What the artifact supports is a *check* — did the session consult the
+out-groups, and did `polarize` return any? — never a proof. The synthetic
+families are the answer; a benchmark definition also records
+`provenance.publication_date`, because a gold set published after a model's
+training cutoff needs no new code, only a definition and a date.
 
 ## Verification snapshot
 
@@ -1182,7 +1428,7 @@ The following was re-run in `llm_reconstruction` on 2026-08-16:
 | Supported suite: `pytest -q -k "not local_run_artifacts"` | **202 passed** (2026-08-17; 178 before the evidence-cost work added 24 cases). This is the authoritative count: it is the fixed suite, and it does not depend on `runs/`. Plain `pytest -q` adds one opportunistic case per `runs/*/trajectories.jsonl` present locally, so its total drifts with local evidence — it changed twice during this session's own live runs — and should not be quoted as the suite size. |
 | `make smoke-lexibank` | 2 varieties, 4 tokenized forms, 2 concepts; supplied tree normalized successfully |
 | `make smoke-iecor-historical` | 6 evidence varieties, 1,029 tokenized forms, 170 concepts, 1 hidden historical binding; supplied tree normalized successfully |
-| CLI installation/help | `cognate-reconstruct` available; all eight CLI subcommands load |
+| CLI installation/help | `cognate-reconstruct` available; all twelve CLI subcommands load |
 | Core/agent versions in the environment | harness 0.2.0, LiteLLM 1.81.16, Pydantic 2.13.4, LingPy 2.6.14 |
 | LM Studio discovery | Local `/v1/models` discovery succeeded |
 | Archived-code import audit | No runtime import of `cognate_reflexes`; the package has no dependency on archived corpus code |
@@ -1401,6 +1647,23 @@ benchmark:
 | `tongic` is still wrong, and now says so | It committed `ʔ > Ø` scoped to Tongan — still the branch that *preserves* `*ʔ`. What changed is that the claim is now in the open and visibly self-contradictory: the rationale reads *"Outgroups … also preserve ʔ, indicating Tongan's loss is the innovation"* while Tongan is the branch that has it, and the summary claims a parent with initial `ʔ` under a rule that deletes it. That is the designed outcome — the harness must not reject on content — and the correct rule there is `Ø > ʔ` on Niuean, which the DSL cannot express. See `prompts/06-proto-inventory.md` |
 | One weakness the run exposed, and what was done about it | At `futunic` the model pasted the harness's own finding back as its rationale — *"ʔ > Ø deletes ʔ from [EastUvea]; ʔ is attested in 8 of 11 available nodes"* — which satisfies the field and answers nothing. The old remediation rendered that note immediately after the `rule_id`, which invited the copy. **The fix is in what the rejection asks for, not in what it checks**: the counts are now labelled *"What the harness found"*, the request for the claim is separate and explicit, and it says restating the counts is not an answer. `SKILL.md` says the same. A rationale that still restates them is still accepted — content is never judged — and the test pins both halves |
 
+Re-run on **2026-08-21** for the evaluation harness:
+
+| Check | Result |
+| --- | --- |
+| Supported suite: `pytest -q -k "not local_run_artifacts"` | **320 passed** (279 before; 41 new cases for the graded metrics, the oracle-ceiling regression, the benchmark builder and its leakage refusals, multi-node targets, the sweep aggregate, and the synthetic generator and its scoring). Plain `pytest -q`: 348 passed |
+| `tools/oracle_ceiling.py`, beam width 5 | Unchanged and now pinned: top-1 **27/46 (58.7%)**, beam-exact **39/46 (84.8%)**, selection gap **26.1 points**. Graded, for the first time: mean top NED **0.158**, mean beam-best NED **0.043**, NED selection gap **0.115**, mean B-Cubed F1 **0.960** |
+| The other four analysis scripts | Unchanged baselines through the new name/`--json` surface: 66 ties and ceiling 29 with 18/18/23/25 across the four tie-break policies; 216 correspondence sets, 41 at support ≥ 2, 175 singletons; 37 / 8 / 1 on branch reachability |
+| `build-benchmark --name polynesian` | Reproduces the retired script's selection exactly: 10 daughters, **46 concepts**, gold bound at `proto_polynesian` and absent from the lexicons. The only difference from the script's payload is the serialization order of a frozenset |
+| `build-benchmark --name romance` | A second family from one code path: 5 daughters, **900 concepts**, Latin bound at `latin` as **attested** gold |
+| The recorded live run, re-scored with the new metrics | `runs/google-gemma-4-26b-a4b-20260820-212424` at `proto_polynesian`: 21/46 exact, 31/46 in beam; mean top NED **0.214**, mean beam-best NED **0.081**, NED gap **0.133**, mean B-Cubed F1 **0.950**, mean edit distance 1.22 segments. The graded numbers say the misses are close: the median miss is one segment |
+| The directionality check on that run | Flags exactly one node, `proto_polynesian`, where a rationale claimed out-group support and `polarize` returned none — the root has no out-group. Every other node's `polarize` calls did return out-groups. Structural throughout: no rationale text is read |
+| `build-synthetic`, three families | `synthetic_regular` 4 daughters / 16 concepts, `synthetic_hard` 5 / 25 with gold at three nodes, `synthetic_noisy` with two irregular forms, a loan, and a semantic mismatch. Under oracle rules the clean families score **16/16** and **22/25** top-1 with **25/25** in the beam, which is how a generated family is known to be sound rather than merely hard |
+| Live two-seed `run-benchmark` on `synthetic_regular` | Seed 0 committed all three nodes and scored **10/16**; seed 1 lost both inner nodes to `AgentLoopLimitError` and `ProtocolStallError`, committed only the root, and scored **16/16**. Aggregate: nodes committed mean 2.0 (sd 1.41), top exact mean 0.812 (sd 0.265), against an oracle ceiling of 16/16. One run of this benchmark would have supported either conclusion |
+| **What the answer key caught that no published gold could** | Seed 0 got all four leaf branches exactly right and then committed `p > f` on `inner_b`, the branch that did **not** innovate, instead of `f > p` on `inner_a` — 0.75 rule precision, 0.75 recall, **one misdirected rule**. Seed 1 scored a perfect 16/16 on the *forms* with a rule precision of **0.25**, having attributed the whole cascade to the two fallback nodes. Right forms, wrong history, and only an answer key separates them |
+| Abandoned-run handling on the real payload | A deliberately starved `run-benchmark --max-turns 2 --max-failed-nodes 0` on the Polynesian benchmark exits 2, writes no `result.json`, and is aggregated as `run-abandoned-no-result` rather than as a completion |
+| Backward compatibility | `runs/google-gemma-4-26b-a4b-20260820-212424/result.json`, written before the graded fields existed, still loads; its evaluation reports NED and B-Cubed as "not recorded" rather than as zero |
+
 These `runs/` paths are ignored local evidence and may not exist in another
 clone. They are listed to make the current verification history explicit, not
 as permanent fixtures.
@@ -1421,7 +1684,11 @@ engineering:
 - long family runs can resume from completed node boundaries;
 - the fixture and IE-CoR smoke paths are reproducible;
 - trajectories are rich enough to be curated for a later tool-use training
-  project without pretending that legacy triplet JSONL is equivalent.
+  project without pretending that legacy triplet JSONL is equivalent;
+- a reconstruction can be *measured*: graded against withheld gold, over several
+  seeds with the spread reported, against a pinned architectural ceiling, and —
+  on a generated family — against an answer key that knows the sound changes and
+  which branch made them.
 
 ## Known problems and rough edges
 
@@ -1790,8 +2057,25 @@ future ideas.
   mismatch, and coverage.
 - An empty identity commit is valid. Inspection is required for the
   `high_quality` filter, but a hypothesis test is not.
-- Historical target comparison uses exact token equality. There are no graded
-  phonological, edit-distance, or expert-judgment metrics.
+- **Held-out gold comparison is graded now, and grades nothing else.** Edit
+  distance, normalized edit distance, and B-Cubed F1 sit beside exact match, per
+  concept and per node, with distributions rather than pooled means. All of it
+  is a report: no number here filters a trajectory, weights a candidate, or
+  decides whether a run was valid, and the moment one of them gated
+  `export-trajectories --high-quality-only` it would have become the definition
+  of a valid reconstruction. Read the polarity — NED is better when *lower*,
+  which is the opposite of every accuracy in this repository — and read B-Cubed
+  for what it is: `p a` against `b e` scores 1.0 because the correspondence is
+  consistent, not because the reconstruction is right. There is still no
+  expert-judgment metric and no validated quality objective.
+- **The graded scores say where the selection gap is, not only that it exists.**
+  Mean top NED against mean beam-best NED is the graded selection gap, and it is
+  large under oracle rules (0.158 against 0.043) *and* under a live model (0.214
+  against 0.081). Selection, not generation, is the bottleneck in both regimes.
+- **One live reading is not a measurement.** The Polynesian figures below come
+  from a single seed of one model. `run-benchmark` exists because the same input
+  fails differently on every run; until several seeds have been aggregated,
+  quote the spread or quote nothing.
 
 ### Data and user experience
 
@@ -1825,8 +2109,12 @@ future ideas.
   report. The turn-by-turn timeline is not in `inspect-run` either: it is
   reconstructed from `events.jsonl` by the run-triage skill, which is a
   developer tool rather than a supported product surface.
-- Historical benchmark curation beyond the checked-in lineage metadata is not
-  automated.
+- Historical benchmark *curation* is automated now — `build-benchmark` turns a
+  declarative definition plus a local CLDF dataset into a runnable input, and
+  `build-synthetic` generates a family outright — but choosing **which** families
+  should form the first benchmark, and what leakage boundary to enforce, is
+  still a research-owner decision. The two published definitions that ship are
+  development benchmarks; neither should carry a headline claim.
 - Partial and alternative cognacy are preserved faithfully, but the exploratory
   tree-induction fallback uses only unambiguous whole-form cognate IDs. A
   weighted policy would require an explicit research decision.
@@ -1947,23 +2235,38 @@ future ideas.
 
 ### Research validity next
 
-1. Define an expert-review and benchmark protocol for completed trajectories.
-2. Curate held-out historical nodes/families with explicit provenance and
-   leakage controls.
+1. Define an **expert-review** protocol for completed trajectories. The
+   *benchmark* half of this item is done — `build-benchmark`, two checked-in
+   published definitions, three synthetic families, `run-benchmark` for seeds,
+   and graded metrics with distributions — and what remains is the part no code
+   can supply: a linguist reading committed cascades and saying whether the
+   argument is sound. Every mechanical number this repository produces
+   deliberately stops short of that.
+2. **Done, with a caveat that is not going away.** Held-out nodes and families
+   now carry explicit provenance: a definition records its source, its
+   publication date, and a leakage note, and `GoldEvidenceKind` travels with
+   every score so a reader always knows whether the answer key is attested, a
+   published reconstruction, or synthetic. The leakage *control* is real only
+   for the synthetic families; for Polynesian and Romance the artifact supports
+   a check — did this session call `polarize`, and did it return an out-group at
+   all? — and never a proof. What is still open is a family whose gold was
+   published after a model's training cutoff, which needs no new code, only a
+   definition and a date.
 3. Calibrate the `high_quality` protocol-failure threshold against a real
    corpus of trajectories instead of the current judgement call. The second half
    of this item is now decided in code — an exploratory rejection does *not*
    count the same as a commit-schema one — but 0.25 and the single-failure floor
    are still engineering judgements, and the exploratory/protocol boundary itself
-   deserves the same corpus check. The cheap enabling step, which needs no
-   research decision, is to report the *distribution* of per-trajectory protocol
-   rates from `summarize-trajectories` rather than only the pooled rate and a
-   count above threshold; a threshold cannot be calibrated against a number that
-   has already been averaged. Decide in the same pass whether a session that
-   only reached a tool call because the harness forced one should still count as
-   `high_quality`. It does today, which is a default rather than a finding;
-   `forced_tool_choice_count` and `truncation_backoff_applied` are recorded per
-   node precisely so the question can be settled against real trajectories.
+   deserves the same corpus check. **The cheap enabling step is done:**
+   `summarize-trajectories` now reports the distribution of per-trajectory
+   protocol rates, and per-node rows beside it, rather than only the pooled rate
+   and a count above threshold — a threshold cannot be calibrated against a
+   number that has already been averaged. Decide in the same pass whether a
+   session that only reached a tool call because the harness forced one should
+   still count as `high_quality`. It does today, which is a default rather than a
+   finding; `forced_tool_choice_count` and `truncation_backoff_applied` are
+   recorded per node precisely so the question can be settled against real
+   trajectories.
 4. Decide whether parsimony should affect scoring, and document the objective
    before implementing it.
 5. Add diagnostics for recurring correspondence support, residual mismatch,
@@ -1977,7 +2280,14 @@ future ideas.
    [`docs/report_reject_or_score.md`](docs/report_reject_or_score.md) exists to
    frame.
 6. Decide which DSL extensions are scientifically necessary without turning
-   model input into arbitrary executable patterns.
+   model input into arbitrary executable patterns. The synthetic families make
+   the leading candidate concrete rather than theoretical: `synthetic_hard`
+   contains a segment lost in every branch but one, its answer key records the
+   losing branches as ones **no rule can undo** — there is no empty-target
+   insertion — and `tools/branch_recoverability.py` puts 8 of 46 Polynesian
+   concepts in the same category. This is the subject of
+   `prompts/06-proto-inventory.md`, which asks for a design document before any
+   code.
 
 ### Product ergonomics later
 
@@ -2062,6 +2372,18 @@ Future changes should preserve these rules:
   [docs/report_reject_or_score.md](docs/report_reject_or_score.md) records why,
   and the rule for deciding whether a new signal is a rejection, a report, or a
   score;
+- keep evaluation a report. NED, B-Cubed, rule precision against a synthetic
+  answer key, and the directionality checks are the closest this repository
+  comes to grading linguistic truth, and none of them filters a trajectory,
+  weights a candidate, or decides whether a run was valid;
+- never let a failed node count as a reconstructed one. A fallback beam is the
+  harness's identity commit; excluding it from counts and scores, or reporting
+  it separately, is not optional;
+- keep the answer key out of the payload, and keep a bound `target` variety out
+  of the lexicons — checked in `ingestion/preparation.py`, and the one failure
+  that would silently turn a benchmark into a lookup table;
+- say what a gold set *is* wherever a score against it appears: attested, a
+  published reconstruction, or synthetic;
 - use `conda run -n llm_reconstruction` for repository verification;
 - update this status snapshot when behavior, test counts, or known limitations
   materially change.

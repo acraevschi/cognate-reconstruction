@@ -195,6 +195,59 @@ narrowly conditioned rule that never applies to a held-out form may be entirely
 correct, and rejecting on it would reward padding a cascade until the number
 moved.
 
+## The fourth worked example: a score that is actually about correctness
+
+Everything before this measured the machinery or the session. Normalized edit
+distance, B-Cubed F1, and rule precision against a synthetic answer key measure
+**whether the reconstruction is right**. That is question three, the one this
+repository says it cannot answer — so it is worth being precise about what
+changed and what did not.
+
+What changed is that for a *particular* gold set, question three is decidable.
+Given Proto-Polynesian as published, "is `a l e l o` the right answer?" has an
+answer. Given a synthetic family, so does "did this branch innovate?", because
+the answer key says which branch got a rule.
+
+What did not change is that these are still reports, and the reason is the
+asymmetry this document opens with. These are the closest this repository has
+come to grading linguistic truth, which makes them the most tempting numbers to
+gate on, and gating is the irreversible direction. The moment NED filters
+`export-trajectories --high-quality-only`, a corpus exists that was selected by
+it — already written, possibly already trained on — and the threshold that
+selected it has become the operative definition of a valid reconstruction.
+
+Run the question in the pocket — **what happens when this fires on a correct
+run?** — against each of them and the answers are not reassuring:
+
+- **NED on a published gold** fires on a run that disagrees with Walworth. That
+  is sometimes the run being wrong and sometimes the reconstruction being a
+  defensible alternative; a published proto-form is somebody's analysis, and
+  `GoldEvidenceKind` exists to keep saying so. Gating would define agreement
+  with one analysis as validity.
+- **B-Cubed F1** scores `p a` against `b e` as 1.0, because the correspondence
+  is consistent. A gate would reward a systematically wrong reconstruction over
+  an inconsistent nearly-right one.
+- **Rule precision** matches spellings, so `e > a / ʔ_` and `ʔ e > ʔ a` do not
+  match. A gate would select for the spelling the answer key happened to use.
+- **The directionality check on a synthetic family** is the only one that is
+  genuinely certain — a rule scoped to a branch the key gave no rule to is
+  pointed at a branch that did not change — and it is certain only *there*. On
+  a published benchmark the same question has no answer key, so a gate built on
+  it would work on three toy families and silently mean nothing everywhere else.
+
+The structural directionality report on published benchmarks lands in the same
+place for a different reason. "This session's `polarize` calls returned no
+out-group, and it committed a directionality claim" is mechanically decidable —
+`polarize` tags every node it reports with a `relation`, and whether a node has
+an out-group is a property of the tree. But **bad** still needs judgement: the
+rationale may be citing something the session saw at a lower node, or be loosely
+worded, and the harness never reads it. Rule 2, a report, and deliberately not a
+content check on the prose — that would be the harness grading a linguistic
+claim by keyword.
+
+So: printed in `inspect-run`, in `result.json`, in `summarize-trajectories`, and
+in the multi-seed aggregate. Consumed by nothing.
+
 ## The decision rule
 
 For anything new, in order:

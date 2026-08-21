@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "name": "romance",
+  "description": "Five Romance daughters against Latin. The gold here is attested rather than reconstructed, which makes it the one published benchmark in this repository whose answer key is an observation. This is the Ab Antiquo dataset (Meloni, Ravfogel & Goldberg 2021), so published neural baselines exist to compare against.",
+  "dataset_path": "../data/lexibank/meloniromance",
+  "daughters": [
+    "meloniromance:Romanian",
+    "meloniromance:Italian",
+    "meloniromance:French",
+    "meloniromance:Spanish",
+    "meloniromance:Portuguese"
+  ],
+  "targets": [
+    {
+      "source_variety_id": "meloniromance:Latin",
+      "node_id": "latin",
+      "gold_evidence_kind": "attested",
+      "source_reference": "Meloni, Ravfogel & Goldberg (2021), Ab Antiquo: Latin held out as evaluation target"
+    }
+  ],
+  "newick": "('meloniromance:Romanian',('meloniromance:Italian',('meloniromance:French',('meloniromance:Spanish','meloniromance:Portuguese')ibero_romance)western_romance)italo_western)latin;",
+  "concept_selection": "fully_cognate_with_target",
+  "provenance": {
+    "source": "Meloni, Ravfogel & Goldberg (2021), Ab Antiquo; Romance CLDF via Lexibank",
+    "publication_date": "2021-01-01",
+    "leakage_note": "Latin is attested, so the answer key is not somebody's reconstruction — but it is also one of the best-documented languages in the training data of any large model, and the Romance sound changes are textbook material. Leakage is worse here than for Polynesian, not better; what the benchmark buys is comparability with published neural baselines.",
+    "note": "The tree is the conventional Eastern / Italo-Western split. Latin is the ancestor of the attested daughters only in the loose sense that Vulgar Latin is; scoring against the classical lexicon is the convention this dataset established."
+  }
+}

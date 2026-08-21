@@ -1,0 +1,323 @@
+{
+  "schema_version": "1.0",
+  "name": "synthetic_hard",
+  "description": "The four cases this project keeps failing, in one family: a merger in one branch that only its sister disambiguates; a segment lost everywhere except one branch; a chain shift whose rules must be ordered correctly; and a conditioned split. Gold is bound at three nodes, so the run reports an accuracy curve rather than a single root number.",
+  "newick": "((d1,d2)west,((d3,d4)east_a,d5)east)proto;",
+  "proto_lexicon": [
+    {
+      "concept_id": "tooth",
+      "segments": [
+        "ʔ",
+        "i",
+        "p",
+        "a"
+      ],
+      "gloss": "tooth"
+    },
+    {
+      "concept_id": "water",
+      "segments": [
+        "b",
+        "a",
+        "k",
+        "u"
+      ],
+      "gloss": "water"
+    },
+    {
+      "concept_id": "fire",
+      "segments": [
+        "t",
+        "a",
+        "m",
+        "i"
+      ],
+      "gloss": "fire"
+    },
+    {
+      "concept_id": "stone",
+      "segments": [
+        "k",
+        "u",
+        "l",
+        "a"
+      ],
+      "gloss": "stone"
+    },
+    {
+      "concept_id": "hand",
+      "segments": [
+        "m",
+        "a",
+        "b",
+        "i"
+      ],
+      "gloss": "hand"
+    },
+    {
+      "concept_id": "eye",
+      "segments": [
+        "l",
+        "u",
+        "p",
+        "a"
+      ],
+      "gloss": "eye"
+    },
+    {
+      "concept_id": "sun",
+      "segments": [
+        "k",
+        "a",
+        "t",
+        "i"
+      ],
+      "gloss": "sun"
+    },
+    {
+      "concept_id": "tree",
+      "segments": [
+        "ʔ",
+        "u",
+        "n",
+        "a"
+      ],
+      "gloss": "tree"
+    },
+    {
+      "concept_id": "bird",
+      "segments": [
+        "t",
+        "i",
+        "k",
+        "u"
+      ],
+      "gloss": "bird"
+    },
+    {
+      "concept_id": "fish",
+      "segments": [
+        "m",
+        "u",
+        "l",
+        "a"
+      ],
+      "gloss": "fish"
+    },
+    {
+      "concept_id": "road",
+      "segments": [
+        "n",
+        "a",
+        "t",
+        "u"
+      ],
+      "gloss": "road"
+    },
+    {
+      "concept_id": "house",
+      "segments": [
+        "k",
+        "i",
+        "b",
+        "a"
+      ],
+      "gloss": "house"
+    },
+    {
+      "concept_id": "night",
+      "segments": [
+        "l",
+        "a",
+        "m",
+        "i"
+      ],
+      "gloss": "night"
+    },
+    {
+      "concept_id": "blood",
+      "segments": [
+        "p",
+        "i",
+        "t",
+        "u"
+      ],
+      "gloss": "blood"
+    },
+    {
+      "concept_id": "name",
+      "segments": [
+        "t",
+        "u",
+        "n",
+        "a"
+      ],
+      "gloss": "name"
+    },
+    {
+      "concept_id": "belly",
+      "segments": [
+        "m",
+        "i",
+        "k",
+        "a"
+      ],
+      "gloss": "belly"
+    },
+    {
+      "concept_id": "leaf",
+      "segments": [
+        "ʔ",
+        "a",
+        "l",
+        "i"
+      ],
+      "gloss": "leaf"
+    },
+    {
+      "concept_id": "wind",
+      "segments": [
+        "b",
+        "a",
+        "n",
+        "i"
+      ],
+      "gloss": "wind"
+    },
+    {
+      "concept_id": "star",
+      "segments": [
+        "k",
+        "a",
+        "m",
+        "i"
+      ],
+      "gloss": "star"
+    },
+    {
+      "concept_id": "rain",
+      "segments": [
+        "p",
+        "a",
+        "l",
+        "i"
+      ],
+      "gloss": "rain"
+    },
+    {
+      "concept_id": "tail",
+      "segments": [
+        "p",
+        "a",
+        "i",
+        "k",
+        "u"
+      ],
+      "gloss": "tail"
+    },
+    {
+      "concept_id": "sky",
+      "segments": [
+        "l",
+        "a",
+        "i",
+        "m",
+        "a"
+      ],
+      "gloss": "sky"
+    },
+    {
+      "concept_id": "root",
+      "segments": [
+        "m",
+        "a",
+        "i",
+        "t",
+        "u"
+      ],
+      "gloss": "root"
+    },
+    {
+      "concept_id": "smoke",
+      "segments": [
+        "k",
+        "a",
+        "i",
+        "n",
+        "a"
+      ],
+      "gloss": "smoke"
+    },
+    {
+      "concept_id": "bone",
+      "segments": [
+        "b",
+        "a",
+        "i",
+        "l",
+        "i"
+      ],
+      "gloss": "bone"
+    }
+  ],
+  "branches": [
+    {
+      "node_id": "west",
+      "rules": [
+        "m > w"
+      ],
+      "note": "Shared innovation defining the west subgroup, so the subgrouping is recoverable from the data rather than only asserted by the tree."
+    },
+    {
+      "node_id": "d1",
+      "rules": [
+        "b > p"
+      ],
+      "note": "MERGER. *b and *p both surface as p here, and no rule scoped to d1 can undo it. Only d2, which keeps them apart, can disambiguate the west node."
+    },
+    {
+      "node_id": "d2",
+      "rules": [
+        "ʔ > Ø / #_"
+      ],
+      "note": "LOSS. d1 is the only branch in the whole family that keeps the initial glottal stop, so every other node depends on it. The DSL has no insertion, so no rule scoped to a losing branch can restore it; the segment is reachable only because d1's own candidate carries it into the beam."
+    },
+    {
+      "node_id": "east",
+      "rules": [
+        "t > s",
+        "k > t"
+      ],
+      "note": "CHAIN SHIFT. *t > s must run before *k > t or every k ends up as s. The child-to-parent cascade must therefore run t > k before s > t; the reverse order turns t a s i into k a k i."
+    },
+    {
+      "node_id": "east_a",
+      "rules": [
+        "ʔ > Ø / #_"
+      ]
+    },
+    {
+      "node_id": "d3",
+      "rules": []
+    },
+    {
+      "node_id": "d4",
+      "rules": [
+        "a > e / _ i"
+      ],
+      "note": "CONDITIONED SPLIT. Proto *a becomes e before i and stays a elsewhere, so the parent value cannot be recovered without the context. The oracle in tools/oracle_ceiling.py is context-free and cannot express this; the DSL can."
+    },
+    {
+      "node_id": "d5",
+      "rules": [
+        "ʔ > Ø / #_",
+        "l > r"
+      ]
+    }
+  ],
+  "hidden_target_node_ids": [
+    "proto",
+    "west",
+    "east"
+  ]
+}

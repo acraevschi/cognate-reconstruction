@@ -41,3 +41,41 @@ def loaded_package_path() -> str:
     import cognate_reconstruction
 
     return str(Path(cognate_reconstruction.__file__).resolve().parent)
+
+
+def resolve_benchmark(reference: str):
+    """Interpret a script argument as a benchmark name or a payload path.
+
+    Added so the analysis scripts and the multi-seed runner name a benchmark
+    the same way the CLI does. Delegates to the package registry rather than
+    reimplementing the convention, so a definition added under `benchmarks/`
+    is immediately usable from every script.
+    """
+    from pathlib import Path as _Path
+
+    from cognate_reconstruction.benchmarks import resolve_payload
+
+    return _Path(resolve_payload(reference))
+
+
+def measurement_envelope(benchmark_path=None) -> dict:
+    """The provenance every recorded measurement has to carry.
+
+    `measuring` is not decoration. `sys.path` used to resolve
+    `cognate_reconstruction` through the editable install rather than the
+    checkout beside the script, so a measurement taken in a `git worktree` of an
+    older commit silently measured the working tree. The text output names the
+    source it bound to; a `--json` mode that dropped that line would reintroduce
+    the bug at one remove, and a machine consumer is exactly the reader least
+    able to notice.
+    """
+    envelope = {"measuring": loaded_package_path()}
+    if benchmark_path is not None:
+        envelope["benchmark"] = str(benchmark_path)
+    return envelope
+
+
+def emit_json(payload: dict) -> None:
+    import json as _json
+
+    print(_json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False))

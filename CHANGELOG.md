@@ -2,6 +2,171 @@
 
 ## Unreleased
 
+The evaluation that makes the other changes provable. Held-out comparison used
+exact token equality only, so a reconstruction one segment from
+Proto-Polynesian `ʔ a l e l o` and one sharing nothing with it both scored zero
+— the metric could not say whether a change helped. There was also no
+multi-seed runner and no regression test on reconstruction quality, so a change
+to the beam scorer could make every reconstruction worse while all 279 tests
+passed.
+
+**Everything added here is a report.** None of it filters a trajectory, weights
+a candidate, or decides whether a run was valid. These are the closest this
+repository has come to grading linguistic truth, which is exactly why they are
+the most tempting numbers to gate on and exactly why they do not; see
+`docs/report_reject_or_score.md`, which gained a fourth worked example for this.
+
+- Added graded metrics to `HistoricalTargetEvaluation` and
+  `TargetConceptEvaluation`, all defaulted so older artifacts still load: edit
+  distance and normalized edit distance against the nearest gold alternative,
+  B-Cubed F1 over the columns of the alignment, and a beam-aware best NED beside
+  the top candidate's. Distances are over segment tokens, never characters —
+  `a ː` is one sound. The exact B-Cubed variant implemented is documented in
+  `cognate_reconstruction/evaluation/metrics.py`, because there are several and
+  an undocumented one is comparable to nothing. Aggregates are `MetricDistribution`s
+  — mean, standard deviation, quartiles, range — not pooled means, so a family
+  with a good root and bad lower nodes is distinguishable from a uniformly
+  mediocre one.
+- **Reported the graded selection gap.** Mean top NED against mean beam-best NED
+  is the graded form of the exact selection gap, and it is large under oracle
+  rules (0.158 against 0.043) *and* under a live model (0.214 against 0.081), so
+  it separates a selection problem from a generation problem in both regimes
+  rather than only in the idealized one.
+- Evaluated **every** node carrying gold, not only a bound root, and marked an
+  evaluation computed over a `failure_fallback` node as what it is. A node that
+  failed is not a node that reconstructed, and its beam is the harness's
+  identity commit.
+- Put the accuracy inside `inspect-run`'s per-node `DETERMINISTIC OUTCOME`
+  block, below rule coverage, contrast loss, convergence, the held-out concept
+  split, branch support, and the tie-break count — because an accuracy is the
+  number most likely to be quoted alone. Renamed that block's concept-split line
+  to `held-out concepts`, since **"held out" now means two different things**:
+  a split of the session's own concepts that never leaves the node, and the gold
+  answer key. `summarize-trajectories` keeps them apart as
+  `held_out_convergence_rate` and `gold_target_evaluation`.
+- Added `GoldEvidenceKind` — `attested`, `reconstructed`, `synthetic` — carried
+  from the binding through to every score. A published proto-form is somebody's
+  reconstruction, not an observation; Latin is the exception; a synthetic gold
+  is a third thing. `None` is not defaulted to `attested`: silence must not read
+  as the stronger claim.
+- Added `build-benchmark`, driven by a declarative definition rather than a
+  script, and reduced `tools/build_polynesian_benchmark.py` to a wrapper around
+  it. Two definitions ship: `polynesian` (Walworth's Proto-Polynesian, a
+  published reconstruction, 10 daughters, the same 46 fully-cognate concepts the
+  old script selected) and `romance` (Latin, **attested**, 5 daughters, 900
+  concepts — the Ab Antiquo dataset, so published neural baselines exist).
+  Selection requires each daughter to share a cognate set with the gold entry
+  rather than merely to attest the concept, which is what makes the benchmark a
+  test of reconstruction instead of one of cognate judgement. A payload whose
+  gold variety survives in the lexicons is refused loudly, per binding, and a
+  definition naming its gold as a daughter is refused before any data is read.
+  Extracted `ingestion/preparation.py` so `prepare-lexibank` and
+  `build-benchmark` share one implementation of that removal.
+- Added `run-benchmark`: N repetitions of one benchmark, each in its own
+  subprocess and directory so a crash costs one seed, aggregated into
+  `aggregate.json` and `aggregate.txt`. Every rate carries its spread and the
+  per-seed table sits beside it, which makes a single number from a single run
+  hard to quote by accident. A run that **finished with losses** and one that was
+  **abandoned** — `--max-failed-nodes` exhausted, no `result.json` written at
+  all — are counted apart, and a fallback node is never a completion. The
+  aggregate carries `contrast_reducing_rules_per_node` and
+  `held_out_convergence_rate_per_node` beside the accuracies, because those say
+  *how* a node reached its coverage, and folds in the oracle ceiling for the same
+  payload in a separate block: an oracle number bounds the architecture, a live
+  number measures a model.
+- Promoted the oracle ceiling to a regression test. It pins top-1 (27/46), beam
+  exact (39/46), **and the gap between them**, at a stated beam width, plus the
+  whole documented width curve. The gap is asserted because a change that raises
+  top-1 while lowering beam-exact has traded candidates away rather than chosen
+  better, and an accuracy-only assertion would call that a win. The width is
+  pinned because width 10 scores *below* width 5 on this benchmark. Its
+  docstring states what the oracle can and cannot express: `oracle_map()` is
+  context-free while the DSL has contexts, so its misses bound *that oracle*,
+  never the rule language. The test imports `measure()` from
+  `tools/oracle_ceiling.py`, so the suite and the script report one number, and
+  runs against a checked-in fixture — the real benchmark with per-form
+  provenance stripped, which reproduces the full-dataset figures exactly because
+  the oracle reads only segments, the tree, and the gold.
+- Made `tools/branch_recoverability.py` name the concepts in each class rather
+  than only counting them, in text and in `--json`. The 8 Polynesian concepts
+  needing evidence mixed across branches are the concrete prediction any change
+  to the combination model has to move, and a count is not a list.
+- Gave every analysis script a `--json` mode and benchmark-name resolution, so
+  the multi-seed runner consumes them instead of re-implementing the
+  measurements. Every JSON object carries `measuring` alongside `benchmark`:
+  `sys.path` used to resolve the package through the editable install rather
+  than the checkout beside the script, and a machine consumer is the reader
+  least able to notice a number from the wrong worktree. Baselines are
+  unchanged — 66 ties, 29 winnable, 18/18/23/25 across the four tie-break
+  policies; 216 correspondence sets, 41 at support ≥ 2; 37/8/1 on branch
+  reachability.
+- **Added synthetic benchmarks: gold, and the sound changes, by construction.**
+  `build-synthetic` runs `RuleEngine.apply_rules` *forward*, parent to child,
+  down a tree from a proto-lexicon and a per-branch cascade written in the same
+  DSL the model commits in, and writes the payload and a **separate** answer key
+  — never the same file, and writing one over the other is refused. A branch is
+  named by its lower end, so a cascade on an internal node is a shared
+  innovation and subgrouping is recoverable from the data rather than only
+  asserted by the tree. Three families ship: `synthetic_regular` (the control,
+  every branch invertible), `synthetic_hard` (a merger only a sister
+  disambiguates, a segment lost everywhere except one branch, a chain shift whose
+  rules must be ordered, a conditioned split, gold at three nodes), and
+  `synthetic_noisy` (two irregular forms, a loan, a semantic mismatch, from a
+  seed). Noise is off by default: a benchmark with no residue is not a test of
+  the anomaly machinery. Under oracle rules the two clean families score 16/16
+  and 22/25 top-1 with 25/25 in the beam, which is how a generated family is
+  known to be sound rather than merely hard.
+- **Scored the changes and the direction, not only the forms.** `score-synthetic`
+  reports rule precision and recall against the true child-to-parent cascade
+  (structural, deliberately literal, a lower bound), functional recovery per
+  branch (apply the committed cascade to that branch's gold forms and ask
+  whether the parent's come back), and the measurement that exists nowhere else:
+  a rule scoped to a branch the answer key gave **no** rule is a rule pointed at
+  a branch that did not change. Prompt 04 forced the model to state that claim
+  and the harness deliberately never grades it; here it is checkable without
+  reading a word of prose. The first live run on `synthetic_regular` got all
+  four leaf branches exactly right and then committed `p > f` on `inner_b`, the
+  branch that did not innovate, instead of `f > p` on `inner_a` — 0.75 precision,
+  0.75 recall, one misdirected rule, and root top-1 down to 10/16 as a result.
+- Recorded which branches **cannot** be undone by any rule. The DSL has no
+  empty-target insertion, so a branch that deleted a segment can never restore
+  it; the answer key marks those non-invertible and gives them no inverse
+  cascade, and scoring never charges the model for a rule it cannot write. Every
+  derived inverse is verified against the real forms before it is recorded — if
+  it does not reproduce the parent, the branch is not invertible, because a
+  family whose answer key is wrong makes every number built on it meaningless.
+- Reported, in each node's session block, whether a directionality claim rested
+  on retrieved evidence: how many `polarize` calls the session made, how many
+  returned an out-group at all, and how many committed rules carry a rationale.
+  Entirely structural — `polarize` tags every node it reports with a `relation`
+  — and never a reading of the prose. The recorded live run flags exactly one
+  node, `proto_polynesian`, where a rationale cited out-group support that
+  `polarize` had not returned; the root has no out-group, which is a property of
+  the tree. It gates nothing, and whether that rationale is *wrong* still needs a
+  human.
+- Added distributions and per-node rows to `summarize-trajectories` —
+  per-trajectory protocol-failure rate, child convergence, held-out convergence,
+  contrast-reducing rule count, rule coverage — and an optional `--result` that
+  folds in the graded gold accuracy. A threshold cannot be calibrated against a
+  number that has already been averaged, which closes the cheap enabling half of
+  the `high_quality` calibration item in README, "Research validity next".
+- Removed `examples/polynesian_benchmark_bindings.json`, superseded by
+  `benchmarks/polynesian.json`. `examples/historical_bindings.json` remains the
+  documented example of that file format.
+- Documented all of it: a new `docs/benchmarks.md` covering what each kind of
+  gold is evidence for, a new README section on evaluation and benchmarks, a
+  quick-start step that starts from a benchmark rather than a hand-assembled
+  payload, `jq` recipes for the graded scores and the worst misses, the two
+  senses of "held out" named apart wherever both appear, and five new
+  development invariants — evaluation stays a report, a failed node is never a
+  reconstructed one, the answer key stays out of the payload, a bound `target`
+  stays out of the lexicons, and a reported score always says what its gold is.
+- Repaired every multi-line shell command in `README.md`. Twelve blocks carried
+  a literal `+  ` where a `\` line continuation belongs, so none of them could
+  be pasted into a shell; the documented `infer`, `prepare-lexibank`, resume,
+  curation, and `jq` invocations all run now. A syntax check over every fenced
+  `bash` block in the repository is how they were found.
+
 Directionality and discipline. Rules are child-to-parent, so "make the children
 agree" is satisfiable by rewriting either child, and nothing ever asked which
 branch innovated. A live Proto-Polynesian run scoped every rule it committed to

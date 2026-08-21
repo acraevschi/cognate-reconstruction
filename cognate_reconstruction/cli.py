@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import subprocess
 import sys
 import uuid
 from collections import Counter
@@ -30,6 +31,28 @@ from cognate_reconstruction.agent import (
     default_tool_registry,
 )
 from cognate_reconstruction.agent.instructions import load_agent_instructions
+from cognate_reconstruction.benchmarks import (
+    answer_key_path,
+    available_definitions,
+    available_synthetic_families,
+    build_benchmark,
+    definition_path,
+    load_definition,
+    payload_path,
+    synthetic_definition_path,
+)
+from cognate_reconstruction.benchmarks.sweep import (
+    aggregate as aggregate_seeds,
+    oracle_ceiling as measure_oracle_ceiling,
+    read_seed,
+    render_text as render_sweep,
+)
+from cognate_reconstruction.benchmarks.registry import resolve_payload
+from cognate_reconstruction.schemas.synthetic import (
+    SyntheticAnswerKey,
+    SyntheticFamilyDefinition,
+)
+from cognate_reconstruction.synthesis import generate_family, score_run
 from cognate_reconstruction.agent.provider_config import (
     api_key_from_environment,
     load_provider_options,
@@ -41,13 +64,15 @@ from cognate_reconstruction.ingestion import (
 from cognate_reconstruction.inspect_run import DEFAULT_FORM_LIMIT, inspect_run
 from cognate_reconstruction.ingestion.historical import (
     load_historical_lineage_bindings,
-    materialize_historical_bindings,
 )
+from cognate_reconstruction.ingestion.preparation import prepare_payload
 from cognate_reconstruction.schemas.anchors import AnchorFile
 from cognate_reconstruction.schemas.historical import (
     HistoricalBindingFile,
     HistoricalFormRole,
+    HistoricalTargetEvaluation,
 )
+from cognate_reconstruction.schemas.metrics import MetricDistribution
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 from cognate_reconstruction.schemas.rules import AnchorPolicy
 from cognate_reconstruction.traversal import (
@@ -149,112 +174,19 @@ def _command_prepare_lexibank(args: argparse.Namespace) -> None:
         )
     else:
         binding_requests = None
-    historical_bindings = (
-        materialize_historical_bindings(binding_requests, dataset.lexicons)
-        if binding_requests is not None
-        else ()
-    )
-    bound_source_ids = {
-        binding.source_variety_id for binding in historical_bindings
-    }
-    lexicons = dataset.lexicons
-    if args.variety_id:
-        selected = set(args.variety_id)
-        available = {lexicon.variety_id for lexicon in lexicons}
-        if unknown := sorted(selected - available):
-            raise ValueError(
-                f"unknown dataset-scoped variety IDs: {unknown}. Use "
-                "`list-lexibank-varieties --dataset ...` and include the "
-                f"{dataset.dataset_id!r} dataset prefix"
-            )
-        lexicons = tuple(
-            lexicon for lexicon in lexicons if lexicon.variety_id in selected
-        )
-    lexicons = tuple(
-        lexicon
-        for lexicon in lexicons
-        if lexicon.variety_id not in bound_source_ids
-    )
-    concepts = dataset.concepts
-    if args.concept_id:
-        selected_concepts = set(args.concept_id)
-        available_concepts = {
-            form.concept_id
-            for lexicon in dataset.lexicons
-            for form in lexicon.forms
-        }
-        if unknown := sorted(selected_concepts - available_concepts):
-            raise ValueError(
-                f"unknown concept IDs: {unknown}. Concept IDs are the exact "
-                "Concepticon IDs or dataset-scoped fallback IDs shown in the "
-                "prepared evidence"
-            )
-        lexicons = tuple(
-            lexicon.model_copy(
-                update={
-                    "forms": tuple(
-                        form
-                        for form in lexicon.forms
-                        if form.concept_id in selected_concepts
-                    )
-                }
-            )
-            for lexicon in lexicons
-        )
-        empty_varieties = sorted(
-            lexicon.variety_id for lexicon in lexicons if not lexicon.forms
-        )
-        if empty_varieties:
-            raise ValueError(
-                "selected concepts leave no tokenized cognate evidence for "
-                f"varieties: {empty_varieties}"
-            )
-        concepts = tuple(
-            concept
-            for concept in concepts
-            if concept.concept_id in selected_concepts
-        )
-        filtered_bindings = []
-        for binding in historical_bindings:
-            forms = tuple(
-                form
-                for form in binding.forms
-                if form.concept_id in selected_concepts
-            )
-            if not forms:
-                raise ValueError(
-                    f"selected concepts leave historical {binding.role.value} "
-                    f"binding {binding.source_variety_id!r} without forms"
-                )
-            filtered_bindings.append(
-                binding.model_copy(update={"forms": forms})
-            )
-        historical_bindings = tuple(filtered_bindings)
-    if len(lexicons) < 2:
-        raise ValueError(
-            "Lexibank preparation requires at least two selected varieties "
-            "with tokenized cognate forms"
-        )
     newick = (
         Path(args.newick_file).expanduser().read_text(encoding="utf-8").strip()
         if args.newick_file
         else None
     )
-    if historical_bindings and newick is None:
-        raise ValueError(
-            "historical target/anchor roles require --newick-file with exact "
-            "internal node IDs; lineage metadata never induces traversal order"
-        )
-    payload = WorkbenchPayload(
-        lexicons=lexicons,
-        concepts=concepts,
+    payload = prepare_payload(
+        dataset,
+        variety_ids=args.variety_id,
+        concept_ids=args.concept_id,
+        binding_requests=binding_requests,
         newick=newick,
-        historical_form_bindings=historical_bindings,
         tree_method=args.tree_method,
     )
-    if newick is not None:
-        ingested = ingest_payload(payload)
-        payload = payload.model_copy(update={"newick": ingested.tree.newick})
     _write_json(args.output, payload.model_dump_json(indent=2))
     tree_message = (
         f"validated and normalized supplied classification {args.newick_file}"
@@ -264,12 +196,255 @@ def _command_prepare_lexibank(args: argparse.Namespace) -> None:
             f"lexical {args.tree_method} induction"
         )
     )
+    lexicons = payload.lexicons
     print(
         f"wrote {args.output}: {len(lexicons)} dataset-scoped varieties, "
         f"{sum(len(item.forms) for item in lexicons)} tokenized evidence forms, "
         f"{len({form.concept_id for item in lexicons for form in item.forms})} concepts, "
-        f"{len(historical_bindings)} historical node binding(s); "
+        f"{len(payload.historical_form_bindings)} historical node binding(s); "
         f"{tree_message}",
+        file=sys.stderr,
+    )
+
+
+def _command_build_benchmark(args: argparse.Namespace) -> None:
+    if (args.name is None) == (args.definition is None):
+        raise ValueError(
+            "build-benchmark takes exactly one of --name or --definition; "
+            f"defined benchmarks: {', '.join(available_definitions()) or 'none'}"
+        )
+    if args.name is not None:
+        source = definition_path(args.name)
+        if not source.exists():
+            raise ValueError(
+                f"no benchmark definition named {args.name!r}. Defined: "
+                f"{', '.join(available_definitions()) or 'none'}"
+            )
+        default_output = payload_path(args.name)
+    else:
+        source = Path(args.definition).expanduser()
+        default_output = None
+    definition = load_definition(source)
+    payload, report = build_benchmark(definition, base_path=source.parent)
+    output = Path(args.output) if args.output else default_output
+    if output is None:
+        raise ValueError(
+            "--output is required when a definition is given by path"
+        )
+    _write_json(output, payload.model_dump_json(indent=2))
+    print(f"wrote {output}: {report.summary()}", file=sys.stderr)
+    print(
+        f"  dataset {report.dataset_path}",
+        file=sys.stderr,
+    )
+    # The gold's nature is printed at build time, not only at scoring time. A
+    # reconstruction benchmark whose answer key is itself a reconstruction
+    # measures agreement with an analysis; saying so once the number exists is
+    # already too late.
+    for node_id, kind in zip(
+        report.target_node_ids, report.gold_evidence_kinds, strict=True
+    ):
+        if kind == "reconstructed":
+            print(
+                f"  NOTE: gold at {node_id} is a published reconstruction, "
+                "not an observation. Scores against it measure agreement with "
+                "that analysis.",
+                file=sys.stderr,
+            )
+    if definition.provenance.leakage_note:
+        print(f"  leakage: {definition.provenance.leakage_note}", file=sys.stderr)
+
+
+def _command_build_synthetic(args: argparse.Namespace) -> None:
+    if (args.name is None) == (args.definition is None):
+        raise ValueError(
+            "build-synthetic takes exactly one of --name or --definition; "
+            "defined families: "
+            f"{', '.join(available_synthetic_families()) or 'none'}"
+        )
+    if args.name is not None:
+        source = synthetic_definition_path(args.name)
+        if not source.exists():
+            raise ValueError(
+                f"no synthetic family named {args.name!r}. Defined: "
+                f"{', '.join(available_synthetic_families()) or 'none'}"
+            )
+        default_output = payload_path(args.name)
+        default_key = answer_key_path(args.name)
+    else:
+        source = Path(args.definition).expanduser()
+        default_output = default_key = None
+    definition = SyntheticFamilyDefinition.model_validate_json(
+        source.read_text(encoding="utf-8")
+    )
+    result = generate_family(definition)
+    output = Path(args.output) if args.output else default_output
+    key_output = Path(args.answer_key) if args.answer_key else default_key
+    if output is None or key_output is None:
+        raise ValueError(
+            "--output and --answer-key are both required when a definition is "
+            "given by path"
+        )
+    if output.resolve() == key_output.resolve():
+        raise ValueError(
+            "the answer key must not be written over the payload: it is the "
+            "one artifact the model must never see"
+        )
+    _write_json(output, result.payload.model_dump_json(indent=2))
+    _write_json(key_output, result.answer_key.model_dump_json(indent=2))
+    print(f"wrote {output}: {result.summary()}", file=sys.stderr)
+    print(
+        f"wrote {key_output}: the answer key, which is NOT part of the "
+        "benchmark input and must not be given to a model",
+        file=sys.stderr,
+    )
+
+
+def _command_score_synthetic(args: argparse.Namespace) -> None:
+    answer_key = SyntheticAnswerKey.model_validate_json(
+        Path(args.answer_key).expanduser().read_text(encoding="utf-8")
+    )
+    trajectories = TrajectoryDatasetBuilder.read_jsonl(
+        Path(args.run_dir).expanduser() / "trajectories.jsonl"
+    )
+    score = score_run(answer_key, trajectories)
+    print(json.dumps(score.as_dict(), indent=2, sort_keys=True))
+
+
+def _seed_provider_config(
+    base: str | None,
+    seed_value: int,
+    destination: Path,
+) -> str | None:
+    """Write a per-repetition provider config carrying an explicit `seed`.
+
+    Only used when `--provider-seed-base` is given. Without it, repetitions
+    differ by whatever nondeterminism the provider has, which is the honest
+    default: a "seed" here is a repetition index and the runner never pretends
+    it controls the sampler unless the provider is told a seed.
+    """
+    options = load_provider_options(base) if base else {}
+    options["seed"] = seed_value
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(options, indent=2) + "\n", encoding="utf-8")
+    return str(destination)
+
+
+def _command_run_benchmark(args: argparse.Namespace) -> None:
+    if args.seeds < 1:
+        raise ValueError("--seeds must be at least 1")
+    payload_path = resolve_payload(args.benchmark)
+    out_dir = Path(args.out_dir).expanduser()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    outcomes = []
+    for index in range(args.seeds):
+        run_dir = out_dir / f"seed-{index:02d}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        run_id = f"{args.run_id_prefix}-seed{index:02d}"
+        provider_config = args.provider_config
+        if args.provider_seed_base is not None:
+            provider_config = _seed_provider_config(
+                args.provider_config,
+                args.provider_seed_base + index,
+                run_dir / "provider-config.json",
+            )
+        command = [
+            sys.executable,
+            "-m",
+            "cognate_reconstruction.cli",
+            "infer",
+            "--input",
+            str(payload_path),
+            "--model",
+            args.model,
+            "--output",
+            str(run_dir / "result.json"),
+            "--trajectories",
+            str(run_dir / "trajectories.jsonl"),
+            "--events",
+            str(run_dir / "events.jsonl"),
+            "--checkpoint",
+            str(run_dir / "checkpoint.json"),
+            "--run-id",
+            run_id,
+            "--beam-width",
+            str(args.beam_width),
+            "--temperature",
+            str(args.temperature),
+            "--max-turns",
+            str(args.max_turns),
+            "--max-tool-calls",
+            str(args.max_tool_calls),
+            "--max-failed-nodes",
+            str(args.max_failed_nodes),
+        ]
+        if args.preset:
+            command += ["--preset", args.preset]
+        if args.api_base:
+            command += ["--api-base", args.api_base]
+        if provider_config:
+            command += ["--provider-config", provider_config]
+        if args.quiet:
+            command.append("--quiet")
+        command += list(args.infer_arg or ())
+        print(
+            f"seed {index}: {' '.join(command[3:])}",
+            file=sys.stderr,
+        )
+        # One subprocess per repetition, so a seed that crashes the interpreter
+        # costs one seed rather than the sweep. That is the whole reason this
+        # is not an in-process loop.
+        #
+        # Both streams go straight to files rather than through a pipe: a node
+        # session can take minutes, and a sweep that buffers its child's output
+        # shows a human nothing until the seed is over. `tail -f` on
+        # stderr.log is the live view.
+        stderr_path = run_dir / "stderr.log"
+        with (run_dir / "console.log").open(
+            "w", encoding="utf-8"
+        ) as console, stderr_path.open("w", encoding="utf-8") as errors:
+            completed = subprocess.run(
+                command,
+                stdout=console,
+                stderr=errors,
+                text=True,
+                check=False,
+            )
+        stderr_tail = stderr_path.read_text(encoding="utf-8").strip()[-800:]
+        outcomes.append(
+            read_seed(
+                index,
+                run_id,
+                run_dir,
+                completed.returncode,
+                stderr_tail=stderr_tail,
+            )
+        )
+        status = "wrote result.json" if outcomes[-1].result_written else (
+            "ABANDONED, no result.json"
+        )
+        print(
+            f"seed {index}: exit {completed.returncode}, {status}, "
+            f"{outcomes[-1].nodes_committed} of "
+            f"{outcomes[-1].nodes_attempted} nodes committed",
+            file=sys.stderr,
+        )
+    summary = aggregate_seeds(
+        outcomes,
+        benchmark=str(payload_path),
+        model=args.model,
+        oracle=(
+            None
+            if args.no_oracle
+            else measure_oracle_ceiling(payload_path, args.beam_width)
+        ),
+    )
+    _write_json(out_dir / "aggregate.json", json.dumps(summary, indent=2))
+    report = render_sweep(summary)
+    (out_dir / "aggregate.txt").write_text(report, encoding="utf-8")
+    print(report, end="")
+    print(
+        f"wrote {out_dir / 'aggregate.json'} and {out_dir / 'aggregate.txt'}",
         file=sys.stderr,
     )
 
@@ -828,6 +1003,183 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
         # printed for a reader and changes nothing downstream. See
         # docs/report_reject_or_score.md.
         **_convergence_summary(completed),
+        # Distributions, not only pooled means. A corpus whose root nodes are
+        # good and whose leaf-adjacent nodes are bad averages to the same
+        # numbers as a uniformly mediocre one, and a threshold cannot be
+        # calibrated against a number that has already been averaged.
+        **_distribution_summary(trajectories, completed),
+        "per_node": _per_node_rows(trajectories),
+    }
+
+
+def _distribution(values: Sequence[float]) -> dict[str, Any] | None:
+    summary = MetricDistribution.of(values)
+    return summary.model_dump(mode="json") if summary is not None else None
+
+
+def _distribution_summary(trajectories, completed) -> dict[str, Any]:
+    steps = [
+        item.reconstruction_step
+        for item in completed
+        if item.reconstruction_step is not None
+    ]
+    return {
+        "protocol_failure_rate_distribution": _distribution(
+            [item.metrics.protocol_failure_rate for item in trajectories]
+        ),
+        "child_convergence_rate_distribution": _distribution(
+            [
+                step.diagnostics.child_convergence_rate
+                for step in steps
+                if step.diagnostics.child_convergence_rate is not None
+            ]
+        ),
+        # The concepts a *session* did not select. Nothing to do with the gold
+        # proto-forms below, which are the answer key.
+        "held_out_convergence_rate_distribution": _distribution(
+            [
+                item.metrics.held_out_convergence_rate
+                for item in completed
+                if item.metrics.held_out_convergence_rate is not None
+            ]
+        ),
+        "contrast_reducing_rule_count_distribution": _distribution(
+            [
+                float(step.diagnostics.contrast_reducing_rule_count)
+                for step in steps
+                if step.diagnostics.contrast_reducing_rule_count is not None
+            ]
+        ),
+        "rule_coverage_distribution": _distribution(
+            [step.diagnostics.rule_coverage for step in steps]
+        ),
+    }
+
+
+def _per_node_rows(trajectories) -> list[dict[str, Any]]:
+    """One row per node session, so a reader can see the shape, not the mean."""
+    rows = []
+    for item in trajectories:
+        step = item.reconstruction_step
+        diagnostics = step.diagnostics if step is not None else None
+        rows.append(
+            {
+                "run_id": item.run_id,
+                "node_id": item.node_id,
+                "completed": item.completed,
+                "high_quality": item.high_quality,
+                "tool_calls": item.metrics.tool_call_count,
+                "protocol_failures": item.metrics.protocol_failures,
+                "protocol_failure_rate": item.metrics.protocol_failure_rate,
+                "committed_rules": item.metrics.committed_rule_count,
+                "rule_coverage": (
+                    diagnostics.rule_coverage if diagnostics else None
+                ),
+                "contrast_reducing_rule_count": (
+                    diagnostics.contrast_reducing_rule_count
+                    if diagnostics
+                    else None
+                ),
+                "child_convergence_rate": (
+                    diagnostics.child_convergence_rate if diagnostics else None
+                ),
+                "held_out_convergence_rate": (
+                    item.metrics.held_out_convergence_rate
+                ),
+                "tie_broken_concept_count": (
+                    diagnostics.tie_broken_concept_count if diagnostics else None
+                ),
+            }
+        )
+    return rows
+
+
+def _gold_target_summary(paths: Sequence[str]) -> dict[str, Any]:
+    """Graded held-out gold accuracy, folded in from one or more `result.json`.
+
+    **These are gold proto-forms — the answer key — and not the same thing as
+    `held_out_convergence_rate` above**, which measures agreement among a
+    node's children on concepts the session did not select and never leaves the
+    node. The two are named apart on purpose; conflating them would report a
+    convergence measure as an accuracy.
+    """
+    evaluations: list[HistoricalTargetEvaluation] = []
+    fallback = 0
+    for path in paths:
+        result = json.loads(
+            Path(path).expanduser().read_text(encoding="utf-8")
+        )
+        for raw in result.get("historical_target_evaluations", ()):
+            evaluation = HistoricalTargetEvaluation.model_validate_json(
+                json.dumps(raw)
+            )
+            # A fallback node's beam is the harness's identity commit. Scoring
+            # it measures the fallback, so it is counted and excluded.
+            if evaluation.failure_fallback:
+                fallback += 1
+                continue
+            evaluations.append(evaluation)
+
+    def graded(field_name: str) -> list[float]:
+        values = []
+        for evaluation in evaluations:
+            if evaluation.graded is None:
+                continue
+            distribution = getattr(evaluation.graded, field_name)
+            if distribution is not None:
+                values.append(distribution.mean)
+        return values
+
+    return {
+        "results_read": len(paths),
+        "scored_node_evaluations": len(evaluations),
+        "excluded_failure_fallback_evaluations": fallback,
+        "gold_evidence_kinds": sorted(
+            {
+                evaluation.gold_evidence_kind.value
+                for evaluation in evaluations
+                if evaluation.gold_evidence_kind is not None
+            }
+        ),
+        "top_exact_rate_distribution": _distribution(
+            [evaluation.top_exact_rate for evaluation in evaluations]
+        ),
+        "beam_exact_rate_distribution": _distribution(
+            [evaluation.beam_exact_rate for evaluation in evaluations]
+        ),
+        "top_normalized_edit_distance_distribution": _distribution(
+            graded("top_normalized_edit_distance")
+        ),
+        "beam_best_normalized_edit_distance_distribution": _distribution(
+            graded("beam_best_normalized_edit_distance")
+        ),
+        "top_bcubed_f1_distribution": _distribution(graded("top_bcubed_f1")),
+        "by_node": {
+            evaluation.node_id: {
+                "source_variety_id": evaluation.source_variety_id,
+                "gold_evidence_kind": (
+                    evaluation.gold_evidence_kind.value
+                    if evaluation.gold_evidence_kind is not None
+                    else None
+                ),
+                "evaluated_concepts": evaluation.evaluated_concepts,
+                "top_exact_rate": evaluation.top_exact_rate,
+                "beam_exact_rate": evaluation.beam_exact_rate,
+                "graded": (
+                    evaluation.graded.model_dump(mode="json")
+                    if evaluation.graded is not None
+                    else None
+                ),
+            }
+            for evaluation in evaluations
+        },
+        "note": (
+            "Gold proto-forms withheld from the model. Distinct from "
+            "held_out_convergence_rate, which is a per-node split of the "
+            "session's own concepts and makes no claim about correctness. "
+            "Normalized edit distance is better when lower; B-Cubed F1 is "
+            "better when higher."
+        ),
     }
 
 
@@ -901,7 +1253,10 @@ def _command_validate_trajectories(args: argparse.Namespace) -> None:
 
 def _command_summarize_trajectories(args: argparse.Namespace) -> None:
     trajectories = TrajectoryDatasetBuilder.read_jsonl(args.input)
-    print(json.dumps(_trajectory_summary(trajectories), indent=2, sort_keys=True))
+    summary = _trajectory_summary(trajectories)
+    if args.result:
+        summary["gold_target_evaluation"] = _gold_target_summary(args.result)
+    print(json.dumps(summary, indent=2, sort_keys=True))
 
 
 def _command_inspect_run(args: argparse.Namespace) -> None:
@@ -1146,6 +1501,133 @@ def _parser() -> argparse.ArgumentParser:
     )
     infer.set_defaults(handler=_command_infer)
 
+    build = subparsers.add_parser(
+        "build-benchmark",
+        help=(
+            "Build a runnable benchmark payload from a declarative definition "
+            "and local CLDF."
+        ),
+    )
+    build.add_argument(
+        "--name",
+        help=(
+            "A checked-in definition under benchmarks/. Available: "
+            f"{', '.join(available_definitions()) or 'none'}."
+        ),
+    )
+    build.add_argument(
+        "--definition",
+        help="Path to a benchmark definition JSON file.",
+    )
+    build.add_argument(
+        "--output",
+        help=(
+            "Where to write the payload. Defaults to "
+            "runs/benchmarks/<name>.json for --name."
+        ),
+    )
+    build.set_defaults(handler=_command_build_benchmark)
+
+    sweep = subparsers.add_parser(
+        "run-benchmark",
+        help=(
+            "Run one benchmark N times, tolerate failures, and aggregate the "
+            "seeds with spread."
+        ),
+    )
+    sweep.add_argument(
+        "--benchmark",
+        required=True,
+        help="A built payload path, or the name of a defined benchmark.",
+    )
+    sweep.add_argument("--model", required=True)
+    sweep.add_argument("--seeds", type=int, default=3)
+    sweep.add_argument("--out-dir", required=True)
+    sweep.add_argument("--run-id-prefix", default="sweep")
+    sweep.add_argument("--preset", choices=("lm-studio",))
+    sweep.add_argument("--api-base")
+    sweep.add_argument("--provider-config")
+    sweep.add_argument(
+        "--provider-seed-base",
+        type=int,
+        help=(
+            "Write a per-repetition provider config setting 'seed' to this "
+            "value plus the repetition index. Without it, repetitions differ "
+            "only by provider nondeterminism, which the aggregate says."
+        ),
+    )
+    sweep.add_argument("--beam-width", type=int, default=5)
+    sweep.add_argument("--temperature", type=float, default=0.1)
+    sweep.add_argument("--max-turns", type=int, default=24)
+    sweep.add_argument("--max-tool-calls", type=int, default=64)
+    sweep.add_argument(
+        "--max-failed-nodes",
+        type=int,
+        default=DEFAULT_MAX_FAILED_NODES,
+        help=(
+            "Passed to each run. A seed that exhausts this writes no "
+            "result.json and is aggregated as abandoned, never as a "
+            "completion."
+        ),
+    )
+    sweep.add_argument("--quiet", action="store_true")
+    sweep.add_argument(
+        "--no-oracle",
+        action="store_true",
+        help="Skip the oracle-ceiling measurement of the same payload.",
+    )
+    sweep.add_argument(
+        "--infer-arg",
+        action="append",
+        help=(
+            "Extra argument passed through to every `infer` invocation. "
+            "Repeatable."
+        ),
+    )
+    sweep.set_defaults(handler=_command_run_benchmark)
+
+    synthetic = subparsers.add_parser(
+        "build-synthetic",
+        help=(
+            "Generate a family from a proto-lexicon and a known cascade, with "
+            "a separate answer key."
+        ),
+    )
+    synthetic.add_argument(
+        "--name",
+        help=(
+            "A checked-in family under benchmarks/synthetic/. Available: "
+            f"{', '.join(available_synthetic_families()) or 'none'}."
+        ),
+    )
+    synthetic.add_argument(
+        "--definition", help="Path to a synthetic family definition JSON file."
+    )
+    synthetic.add_argument("--output", help="Where to write the benchmark payload.")
+    synthetic.add_argument(
+        "--answer-key",
+        help=(
+            "Where to write the true cascade per branch. Never written into "
+            "the payload."
+        ),
+    )
+    synthetic.set_defaults(handler=_command_build_synthetic)
+
+    score = subparsers.add_parser(
+        "score-synthetic",
+        help=(
+            "Score a run's committed changes and their direction against a "
+            "synthetic answer key."
+        ),
+    )
+    score.add_argument("--answer-key", required=True)
+    score.add_argument(
+        "--run-dir",
+        required=True,
+        help="A run directory holding trajectories.jsonl.",
+    )
+    score.set_defaults(handler=_command_score_synthetic)
+
     validate = subparsers.add_parser(
         "validate-trajectories",
         help="Strictly validate every line of a trajectory JSONL file.",
@@ -1158,6 +1640,14 @@ def _parser() -> argparse.ArgumentParser:
         help="Summarize completion, quality, usage, and failure metadata.",
     )
     summary.add_argument("--input", required=True)
+    summary.add_argument(
+        "--result",
+        action="append",
+        help=(
+            "A run's result.json, folded in as graded held-out gold accuracy "
+            "with distributions. Repeatable."
+        ),
+    )
     summary.set_defaults(handler=_command_summarize_trajectories)
 
     inspect = subparsers.add_parser(

@@ -11,13 +11,13 @@ branch, and separates three cases per concept:
 
 Usage:
     python tools/branch_recoverability.py <benchmark-input.json>
+    python tools/branch_recoverability.py polynesian --json
 """
 
 from __future__ import annotations
 
 import argparse
 import collections
-from pathlib import Path
 
 import _bootstrap  # noqa: F401  (bind to this checkout; see module)
 
@@ -28,11 +28,20 @@ from oracle_ceiling import align_pair  # noqa: E402  (same directory)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path)
+    parser.add_argument(
+        "input",
+        help="A prepared benchmark payload, or the name of a defined benchmark.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit one machine-readable object, including the measured source.",
+    )
     args = parser.parse_args()
 
+    input_path = _bootstrap.resolve_benchmark(args.input)
     payload = WorkbenchPayload.model_validate_json(
-        args.input.read_text(encoding="utf-8")
+        input_path.read_text(encoding="utf-8")
     )
     binding = next(
         item
@@ -65,6 +74,15 @@ def main() -> None:
 
     deleted = collections.Counter()
     one_branch = mixed = impossible = 0
+    # Which concepts land in each class, not only how many. The middle class is
+    # the concrete prediction a change to the combination model has to move:
+    # these are the forms no single branch can produce, so they are exactly the
+    # ones per-correspondence-set assembly is supposed to make reachable.
+    by_class: dict[str, list[str]] = {
+        "single_branch": [],
+        "needs_mixing": [],
+        "unreachable": [],
+    }
     for concept_id, per_variety in rows.items():
         reached = False
         retains = False
@@ -87,16 +105,48 @@ def main() -> None:
                 reached = True
         if reached:
             one_branch += 1
+            by_class["single_branch"].append(concept_id)
         elif retains:
             mixed += 1
+            by_class["needs_mixing"].append(concept_id)
         else:
             impossible += 1
+            by_class["unreachable"].append(concept_id)
+    for concepts in by_class.values():
+        concepts.sort()
 
     total = len(rows)
+    if args.json:
+        _bootstrap.emit_json(
+            {
+                **_bootstrap.measurement_envelope(input_path),
+                "measurement": "branch_recoverability",
+                "concepts_scored": total,
+                "reachable_from_a_single_branch": one_branch,
+                "needs_evidence_mixed_across_branches": mixed,
+                "unreachable_from_every_branch": impossible,
+                "concepts_needing_evidence_mixed_across_branches": by_class[
+                    "needs_mixing"
+                ],
+                "concepts_unreachable_from_every_branch": by_class["unreachable"],
+                "deletion_losses_by_branch": {
+                    variety_id: number for variety_id, number in deleted.most_common()
+                },
+                "note": (
+                    "The DSL has no empty-target insertion, so a branch that "
+                    "deleted a segment can never restore it. The middle number "
+                    "bounds what any amount of better selection can achieve."
+                ),
+            }
+        )
+        return
+    print(f"measuring: {_bootstrap.loaded_package_path()}")
     print(f"concepts scored: {total}\n")
     print(f"  reachable from a single branch          {one_branch:>3}")
-    print(f"  needs evidence mixed across branches    {mixed:>3}")
-    print(f"  every branch deleted a gold segment     {impossible:>3}\n")
+    print(f"  needs evidence mixed across branches    {mixed:>3}"
+          f"   {', '.join(by_class['needs_mixing'])}")
+    print(f"  every branch deleted a gold segment     {impossible:>3}"
+          f"   {', '.join(by_class['unreachable'])}\n")
     print("concepts where a branch deleted a gold segment (that branch can never be right):")
     for variety_id, number in deleted.most_common():
         print(f"  {variety_id.split(':')[-1]:<18} {number:>3}/{total}")
