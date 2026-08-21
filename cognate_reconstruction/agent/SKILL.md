@@ -22,6 +22,47 @@ rule application, and exact output forms. Do not claim that a rule works until
    regular analysis merely to reproduce an anchor.
 6. Preserve uncertainty when evidence is sparse or conflicting.
 
+### Direction of change
+
+Reconstructing a proto-phoneme means choosing the value **from which every
+reflex follows by a plausible change**, not making one daughter look like
+another. Two children that disagree can always be reconciled by rewriting either
+one, and only one of those two rules is a reconstruction. Decide which, and say
+so.
+
+- **A branch that preserves a distinction outweighs branches that neutralised
+  it.** Majority across daughters is not the criterion. A shared innovation is
+  attested by every branch that inherited it, so counting daughters votes for
+  the innovation exactly where a reconstruction is interesting — eight of ten
+  Polynesian daughters lost `*ʔ`. Count clades, not languages: two sisters that
+  agree are one witness, not two.
+- **Loss is ordinary and unmotivated insertion is not.** A segment in one branch
+  against nothing in another reconstructs the segment, unless you can say what
+  conditioned its appearance. Morphology comes first, though: material added at
+  a morpheme boundary — reduplication, a compound, a fossilised affix — is
+  innovation however well its segments are attested elsewhere.
+- **Mergers are not reversible.** That is why the backend never inverts a rule
+  for you, and why a rule that deletes or merges has to name the innovating
+  branch: once the distinction is gone from the parent, nothing downstream can
+  recover what you meant by it.
+- **Do not project one daughter's innovations onto the parent.** "Child A's `v`
+  becomes child B's `w`" is a statement about two daughters, not about a reflex
+  of a parent, and a rule written from it reconstructs nothing.
+- **Your own knowledge of attested sound-change typology is wanted here.** This
+  harness holds no table of sound changes, no naturalness score, and no typology
+  data, deliberately: that knowledge is yours to supply, and the harness's job is
+  to make sure it gets used and recorded. When you rely on it — lenition,
+  debuccalisation, palatalisation before a front vowel, final devoicing, a chain
+  shift, a drag on an empty slot — **say so in the rationale and say what the
+  change is called.** That sentence is the record a reviewer reads.
+
+**The failure this exists to prevent.** A rule scoped to the child that
+*preserves* a contrast, deleting it, is almost always the wrong direction.
+`ʔ > Ø / #_` scoped to the one branch that still shows `ʔ` looks like it
+reconciles the children, and asserts that the parent lacked a segment most of
+the family still has. Before committing any rule whose direction the children
+alone do not force, call `polarize`.
+
 Obey the prompt's `anchor_policy`: under `ignore`, anchors are present only for
 trajectory provenance and must not inform hypotheses; under `advisory`, they may
 inform interpretation but never scoring; under `scored`, the deterministic
@@ -109,40 +150,65 @@ what was tested. Permitted anomaly types are `loanword`,
    `segment_node_id` returns every set in which one child shows one segment,
    which is how you polarize a merger. Use `Ø` for an alignment gap. Raise
    `offset` to see the tail rather than assuming the first page is all of it.
-4. Only now pull alignments, and only for the sets under investigation: pass the
+4. **Decide which branch changed, before you write the rule.** For every
+   correspondence where the children disagree, call `polarize` with those
+   children and the segment each shows — a row of the survey pasted back. It
+   returns what every node outside the active children shows in the same
+   columns, with counts, marked observed or reconstructed. This step is required
+   for any rule whose direction the children alone do not force, and it is the
+   step live runs skipped: across a whole ten-language benchmark the out-group
+   scope was consulted once.
+5. Read `polarize` cladistically, not as a vote. Two daughters of one clade
+   agreeing are **one** witness — `descendant_leaf_ids` tells you which nodes
+   belong together — because a shared innovation is inherited by every branch
+   below it. Presence is evidence and absence is not: a node showing the segment
+   puts it outside your node, while a node lacking it is equally consistent with
+   never having had it and with having lost it. A reconstructed node is another
+   session's hypothesis and carries no independent evidential weight. Read
+   `relation`: only an `outgroup` polarizes anything, while a `descendant` lies
+   inside this node's subtree and shows what these children became, which is the
+   proposition you are testing rather than evidence about it. **At the root every
+   entry is a descendant** — nothing lies outside the root — so the technique is
+   unavailable exactly where the reported reconstruction is made. The `note`
+   counts the two separately; do not read a descendant count as support.
+6. Only now pull alignments, and only for the sets under investigation: pass the
    `example_concept_ids` of the rows you are working on to `get_alignments`. A
    batch of 3--8 concepts is normal, 24 is the ceiling, and a wide selection is a
    sign you should have stayed in the inventory. Use `detail="full"` only for a
    correspondence whose conditioning you are actively working out; the default
    `"summary"` already gives every count.
-5. Use `list_concepts` and `search_forms` to resolve glosses, find the forms
+7. Use `list_concepts` and `search_forms` to resolve glosses, find the forms
    behind a concept, or retrieve forms by segment sequence or word position.
-6. Use `list_available_nodes` and `search_forms(scope="available_tree")` when
-   observed outgroups or already reconstructed nodes can help polarize a change.
-   Never treat a reconstructed form as direct attestation. Where a node below
-   this one has already been reconstructed, `get_node_reconstruction` shows what
-   it claimed, so a correspondence established there can inform — never
+8. Use `list_available_nodes` and `search_forms(scope="available_tree")` to go
+   beyond what `polarize` summarises — the forms themselves, rather than the
+   columns. Never treat a reconstructed form as direct attestation. Where a node
+   below this one has already been reconstructed, `get_node_reconstruction` shows
+   what it claimed, so a correspondence established there can inform — never
    substitute for — the one you test here.
-7. State the environment for any correspondence that is not unconditional, using
-   the alignments you pulled in step 4 to find it.
-8. If necessary, use `segment_morphemes` to make a temporary boundary-only
+9. State the environment for any correspondence that is not unconditional, using
+   the alignments you pulled in step 6 to find it.
+10. If necessary, use `segment_morphemes` to make a temporary boundary-only
    overlay. Never change the phonetic tokens or move boundaries merely to force a
    rule to fit.
-9. Call `test_sound_law` for every proposed DSL rule and exact child scope.
-10. Read the complete diff: applications, absent targets, context mismatches,
-   anchor matches, anchor mismatches, and exact token outputs.
-11. Refine and retest weak hypotheses. Two unconditioned rules that collide, or
+11. Call `test_sound_law` for every proposed DSL rule and exact child scope.
+12. Read the complete diff: applications, absent targets, context mismatches,
+   anchor matches, anchor mismatches, and exact token outputs. Read the
+   `contrast_reduction` and `held_out` blocks too: the first says whether this
+   rule gives up a distinction and how much of the tree still shows it, the
+   second says what the rule does on the concepts you did not select.
+13. Refine and retest weak hypotheses. Two unconditioned rules that collide, or
    one that overapplies, are refined by adding an environment — and the refined
    rule may be tested either with `test_sound_law` or inside the cascade of the
    next step. Both count as its validation, so refining inside a cascade
    preview is a complete path to a commit.
-12. When committing more than one rule, call `test_rule_cascade` on the complete
+14. When committing more than one rule, call `test_rule_cascade` on the complete
    proposed order and inspect every intermediate diff and final form.
-13. Call `commit_reconstruction` only after every committed rule has a successful
+15. Call `commit_reconstruction` only after every committed rule has a successful
    validation call in this node session. Per rule you need only `dsl`,
    `source_child_ids`, and `confidence`; the harness binds each rule to its own
    validation. When the commit carries more than one rule, add a `rationale` to
-   each of them as well.
+   each of them as well, and to every rule that deletes or merges add a
+   `directionality_rationale` naming the branch that innovated.
 
 ## Tool guidance
 
@@ -158,6 +224,23 @@ you were given.
 `list_concepts` returns readable concept metadata with pagination. `search_forms`
 can retrieve forms such as every item with word-initial `n` without loading the
 whole vocabulary into the prompt.
+
+`polarize` is the directionality tool and the reason the out-group evidence
+stops being optional. Give it the active children and the segment each one shows
+in a correspondence, optionally `position="initial"` or `"final"` to restrict to
+a word edge, and it returns, per node outside the active children: its relation
+(`outgroup` or `descendant`), what it shows in the same aligned columns and how
+often, whether it is observed or reconstructed, and the leaves it covers. It
+reports a distribution and **never says which value is original** — that
+judgement is yours, and where it gets recorded is the committed rule's
+`directionality_rationale`.
+
+Two limits it cannot report around. The argument inherits the supplied
+classification: it is exactly as good as the tree, and circular if the tree was
+induced from the same lexical distances. And the root has no out-group, so at
+the root the technique is unavailable — which is where the reported
+reconstruction is made. Polarize low in the tree, where it works, and the root
+inherits better inputs.
 
 `list_available_nodes` exposes only observed nodes and internal nodes already
 completed by post-order traversal. External evidence may guide a hypothesis, but
@@ -199,6 +282,18 @@ Rules whose target and replacement are identical are invalid, including in a
 restricted environment: never encode identity as `p > p`. Commit an empty rule
 set when the evidence supports identity reconstruction.
 
+Its result carries two blocks beyond the diff. `contrast_reduction` is present
+when the rule deletes a segment or merges two of a child's distinct segments
+into one; it names the discarded material and counts how many available nodes
+still attest it, so `"ʔ > Ø / #_" deletes ʔ from [Tongan]; ʔ is attested in 3 of
+10 available nodes` is a warning you can read before committing. It is a count,
+not a refusal: contrast loss is ordinary sound change. `held_out` runs the same
+rule over the concepts this node withheld from the development set — see the
+prompt payload's `concept_holdout` — which is the only number in the report that
+was not computed over the evidence the rule was fitted to. A rule generalised
+from one word applies everywhere on the concepts you selected and nowhere here.
+Neither block ever rejects.
+
 `test_rule_cascade` applies the complete proposed branch-scoped rule order to
 all selected forms. Use its validation-call ID in the commit so the backend can
 verify that the committed DSL, child scopes, overlay, and order are identical.
@@ -215,9 +310,17 @@ returns the same summary over the whole node. Read it — a cascade in which eve
 rule fires perfectly can still leave the branches disagreeing, and a rule that
 raises convergence is doing the work the comparative method is for.
 
+Its `contrast_reductions` block lists, in order, every rule of the proposed
+cascade that gives up a distinction, judged against the forms that rule actually
+receives — so a rule merging into a segment an earlier rule created is caught.
+Each one will need a `directionality_rationale` at commit time. `held_out`
+reports the whole order on the withheld concepts.
+
 Divergence is never rejected, and you must not manufacture rules to remove it. A
 correspondence you cannot yet explain belongs in `anomalies`; inventing a rule
-per exception produces a cascade that fits this lexicon and nothing else.
+per exception produces a cascade that fits this lexicon and nothing else. The
+same applies to the held-out numbers: they are reported so a weak rule looks
+weak, never so that you pad the cascade until they improve.
 
 `commit_reconstruction` must contain the active node ID, the ordered
 branch-scoped rules with their child scopes and confidences in `(0, 1]`, all
@@ -242,6 +345,16 @@ transcribe it. This is a complete, accepted commit:
       "summary": "Parent initial p; language_b shows regular f."
     }
 
+That rule loses no contrast — `language_b` has no `p` of its own for `f` to
+merge into — so it needs no `directionality_rationale`. One that did would read:
+
+    {
+      "dsl": "ʔ > Ø / #_",
+      "source_child_ids": ["language_b"],
+      "confidence": 0.6,
+      "directionality_rationale": "language_a and both outgroups keep initial ʔ; language_b lost it, a regular debuccalisation-then-loss. Not the reverse: nothing conditions inserting ʔ."
+    }
+
 - `validation_call_id` is optional. Omit it and the harness resolves the
   same-session validation matching the rule exactly, of either kind, preferring
   a cascade preview when both exist. Testing the same rule twice is not an
@@ -258,6 +371,21 @@ transcribe it. This is a complete, accepted commit:
   every rule needs its own `rationale`, because one summary cannot say why each
   separate rule is there. A multi-rule commit missing any of them is rejected
   and the error names the exact `rule_id`s.
+- `directionality_rationale` is **required on every rule that deletes a segment
+  or merges two segments into one**, whether the commit carries one rule or ten.
+  The harness detects those rules mechanically — it applies your cascade and
+  checks whether the mapping deletes or sends two distinct inputs to one
+  output — and rejects the commit naming the exact `rule_id`s, with the count of
+  nodes that still attest the material you are discarding. Say which of the
+  children innovated, what the change is called if it has a name, and what
+  evidence outside those children polarizes it. **The harness never judges what
+  you write**; it rejects only its absence, because a merger cannot be inverted
+  later and a reviewer needs the claim in your own words. Precisely because
+  nothing checks it, restating the harness's own count back to it — "`ʔ` is
+  attested in 8 of 11 available nodes" — satisfies the field and answers
+  nothing. That is the finding you were given; the claim is which branch
+  changed. A rule that shifts a segment into one the child does not otherwise
+  have loses no contrast and needs none of this.
 - `rule_id` is an optional label; when omitted the harness derives a stable ID
   from the exact DSL and child scope.
 - `cascade_validation_call_id` takes only an ID returned by a successful
@@ -278,5 +406,6 @@ not by whether the wording of the error happened to change.
 
 Commit only a reconstruction that is mechanically reproducible, supported by
 recurring correspondences where possible, explicit about branch scope and order,
+**explicit about which branch innovated wherever a contrast is lost**,
 transparent about any supplementary-anchor conflicts, and conservative about
 anomalies and uncertainty. A valid reconstruction with no anchors is normal.

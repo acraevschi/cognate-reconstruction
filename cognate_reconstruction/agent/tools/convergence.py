@@ -33,11 +33,17 @@ from cognate_reconstruction.traversal.convergence import (
 )
 
 
-def _summarize(
+def summarize_outputs(
     outputs_by_concept: dict[str, dict[str, tuple[tuple[str, ...], ...]]],
     *,
     include_concepts: bool,
 ) -> ChildConvergenceSummary:
+    """Turn per-concept, per-child outputs into the reported summary.
+
+    Public because the held-out evaluation reports the same measure over a
+    different slice of the same forms, and two implementations of "did the
+    children agree" would eventually disagree.
+    """
     report = report_convergence(outputs_by_concept)
     return ChildConvergenceSummary(
         concepts_evaluated=report.concepts_evaluated,
@@ -65,7 +71,7 @@ def cascade_convergence(result: TestRuleCascadeResult) -> ChildConvergenceSummar
         outputs_by_concept.setdefault(final.form.concept_id, {}).setdefault(
             final.child_id, set()
         ).add(final.form.segments)
-    return _summarize(
+    return summarize_outputs(
         {
             concept_id: {
                 child_id: tuple(sorted(segments))
@@ -108,7 +114,7 @@ def commit_convergence(
             outputs_by_concept.setdefault(form.concept_id, {}).setdefault(
                 child_id, set()
             ).add(form.segments)
-    return _summarize(
+    return summarize_outputs(
         {
             concept_id: {
                 child_id: tuple(sorted(segments))
@@ -124,4 +130,5 @@ __all__ = [
     "MAX_REPORTED_DIVERGENT_CONCEPTS",
     "cascade_convergence",
     "commit_convergence",
+    "summarize_outputs",
 ]

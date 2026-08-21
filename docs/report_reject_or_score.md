@@ -136,6 +136,65 @@ the subject of a separate entry in "Decisions that require research-owner
 input", and it is bounded — it orders candidates the harness already computed.
 It does not decide whether a run is valid, and no trajectory is filtered by it.
 
+## The third worked example: a lost contrast
+
+Directionality produced the first rejection in this repository that is neither a
+mechanical defect nor a linguistic judgement, and the split it needed is worth
+recording because it looks at first like a violation of the rule above.
+
+The problem: rules are child-to-parent, so two disagreeing children can always
+be reconciled by rewriting either one, and nothing asked which branch innovated.
+A live run committed `ʔ > Ø / #_` scoped to the Tongic branch that *preserves*
+`*ʔ`, and `f > h` and `t > k` scoped to North Marquesan when Hawaiian innovated
+both. Every one of those rules was validated, applied exactly as written, and
+mechanically flawless.
+
+Run it through the decision rule and the three parts land in three different
+places.
+
+- **"This rule deletes or merges" is question one.** Applying the cascade
+  induces a mapping from input sequences to output sequences; whether the
+  replacement is empty, and whether two distinct inputs produce one output, are
+  arithmetic. Deterministic code is certain about it. So it is *detected*
+  mechanically — but detection is not the rejection, because a merger is not a
+  defect. Mergers are ordinary sound change, and a harness that refused them
+  would be refusing the comparative method.
+- **"This branch is the one that innovated" is question three.** No amount of
+  deterministic code can answer it. `polarize` retrieves the distributional
+  evidence and deliberately stops there; it reports what the out-groups show and
+  never says which value is original.
+- **What is rejected is the *absence of an answer*.** Not a wrong answer — the
+  harness cannot recognise one — and not the rule. A commit whose
+  contrast-reducing rules carry no `directionality_rationale` is refused; a
+  commit whose rationale is nonsense is accepted, recorded, and left for a
+  reviewer. That is question one applied to a *protocol* fact ("a required field
+  is empty"), not to the linguistics, which is why the code is classified
+  `PROTOCOL` alongside `missing-rule-rationale` rather than as a tested
+  hypothesis.
+
+Ask the question in the pocket — **what happens when this fires on a correct
+run?** — and the answer is: the model writes one sentence saying which branch
+changed, which it should be able to do for any rule it believes, and which is
+exactly the sentence a reviewer needs. That is a cheap thing to demand of a
+correct run. Demanding that the sentence be *right* would not be, because
+nothing here can check it.
+
+The counts that come with it — how many available nodes still attest the
+discarded material — are rule 2 outright: a fact a human wants, where "bad"
+needs judgement. `contrast_reducing_rule_count` in the diagnostics is the same,
+and it exists because `rule_coverage` rises when rules fire and the cheapest way
+to make a rule fire is to delete a distinction. Printing the two together is a
+report. Scoring the second one, or gating on it, would be the harness deciding
+that contrast loss is a defect, which is question three wearing a number.
+
+Held-out concepts land in the same place. A rule generalised from one word looks
+perfect on the concepts it was fitted to; measured on concepts it was not, it
+may fire on nothing at all. That is worth reporting to the model, to the
+trajectory, and to `inspect-run` — and it is *not* worth rejecting on, because a
+narrowly conditioned rule that never applies to a held-out form may be entirely
+correct, and rejecting on it would reward padding a cascade until the number
+moved.
+
 ## The decision rule
 
 For anything new, in order:

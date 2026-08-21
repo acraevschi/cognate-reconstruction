@@ -6,6 +6,7 @@ from cognate_reconstruction.agent.schemas import (
     GetNodeReconstructionArgs,
     ListAvailableNodesArgs,
     ListConceptsArgs,
+    PolarizeArgs,
     SearchFormsArgs,
     SegmentMorphemesArgs,
     SummarizeCorrespondencesArgs,
@@ -30,6 +31,7 @@ from cognate_reconstruction.agent.tools.evidence import (
     list_concepts,
     search_forms,
 )
+from cognate_reconstruction.agent.tools.polarize import polarize
 from cognate_reconstruction.agent.tools.registry import ToolRegistry, ToolSpec
 from cognate_reconstruction.agent.tools.segment_morphemes import segment_morphemes
 from cognate_reconstruction.agent.tools.test_sound_law import test_sound_law
@@ -90,6 +92,35 @@ def default_tool_registry() -> ToolRegistry:
             ),
             args_model=SearchFormsArgs,
             handler=search_forms,
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="polarize",
+            description=(
+                "Ask what the rest of the tree shows where the active children "
+                "disagree. Give it one correspondence — the children and the "
+                "segment each shows, a row of summarize_correspondences pasted "
+                "back — and it returns, for every node outside the active "
+                "children, what that node shows in the same aligned columns, "
+                "how often, and whether it is observed or reconstructed. Call "
+                "it before committing any rule whose direction the children "
+                "alone do not force. It reports a distribution and never says "
+                "which value is original: that judgement is yours and belongs "
+                "in the committed rule's directionality_rationale. Count "
+                "support per clade rather than per daughter, and read presence "
+                "as evidence and absence as nothing; the result fields say how. "
+                "A reconstructed node is a prior hypothesis, not attestation, "
+                "and carries no independent evidential weight. The argument is "
+                "only as good as the supplied classification and is circular if "
+                "that tree was induced from the same distance data. Only an "
+                "'outgroup' entry can polarize anything; a 'descendant' lies "
+                "inside this node's subtree and shows what these children "
+                "became. At the root every entry is a descendant, because "
+                "nothing lies outside the root."
+            ),
+            args_model=PolarizeArgs,
+            handler=polarize,
         )
     )
     registry.register(
@@ -185,6 +216,7 @@ __all__ = [
     "ToolSpec",
     "default_tool_registry",
     "describe_session_validations",
+    "polarize",
     "summarize_commit",
     "summarize_correspondences",
 ]

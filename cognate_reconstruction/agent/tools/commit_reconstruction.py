@@ -10,13 +10,18 @@ from cognate_reconstruction.agent.schemas import (
     CommitReconstructionResult,
     CommittedReconstruction,
     CommittedSoundRule,
+    ContrastReductionReport,
     ValidationKind,
+)
+from cognate_reconstruction.agent.tools.contrast import (
+    contrast_reduction_reports,
 )
 from cognate_reconstruction.agent.tools.convergence import commit_convergence
 from cognate_reconstruction.agent.tools.errors import (
     ToolInputError,
     parse_rule_or_reject,
 )
+from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.rules import ParsedSoundRule, ReconstructionRule
 
@@ -469,6 +474,58 @@ def _require_rationales_on_multi_rule_commits(
     )
 
 
+def _require_directionality_rationales(
+    rules: tuple[CommittedSoundRule, ...],
+    reductions: tuple[ContrastReductionReport, ...],
+) -> None:
+    """Make a commit that gives up a contrast say which branch innovated.
+
+    The case is detected mechanically — the committed cascade either deletes
+    material or sends two of a child's distinct sequences to one, both of them
+    arithmetic over the forms — and the rejection is on *absence* only. The
+    harness never evaluates whether the stated reason is good; that is a
+    linguistic judgement it is not equipped to make, and the whole point of
+    demanding the sentence is that a human reviewer can read it later.
+
+    The requirement exists because this is the one class of rule the harness
+    cannot undo. A merger is not reversible, so if the direction was chosen
+    wrongly nothing downstream can recover it, and live runs chose it wrongly:
+    `ʔ > Ø / #_` scoped to the Tongic branch that *preserves* the glottal stop,
+    `f > h` and `t > k` scoped to North Marquesan when Hawaiian innovated both.
+    Nothing in the tool surface had ever asked which branch changed.
+    """
+    if not reductions:
+        return
+    flagged = {report.rule_id for report in reductions}
+    missing = [
+        rule.rule_id
+        for rule in rules
+        if rule.rule_id in flagged and rule.directionality_rationale is None
+    ]
+    if not missing:
+        return
+    notes = {report.rule_id: report.note for report in reductions}
+    raise ToolInputError(
+        f"{len(missing)} committed rule(s) remove a distinction and omit "
+        "'directionality_rationale'. A rule that deletes a segment or merges "
+        "two segments into one has to say which branch innovated, because the "
+        "harness cannot invert it later and nothing else records the claim",
+        code="missing-directionality-rationale",
+        remediation=(
+            "What the harness found:\n"
+            + "\n".join(f"  - {rule_id!r}: {notes[rule_id]}" for rule_id in missing)
+            + "\nWhat it needs from you, on each of those rules: a "
+            "'directionality_rationale' naming *which of the active children "
+            "innovated*, what the change is called if it has a name, and what "
+            "evidence outside those children polarizes it. Restating the "
+            "counts above is not an answer to that — they are the finding, not "
+            "the claim. polarize reports what nodes outside the active children "
+            "show in the same columns. The harness does not judge what you "
+            "write; it records that you wrote it, so a reviewer can check it."
+        ),
+    )
+
+
 def commit_reconstruction(
     raw_arguments: WorkbenchModel,
     context: AgentContext,
@@ -560,6 +617,15 @@ def commit_reconstruction(
     # of call it was.
     arguments = arguments.model_copy(update={"rules": tuple(resolved_rules)})
 
+    # Detected on the parsed cascade, so the check reads the rules as the engine
+    # will run them. Reported either way; only its absence is a rejection.
+    reductions = contrast_reduction_reports(
+        context,
+        parsed_rules,
+        segmentation_overlay_id=arguments.segmentation_overlay_id,
+    )
+    _require_directionality_rationales(arguments.rules, reductions)
+
     if arguments.cascade_validation_call_id is not None:
         try:
             cascade = context.cascade_validations[
@@ -630,6 +696,12 @@ def commit_reconstruction(
     return CommitReconstructionResult(
         reconstruction=reconstruction,
         convergence=commit_convergence(
+            context,
+            parsed_rules,
+            segmentation_overlay_id=arguments.segmentation_overlay_id,
+        ),
+        contrast_reductions=reductions,
+        held_out=held_out_evaluation(
             context,
             parsed_rules,
             segmentation_overlay_id=arguments.segmentation_overlay_id,

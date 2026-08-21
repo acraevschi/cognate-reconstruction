@@ -671,7 +671,34 @@ def _diagnostic_rows(trajectory: AgentTrajectory) -> tuple[tuple[str, str], ...]
         # applied / applicable: a child that never showed the target is vacuous
         # for the rule, not a counterexample to it.
         ("rule coverage", f"{diagnostics.rule_coverage:.2f}"),
+        # Printed immediately after coverage, because coverage rises when rules
+        # fire and the cheapest way to make a rule fire is to delete a
+        # distinction. Without this line a node that scored high coverage by
+        # discarding contrasts reads as the best node in the run.
+        (
+            "contrast loss",
+            "not recorded (step predates the measure)"
+            if diagnostics.contrast_reducing_rule_count is None
+            else (
+                f"{diagnostics.contrast_reducing_rule_count} of "
+                f"{diagnostics.rule_count} rule(s) delete or merge a distinction"
+            ),
+        ),
         ("child convergence", convergence),
+        # The same measure on the concepts the session did not select. It is the
+        # only number in this block not computed over the evidence the rules
+        # were fitted to, which is exactly why it is worth a line of its own.
+        (
+            "held out",
+            "not recorded"
+            if trajectory.metrics.held_out_convergence_rate is None
+            else (
+                f"{trajectory.metrics.held_out_convergence_rate:.2f} child "
+                "convergence over "
+                f"{_reported(trajectory.metrics.held_out_concept_count)} "
+                "withheld concept(s)"
+            ),
+        ),
         (
             "branch support",
             "not recorded"
@@ -936,7 +963,10 @@ def _fact_lines(
 ) -> list[str]:
     lines: list[str] = []
     for label, value in rows:
-        lines.extend(_wrapped(f"{indent}{label:<{label_width}}", value))
+        # A label at or past the column width would otherwise run straight into
+        # its value with no separator. Alignment is worth less than legibility.
+        width = max(label_width, len(label) + 1)
+        lines.extend(_wrapped(f"{indent}{label:<{width}}", value))
     return lines
 
 

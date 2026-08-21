@@ -63,7 +63,8 @@ the runtime classification tree.
 | Supplied Newick | Implemented and recommended | Quoting, leaf validation, pruning, unary collapse, branch lengths, internal IDs, and unresolved polytomies are supported. |
 | Tree induction | Implemented, exploratory | LingPy LexStat SCA distances with neighbor joining or UPGMA; not an independent classification. |
 | Historical targets and anchors | Implemented | Strict external anchors and explicit CLDF historical bindings support hidden `target` and visible `anchor` roles. |
-| LLM tool loop | Implemented | Ten typed tools, bounded turns/calls, same-session rule validation satisfied by a standalone test or a cascade preview, ordered cascade preview, exact commit checks, rule-specific rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
+| LLM tool loop | Implemented | Eleven typed tools, bounded turns/calls, same-session rule validation satisfied by a standalone test or a cascade preview, ordered cascade preview, exact commit checks, rule-specific rejections with remediation, read-only prior-node hypotheses, windowed stall/truncation handling, and superseded evidence dropped from the live prompt. |
+| Direction of change | Asked, recorded, and reported | `polarize` retrieves the out-group evidence that polarizes a correspondence; a rule that deletes or merges must carry a `directionality_rationale`, rejected on absence and never on content; discarded material is counted against the available nodes; concepts are held out per node. No sound-change table, typology data, or naturalness score exists anywhere in the repository, deliberately. See [Directionality](#directionality-which-branch-innovated). |
 | Cost of looking at evidence | Reduced, and measured | A correspondence-set survey over all 46 concepts and ten daughters costs 28 KB. The same ten-node `get_alignments` request that returned 3034 KB for six concepts now returns 314 KB, and 782 KB for the 24 the raised cap allows. A scripted whole-benchmark run that surveys, re-surveys, and aligns at every one of seven nodes never exceeds a 31.9 KB prompt. See ["the cost of looking at the evidence"](#the-cost-of-looking-at-the-evidence). |
 | Deterministic reconstruction | Implemented | Literal token-rule cascades, n-ary beam combination weighted by branch support, named tie-break policy, derivation provenance naming the supporting children, convergence diagnostics, and optional scored anchors. |
 | Provider abstraction | Partially production-ready | LiteLLM request/response contract is unit-tested; LM Studio discovery and small live tool runs have worked. Model/provider reliability is not guaranteed generically. |
@@ -87,7 +88,7 @@ cognate_reconstruction/
 ├── ingestion/          custom payload, CLDF, compatibility, tree preparation
 ├── tree/               self-contained Newick model and n-ary post-order walk
 ├── alignment/          typed LingPy SCA wrapper and correspondence-set aggregation
-├── rules/              literal sound-law parser and token engine
+├── rules/              literal sound-law parser, token engine, contrast detection
 ├── traversal/          beams, deterministic reconstruction, checkpoints
 ├── inspect_run.py      readable run report and cross-node observations
 └── agent/
@@ -95,6 +96,7 @@ cognate_reconstruction/
     ├── tools/          deterministic model-facing tools
     ├── SKILL.md        hypothesis-manager instructions
     ├── error_codes.py  closed rejection vocabulary and its classification
+    ├── holdout.py      deterministic per-node development/held-out concept split
     ├── orchestrator.py bounded/retrying model loop
     ├── events.py       console and JSONL events
     └── trajectory.py   versioned audit/training artifacts
@@ -316,6 +318,7 @@ retrieves evidence incrementally. It cannot execute arbitrary code.
 | `summarize_correspondences` | Survey every recurring correspondence set over the whole evidence set at once, ordered by support, with the tail below `min_support` counted rather than hidden. |
 | `list_concepts` | Paginate concept IDs, glosses, counts, and available nodes. |
 | `search_forms` | Filter exact forms by semantics, tokens, cognacy, node, relation, or position. |
+| `polarize` | Report what every node outside the active children shows in the aligned columns of one correspondence, with counts and the observed/reconstructed distinction. Distribution only; it never names the original value. |
 | `list_available_nodes` | Show observed and already reconstructed evidence nodes, including descendants/outgroups and which have a retrievable hypothesis. |
 | `get_node_reconstruction` | Return the rules, anomalies, and summary committed at one already-reconstructed node, read-only. |
 | `get_alignments` | Produce LingPy n-way SCA alignments once, plus one pairwise correspondence view per node pair referencing them by ID, for an explicit bounded selection. |
@@ -401,6 +404,10 @@ into one code costs nothing in auditability.
   single `summary` cannot attribute reasoning to one of several rules — and a
   corpus filter that has to discard *every* multi-rule commit for missing
   reasoning is a worse outcome than one extra required string on a rare call.
+- `directionality_rationale` is required on **any** rule that deletes a segment
+  or merges two of a child's distinct segments into one, however many rules the
+  commit carries. See [Directionality](#directionality-which-branch-innovated)
+  for why that class and no other, and for what detects it.
 - `confidence` stays required: it is a model judgement that the beam consumes as
   a score weight, and defaulting it would invent a claim the model never made.
 
@@ -601,14 +608,132 @@ the fresh conversation each node gets, and nothing is pushed into any prompt.
 
 A normal successful node session is:
 
-1. list/search evidence;
-2. align a bounded representative batch;
-3. propose and test every rule;
-4. refine weak rules after reading applications, absent targets, context
+1. survey the correspondence sets;
+2. polarize the ones whose direction the children do not force;
+3. align a bounded representative batch;
+4. propose and test every rule;
+5. refine weak rules after reading applications, absent targets, context
    mismatches, and anchor mismatches;
-5. preview the complete order when multiple rules interact;
-6. commit the exact tested hypothesis and explicit anomalies;
-7. let deterministic code reconstruct the parent.
+6. preview the complete order when multiple rules interact;
+7. commit the exact tested hypothesis, its directionality claims, and explicit
+   anomalies;
+8. let deterministic code reconstruct the parent.
+
+### Directionality: which branch innovated
+
+Rules are child-to-parent, so "make the children agree" is satisfiable by
+rewriting *either* child toward the other. Nothing ever asked which branch
+innovated, and nothing recorded an answer. Every rule one live Proto-Polynesian
+run committed was scoped to exactly one daughter, and three of the seven were
+backwards: `ʔ > Ø / #_` scoped to Tongan, the Tongic branch that *preserves*
+`*ʔ`; `f > h / #_` and `t > k / _a` scoped to North Marquesan, when Hawaiian is
+the branch that innovated both. The commit's own rationale said what it was
+doing — *"NorthMarquesan initial v becomes Hawaiian w"* — which describes a
+transformation between two daughters, not a reflex of a parent.
+
+It was not a knowledge gap. That Hawaiian underwent `*t > k` is in every
+descriptive sketch of Polynesian. It reproduced after the correspondence survey
+and branch-support weighting landed, because better evidence tools do not help
+with a question nothing asks. Four mechanisms now ask it, and **none of them
+contains a linguistic fact**: there is deliberately no table of sound changes,
+no typology data, and no naturalness score anywhere in this repository. That
+knowledge lives in the model's weights; the harness's job is to make sure it
+gets used and recorded.
+
+**`polarize` retrieves the evidence that settles it.** The harness already
+computes which nodes are out-groups and exposes them; across the whole live run
+the model reached for that scope once. Given one correspondence — the active
+children and the segment each shows, a row of `summarize_correspondences` pasted
+back — `polarize` aligns those children with every node outside them and reports
+what each of those nodes shows in the same columns, how often, and whether it is
+observed or reconstructed. It is a distributional summary and deliberately
+**never names the original value**; that judgement is the model's.
+
+It is affordable, which prompt 01 made the precondition for anything the model
+is told to call routinely: one `polarize` call over ten Polynesian nodes and all
+46 concepts costs **0.23 s and 3.0 KB**, the same order as the correspondence
+survey it follows.
+
+Three properties of the technique, each measured by
+[`tools/outgroup_probe.py`](tools/outgroup_probe.py) against the withheld gold
+and each of which cost a wrong implementation to discover. *Count per clade, not
+per daughter* — averaging over daughters scores exactly what alphabetical order
+scores, because most Polynesian daughters lost `*ʔ` and similarity to the
+out-group becomes a majority vote over shared innovations; each node report
+carries its `descendant_leaf_ids` so a clade can be read as one witness.
+*Presence is evidence, absence is not* — a candidate lacking a segment has no
+distinctive segment to attest, and scoring the empty set as trivially supported
+falls **below** alphabetical order, while under the asymmetry
+retention-over-loss falls out of cladistics rather than being assumed. *Morphology
+first* — material added at a morph boundary is innovation however well attested
+its segments are, which is the case `m a n u` against `m a n u + l e l e`
+breaks. Two limits are stated in the tool description rather than discovered
+later: the argument inherits the supplied classification and is circular if that
+tree was induced from the same distance data, and **the root has no out-group**,
+so the technique is unavailable exactly where the reported reconstruction is
+made — it works by improving the inputs the root receives.
+
+That second limit does not present as an empty result, which is worth stating
+because the first implementation assumed it did. At the root every available
+node is a **descendant**: it lies inside the subtree and shows what these
+children became, which is the proposition under test rather than evidence about
+it. The live run at `proto_polynesian` got 14 descendants back under a summary
+reading *"14 node(s) outside the active children were inspected"* — true, and
+indistinguishable from out-group support, which is the exact cladistic error the
+tool exists to prevent. The summary now counts out-groups and descendants
+separately and says plainly when there is no out-group at all.
+
+**A lost contrast has to be explained, in prose.** Applying a committed cascade
+to each in-scope child induces a mapping from input segment sequences to output
+sequences. Two properties of that mapping are computed
+([`rules/contrast.py`](cognate_reconstruction/rules/contrast.py)): whether the
+replacement is empty (deletion) and whether two distinct inputs produce one
+output (merger). Both are arithmetic over the forms and carry no linguistic
+claim. Every rule with either property must carry a `directionality_rationale`,
+and a commit that omits one is rejected under `missing-directionality-rationale`
+naming the exact `rule_id`s — the same shape as the multi-rule `rationale`
+requirement. **The rejection is on absence and never on content**: the harness
+does not and cannot evaluate whether the stated reason is good, which is
+precisely why the sentence has to exist for a human to read. A rule that shifts
+a segment into one the child does not otherwise have loses nothing and is not
+flagged.
+
+The requirement is stated in the prompt payload's `commit_requirements` as well
+as in `agent/SKILL.md`, because a requirement living only in code is one the
+model discovers by being rejected.
+
+**What is discarded is counted.** `test_sound_law`, `test_rule_cascade`, and the
+commit result all report, per flagged rule, how many available nodes still attest
+the material being given up — *"this rule removes `ʔ`, attested in 3 of 10
+available nodes"* — split by observed and reconstructed, because a reconstructed
+form is a prior hypothesis and not attestation. That is a count over the
+evidence, not a claim about sound change, and it is the signal that would have
+fired on `ʔ > Ø / #_` scoped to Tongan. It is reported and scored, never
+rejected: contrast loss is real and common, and a harness that forbade it would
+be wrong.
+
+**Concepts are held out inside the node.** `agent/holdout.py` splits a node's
+concepts roughly 70/30, ordered by the digest of the node ID and the concept ID,
+so the split is reproducible across runs and resumes and differs between sibling
+nodes. `test_sound_law` and `test_rule_cascade` report their development results
+unchanged and add a held-out summary — applications, context mismatches, and the
+convergence rate on the held-out set — and the commit result carries the same,
+recorded in the trajectory as `held_out_convergence_rate`. It attacks "confident
+rule from one word" directly: a rule fitted to the concepts a session selected
+applies perfectly there and fires on nothing here. Nothing rejects on it; a rule
+generalised from one word should *look* bad, not be forbidden. The split is put
+in the prompt payload rather than hidden, because inspecting a held-out concept
+is comparative work rather than cheating, and a split the session cannot see
+only produces a number it cannot act on.
+
+One failure this prompt does **not** fix. At `tongic` a later run proposed
+`Ø > ʔ / #_` — the correct direction, Niuean being the branch that lost the
+segment — and was rejected `dsl-parse-error` three times, because the DSL has no
+empty-target insertion. The directionality judgement was right and
+unrepresentable. That is a separate change; see
+`prompts/06-proto-inventory.md` and
+[`tools/branch_recoverability.py`](tools/branch_recoverability.py), which counts
+7 to 17 of 46 concepts per branch as unreachable for exactly this reason.
 
 ## Sound-rule DSL
 
@@ -712,6 +837,10 @@ Each completed node reports:
 - evaluated rule results and successful applications;
 - target-absent, context-mismatch, and anchor-mismatch counts;
 - mechanical rule coverage over applicable results;
+- `contrast_reducing_rule_count`, the committed rules that bought that coverage
+  by deleting or merging a distinction;
+- `held_out_convergence_rate`, on the trajectory rather than the step: the same
+  convergence measure over the concepts the node withheld;
 - anomaly count/rate;
 - whether the result was an empty identity reconstruction; and
 - **child convergence**: `child_convergence_rate`, `divergent_concept_count`
@@ -1252,6 +1381,26 @@ Local ignored live-run artifacts also demonstrate both success and failure:
   `PROTO` never mentioning a correspondence established below it — correct
   behaviour described neutrally, which is the whole test of the wording.
 
+Re-run on **2026-08-20** for the directionality work, on the same Polynesian
+benchmark:
+
+| Check | Result |
+| --- | --- |
+| Supported suite: `pytest -q -k "not local_run_artifacts"` | **279 passed** (249 before; 30 new cases for `polarize` including the observed/reconstructed split and the no-out-group root, contrast detection for deletion, merger, a shift that is not a merger and a conditioned split that is not either, the commit rejection naming only the flagged `rule_id`s, the discarded-material counts, the deterministic split and its stability across a resume, held-out reporting in cascade and commit, the diagnostic counter, and the shape of the rejection's ask) |
+| The real Tongic case, end to end | Tongan `ʔ u h a` against Niuean `u h a`: `ʔ > Ø / #_` scoped to Tongan is flagged deleting, reports `ʔ` attested in 4 of 5 available nodes, and is rejected under `missing-directionality-rationale` naming the exact rule until a rationale is supplied — then commits |
+| `tools/oracle_ceiling.py`, beam width 5 | Unchanged: top-1 **58.7%**, beam-exact **84.8%**, selection gap **26.1%**. The beam and scorer were not touched |
+| `tools/tiebreak_probe.py` | Unchanged: cases A and B still agree at p=0.80 / p=0.20; case C collapses to p=1.00 |
+| `tools/outgroup_probe.py` | Unchanged: 66 ties, ceiling 29; alphabetical 18, per-daughter 18, per-clade 23, morphs-first 25. `polarize` exposes this evidence to the model and nothing was wired into the scorer |
+| Cost of one `polarize` call | 0.23 s and 3.0 KB over ten nodes and all 46 concepts — the same order as the correspondence survey it follows. Tool schemas grew 20.3 → 23.9 KB per request |
+| Backward compatibility | `tests/workbench/fixtures/trajectory_real_pre_change.jsonl` still loads; its step reports `contrast_reducing_rule_count` as "not recorded" rather than zero, and its payload carries neither `concept_holdout` nor `commit_requirements` |
+| Live `google/gemma-4-26b-a4b`, three-language input | Clean: nine tool calls, none rejected, 34.6 s, `high_quality: 1/1`, correct `p a` / `p u r`. The committed rationale named the direction unprompted — *"Language B's f is a regular lenition of \*p"* — which is the behaviour the rewritten `SKILL.md` asks for |
+| Live `google/gemma-4-26b-a4b` on the full 7-node benchmark | **The run reached the root**, which no previous live attempt had: 7 nodes attempted, 5 committed, 2 walked over as identity fallbacks, `result.json` written, and a held-out score against gold Proto-Polynesian of **21/46 exact (0.46), 31/46 in beam (0.67)**. 95 tool calls, 12 rejected, all protocol; the two failures were `AgentLoopLimitError` at the driver's 16-turn smoke budget, not stalls. See the findings below |
+| Did the model reach for the evidence? | Yes, unprompted, on its third tool call at `tongic` — `polarize` told it six out-groups show `ʔ` in the same twelve aligned columns. Five of the ten committed rules carry a `directionality_rationale`, and four of the five cite out-group evidence by name: *"Outgroups like East Futuna and Samoan also preserve ʔ"*, *"polarize confirms k is the more widespread reflex in outgroups"* |
+| **`marquesic`, the node the gap analysis singled out** | **Fixed.** The pre-change run committed `f > h / #_` and `t > k / _a` scoped to North Marquesan — both backwards, since Hawaiian innovated them. This run committed `k > t` scoped to **Hawaiian**, with *"Hawaiian innovated k > t. NorthMarquesan preserves the parent k"*. The specific error this change exists to prevent did not recur, and the branch is named |
+| Is the requirement a stall source? | No. `missing-directionality-rationale` fired **once in 95 tool calls**, at `futunic`, and the session recovered on the next turn. The other 11 rejections are the pre-existing anomaly-schema friction, unrelated to this work |
+| `tongic` is still wrong, and now says so | It committed `ʔ > Ø` scoped to Tongan — still the branch that *preserves* `*ʔ`. What changed is that the claim is now in the open and visibly self-contradictory: the rationale reads *"Outgroups … also preserve ʔ, indicating Tongan's loss is the innovation"* while Tongan is the branch that has it, and the summary claims a parent with initial `ʔ` under a rule that deletes it. That is the designed outcome — the harness must not reject on content — and the correct rule there is `Ø > ʔ` on Niuean, which the DSL cannot express. See `prompts/06-proto-inventory.md` |
+| One weakness the run exposed, and what was done about it | At `futunic` the model pasted the harness's own finding back as its rationale — *"ʔ > Ø deletes ʔ from [EastUvea]; ʔ is attested in 8 of 11 available nodes"* — which satisfies the field and answers nothing. The old remediation rendered that note immediately after the `rule_id`, which invited the copy. **The fix is in what the rejection asks for, not in what it checks**: the counts are now labelled *"What the harness found"*, the request for the claim is separate and explicit, and it says restating the counts is not an answer. `SKILL.md` says the same. A rationale that still restates them is still accepted — content is never judged — and the test pins both halves |
+
 These `runs/` paths are ignored local evidence and may not exist in another
 clone. They are listed to make the current verification history explicit, not
 as permanent fixtures.
@@ -1588,6 +1737,52 @@ future ideas.
   whose branches agree completely. That is deliberate — see
   [`docs/report_reject_or_score.md`](docs/report_reject_or_score.md) — but it
   means `child_convergence_rate` has to be read, not assumed.
+- **`rule_coverage` rewards deletion, and must not be read alone.** It is the
+  most prominent per-node number and it rises when rules fire; the cheapest way
+  to make a rule fire on every form is to delete a distinction. An identity
+  commit, meanwhile, is flagged `identity_reconstruction` and earns nothing. So
+  a node that discarded a contrast most of the family still shows scores better
+  than one that preserved it, and on the mechanical numbers alone it reads as
+  the best node in the run. The metric is kept — it is a real measure of whether
+  the committed rules do what they claim — and is deliberately no longer printed
+  by itself: `inspect-run` puts `contrast_reducing_rule_count` on the next line, as
+  `contrast loss`, and `held_out_convergence_rate` under it,
+  and `child_convergence_rate`, `mean_branch_support`, evidence coverage, and
+  `tie_broken_concept_count` in the same block. Read the block, not the
+  headline. Nothing rejects a contrast-reducing rule, because contrast loss is
+  ordinary sound change; what the commit contract requires is that such a rule
+  says which branch innovated, and even that is checked for presence only.
+- Held-out performance is *reported* and gates nothing. `held_out_convergence_rate`
+  measures the committed cascade on concepts the session did not select, which
+  is the only number in a node report not computed over the evidence the rules
+  were fitted to. It is not a condition of `high_quality` and does not reach the
+  beam: a narrowly conditioned rule that never fires on the held-out set may be
+  entirely correct, and rejecting on it would reward padding a cascade until the
+  number improved.
+- `polarize` exposes out-group evidence to the *model*; the deterministic scorer
+  still never sees it. `TIE_BREAK_POLICY` remains segment order. Wiring
+  out-group support into the beam would change which candidate wins and is a
+  research-owner decision; see "Decisions that require research-owner input".
+- **A `directionality_rationale` can cite evidence that is not there, and
+  nothing checks it.** That is the design — the harness rejects the field's
+  absence and never grades its content — but it is worth knowing what the
+  failure looks like, because the first live run produced it twice. At
+  `proto_polynesian` the model wrote *"polarize confirms h is the more
+  widespread reflex in outgroups"* when `polarize` had returned **no out-group
+  at all**: the root has none, so all 14 available nodes were descendants, and
+  the ones attesting `h` were the model's own reconstructions from earlier
+  nodes. The claim is therefore circular twice over — descendants are inside the
+  subtree under test, and a reconstructed form is a prior hypothesis rather than
+  attestation. At `tongic` a rationale cited out-groups correctly and then drew
+  the opposite conclusion from them. Both commits were accepted, as they should
+  be. What this buys is that the reasoning is now *on the record* where a
+  reviewer can catch it, where before there was no claim at all; what it does
+  not buy is that the claim is true. The tool result says everything needed to
+  catch both — `relation`, `is_attestation`, and the split between
+  `observed_node_ids` and `reconstructed_node_ids` — so the open question is
+  whether an artifact-level check should *report* the mismatch (a session
+  claiming out-group support at a node that has no out-group is mechanically
+  detectable), and that is a report-or-score decision, not an obvious yes.
 - Rule confidence is supplied by the model. There is no independent
   calibration or learned likelihood model.
 - Rule complexity is visible but does not penalize the beam. No agreed

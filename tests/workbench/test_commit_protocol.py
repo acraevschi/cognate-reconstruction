@@ -827,7 +827,16 @@ def test_validate_unconditioned_then_commit_the_cascade_refinement() -> None:
                 "node_id": "PROTO",
                 "cascade_validation_call_id": "refined-order",
                 "rules": [
-                    {**rule, "confidence": 0.8, "rationale": f"Refined from the collision: {rule['dsl']}."}
+                    {
+                        **rule,
+                        "confidence": 0.8,
+                        "rationale": f"Refined from the collision: {rule['dsl']}.",
+                        # `ʔ > k / _i` merges TAH's ʔ into a k it already has,
+                        # so the commit contract asks which branch innovated.
+                        "directionality_rationale": (
+                            "TAH innovated: k and ŋ both went to ʔ there."
+                        ),
+                    }
                     for rule in refined
                 ],
                 "anomalies": [],

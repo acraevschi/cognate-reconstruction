@@ -26,6 +26,7 @@ from typing import Any
 WHOLE_LEXICON_WHEN_UNSCOPED = frozenset(
     {
         "summarize_correspondences",
+        "polarize",
         "test_sound_law",
         "test_rule_cascade",
     }

@@ -2,6 +2,86 @@
 
 ## Unreleased
 
+Directionality and discipline. Rules are child-to-parent, so "make the children
+agree" is satisfiable by rewriting either child, and nothing ever asked which
+branch innovated. A live Proto-Polynesian run scoped every rule it committed to
+exactly one daughter, and three of the seven were backwards — `ʔ > Ø / #_` on
+the Tongic branch that *preserves* `*ʔ`, `f > h` and `t > k` on North Marquesan
+when Hawaiian innovated both. It reproduced after the correspondence survey and
+branch-support weighting landed, because better evidence does not help with a
+question nothing asks.
+
+**No sound-change table, typology data, or naturalness score was added, and none
+will be.** That knowledge lives in the model's weights; the harness's job is to
+make sure it is used and recorded. See README, "Directionality: which branch
+innovated", for the reasoning.
+
+- Added `polarize`. Given one correspondence — the active children and the
+  segment each shows — it reports what every node outside them shows in the same
+  aligned columns, with counts, its relation, and whether it is observed or
+  reconstructed. Data retrieval, not a prior: it never names the original value.
+  The evidence was already in the harness and the live run consulted it once.
+  Its design carries the three findings `tools/outgroup_probe.py` measured —
+  count per clade, presence is evidence and absence is not, morphology first —
+  and states the two limits it cannot report around: the argument inherits the
+  supplied classification, and the root has no out-group.
+- Added `directionality_rationale` to `CommittedSoundRule`, **required on every
+  rule that deletes a segment or merges two of a child's distinct segments into
+  one**. Detection is mechanical, over the mapping the committed cascade induces
+  on the forms (`rules/contrast.py`), and the rejection —
+  `missing-directionality-rationale`, naming the exact `rule_id`s — is on
+  *absence only*. The harness never evaluates what the rationale says. Stated in
+  the prompt payload's new `commit_requirements` as well as in `SKILL.md`, so it
+  is not discovered through a rejection.
+- Reported what a commit discards. `test_sound_law`, `test_rule_cascade`, and
+  the commit result name each contrast-reducing rule and count how many
+  available nodes still attest the material — *"removes `ʔ`, attested in 3 of 10
+  available nodes"* — split by observed and reconstructed. Reported and scored,
+  never rejected: contrast loss is ordinary sound change.
+- Added `contrast_reducing_rule_count` to `ReconstructionDiagnostics` and
+  printed it directly beneath `rule_coverage` in `inspect-run`. Coverage rises
+  when rules fire and the cheapest way to make a rule fire is to delete a
+  distinction, so a node that scored well by discarding contrasts no longer
+  reads as the best node in the run. README, "Quality and scoring", names the
+  incentive.
+- Split each node's concepts ~70/30 into a development and a held-out set,
+  ordered by the digest of the node ID and the concept ID, so it is reproducible
+  across runs, resumes, and re-runs, and differs between sibling nodes. Rule
+  reports carry a held-out summary — applications, context mismatches, and the
+  held-out convergence rate — the commit result carries it, and the trajectory
+  records `held_out_convergence_rate`. Nothing rejects on it: a rule generalised
+  from one word should *look* bad, not be forbidden. The split is shown in the
+  prompt payload rather than hidden.
+- Rewrote the comparative-method section of `agent/SKILL.md` around direction of
+  change, and asked the model explicitly for its own knowledge of sound-change
+  typology — in the rationale, named, where a reviewer can check it. Placed
+  `polarize` in the required workflow after the correspondence survey, with the
+  explicit warning that a rule scoped to a child which *preserves* a contrast,
+  deleting it, is almost always the wrong direction.
+- Unified rule-ID derivation across `test_sound_law`, `test_rule_cascade`, and
+  `commit_reconstruction`, so a rejection naming a `rule_id` names one the
+  session has already seen.
+- Stopped a descendant reading as out-group support in the `polarize` summary.
+  Only an out-group can polarize: a descendant lies inside the node's subtree
+  and shows what its own children became. At the root *every* available node is
+  a descendant, so the limit does not present as an empty result — the live run
+  at `proto_polynesian` got 14 back under a note reading "14 node(s) outside the
+  active children were inspected", which is true and reads exactly like support.
+  The summary now counts the two apart and says when there is no out-group.
+- Separated the finding from the ask in the directionality rejection. A live run
+  pasted the harness's own count back as its rationale — *"ʔ is attested in 8 of
+  11 available nodes"* — which satisfies the field and answers nothing, and the
+  old remediation rendered that note immediately after the `rule_id`, inviting
+  the copy. The counts are now labelled "What the harness found", the request
+  for the claim is separate and explicit, and it says restating them is not an
+  answer. **The fix is in what is asked for, not in what is checked**: a
+  rationale that still restates the counts is still accepted, because content is
+  never judged.
+- **The new tool and the new committed-rule field each invalidate existing
+  checkpoints on their own**, through the tool-schema and instruction digests.
+  The held-out share is deliberately not part of that hash set — it changes no
+  committed rule — but the split it produces is recorded in every payload.
+
 Loop resilience, driven by a 7-node Polynesian benchmark that failed three ways
 in three attempts and never reached the root.
 

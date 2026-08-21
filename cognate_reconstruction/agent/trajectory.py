@@ -118,6 +118,28 @@ class AgentNodeMetrics(WorkbenchModel):
     cost_usd: float | None = Field(default=None, ge=0.0)
     committed_rule_count: int = Field(ge=0)
     committed_anomaly_count: int = Field(ge=0)
+    # Held-out reporting. Defaulted so records written before the split existed
+    # read as "not recorded" rather than as a node that held nothing out.
+    held_out_concept_count: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Concepts this node withheld from the development set. The split is "
+            "deterministic in the node ID, so it is identical across a resume."
+        ),
+    )
+    held_out_convergence_rate: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Share of held-out concepts on which the committed cascade left "
+            "every attesting child producing one parent form. None when nothing "
+            "was committed or nothing was held out. Reported, never enforced: a "
+            "rule fitted to a handful of concepts is meant to *look* poor here, "
+            "not to be forbidden."
+        ),
+    )
     committed_without_inspection: bool
     identity_without_testing: bool
 

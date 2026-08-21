@@ -168,6 +168,13 @@ adding a family; a divergence between them is the interesting case.
 Nothing here is wired into the scorer. Changing which candidate wins the beam is a
 research-owner decision; see README, "Decisions that require research-owner input".
 
+The same evidence is now exposed to the *model*, through the `polarize` tool, and the
+three findings above are its design. Counting per clade, the presence-only asymmetry,
+and morphology-first are stated in the tool description and in `agent/SKILL.md`; the
+two losing policies stay in this probe as the runnable form of why. If the aggregation
+in `polarize` changes, re-run this: the probe is the independent check that the
+per-clade, presence-only reading is still what the numbers support.
+
 ## `correspondence_inventory.py` — the independent check on the survey tool
 
 Builds the complete correspondence-set inventory over every cognate set at once, sorted by
@@ -208,5 +215,9 @@ proto-forms assembled from several branches at once.
 - **Any change to alignment or evidence tools** → `correspondence_inventory.py`, to check the
   inventory is still coherent and still small, and that `summarize_correspondences` still
   agrees with it set for set.
+- **Any change to how out-group evidence is aggregated**, in the scorer or in the
+  `polarize` tool → `outgroup_probe.py`, and say what happened to the per-clade and
+  per-daughter numbers. A change that makes them converge has probably reintroduced the
+  majority vote.
 - **Any change to the DSL** → `branch_recoverability.py`, since expressiveness changes move
   the reachability split directly.

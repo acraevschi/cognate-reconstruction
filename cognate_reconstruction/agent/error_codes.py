@@ -109,6 +109,12 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         "anomaly-unknown-reference": ToolErrorCategory.PROTOCOL,
         # A multi-rule commit left some rule without its own rationale.
         "missing-rule-rationale": ToolErrorCategory.PROTOCOL,
+        # A committed rule deletes or merges a contrast without saying which
+        # branch innovated. Protocol rather than exploratory for the same reason
+        # as the line above: the tool evaluated no hypothesis and refused no
+        # sound law, it found a required field absent. What is *in* the field is
+        # never inspected — see commit_reconstruction._require_directionality_rationales.
+        "missing-directionality-rationale": ToolErrorCategory.PROTOCOL,
         # The model called a tool that is not registered.
         "unknown-tool": ToolErrorCategory.PROTOCOL,
         # No structural code was attached; see UNCLASSIFIED_ERROR_CODE.

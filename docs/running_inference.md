@@ -439,6 +439,7 @@ is retrieved on demand.
 | `summarize_correspondences` | Correspondence sets over every cognate set at once, by support, paginated. |
 | `list_concepts` | Paginated concepts, glosses, counts, and node IDs. |
 | `search_forms` | Exact semantic/segment/cognate/node filtering. |
+| `polarize` | What every node outside the active children shows in the aligned columns of one correspondence, with counts and the observed/reconstructed split. No verdict on which value is original. |
 | `list_available_nodes` | Observed and completed internal evidence only, flagging nodes with a retrievable hypothesis. |
 | `get_node_reconstruction` | Rules, anomalies, and summary committed at one already-reconstructed node; read-only and never scored. |
 | `get_alignments` | LingPy MSA held once, plus one pairwise correspondence view per node pair referencing it by ID. |
@@ -449,7 +450,20 @@ is retrieved on demand.
 
 Rule IDs are optional labels in cascade and commit calls. If omitted, the
 harness deterministically derives a stable ID from the exact DSL and ordered
-child scope; no linguistic content is inferred.
+child scope; no linguistic content is inferred. `test_sound_law` derives the
+same ID for the rule it tests, so a rejection naming a `rule_id` names something
+the session has already seen.
+
+`test_sound_law`, `test_rule_cascade`, and `commit_reconstruction` each carry two
+further blocks. `contrast_reduction`/`contrast_reductions` names any rule that
+deletes a segment or merges two of a child's distinct segments into one, with a
+count of how many available nodes still attest the discarded material.
+`held_out` runs the same rules over the concepts the node withheld — a split
+seeded from the node ID, reported in the prompt payload's `concept_holdout` and
+identical across a resume. Both are reports; neither rejects. What *is* rejected
+is a commit whose contrast-reducing rules omit `directionality_rationale`, under
+`missing-directionality-rationale`, on absence only — the harness never inspects
+what the rationale says.
 
 A committed rule needs only `dsl`, `source_child_ids`, and `confidence`. The
 per-rule `validation_call_id` may be omitted, in which case the harness resolves

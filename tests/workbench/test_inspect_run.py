@@ -192,6 +192,13 @@ def test_inspect_run_reports_both_nodes_and_the_quality_reason(
     # Deterministic outcome.
     assert "rule coverage" in report
     assert "complexity cost" in report
+    # Printed beside coverage, because coverage rises when rules fire and the
+    # cheapest way to make a rule fire is to delete a distinction.
+    assert "contrast loss" in report
+    assert "delete or merge a distinction" in report
+    # The one number in the block not computed over the evidence the rules were
+    # fitted to.
+    assert "held out" in report
     # The part that saves the most human time: not just that the gate failed
     # but which condition failed it.
     assert "high_quality" in report

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.alignment.protocol import AlignmentProvider
+from cognate_reconstruction.rules.contrast import cascade_contrast_reductions
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.schemas.alignment import (
     CorrespondenceDetail,
@@ -31,6 +32,7 @@ from cognate_reconstruction.schemas.traversal import (
 )
 from cognate_reconstruction.traversal.beam import (
     RawCandidate,
+    beam_to_lexicon,
     decided_by_tie_break,
     normalize_and_prune,
 )
@@ -599,6 +601,18 @@ class RuleBasedReconstructor:
         )
         concept_count = len(output_distributions)
         convergence = report_convergence(convergence_outputs)
+        # Which committed rules bought their coverage by giving up a
+        # distinction. Computed over every retained candidate rather than only
+        # the reported one: the question is what material the child holds, and a
+        # candidate the beam kept is material the child attests.
+        contrast_reductions = cascade_contrast_reductions(
+            scoped_rules,
+            {
+                child.node_id: beam_to_lexicon(child).forms
+                for child in child_beams
+            },
+            engine=self.engine,
+        )
         diagnostics = ReconstructionDiagnostics(
             rule_count=len(scoped_rules),
             rule_complexity_cost=complexity,
@@ -620,6 +634,7 @@ class RuleBasedReconstructor:
             rule_coverage=(successful / applicable if applicable else 0.0),
             anomaly_count=len(anomalies),
             anomaly_rate=len(anomalies) / concept_count if concept_count else 0.0,
+            contrast_reducing_rule_count=len(contrast_reductions),
             identity_reconstruction=not scoped_rules,
             # A node with no concepts has nothing to agree or disagree about;
             # 0.0 would read as total divergence rather than as no evidence.
