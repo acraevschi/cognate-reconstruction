@@ -94,6 +94,23 @@ class ReconstructionDiagnostics(WorkbenchModel):
     """
     anomaly_count: int = Field(ge=0)
     anomaly_rate: float = Field(ge=0.0)
+    contrast_reducing_rule_count: int | None = Field(default=None, ge=0)
+    """Committed rules that delete a segment or merge two into one.
+
+    The counterweight to `rule_coverage`, printed beside it. Coverage rises when
+    rules fire, and the cheapest way to make rules fire is to delete a
+    distinction — so a node that scored high coverage by discarding contrasts
+    would otherwise read as the best node in the run. This says how much of that
+    coverage was bought that way.
+
+    It is a count, not a verdict. Contrast loss is ordinary sound change and
+    nothing rejects on it; what the commit contract requires is that each such
+    rule carries a `directionality_rationale` saying which branch innovated. See
+    `rules/contrast.py` for the detection and
+    `docs/report_reject_or_score.md` for why it is reported rather than scored.
+    `None` means the step predates the counter, not that no rule reduced a
+    contrast.
+    """
     identity_reconstruction: bool
     # Defaulted false so every step written before node-failure fallback
     # existed reads as what it was: a node that actually ran.

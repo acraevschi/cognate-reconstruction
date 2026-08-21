@@ -27,6 +27,8 @@ from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.providers import ProviderTransientError
 from cognate_reconstruction.agent.providers.protocol import LLMProvider
 from cognate_reconstruction.agent.schemas import (
+    COMMIT_REQUIREMENT_NOTES,
+    ConceptHoldout,
     LLMMessage,
     LLMToolCall,
     MessageRole,
@@ -38,6 +40,7 @@ from cognate_reconstruction.agent.schemas import (
     ToolExecutionResult,
 )
 from cognate_reconstruction.agent.tools import ToolRegistry, default_tool_registry
+from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.agent.trajectory import (
     AgentNodeMetrics,
     AgentRunResult,
@@ -96,6 +99,7 @@ COMPACTABLE_TOOL_NAMES: frozenset[str] = frozenset(
         "list_concepts",
         "list_available_nodes",
         "get_node_reconstruction",
+        "polarize",
     }
 )
 """Tools whose superseded results may be dropped from the live prompt.
@@ -884,6 +888,7 @@ class AgentOrchestrator:
             "list_available_nodes",
             "summarize_correspondences",
             "get_alignments",
+            "polarize",
         }
         cost_values = [
             response.usage.cost_usd
@@ -895,6 +900,20 @@ class AgentOrchestrator:
         )
         available_concept_ids = {form.concept_id for form in context.all_forms}
         sound_law_tests = state.successful_tool_names.count("test_sound_law")
+        # Recomputed from the commit rather than lifted out of the tool result,
+        # so a trajectory carries the number even when the result message was
+        # truncated or compacted away.
+        held_out = (
+            held_out_evaluation(
+                context,
+                context.commit.parsed_rules,
+                segmentation_overlay_id=(
+                    context.commit.request.segmentation_overlay_id
+                ),
+            )
+            if context.commit is not None
+            else None
+        )
         return AgentNodeMetrics(
             started_at=state.started_at,
             finished_at=finished,
@@ -929,6 +948,14 @@ class AgentOrchestrator:
             cost_usd=sum(cost_values) if cost_values else None,
             committed_rule_count=rule_count,
             committed_anomaly_count=anomaly_count,
+            held_out_concept_count=(
+                len(context.concept_split.held_out_concept_ids)
+            ),
+            held_out_convergence_rate=(
+                held_out.convergence.child_convergence_rate
+                if held_out is not None and held_out.convergence is not None
+                else None
+            ),
             committed_without_inspection=(
                 context.commit is not None and inspection_count == 0
             ),
@@ -1079,6 +1106,15 @@ class AgentOrchestrator:
             ),
             anchor_policy=context.anchor_policy,
             anchors=context.anchors,
+            # Stated before the session starts rather than discovered through a
+            # rejection: a requirement that lives only in code teaches the model
+            # that the harness is capricious, not that the claim needs making.
+            concept_holdout=ConceptHoldout(
+                development_concept_ids=context.concept_split.development_concept_ids,
+                held_out_concept_ids=context.concept_split.held_out_concept_ids,
+                held_out_share=context.concept_split.held_out_share,
+            ),
+            commit_requirements=COMMIT_REQUIREMENT_NOTES,
         )
         messages = _MessageLog()
         messages.append(

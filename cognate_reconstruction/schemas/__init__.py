@@ -28,6 +28,8 @@ from cognate_reconstruction.schemas.ingestion import (
     WorkbenchPayload,
 )
 from cognate_reconstruction.schemas.historical import (
+    GoldEvidenceKind,
+    GradedTargetMetrics,
     HistoricalBindingFile,
     HistoricalBindingRequest,
     HistoricalFormBinding,
@@ -36,6 +38,7 @@ from cognate_reconstruction.schemas.historical import (
     HistoricalTargetEvaluation,
     TargetConceptEvaluation,
 )
+from cognate_reconstruction.schemas.metrics import MetricDistribution
 from cognate_reconstruction.schemas.lexicon import (
     CognateMembership,
     CognateMembershipInterpretation,

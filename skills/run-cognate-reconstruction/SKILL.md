@@ -66,10 +66,10 @@ Studio models; exits nonzero if anything is missing.
 
 ## Run: deterministic path (no model, no network)
 
-Fastest way to confirm the core still works. Runs the unit suite (249 fixed
+Fastest way to confirm the core still works. Runs the unit suite (276 fixed
 tests, plus one opportunistic backward-compatibility case per
 `runs/*/trajectories.jsonl` you have locally, so the total you see is higher and
-drifts as you do runs) and the CLDF fixture ingestion. The fixed 249 is the
+drifts as you do runs) and the CLDF fixture ingestion. The fixed 276 is the
 number to quote: run
 `pytest -q -k "not local_run_artifacts"` for it. The guarantee those extra cases
 used to carry alone is now pinned by a checked-in real pre-change trajectory, so
@@ -146,8 +146,16 @@ The underlying command the driver wraps:
 ```
 
 Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
-`prepare-lexibank`, `inspect-run`, `validate-trajectories`,
+`prepare-lexibank`, `build-benchmark`, `run-benchmark`, `build-synthetic`,
+`score-synthetic`, `inspect-run`, `validate-trajectories`,
 `summarize-trajectories`, `export-trajectories`.
+
+For evaluation work, prefer the benchmark path over a hand-assembled run:
+`build-benchmark --name polynesian` builds the input, `run-benchmark` runs N
+seeds into one aggregate that reports spread rather than a single quotable
+number, and `build-synthetic --name synthetic_regular` gives a leakage-free
+family whose changes and direction can be scored with `score-synthetic`. See
+`docs/benchmarks.md`.
 
 ```bash
 /opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli summarize-trajectories --input runs/google-gemma-4-e4b-20260814-184836/trajectories.jsonl
@@ -207,6 +215,23 @@ errors.
   with `missing-rule-rationale` and a remediation naming the exact `rule_id`s,
   which counts as a protocol failure. If a model that used to commit two rules
   cleanly starts failing once and then succeeding, this is why.
+- **A rule that deletes or merges now needs a `directionality_rationale`.**
+  Applying the committed cascade either removes material or sends two of a
+  child's distinct segments to one output; both are detected mechanically, and a
+  commit whose flagged rules omit the field is rejected with
+  `missing-directionality-rationale` naming the exact `rule_id`s, which counts
+  as a protocol failure. **The harness never judges what the rationale says** —
+  only that it is there — so a cluster of these means the model is not stating
+  which branch innovated, not that its linguistics were graded. The remediation
+  carries the count of nodes that still attest the discarded material, and
+  points at `polarize`, which is the tool for answering it. A rule that shifts a
+  segment into one the child does not otherwise have is not flagged.
+- **`contrast reduction` and `held out` are reports, not gates.** `inspect-run`
+  prints `contrast_reducing_rule_count` directly under `rule coverage`, because
+  coverage rises when rules fire and the cheapest way to make a rule fire is to
+  delete a distinction — read the block, not the headline. The trajectory's
+  `held_out_convergence_rate` measures the committed cascade on concepts the
+  session did not select; a low value is informative and disqualifies nothing.
 - **`high_quality` still is not a linguistic grade.** It fails a trajectory
   whose *protocol*-failure share exceeds `MAX_PROTOCOL_FAILURE_RATE` (0.25, in
   `cognate_reconstruction/agent/trajectory.py`) — unless it had at most one

@@ -136,6 +136,118 @@ the subject of a separate entry in "Decisions that require research-owner
 input", and it is bounded — it orders candidates the harness already computed.
 It does not decide whether a run is valid, and no trajectory is filtered by it.
 
+## The third worked example: a lost contrast
+
+Directionality produced the first rejection in this repository that is neither a
+mechanical defect nor a linguistic judgement, and the split it needed is worth
+recording because it looks at first like a violation of the rule above.
+
+The problem: rules are child-to-parent, so two disagreeing children can always
+be reconciled by rewriting either one, and nothing asked which branch innovated.
+A live run committed `ʔ > Ø / #_` scoped to the Tongic branch that *preserves*
+`*ʔ`, and `f > h` and `t > k` scoped to North Marquesan when Hawaiian innovated
+both. Every one of those rules was validated, applied exactly as written, and
+mechanically flawless.
+
+Run it through the decision rule and the three parts land in three different
+places.
+
+- **"This rule deletes or merges" is question one.** Applying the cascade
+  induces a mapping from input sequences to output sequences; whether the
+  replacement is empty, and whether two distinct inputs produce one output, are
+  arithmetic. Deterministic code is certain about it. So it is *detected*
+  mechanically — but detection is not the rejection, because a merger is not a
+  defect. Mergers are ordinary sound change, and a harness that refused them
+  would be refusing the comparative method.
+- **"This branch is the one that innovated" is question three.** No amount of
+  deterministic code can answer it. `polarize` retrieves the distributional
+  evidence and deliberately stops there; it reports what the out-groups show and
+  never says which value is original.
+- **What is rejected is the *absence of an answer*.** Not a wrong answer — the
+  harness cannot recognise one — and not the rule. A commit whose
+  contrast-reducing rules carry no `directionality_rationale` is refused; a
+  commit whose rationale is nonsense is accepted, recorded, and left for a
+  reviewer. That is question one applied to a *protocol* fact ("a required field
+  is empty"), not to the linguistics, which is why the code is classified
+  `PROTOCOL` alongside `missing-rule-rationale` rather than as a tested
+  hypothesis.
+
+Ask the question in the pocket — **what happens when this fires on a correct
+run?** — and the answer is: the model writes one sentence saying which branch
+changed, which it should be able to do for any rule it believes, and which is
+exactly the sentence a reviewer needs. That is a cheap thing to demand of a
+correct run. Demanding that the sentence be *right* would not be, because
+nothing here can check it.
+
+The counts that come with it — how many available nodes still attest the
+discarded material — are rule 2 outright: a fact a human wants, where "bad"
+needs judgement. `contrast_reducing_rule_count` in the diagnostics is the same,
+and it exists because `rule_coverage` rises when rules fire and the cheapest way
+to make a rule fire is to delete a distinction. Printing the two together is a
+report. Scoring the second one, or gating on it, would be the harness deciding
+that contrast loss is a defect, which is question three wearing a number.
+
+Held-out concepts land in the same place. A rule generalised from one word looks
+perfect on the concepts it was fitted to; measured on concepts it was not, it
+may fire on nothing at all. That is worth reporting to the model, to the
+trajectory, and to `inspect-run` — and it is *not* worth rejecting on, because a
+narrowly conditioned rule that never applies to a held-out form may be entirely
+correct, and rejecting on it would reward padding a cascade until the number
+moved.
+
+## The fourth worked example: a score that is actually about correctness
+
+Everything before this measured the machinery or the session. Normalized edit
+distance, B-Cubed F1, and rule precision against a synthetic answer key measure
+**whether the reconstruction is right**. That is question three, the one this
+repository says it cannot answer — so it is worth being precise about what
+changed and what did not.
+
+What changed is that for a *particular* gold set, question three is decidable.
+Given Proto-Polynesian as published, "is `a l e l o` the right answer?" has an
+answer. Given a synthetic family, so does "did this branch innovate?", because
+the answer key says which branch got a rule.
+
+What did not change is that these are still reports, and the reason is the
+asymmetry this document opens with. These are the closest this repository has
+come to grading linguistic truth, which makes them the most tempting numbers to
+gate on, and gating is the irreversible direction. The moment NED filters
+`export-trajectories --high-quality-only`, a corpus exists that was selected by
+it — already written, possibly already trained on — and the threshold that
+selected it has become the operative definition of a valid reconstruction.
+
+Run the question in the pocket — **what happens when this fires on a correct
+run?** — against each of them and the answers are not reassuring:
+
+- **NED on a published gold** fires on a run that disagrees with Walworth. That
+  is sometimes the run being wrong and sometimes the reconstruction being a
+  defensible alternative; a published proto-form is somebody's analysis, and
+  `GoldEvidenceKind` exists to keep saying so. Gating would define agreement
+  with one analysis as validity.
+- **B-Cubed F1** scores `p a` against `b e` as 1.0, because the correspondence
+  is consistent. A gate would reward a systematically wrong reconstruction over
+  an inconsistent nearly-right one.
+- **Rule precision** matches spellings, so `e > a / ʔ_` and `ʔ e > ʔ a` do not
+  match. A gate would select for the spelling the answer key happened to use.
+- **The directionality check on a synthetic family** is the only one that is
+  genuinely certain — a rule scoped to a branch the key gave no rule to is
+  pointed at a branch that did not change — and it is certain only *there*. On
+  a published benchmark the same question has no answer key, so a gate built on
+  it would work on three toy families and silently mean nothing everywhere else.
+
+The structural directionality report on published benchmarks lands in the same
+place for a different reason. "This session's `polarize` calls returned no
+out-group, and it committed a directionality claim" is mechanically decidable —
+`polarize` tags every node it reports with a `relation`, and whether a node has
+an out-group is a property of the tree. But **bad** still needs judgement: the
+rationale may be citing something the session saw at a lower node, or be loosely
+worded, and the harness never reads it. Rule 2, a report, and deliberately not a
+content check on the prose — that would be the harness grading a linguistic
+claim by keyword.
+
+So: printed in `inspect-run`, in `result.json`, in `summarize-trajectories`, and
+in the multi-seed aggregate. Consumed by nothing.
+
 ## The decision rule
 
 For anything new, in order:

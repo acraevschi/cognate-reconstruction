@@ -43,6 +43,7 @@ unavailable exactly where the reported reconstruction is produced.
 
 Usage:
     python tools/outgroup_probe.py <benchmark-input.json> [--node tongic]
+    python tools/outgroup_probe.py polynesian --json
 """
 
 from __future__ import annotations
@@ -204,7 +205,13 @@ def choose(
 POLICIES = ("alphabetical", "outgroup-daughters", "outgroup-clades", "morphs+clades")
 
 
-def run(payload_path: Path, focus: str | None, granularity: str) -> int:
+def run(
+    payload_path: Path,
+    focus: str | None,
+    granularity: str,
+    *,
+    as_json: bool = False,
+) -> int:
     payload = WorkbenchPayload.model_validate_json(
         payload_path.read_text(encoding="utf-8")
     )
@@ -239,13 +246,18 @@ def run(payload_path: Path, focus: str | None, granularity: str) -> int:
         branch_forms[leaf.label] = dict(forms[leaf.label])
 
     reconstructor = RuleBasedReconstructor(beam_width=5)
-    print(f"benchmark: {payload_path}")
-    print(f"measuring: {_bootstrap.loaded_package_path()}")
-    print(f"out-group granularity: {granularity}\n")
-    header = f"{'node':<20}{'ties':>5}{'ceiling':>9}"
-    for policy in POLICIES:
-        header += f"{policy:>21}"
-    print(header)
+    # Rows are collected rather than printed as they are computed, so the text
+    # report and the `--json` object are two renderings of one measurement
+    # instead of two traversals that could drift.
+    rows: list[dict] = []
+    if not as_json:
+        print(f"benchmark: {payload_path}")
+        print(f"measuring: {_bootstrap.loaded_package_path()}")
+        print(f"out-group granularity: {granularity}\n")
+        header = f"{'node':<20}{'ties':>5}{'ceiling':>9}"
+        for policy in POLICIES:
+            header += f"{policy:>21}"
+        print(header)
 
     totals = {policy: 0 for policy in POLICIES}
     total_ties = total_ceiling = 0
@@ -282,20 +294,50 @@ def run(payload_path: Path, focus: str | None, granularity: str) -> int:
         total_ties += len(ties)
         total_ceiling += ceiling
         row = f"{parent_id:<20}{len(ties):>5}{ceiling:>9}"
+        record = {
+            "node_id": parent_id,
+            "ties": len(ties),
+            "ceiling": ceiling,
+            "outgroup_clades": len(clades),
+            "policies": {},
+        }
         for policy in POLICIES:
             if not clades:
                 row += f"{'no out-group':>21}"
+                record["policies"][policy] = None
                 continue
             hits = sum(
                 choose(policy, d, clades, forms) == gold[d.concept_id] for d in ties
             )
             totals[policy] += hits
             row += f"{hits:>21}"
-        print(row)
+            record["policies"][policy] = hits
+        rows.append(record)
+        if not as_json:
+            print(row)
+            if focus == parent_id:
+                _print_detail(ties, clades, forms, gold)
 
-        if focus == parent_id:
-            _print_detail(ties, clades, forms, gold)
-
+    if as_json:
+        _bootstrap.emit_json(
+            {
+                **_bootstrap.measurement_envelope(payload_path),
+                "measurement": "outgroup_probe",
+                "granularity": granularity,
+                "total_ties": total_ties,
+                "ceiling": total_ceiling,
+                "policy_totals": dict(totals),
+                "nodes": rows,
+                "note": (
+                    "A node with no out-group is the root: nothing lies "
+                    "outside it, so the technique is unavailable exactly where "
+                    "the reported reconstruction is made. A run in which "
+                    "outgroup-daughters and outgroup-clades converge has "
+                    "probably reintroduced the majority vote."
+                ),
+            }
+        )
+        return 0
     footer = f"{'total':<20}{total_ties:>5}{total_ceiling:>9}"
     for policy in POLICIES:
         footer += f"{totals[policy]:>21}"
@@ -336,10 +378,18 @@ def _print_detail(ties, clades, forms, gold) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path)
+    parser.add_argument(
+        "input",
+        help="A prepared benchmark payload, or the name of a defined benchmark.",
+    )
     parser.add_argument(
         "--node",
         help="Print every tie at this node, with the out-group support behind each.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit one machine-readable object, including the measured source.",
     )
     parser.add_argument(
         "--granularity",
@@ -351,7 +401,12 @@ def main() -> int:
         ),
     )
     args = parser.parse_args()
-    return run(args.input, args.node, args.granularity)
+    return run(
+        _bootstrap.resolve_benchmark(args.input),
+        args.node,
+        args.granularity,
+        as_json=args.json,
+    )
 
 
 if __name__ == "__main__":

@@ -357,6 +357,12 @@ def test_commit_result_reports_convergence_and_still_commits() -> None:
                         "source_child_ids": ["Tongan"],
                         "confidence": 1.0,
                         "validation_call_id": "validate",
+                        # Tongan already has `p`, so this rule merges `f` into
+                        # it and the commit contract requires the claim to be
+                        # stated. The harness never reads what it says.
+                        "directionality_rationale": (
+                            "Claiming Tongan innovated f from parent p."
+                        ),
                     }
                 ],
                 "anomalies": [],
@@ -485,6 +491,9 @@ class InspectingProvider:
                                 "source_child_ids": ["Tongan"],
                                 "confidence": 1.0,
                                 "validation_call_id": "validate",
+                                "directionality_rationale": (
+                                    "Claiming Tongan innovated f from parent p."
+                                ),
                             }
                         ],
                         "anomalies": [],

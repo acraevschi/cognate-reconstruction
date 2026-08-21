@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "name": "polynesian",
+  "description": "Ten Polynesian daughters against Walworth's Proto-Polynesian, over the concepts where every daughter shares a cognate set with the gold entry. Clean regularity and an uncontroversial subgrouping, which is what makes it a development benchmark rather than a hard one.",
+  "dataset_path": "../data/lexibank/walworthpolynesian",
+  "daughters": [
+    "walworthpolynesian:Tongan",
+    "walworthpolynesian:Niuean",
+    "walworthpolynesian:Samoan",
+    "walworthpolynesian:EastFutuna",
+    "walworthpolynesian:EastUvea",
+    "walworthpolynesian:Hawaiian",
+    "walworthpolynesian:NorthMarquesan",
+    "walworthpolynesian:Maori",
+    "walworthpolynesian:Tahitian",
+    "walworthpolynesian:Rarotongan"
+  ],
+  "targets": [
+    {
+      "source_variety_id": "walworthpolynesian:Polynesian",
+      "node_id": "proto_polynesian",
+      "gold_evidence_kind": "reconstructed",
+      "source_reference": "Walworth Polynesian CLDF: Proto-Polynesian reconstructions held out as evaluation target"
+    }
+  ],
+  "newick_path": "../examples/polynesian_benchmark_tree.nwk",
+  "concept_selection": "fully_cognate_with_target",
+  "provenance": {
+    "source": "Walworth (2018), Polynesian CLDF via Lexibank",
+    "publication_date": "2018-01-01",
+    "leakage_note": "The gold is a published reconstruction and the Polynesian sound correspondences are extensively described, so a model that has read the literature can produce *ʔ from memory rather than from the correspondence set. Trajectories record every polarize call and the directionality_rationale of every contrast-reducing rule, which supports a check on whether the evidence was consulted; it is not proof, and no headline claim should rest on this benchmark. Use benchmarks/synthetic/ for a leakage-free measurement.",
+    "note": "Nuclear Polynesian is left as a three-way polytomy because Samoic is paraphyletic; the harness supports unresolved nodes natively."
+  }
+}

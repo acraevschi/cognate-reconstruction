@@ -8,14 +8,13 @@ support, which is the shape `summarize_correspondences` should return.
 
 Usage:
     python tools/correspondence_inventory.py <benchmark-input.json> [--min-support 2] [--limit 30]
+    python tools/correspondence_inventory.py polynesian --json
 """
 
 from __future__ import annotations
 
 import argparse
-import collections
 import json
-from pathlib import Path
 
 import _bootstrap  # noqa: F401  (bind to this checkout; see module)
 
@@ -51,19 +50,58 @@ def build(payload: WorkbenchPayload):
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("input", type=Path)
+    parser.add_argument(
+        "input",
+        help="A prepared benchmark payload, or the name of a defined benchmark.",
+    )
     parser.add_argument("--min-support", type=int, default=2)
     parser.add_argument("--limit", type=int, default=30)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit one machine-readable object, including the measured source.",
+    )
     args = parser.parse_args()
 
+    input_path = _bootstrap.resolve_benchmark(args.input)
     payload = WorkbenchPayload.model_validate_json(
-        args.input.read_text(encoding="utf-8")
+        input_path.read_text(encoding="utf-8")
     )
     node_ids, alignment_map, sets = build(payload)
     rows = sorted(sets.items(), key=lambda item: -item[1]["support"])
     kept = [row for row in rows if row[1]["support"] >= args.min_support]
     singletons = sum(1 for _, entry in rows if entry["support"] == 1)
+    payload_bytes = len(
+        json.dumps([[list(key), entry] for key, entry in rows]).encode()
+    )
 
+    if args.json:
+        _bootstrap.emit_json(
+            {
+                **_bootstrap.measurement_envelope(input_path),
+                "measurement": "correspondence_inventory",
+                "node_ids": list(node_ids),
+                "alignments": len(alignment_map.alignments),
+                "distinct_sets": len(rows),
+                "min_support": args.min_support,
+                "sets_at_min_support": len(kept),
+                "singletons": singletons,
+                "inventory_bytes": payload_bytes,
+                "top_sets": [
+                    {
+                        "correspondence": [
+                            segment if segment else None for segment in key
+                        ],
+                        "support": entry["support"],
+                        "example_concepts": entry["concepts"][:3],
+                    }
+                    for key, entry in kept[: args.limit]
+                ],
+            }
+        )
+        return
+
+    print(f"measuring: {_bootstrap.loaded_package_path()}")
     short = {node: node.split(":")[-1][:6] for node in node_ids}
     print(
         f"{len(alignment_map.alignments)} cognate-set alignments over "
@@ -76,9 +114,6 @@ def main() -> None:
         cells = " ".join(f"{(seg if seg else 'Ø'):>6}" for seg in key)
         print(f"{entry['support']:>4}  {cells}   {','.join(entry['concepts'][:3])}")
 
-    payload_bytes = len(
-        json.dumps([[list(key), entry] for key, entry in rows]).encode()
-    )
     print(f"\nwhole-inventory payload: {payload_bytes / 1024:.1f} KB")
 
 

@@ -1,0 +1,209 @@
+{
+  "schema_version": "1.0",
+  "name": "synthetic_noisy",
+  "description": "synthetic_regular with controlled residue switched on: two irregular forms, one loan from a sister branch, and one semantic mismatch. A benchmark with no residue is not a test of the anomaly machinery, and a model that only ever sees perfect regularity learns the wrong lesson about what a comparative argument looks like. Every perturbation is listed in the answer key, so what the model reported in `anomalies` can be compared against what was actually done.",
+  "newick": "((d1,d2)inner_a,(d3,d4)inner_b)proto;",
+  "proto_lexicon": [
+    {
+      "concept_id": "tooth",
+      "segments": [
+        "n",
+        "i",
+        "p",
+        "a"
+      ],
+      "gloss": "tooth"
+    },
+    {
+      "concept_id": "water",
+      "segments": [
+        "p",
+        "a",
+        "k",
+        "u"
+      ],
+      "gloss": "water"
+    },
+    {
+      "concept_id": "fire",
+      "segments": [
+        "t",
+        "a",
+        "m",
+        "i"
+      ],
+      "gloss": "fire"
+    },
+    {
+      "concept_id": "stone",
+      "segments": [
+        "k",
+        "u",
+        "l",
+        "a"
+      ],
+      "gloss": "stone"
+    },
+    {
+      "concept_id": "hand",
+      "segments": [
+        "m",
+        "a",
+        "t",
+        "i"
+      ],
+      "gloss": "hand"
+    },
+    {
+      "concept_id": "eye",
+      "segments": [
+        "l",
+        "u",
+        "p",
+        "a"
+      ],
+      "gloss": "eye"
+    },
+    {
+      "concept_id": "sun",
+      "segments": [
+        "k",
+        "a",
+        "t",
+        "i"
+      ],
+      "gloss": "sun"
+    },
+    {
+      "concept_id": "tree",
+      "segments": [
+        "p",
+        "u",
+        "n",
+        "a"
+      ],
+      "gloss": "tree"
+    },
+    {
+      "concept_id": "bird",
+      "segments": [
+        "t",
+        "i",
+        "k",
+        "u"
+      ],
+      "gloss": "bird"
+    },
+    {
+      "concept_id": "fish",
+      "segments": [
+        "m",
+        "u",
+        "l",
+        "a"
+      ],
+      "gloss": "fish"
+    },
+    {
+      "concept_id": "road",
+      "segments": [
+        "n",
+        "a",
+        "t",
+        "u"
+      ],
+      "gloss": "road"
+    },
+    {
+      "concept_id": "house",
+      "segments": [
+        "k",
+        "i",
+        "p",
+        "a"
+      ],
+      "gloss": "house"
+    },
+    {
+      "concept_id": "night",
+      "segments": [
+        "l",
+        "a",
+        "m",
+        "i"
+      ],
+      "gloss": "night"
+    },
+    {
+      "concept_id": "blood",
+      "segments": [
+        "p",
+        "i",
+        "t",
+        "u"
+      ],
+      "gloss": "blood"
+    },
+    {
+      "concept_id": "name",
+      "segments": [
+        "t",
+        "u",
+        "n",
+        "a"
+      ],
+      "gloss": "name"
+    },
+    {
+      "concept_id": "belly",
+      "segments": [
+        "m",
+        "i",
+        "k",
+        "a"
+      ],
+      "gloss": "belly"
+    }
+  ],
+  "branches": [
+    {
+      "node_id": "inner_a",
+      "rules": [
+        "p > f"
+      ],
+      "note": "Shared innovation: subgrouping is recoverable from the data, not only asserted by the tree."
+    },
+    {
+      "node_id": "d1",
+      "rules": []
+    },
+    {
+      "node_id": "d2",
+      "rules": [
+        "k > x"
+      ]
+    },
+    {
+      "node_id": "inner_b",
+      "rules": []
+    },
+    {
+      "node_id": "d3",
+      "rules": [
+        "t > θ"
+      ]
+    },
+    {
+      "node_id": "d4",
+      "rules": [
+        "u > o"
+      ]
+    }
+  ],
+  "noise": {
+    "seed": 20260821,
+    "irregular_forms": 2,
+    "loans": 1,
+    "semantic_mismatches": 1
+  }
+}

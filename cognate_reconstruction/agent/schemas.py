@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from enum import StrEnum
+from collections.abc import Sequence
 from typing import Any, Literal
 
 from pydantic import Field, model_validator
@@ -27,6 +28,20 @@ from cognate_reconstruction.schemas.traversal import (
     EvidenceKind,
     EvidenceRelation,
 )
+
+
+def derive_rule_id(dsl: str, source_child_ids: Sequence[str]) -> str:
+    """The stable label a rule gets when the model supplies none.
+
+    Derived from the exact DSL and child scope, so the same rule proposed by
+    `test_sound_law`, previewed inside `test_rule_cascade`, and committed all
+    carry one ID. That matters now that a rejection can name a `rule_id` the
+    model has to find in an earlier tool result: the parser's own fallback is
+    derived from the DSL alone, and two rules differing only in scope would
+    collide under it.
+    """
+    material = dsl.strip() + "\0" + "\0".join(map(str, source_child_ids))
+    return "rule-" + hashlib.sha256(material.encode()).hexdigest()[:12]
 
 
 class MessageRole(StrEnum):
@@ -420,6 +435,183 @@ class ListAvailableNodesResult(WorkbenchModel):
     nodes: tuple[AvailableNodeSummary, ...]
 
 
+class ColumnPosition(StrEnum):
+    """Where in the word a matching alignment column has to sit."""
+
+    ANY = "any"
+    INITIAL = "initial"
+    FINAL = "final"
+
+
+class PolarizeArgs(WorkbenchModel):
+    """Ask what the rest of the tree shows where the active children disagree.
+
+    Not a prior and not a verdict: this is data retrieval. The evidence that
+    settles the direction of a change is already in the payload — every
+    observed node outside the active children, plus any node already
+    reconstructed in this run — and the deterministic layer has never looked at
+    it.
+
+    Give it one correspondence, as `child_ids` plus the segment each of those
+    children shows, which is a row of `summarize_correspondences` pasted back.
+    Naming a single child is legal and means "columns where this child shows
+    this segment".
+    """
+
+    child_ids: tuple[NonEmptyStr, ...] = Field(
+        min_length=1,
+        description=(
+            "Active children whose segments define the correspondence, in the "
+            "order 'correspondence' gives them."
+        ),
+    )
+    correspondence: tuple[NonEmptyStr, ...] = Field(
+        min_length=1,
+        description=(
+            "One segment per entry of 'child_ids', positionally. Use 'Ø' or "
+            "'∅' for an alignment gap, as in the sound-law DSL."
+        ),
+    )
+    concept_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description="Optional narrowing to specific concepts. Omit it to use every concept.",
+    )
+    node_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Optional narrowing to specific nodes outside the active children. "
+            "Omit it to consult every available node."
+        ),
+    )
+    position: ColumnPosition = Field(
+        default=ColumnPosition.ANY,
+        description=(
+            "Restrict to columns that are word-initial or word-final for every "
+            "named child, which is how a change conditioned by a word edge is "
+            "polarized without pulling alignments."
+        ),
+    )
+    segmentation_overlay_id: NonEmptyStr | None = None
+    respect_cognate_sets: bool = True
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> PolarizeArgs:
+        if len(set(self.child_ids)) != len(self.child_ids):
+            raise ValueError("polarize child IDs must be unique")
+        if len(self.correspondence) != len(self.child_ids):
+            raise ValueError(
+                "polarize needs exactly one segment per child: "
+                f"{len(self.child_ids)} child_ids against "
+                f"{len(self.correspondence)} correspondence entries"
+            )
+        if len(set(self.node_ids)) != len(self.node_ids):
+            raise ValueError("polarize node IDs must be unique")
+        if len(set(self.concept_ids)) != len(self.concept_ids):
+            raise ValueError("polarize concept IDs must be unique")
+        return self
+
+
+class PolarizeSegmentObservation(WorkbenchModel):
+    """What one node shows in the matched columns, and how often."""
+
+    segment: str | None = Field(
+        description="The aligned segment, or null for an alignment gap."
+    )
+    count: int = Field(ge=1, description="Matched columns in which it appears.")
+    example_concept_ids: tuple[NonEmptyStr, ...] = ()
+
+
+class PolarizeNodeReport(WorkbenchModel):
+    """One node outside the active children, and what it shows."""
+
+    node_id: NonEmptyStr
+    relation: EvidenceRelation = Field(
+        description=(
+            "'outgroup' lies outside this node's subtree and can therefore "
+            "witness a state predating the split. 'descendant' lies inside it "
+            "and cannot."
+        ),
+    )
+    kind: EvidenceKind
+    is_attestation: bool = Field(
+        description=(
+            "False for a reconstructed node. A reconstructed form is a prior "
+            "hypothesis from another session, carries no independent evidential "
+            "weight, and must not be cited as support."
+        ),
+    )
+    descendant_leaf_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "The leaves this node covers, so several nodes belonging to one "
+            "clade can be recognised as one witness rather than counted "
+            "separately."
+        ),
+    )
+    columns_covered: int = Field(
+        ge=0,
+        description="Matched columns in which this node attests the concept at all.",
+    )
+    observations: tuple[PolarizeSegmentObservation, ...] = ()
+
+
+class PolarizeCandidateSummary(WorkbenchModel):
+    """One of the competing segments, and which outside nodes show it.
+
+    Presence only. A node that lacks the segment is not listed as evidence
+    against it: lacking a segment is equally consistent with never having had it
+    and with having lost it, while showing it puts the segment outside the node
+    under study.
+    """
+
+    segment: NonEmptyStr
+    observed_node_ids: tuple[NonEmptyStr, ...] = ()
+    reconstructed_node_ids: tuple[NonEmptyStr, ...] = ()
+
+
+class PolarizeResult(WorkbenchModel):
+    """A distributional summary, deliberately without a verdict.
+
+    Nothing here says which value is original. That judgement is yours, it
+    depends on how the change would have to have run, and the place it is
+    recorded is the committed rule's `directionality_rationale`.
+
+    Two limits this cannot report around. The argument inherits the supplied
+    classification: it is only as good as the tree, and it is circular if the
+    tree was induced from the same distance data. And **the root has no
+    out-group** — nothing lies outside it — so the technique is unavailable
+    exactly where the reported reconstruction is made.
+
+    That second limit does not show up as an empty `nodes` list. At the root
+    every available node is a `descendant`: it lies inside this node's subtree
+    and shows what these children became, which is the proposition under test
+    rather than evidence about it. Read `relation` on every entry, and read
+    `note`, which counts out-groups and descendants separately for this reason.
+    """
+
+    child_ids: tuple[NonEmptyStr, ...]
+    correspondence: tuple[NonEmptyStr, ...]
+    columns_matched: int = Field(
+        ge=0,
+        description="Aligned columns in which the named children show this correspondence.",
+    )
+    matched_concept_count: int = Field(ge=0)
+    matched_concept_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description="A bounded sample; 'matched_concept_count' is authoritative.",
+    )
+    nodes: tuple[PolarizeNodeReport, ...] = ()
+    candidates: tuple[PolarizeCandidateSummary, ...] = ()
+    segmentation_overlay_id: NonEmptyStr | None = None
+    note: NonEmptyStr = Field(
+        description="The same counts in one deterministic sentence, with no verdict."
+    )
+
+
+MAX_POLARIZE_EXAMPLE_CONCEPTS = 12
+"""Matched concept IDs echoed on a polarize result before truncation."""
+
+
 class PriorCommittedRule(WorkbenchModel):
     """One rule from an already-completed node session, exposed read-only."""
 
@@ -450,6 +642,151 @@ class GetNodeReconstructionResult(WorkbenchModel):
     provenance: Literal["prior_node_hypothesis"] = "prior_node_hypothesis"
 
 
+class ConceptConvergenceReport(WorkbenchModel):
+    concept_id: NonEmptyStr
+    converged: bool
+    parent_forms: tuple[tuple[NonEmptyStr, ...], ...]
+    """Distinct parent forms the children produced, sorted. One means agreement."""
+    child_count: int = Field(ge=0)
+
+
+class ChildConvergenceSummary(WorkbenchModel):
+    """Did this cascade make the children agree on a parent form?
+
+    Reported, never enforced. A hypothesis under which some children still
+    disagree can be entirely legitimate — an unexplained residue is a normal
+    state of a comparative argument — so no tool rejects a commit for diverging.
+    The model previously had to work this out by eyeballing intermediate forms.
+    """
+
+    concepts_evaluated: int = Field(ge=0)
+    converged_concepts: int = Field(ge=0)
+    child_convergence_rate: float = Field(ge=0.0, le=1.0)
+    divergent_concept_ids: tuple[NonEmptyStr, ...] = ()
+    """A bounded sample; `concepts_evaluated - converged_concepts` is the count."""
+    concepts: tuple[ConceptConvergenceReport, ...] = ()
+    """Per-concept detail, omitted on the commit summary to keep the result small."""
+
+
+MAX_REPORTED_HELD_OUT_CONCEPTS = 12
+"""Held-out concept IDs echoed in a tool result before the list is truncated.
+
+The full list is already in the prompt payload, so this is a reminder rather
+than the record; the counts beside it are authoritative.
+"""
+
+
+class HeldOutEvaluation(WorkbenchModel):
+    """What a hypothesis does on the concepts this node held out.
+
+    The node's concepts are split once, deterministically, from the node ID;
+    see `agent/holdout.py`. The rest of a rule report is computed over the
+    concepts the session selected, which is exactly the evidence a rule was
+    fitted to — so a rule generalized from one word scores perfectly there and
+    says nothing. This block is the same rule measured somewhere it was not
+    fitted.
+
+    Nothing here rejects. A rule that applies to no held-out form may be
+    perfectly correct and narrowly conditioned; a low held-out convergence rate
+    may be an honest residue. It is a report, and a poor one is meant to
+    *look* poor rather than to be forbidden.
+
+    Anchors are deliberately not applied, exactly as in the commit-time
+    convergence summary: this measures the rules against the children's own
+    forms.
+    """
+
+    concept_count: int = Field(
+        ge=0,
+        description="Held-out concepts at this node, whatever the call's scope.",
+    )
+    concepts_evaluated: int = Field(
+        ge=0,
+        description="Held-out concepts at least one active child attests.",
+    )
+    forms_evaluated: int = Field(ge=0)
+    applications: int = Field(
+        ge=0,
+        description="Rule results that changed a held-out form.",
+    )
+    target_absent: int = Field(ge=0)
+    context_mismatches: int = Field(
+        ge=0,
+        description=(
+            "Held-out forms containing the target but never in the rule's "
+            "environment. A rule conditioned to fit the development set shows "
+            "up here."
+        ),
+    )
+    convergence: ChildConvergenceSummary | None = None
+    """Whether the children agree on a parent over the held-out concepts alone."""
+    held_out_concept_ids: tuple[NonEmptyStr, ...] = ()
+    """A bounded sample; `concept_count` is authoritative."""
+
+
+MAX_REPORTED_ATTESTING_NODES = 10
+"""Attesting node IDs listed on a contrast report before the list is truncated."""
+
+
+class ContrastReductionReport(WorkbenchModel):
+    """A rule that removes a distinction, and who else still shows it.
+
+    Detected mechanically by applying the rule to the forms it is scoped to and
+    asking whether the induced mapping deletes material or sends two distinct
+    inputs to one output. Both are arithmetic over the forms and carry no
+    linguistic claim; see `rules/contrast.py`.
+
+    The attestation counts are a count over the available evidence, not an
+    argument: "this rule removes `ʔ`, attested in 3 of 10 available nodes" says
+    what the tree still shows, and says nothing about whether the parent had it.
+    Reconstructed nodes are counted separately because a reconstructed form is a
+    prior hypothesis, not attestation.
+
+    A rule reported here requires a `directionality_rationale` when it is
+    committed. Nothing here rejects on its own: contrast loss is ordinary sound
+    change, and a harness that forbade it would be wrong.
+    """
+
+    rule_id: NonEmptyStr
+    dsl: NonEmptyStr
+    source_child_ids: tuple[NonEmptyStr, ...]
+    deletes: bool = Field(
+        description="The rule's replacement is empty, so it removes material."
+    )
+    merges: bool = Field(
+        description=(
+            "Two distinct segment sequences in the scoped children end up as "
+            "one, so a contrast those children make is gone from the parent."
+        ),
+    )
+    discarded_segments: tuple[NonEmptyStr, ...] = Field(
+        description="The rule's target: the material that stops surfacing."
+    )
+    merged_into: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description="What the target became, empty for a deletion.",
+    )
+    attesting_node_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Available nodes whose forms still contain the discarded material. "
+            "A bounded sample; the counts are authoritative."
+        ),
+    )
+    attesting_node_count: int = Field(ge=0)
+    observed_attesting_node_count: int = Field(
+        ge=0,
+        description=(
+            "Of those, the nodes that are observed rather than reconstructed. "
+            "Only these are attestation."
+        ),
+    )
+    available_node_count: int = Field(ge=0)
+    note: NonEmptyStr = Field(
+        description="The same counts in one deterministic sentence."
+    )
+
+
 class TestSoundLawArgs(WorkbenchModel):
     dsl: NonEmptyStr
     source_child_ids: tuple[NonEmptyStr, ...] = Field(min_length=1)
@@ -470,6 +807,12 @@ class TestSoundLawResult(WorkbenchModel):
     segmentation_overlay_id: NonEmptyStr | None = None
     report: RuleApplicationReport
     supporting_form_ids: tuple[NonEmptyStr, ...]
+    # Both defaulted so validations recorded before these existed stay loadable
+    # inside older trajectories.
+    contrast_reduction: ContrastReductionReport | None = None
+    """Set when this rule deletes or merges a distinction the children make."""
+    held_out: HeldOutEvaluation | None = None
+    """The same rule on the concepts this node held out, whatever was selected."""
 
 
 class CascadeRuleSpec(WorkbenchModel):
@@ -516,10 +859,7 @@ class CascadeRuleSpec(WorkbenchModel):
                 and isinstance(dsl, str)
                 and isinstance(children, tuple)
             ):
-                material = dsl.strip() + "\0" + "\0".join(map(str, children))
-                value["rule_id"] = (
-                    "rule-" + hashlib.sha256(material.encode()).hexdigest()[:12]
-                )
+                value["rule_id"] = derive_rule_id(dsl, children)
         return value
 
     @model_validator(mode="after")
@@ -549,32 +889,6 @@ class CascadeFinalForm(WorkbenchModel):
     form: LexicalForm
 
 
-class ConceptConvergenceReport(WorkbenchModel):
-    concept_id: NonEmptyStr
-    converged: bool
-    parent_forms: tuple[tuple[NonEmptyStr, ...], ...]
-    """Distinct parent forms the children produced, sorted. One means agreement."""
-    child_count: int = Field(ge=0)
-
-
-class ChildConvergenceSummary(WorkbenchModel):
-    """Did this cascade make the children agree on a parent form?
-
-    Reported, never enforced. A hypothesis under which some children still
-    disagree can be entirely legitimate — an unexplained residue is a normal
-    state of a comparative argument — so no tool rejects a commit for diverging.
-    The model previously had to work this out by eyeballing intermediate forms.
-    """
-
-    concepts_evaluated: int = Field(ge=0)
-    converged_concepts: int = Field(ge=0)
-    child_convergence_rate: float = Field(ge=0.0, le=1.0)
-    divergent_concept_ids: tuple[NonEmptyStr, ...] = ()
-    """A bounded sample; `concepts_evaluated - converged_concepts` is the count."""
-    concepts: tuple[ConceptConvergenceReport, ...] = ()
-    """Per-concept detail, omitted on the commit summary to keep the result small."""
-
-
 class TestRuleCascadeResult(WorkbenchModel):
     validation_call_id: NonEmptyStr
     rules: tuple[ReconstructionRule, ...]
@@ -584,6 +898,12 @@ class TestRuleCascadeResult(WorkbenchModel):
     # Defaulted so cascade results recorded before convergence was reported stay
     # loadable inside older trajectories.
     convergence: ChildConvergenceSummary | None = None
+    contrast_reductions: tuple[ContrastReductionReport, ...] = ()
+    """Rules of this order that delete or merge a distinction, in order.
+
+    Each one will need a `directionality_rationale` when it is committed.
+    """
+    held_out: HeldOutEvaluation | None = None
 
 
 class MorphemeSegmentation(WorkbenchModel):
@@ -694,6 +1014,20 @@ class CommittedSoundRule(WorkbenchModel):
             "reasoning to one of several rules."
         ),
     )
+    directionality_rationale: NonEmptyStr | None = Field(
+        default=None,
+        description=(
+            "Which branch innovated, and why you believe it. Required on any "
+            "rule that deletes a segment or merges two segments into one — the "
+            "harness detects those mechanically and names the exact rule_ids "
+            "when it rejects a commit for omitting this. Say which of the "
+            "children changed, what the change is called if it has a name, and "
+            "what evidence outside those children polarizes it. The harness "
+            "never judges what you write; it only records that you wrote it, "
+            "because a merger is not reversible and nothing downstream can "
+            "recover the reasoning afterwards."
+        ),
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -713,10 +1047,7 @@ class CommittedSoundRule(WorkbenchModel):
                 and isinstance(dsl, str)
                 and isinstance(children, tuple)
             ):
-                material = dsl.strip() + "\0" + "\0".join(map(str, children))
-                value["rule_id"] = (
-                    "rule-" + hashlib.sha256(material.encode()).hexdigest()[:12]
-                )
+                value["rule_id"] = derive_rule_id(dsl, children)
         return value
 
     @model_validator(mode="after")
@@ -792,6 +1123,10 @@ class CommitReconstructionResult(WorkbenchModel):
     # The session's last observation should be what its hypothesis actually
     # produced, not just that the commit parsed. Defaulted for older records.
     convergence: ChildConvergenceSummary | None = None
+    contrast_reductions: tuple[ContrastReductionReport, ...] = ()
+    """What this commit gave up, and how much of the tree still shows it."""
+    held_out: HeldOutEvaluation | None = None
+    """The committed cascade on the concepts the node held out."""
 
 
 class NodeLexiconSummary(WorkbenchModel):
@@ -801,8 +1136,58 @@ class NodeLexiconSummary(WorkbenchModel):
     concept_count: int = Field(ge=0)
 
 
+class ConceptHoldout(WorkbenchModel):
+    """This node's concepts, split once and reproducibly.
+
+    Shown rather than hidden. The split is a discipline device, not an
+    adversarial test set: inspecting a held-out concept is comparative work, not
+    cheating, and a split the session could not see would only produce a number
+    it could not act on. What it buys is that every rule report carries a second
+    column measured somewhere the rule was not fitted.
+    """
+
+    development_concept_ids: tuple[NonEmptyStr, ...] = ()
+    held_out_concept_ids: tuple[NonEmptyStr, ...] = ()
+    held_out_share: float = Field(default=0.0, ge=0.0, lt=1.0)
+
+
 class NodePromptPayload(WorkbenchModel):
     node_id: NonEmptyStr
     active_children: tuple[NodeLexiconSummary, ...] = Field(min_length=2)
     anchor_policy: AnchorPolicy = AnchorPolicy.ADVISORY
     anchors: tuple[LexicalForm, ...] = ()
+    # Both defaulted so payloads stored in trajectories written before they
+    # existed stay loadable.
+    concept_holdout: ConceptHoldout | None = None
+    commit_requirements: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Requirements the harness enforces at commit time, stated before "
+            "the session starts rather than discovered through a rejection."
+        ),
+    )
+
+
+COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
+    "Every non-empty committed rule needs a successful same-session "
+    "test_sound_law call or test_rule_cascade preview of the identical rule, "
+    "child scope, and segmentation overlay.",
+    "Any rule that deletes a segment or merges two segments into one also needs "
+    "a 'directionality_rationale' naming which branch innovated and why. The "
+    "harness detects those rules mechanically and rejects a commit that omits "
+    "it, naming the exact rule_ids; it never judges what the rationale says.",
+    "A rule scoped to a child that preserves a contrast, deleting it, is almost "
+    "always the wrong direction. Call polarize before committing any rule whose "
+    "direction the children alone do not force.",
+    "This node's concepts are split into a development set and a held-out set. "
+    "Every rule report carries a held-out summary; it is reported, never "
+    "enforced.",
+)
+"""What a session is told about the commit contract before it starts.
+
+A requirement that lives only in code is one the model discovers by being
+rejected, which costs a turn and teaches the wrong lesson — that the harness is
+capricious rather than that the claim needs stating. These sentences duplicate
+`agent/SKILL.md` on purpose: the skill is the manual and this is the checklist
+attached to the specific node.
+"""

@@ -6,6 +6,11 @@ import hashlib
 from dataclasses import dataclass, field
 
 from cognate_reconstruction.agent.error_codes import ToolInputError
+from cognate_reconstruction.agent.holdout import (
+    DEFAULT_HELD_OUT_SHARE,
+    ConceptSplit,
+    split_concepts,
+)
 from cognate_reconstruction.alignment.protocol import AlignmentProvider
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.schemas.rules import AnchorPolicy
@@ -38,11 +43,20 @@ class AgentContext:
     validations: dict[str, TestSoundLawResult] = field(default_factory=dict)
     cascade_validations: dict[str, TestRuleCascadeResult] = field(default_factory=dict)
     commit: CommittedReconstruction | None = None
+    held_out_share: float = DEFAULT_HELD_OUT_SHARE
+    # Derived, never supplied: the split is a function of the node ID and the
+    # children's concepts, which is what makes it survive a resume unchanged.
+    concept_split: ConceptSplit = field(init=False)
 
     def __post_init__(self) -> None:
         ids = [lexicon.variety_id for lexicon in self.child_lexicons]
         if len(ids) < 2 or len(ids) != len(set(ids)):
             raise ValueError("an agent context needs at least two distinct children")
+        self.concept_split = split_concepts(
+            self.node_id,
+            (form.concept_id for form in self.all_forms),
+            held_out_share=self.held_out_share,
+        )
 
     @property
     def child_ids(self) -> tuple[str, ...]:
@@ -51,6 +65,20 @@ class AgentContext:
     @property
     def all_forms(self) -> tuple[LexicalForm, ...]:
         return tuple(form for lexicon in self.child_lexicons for form in lexicon.forms)
+
+    @property
+    def available_lexicons(self) -> tuple[LanguageLexicon, ...]:
+        """Every node this session can see, for counting attestation.
+
+        Falls back to the active children when no evidence set was supplied. A
+        traversal always supplies one — it holds every observed leaf and every
+        node already reconstructed — but a context built directly still has
+        children, and reporting "attested in 0 of 0 nodes" for a segment the
+        children plainly show would be a worse answer than a narrow one.
+        """
+        if self.evidence:
+            return tuple(item.lexicon for item in self.evidence)
+        return self.child_lexicons
 
     @property
     def active_anchors(self) -> tuple[LexicalForm, ...]:

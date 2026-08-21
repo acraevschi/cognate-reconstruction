@@ -134,7 +134,8 @@ bind copies of its tokenized forms to an exact internal tree node:
       "source_variety_id": "dataset:historical-language",
       "node_id": "explicit-internal-node",
       "role": "target",
-      "source_reference": "Project configuration or citation"
+      "source_reference": "Project configuration or citation",
+      "gold_evidence_kind": "reconstructed"
     }
   ]
 }
@@ -144,16 +145,36 @@ Pass this with `--historical-bindings`. A supplied tree is mandatory. The
 source need not be marked historical by CLDF because the explicit binding is
 authoritative; `source_declared_historical` records whether it was.
 
+`gold_evidence_kind` is optional and says what the answer key actually is:
+`attested`, `reconstructed`, or `synthetic`. It travels into every reported
+score, because scoring against a published proto-form measures agreement with
+somebody's analysis rather than with an observation. It is omitted rather than
+guessed when unknown; silence is not the same claim as `attested`.
+
+Several internal nodes may carry `target` bindings in one payload — each is
+evaluated separately, and `inspect-run` reports a per-node accuracy — as long as
+each names a distinct source variety and a distinct node.
+
+**For a benchmark, prefer `build-benchmark` over assembling this by hand.** It
+takes a declarative definition, selects the concepts every daughter shares a
+cognate set with the gold entry, and refuses a payload whose gold variety
+survived in the lexicons. See [benchmarks and evaluation](benchmarks.md).
+
 Alternatively, pass `--historical-lineages` and `--historical-role target` or
 `anchor`. The CSV target variety ID becomes the exact internal node ID.
 Descendant and first-diverging branch declarations are validated against the
 supplied tree but do not determine traversal.
 
 Targets never enter the model prompt or tool context. Result JSON reports
-top-candidate and beam-level exact token matches per concept. Target-only
-concepts are retained and reported as missing reconstruction coverage. Anchors
-do enter the prompt and trajectory, so their concepts must exist in the
-evidence and they follow the configured anchor policy.
+top-candidate and beam-level exact token matches per concept, and beside them
+edit distance, normalized edit distance, and B-Cubed F1 against the nearest gold
+alternative, plus the best NED any retained candidate reached. Target-only
+concepts are retained and reported as missing reconstruction coverage — they are
+excluded from the graded distances rather than scored as maximally wrong, since
+folding a missing form in as NED 1.0 would let a node improve its distance by
+producing fewer forms. Anchors do enter the prompt and trajectory, so their
+concepts must exist in the evidence and they follow the configured anchor
+policy.
 
 ## External anchors
 
@@ -439,6 +460,7 @@ is retrieved on demand.
 | `summarize_correspondences` | Correspondence sets over every cognate set at once, by support, paginated. |
 | `list_concepts` | Paginated concepts, glosses, counts, and node IDs. |
 | `search_forms` | Exact semantic/segment/cognate/node filtering. |
+| `polarize` | What every node outside the active children shows in the aligned columns of one correspondence, with counts and the observed/reconstructed split. No verdict on which value is original. |
 | `list_available_nodes` | Observed and completed internal evidence only, flagging nodes with a retrievable hypothesis. |
 | `get_node_reconstruction` | Rules, anomalies, and summary committed at one already-reconstructed node; read-only and never scored. |
 | `get_alignments` | LingPy MSA held once, plus one pairwise correspondence view per node pair referencing it by ID. |
@@ -449,7 +471,20 @@ is retrieved on demand.
 
 Rule IDs are optional labels in cascade and commit calls. If omitted, the
 harness deterministically derives a stable ID from the exact DSL and ordered
-child scope; no linguistic content is inferred.
+child scope; no linguistic content is inferred. `test_sound_law` derives the
+same ID for the rule it tests, so a rejection naming a `rule_id` names something
+the session has already seen.
+
+`test_sound_law`, `test_rule_cascade`, and `commit_reconstruction` each carry two
+further blocks. `contrast_reduction`/`contrast_reductions` names any rule that
+deletes a segment or merges two of a child's distinct segments into one, with a
+count of how many available nodes still attest the discarded material.
+`held_out` runs the same rules over the concepts the node withheld — a split
+seeded from the node ID, reported in the prompt payload's `concept_holdout` and
+identical across a resume. Both are reports; neither rejects. What *is* rejected
+is a commit whose contrast-reducing rules omit `directionality_rationale`, under
+`missing-directionality-rationale`, on absence only — the harness never inspects
+what the rationale says.
 
 A committed rule needs only `dsl`, `source_child_ids`, and `confidence`. The
 per-rule `validation_call_id` may be omitted, in which case the harness resolves
@@ -522,7 +557,12 @@ compacted, and neither is the most recent result for any tool.
 
 The result JSON includes the full traversal snapshot, each best internal
 lexicon, beams, rule reports, anomaly reports, mechanical diagnostics, and
-held-out historical target evaluations where configured.
+held-out historical target evaluations where configured — one per internal node
+carrying gold, each with exact match, edit distance, normalized edit distance,
+B-Cubed F1, and the best NED any retained candidate reached, per concept and
+aggregated as distributions. An evaluation over a node the run walked over as an
+identity fallback is marked `failure_fallback`: it measures the fallback, not a
+reconstruction.
 
 Trajectory schema 2.0 contains run/configuration identifiers, instruction/tool/
 payload/schema hashes, provider response metadata, the complete validated
@@ -546,6 +586,20 @@ a curator tells a 2.0 record written before the failure counters from one
 written after, without hashing anything by hand — `schema_version` stays `2.0`
 across additive, defaulted fields on purpose.
 
+It also reports **distributions, not only pooled means**: per-trajectory
+protocol-failure rate, child convergence, held-out convergence,
+contrast-reducing rule count, and rule coverage each come with a mean, a
+standard deviation, quartiles, and a range, and `per_node` carries one row per
+node session. A threshold cannot be calibrated against a number that has already
+been averaged.
+
+Passing `--result <result.json>` (repeatable) folds in the graded held-out gold
+accuracy under `gold_target_evaluation`, excluding and counting any evaluation
+computed over a fallback node. **Do not confuse that with
+`held_out_convergence_rate`**: the first is the answer key, the second is a
+split of the session's own concepts that never leaves the node and makes no
+claim about correctness.
+
 ### Reading one run: `inspect-run`
 
 ```bash
@@ -557,12 +611,34 @@ cognate-reconstruct inspect-run --run-dir runs/family --all-forms
 Reads `result.json` and `trajectories.jsonl`, plus `events.jsonl` when it is
 there, and prints plain text on stdout. Per node it reports the session shape
 (turns, tool calls, rejections split into protocol and exploratory and grouped
-by structural error code, truncations and recoveries, retries, duration, token
-usage), the committed hypothesis (each rule's DSL, child scope, confidence,
-resolved validation, supporting-form count, rationale, anomalies, summary), the
+by structural error code, whether the directionality claim rested on retrieved
+evidence, truncations and recoveries, retries, duration, token usage), the
+committed hypothesis (each rule's DSL, child scope, confidence, resolved
+validation, supporting-form count, rationale, anomalies, summary), the
 deterministic diagnostics, the best reconstructed lexicon, and `high_quality`
 **with the specific condition it failed** when it failed. A family summary and
 any held-out historical target evaluation follow.
+
+Two lines in the per-node block are worth reading deliberately.
+
+`gold exact`, `gold distance`, `gold beam best`, and `gold b-cubed` appear where
+a node carries gold, and they appear **inside** the `DETERMINISTIC OUTCOME`
+block, below `rule coverage`, `contrast loss`, `child convergence`, `held-out
+concepts`, `branch support`, `evidence coverage`, and `tie-broken forms`. That
+placement is the point: an accuracy is the number most likely to be quoted
+alone, and a node can be exact on half its concepts by discarding a distinction
+its sisters preserved. Normalized edit distance is better when *lower* and
+B-Cubed F1 better when higher; each line says which. Where the node was walked
+over as an identity fallback, a `gold caveat` line says the score measures the
+fallback rather than a reconstruction.
+
+`directionality` counts the session's `polarize` calls, how many returned an
+out-group at all, and how many committed rules carry a
+`directionality_rationale`. It is entirely structural — `polarize` tags every
+node it reports with a `relation` — and never a reading of the rationale's
+prose. At the root it always fires, because nothing lies outside the root; below
+the root, a session that claimed out-group support where the tool returned none
+is worth a human's attention. It gates nothing.
 
 Flags: `--run-dir` (required), `--html PATH` to also write one self-contained
 HTML file with no external CSS, JS, fonts or images, and `--all-forms` to list
@@ -594,6 +670,36 @@ The validator reports `committed_no_op_rules` and
 by rule testing, cascade preview, and commit; identity reconstruction uses an
 empty `rules` array. Historical append-only records with no-op rules remain
 schema-valid for audit but cannot pass the `high_quality` filter.
+
+## Benchmarks, seeds, and graded evaluation
+
+Held-out evaluation, the benchmark builder, the multi-seed runner, and the
+synthetic families have their own guide:
+[benchmarks and evaluation](benchmarks.md). In short:
+
+```bash
+# build a published benchmark from a declarative definition and local CLDF
+python -m cognate_reconstruction.cli build-benchmark --name polynesian
+
+# run it N times and aggregate with spread, never a single number
+python -m cognate_reconstruction.cli run-benchmark \
+  --benchmark polynesian --model google/gemma-4-26b-a4b --preset lm-studio \
+  --seeds 5 --out-dir runs/sweep-polynesian
+
+# generate a family whose gold and whose sound changes are known by construction
+python -m cognate_reconstruction.cli build-synthetic --name synthetic_hard
+
+# score a run's committed changes and their direction against that answer key
+python -m cognate_reconstruction.cli score-synthetic \
+  --answer-key runs/benchmarks/synthetic_hard.answer-key.json \
+  --run-dir runs/my-run
+```
+
+`summarize-trajectories --result <result.json>` folds the graded held-out gold
+accuracy into the trajectory summary. Note that **"held out" means two different
+things**: `held_out_convergence_rate` is a per-node split of the session's own
+concepts and makes no claim about correctness, while
+`gold_target_evaluation` is the answer key.
 
 ## Diagnostics
 

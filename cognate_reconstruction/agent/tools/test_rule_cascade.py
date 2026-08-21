@@ -8,11 +8,15 @@ from cognate_reconstruction.agent.schemas import (
     TestRuleCascadeArgs,
     TestRuleCascadeResult,
 )
+from cognate_reconstruction.agent.tools.contrast import (
+    contrast_reduction_reports,
+)
 from cognate_reconstruction.agent.tools.convergence import cascade_convergence
 from cognate_reconstruction.agent.tools.errors import (
     ToolInputError,
     parse_rule_or_reject,
 )
+from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.rules import ReconstructionRule
 
@@ -92,9 +96,23 @@ def test_rule_cascade(
     )
     # Whether the branches now agree on a parent is the point of the cascade, and
     # working it out from the intermediate diffs was left to the model. It is
-    # reported, never enforced: divergence is not a protocol error.
+    # reported, never enforced: divergence is not a protocol error. So are the
+    # two blocks beside it: which rules of this order give up a distinction, and
+    # what the whole order does on the concepts the node held out.
     result = result.model_copy(
-        update={"convergence": cascade_convergence(result)}
+        update={
+            "convergence": cascade_convergence(result),
+            "contrast_reductions": contrast_reduction_reports(
+                context,
+                parsed,
+                segmentation_overlay_id=arguments.segmentation_overlay_id,
+            ),
+            "held_out": held_out_evaluation(
+                context,
+                parsed,
+                segmentation_overlay_id=arguments.segmentation_overlay_id,
+            ),
+        }
     )
     context.cascade_validations[call_id] = result
     return result

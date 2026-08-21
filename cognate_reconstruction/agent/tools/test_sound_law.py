@@ -3,12 +3,21 @@
 from __future__ import annotations
 
 from cognate_reconstruction.agent.context import AgentContext
-from cognate_reconstruction.agent.schemas import TestSoundLawArgs, TestSoundLawResult
+from cognate_reconstruction.agent.schemas import (
+    TestSoundLawArgs,
+    TestSoundLawResult,
+    derive_rule_id,
+)
+from cognate_reconstruction.agent.tools.contrast import (
+    contrast_reduction_reports,
+)
 from cognate_reconstruction.agent.tools.errors import (
     ToolInputError,
     parse_rule_or_reject,
 )
+from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.schemas.common import WorkbenchModel
+from cognate_reconstruction.schemas.rules import ReconstructionRule
 
 
 def test_sound_law(
@@ -23,7 +32,12 @@ def test_sound_law(
             f"rule targets inactive children: {unknown}",
             code="inactive-children",
         )
-    rule = parse_rule_or_reject(arguments.dsl)
+    # The ID a commit of this rule would carry, so the contrast report here
+    # and the rejection there name the same rule.
+    rule = parse_rule_or_reject(
+        arguments.dsl,
+        rule_id=derive_rule_id(arguments.dsl, arguments.source_child_ids),
+    )
     selected_concepts = set(arguments.concept_ids)
     forms = tuple(
         form
@@ -50,6 +64,22 @@ def test_sound_law(
         anchor_expected=anchor_expected,
     )
     supporting = tuple(result.form_id for result in report.results if result.locations)
+    # Both are measured over the node rather than over the requested selection:
+    # a rule tested on one concept is exactly the rule whose behaviour outside
+    # that concept nobody had reported.
+    scoped = (
+        ReconstructionRule(
+            rule=rule,
+            source_child_ids=arguments.source_child_ids,
+            # A single test is mechanical; confidence belongs to the commit.
+            confidence=1.0,
+        ),
+    )
+    reductions = contrast_reduction_reports(
+        context,
+        scoped,
+        segmentation_overlay_id=arguments.segmentation_overlay_id,
+    )
     result = TestSoundLawResult(
         validation_call_id=call_id,
         parsed_rule=rule,
@@ -57,6 +87,12 @@ def test_sound_law(
         segmentation_overlay_id=arguments.segmentation_overlay_id,
         report=report,
         supporting_form_ids=supporting,
+        contrast_reduction=reductions[0] if reductions else None,
+        held_out=held_out_evaluation(
+            context,
+            scoped,
+            segmentation_overlay_id=arguments.segmentation_overlay_id,
+        ),
     )
     context.validations[call_id] = result
     return result

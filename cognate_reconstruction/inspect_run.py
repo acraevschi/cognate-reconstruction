@@ -26,11 +26,15 @@ from pathlib import Path
 from typing import Any
 
 from cognate_reconstruction.agent.error_codes import classify_tool_error_code
+from cognate_reconstruction.agent.schemas import MessageRole
 from cognate_reconstruction.agent.trajectory import (
     AgentTrajectory,
     TrajectoryDatasetBuilder,
 )
-from cognate_reconstruction.schemas.historical import HistoricalTargetEvaluation
+from cognate_reconstruction.schemas.historical import (
+    GoldEvidenceKind,
+    HistoricalTargetEvaluation,
+)
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon
 
 RESULT_FILE = "result.json"
@@ -594,6 +598,8 @@ def _session_rows(
         f"{metrics.forced_tool_choice_count} forced tool choice(s), "
         f"{metrics.truncation_backoff_applied} max_tokens backoff(s)"
     )
+    if (row := _directionality_row(directionality_evidence(trajectory))) is not None:
+        rows.append(row)
     rows.append(("truncation", truncation))
     rows.append(("retries", str(metrics.retry_count)))
     rows.append(("duration", f"{metrics.duration_seconds:.1f}s"))
@@ -622,7 +628,217 @@ def _session_rows(
     return tuple(rows)
 
 
-def _diagnostic_rows(trajectory: AgentTrajectory) -> tuple[tuple[str, str], ...]:
+GOLD_KIND_NOTE = {
+    GoldEvidenceKind.ATTESTED: "attested",
+    GoldEvidenceKind.RECONSTRUCTED: (
+        "a published reconstruction, not an observation"
+    ),
+    GoldEvidenceKind.SYNTHETIC: "gold by construction, not a language",
+}
+"""How each kind of answer key is described wherever a score against it appears.
+
+Read through `gold_kind_note`, never indexed directly: a report must not be the
+thing that crashes because somebody added an enum member.
+"""
+
+
+def gold_kind_note(kind: GoldEvidenceKind | None) -> str | None:
+    if kind is None:
+        return None
+    return GOLD_KIND_NOTE.get(kind, kind.value)
+
+
+def _gold_rows(
+    evaluation: HistoricalTargetEvaluation | None,
+) -> tuple[tuple[str, str], ...]:
+    """Accuracy against the withheld gold, as rows of the same block.
+
+    Deliberately inside `DETERMINISTIC OUTCOME` and deliberately not first. An
+    accuracy is the number a reader will quote alone if it is allowed to stand
+    alone, and it means little without the coverage, contrast-loss, convergence,
+    and tie-break lines above it: a node can be exact on half its concepts by
+    discarding a distinction its sisters preserved.
+
+    "gold" here is the answer key — proto-forms removed from the lexicons before
+    the run. It is a different thing from the `held-out concepts` line above,
+    which is a split of this node's *own* concepts that never leaves the session.
+    """
+    if evaluation is None:
+        return ()
+    graded = evaluation.graded
+    rows = [
+        (
+            "gold exact",
+            f"{evaluation.top_exact_matches}/{evaluation.evaluated_concepts} "
+            f"top ({evaluation.top_exact_rate:.2f}), "
+            f"{evaluation.beam_exact_matches} somewhere in the beam "
+            f"({evaluation.beam_exact_rate:.2f}) vs "
+            f"{evaluation.source_variety_id}"
+            + (
+                f" [{note}]"
+                if (note := gold_kind_note(evaluation.gold_evidence_kind))
+                else ""
+            ),
+        )
+    ]
+    if graded is not None and graded.top_normalized_edit_distance is not None:
+        rows.append(
+            (
+                "gold distance",
+                "normalized edit distance, lower is better — top "
+                f"{graded.top_normalized_edit_distance.compact()}",
+            )
+        )
+        if graded.beam_best_normalized_edit_distance is not None:
+            gap = graded.normalized_edit_distance_selection_gap
+            rows.append(
+                (
+                    "gold beam best",
+                    "best NED reached by any retained candidate — "
+                    f"{graded.beam_best_normalized_edit_distance.compact()}"
+                    + (
+                        f"; selection gap {gap:.3f} NED"
+                        if gap is not None
+                        else ""
+                    ),
+                )
+            )
+        if graded.top_bcubed_f1 is not None:
+            rows.append(
+                (
+                    "gold b-cubed",
+                    "structural agreement F1, higher is better — "
+                    f"{graded.top_bcubed_f1.compact()}",
+                )
+            )
+    if evaluation.failure_fallback:
+        rows.append(
+            (
+                "gold caveat",
+                "this node was NOT reconstructed; the score above measures the "
+                "harness's identity fallback and is not a reconstruction result",
+            )
+        )
+    return tuple(rows)
+
+
+@dataclass(frozen=True)
+class DirectionalityEvidence:
+    """What a session actually retrieved before claiming which branch innovated.
+
+    Prompt 04 made the claim mandatory for any contrast-reducing rule and
+    deliberately never grades what it says: a memorised answer dressed in a
+    citation of real evidence is indistinguishable from a derived one, and the
+    harness cannot tell them apart. What it *can* tell apart is whether the
+    evidence was fetched at all, and what the evidence tool returned when it
+    was.
+
+    That distinction is entirely structural. `polarize` tags every node it
+    reports with a `relation`, so "this call returned no out-group" is a fact
+    about the tool result and not a reading of the model's prose. Nothing here
+    inspects a rationale's content, and nothing here gates anything.
+    """
+
+    polarize_calls: int
+    calls_returning_outgroup: int
+    contrast_reducing_rules: int | None
+    rules_with_rationale: int
+
+
+def directionality_evidence(
+    trajectory: AgentTrajectory,
+) -> DirectionalityEvidence:
+    calls = returning = 0
+    for message in trajectory.messages:
+        if message.role is not MessageRole.TOOL or message.name != "polarize":
+            continue
+        calls += 1
+        try:
+            envelope = json.loads(message.content or "{}")
+        except json.JSONDecodeError:
+            continue
+        # Tool messages carry a `ToolExecutionResult`, so the tool's own payload
+        # is under `result`; a rejected call has `error` instead and reports no
+        # nodes at all.
+        result = envelope.get("result")
+        nodes = (result or {}).get("nodes") or []
+        if any(
+            isinstance(node, Mapping) and node.get("relation") == "outgroup"
+            for node in nodes
+        ):
+            returning += 1
+    commit = trajectory.committed_reconstruction
+    step = trajectory.reconstruction_step
+    return DirectionalityEvidence(
+        polarize_calls=calls,
+        calls_returning_outgroup=returning,
+        contrast_reducing_rules=(
+            step.diagnostics.contrast_reducing_rule_count
+            if step is not None
+            else None
+        ),
+        rules_with_rationale=(
+            sum(
+                rule.directionality_rationale is not None
+                for rule in commit.request.rules
+            )
+            if commit is not None
+            else 0
+        ),
+    )
+
+
+def _directionality_row(
+    evidence: DirectionalityEvidence,
+) -> tuple[str, str] | None:
+    """One line saying whether the direction claim rests on retrieved evidence.
+
+    Three shapes are worth a reader's attention, and each is decidable without
+    reading a word of the rationale:
+
+    - a contrast-reducing rule committed with no `polarize` call at all;
+    - every `polarize` call returning no out-group, which is what happens at the
+      root, where nothing lies outside the node and every available node is a
+      descendant — that is, a prior hypothesis about the very proposition under
+      test;
+    - evidence retrieved and out-groups found, which is the shape a reviewer can
+      follow.
+
+    The middle case is the one the first live run produced: at
+    `proto_polynesian` a rationale cited out-group support when `polarize` had
+    returned none. Whether the rationale is *wrong* still needs a human — it may
+    be recalling something seen at a lower node, or be loosely worded — which is
+    exactly why this is a report.
+    """
+    if not evidence.rules_with_rationale and not evidence.polarize_calls:
+        return None
+    if evidence.polarize_calls == 0:
+        return (
+            "directionality",
+            f"{evidence.rules_with_rationale} rule(s) claim which branch "
+            "innovated, and polarize was never called: the claim was not made "
+            "against retrieved out-group evidence at this node",
+        )
+    detail = (
+        f"{evidence.polarize_calls} polarize call(s), "
+        f"{evidence.calls_returning_outgroup} of which returned an out-group; "
+        f"{evidence.rules_with_rationale} rule(s) carry a rationale"
+    )
+    if evidence.polarize_calls and not evidence.calls_returning_outgroup:
+        detail += (
+            ". NO OUT-GROUP WAS RETURNED AT THIS NODE — every available node "
+            "lay inside its own subtree, which is what the root looks like. A "
+            "rationale citing out-group support cannot be citing evidence "
+            "obtained here. The harness does not read the rationale; this is a "
+            "property of the tool results"
+        )
+    return ("directionality", detail)
+
+
+def _diagnostic_rows(
+    trajectory: AgentTrajectory,
+    evaluation: HistoricalTargetEvaluation | None = None,
+) -> tuple[tuple[str, str], ...]:
     step = trajectory.reconstruction_step
     if step is None:
         return ()
@@ -671,7 +887,34 @@ def _diagnostic_rows(trajectory: AgentTrajectory) -> tuple[tuple[str, str], ...]
         # applied / applicable: a child that never showed the target is vacuous
         # for the rule, not a counterexample to it.
         ("rule coverage", f"{diagnostics.rule_coverage:.2f}"),
+        # Printed immediately after coverage, because coverage rises when rules
+        # fire and the cheapest way to make a rule fire is to delete a
+        # distinction. Without this line a node that scored high coverage by
+        # discarding contrasts reads as the best node in the run.
+        (
+            "contrast loss",
+            "not recorded (step predates the measure)"
+            if diagnostics.contrast_reducing_rule_count is None
+            else (
+                f"{diagnostics.contrast_reducing_rule_count} of "
+                f"{diagnostics.rule_count} rule(s) delete or merge a distinction"
+            ),
+        ),
         ("child convergence", convergence),
+        # The same measure on the concepts the session did not select. It is the
+        # only number in this block not computed over the evidence the rules
+        # were fitted to, which is exactly why it is worth a line of its own.
+        (
+            "held-out concepts",
+            "not recorded"
+            if trajectory.metrics.held_out_convergence_rate is None
+            else (
+                f"{trajectory.metrics.held_out_convergence_rate:.2f} child "
+                "convergence over "
+                f"{_reported(trajectory.metrics.held_out_concept_count)} "
+                "withheld concept(s)"
+            ),
+        ),
         (
             "branch support",
             "not recorded"
@@ -707,6 +950,7 @@ def _diagnostic_rows(trajectory: AgentTrajectory) -> tuple[tuple[str, str], ...]
                 + " chosen by segment order, not mass"
             ),
         ),
+        *_gold_rows(evaluation),
         (
             "misses",
             f"target absent {diagnostics.target_absent}, context mismatches "
@@ -749,6 +993,7 @@ def _node_report(
     *,
     form_limit: int | None,
     failure_fallback: bool = False,
+    evaluation: HistoricalTargetEvaluation | None = None,
 ) -> NodeReport:
     commit = trajectory.committed_reconstruction
     forms = _best_forms(trajectory, result)
@@ -779,7 +1024,7 @@ def _node_report(
         summary=commit.request.summary if commit is not None else None,
         rules=_rule_rows(trajectory),
         anomalies=anomalies,
-        diagnostics=_diagnostic_rows(trajectory),
+        diagnostics=_diagnostic_rows(trajectory, evaluation),
         forms=tuple(forms),
         omitted_forms=omitted,
         high_quality=trajectory.high_quality,
@@ -787,20 +1032,70 @@ def _node_report(
     )
 
 
-def _historical_lines(result: Mapping[str, Any] | None) -> tuple[str, ...]:
+def _target_evaluations(
+    result: Mapping[str, Any] | None,
+) -> tuple[HistoricalTargetEvaluation, ...]:
     if result is None:
         return ()
+    return tuple(
+        _validated(HistoricalTargetEvaluation, raw)
+        for raw in result.get("historical_target_evaluations", [])
+    )
+
+
+def _historical_lines(
+    evaluations: Sequence[HistoricalTargetEvaluation],
+) -> tuple[str, ...]:
+    """One line per node that carried gold, exact scores beside the graded ones.
+
+    Every node with a target binding appears here, not only the root, so a
+    family whose root is good and whose lower nodes are bad is distinguishable
+    from a uniformly mediocre one.
+    """
     lines = []
-    for raw in result.get("historical_target_evaluations", []):
-        evaluation = _validated(HistoricalTargetEvaluation, raw)
-        lines.append(
-            f"{evaluation.node_id} vs {evaluation.source_variety_id}: "
+    for evaluation in evaluations:
+        line = (
+            f"{evaluation.node_id} vs {evaluation.source_variety_id}"
+            + (
+                f" ({note})"
+                if (note := gold_kind_note(evaluation.gold_evidence_kind))
+                else ""
+            )
+            + ": "
             f"{evaluation.top_exact_matches}/{evaluation.evaluated_concepts} exact "
             f"top matches ({evaluation.top_exact_rate:.2f}), "
             f"{evaluation.beam_exact_matches} in beam "
             f"({evaluation.beam_exact_rate:.2f}), "
             f"{evaluation.missing_reconstruction_concepts} concept(s) missing"
         )
+        graded = evaluation.graded
+        if graded is not None and graded.top_normalized_edit_distance is not None:
+            line += (
+                "; NED (lower is better) top "
+                f"{graded.top_normalized_edit_distance.mean:.3f}"
+            )
+            if graded.beam_best_normalized_edit_distance is not None:
+                line += (
+                    " / beam best "
+                    f"{graded.beam_best_normalized_edit_distance.mean:.3f}"
+                )
+                if graded.normalized_edit_distance_selection_gap is not None:
+                    line += (
+                        " (selection gap "
+                        f"{graded.normalized_edit_distance_selection_gap:.3f})"
+                    )
+            if graded.top_bcubed_f1 is not None:
+                line += (
+                    "; B-Cubed F1 (higher is better) "
+                    f"{graded.top_bcubed_f1.mean:.3f}"
+                )
+        if evaluation.failure_fallback:
+            line += (
+                ". THIS NODE WAS NOT RECONSTRUCTED: the score measures the "
+                "identity fallback the harness committed after the session "
+                "failed"
+            )
+        lines.append(line)
     return tuple(lines)
 
 
@@ -812,6 +1107,10 @@ def build_report(
     trajectories = artifacts.trajectories
     events = _event_counts(artifacts.events)
     fallbacks = _failure_fallback_node_ids(artifacts.result)
+    evaluations = _target_evaluations(artifacts.result)
+    evaluations_by_node = {
+        evaluation.node_id: evaluation for evaluation in evaluations
+    }
     nodes = tuple(
         _node_report(
             trajectory,
@@ -819,6 +1118,7 @@ def build_report(
             events.get(trajectory.node_id),
             form_limit=form_limit,
             failure_fallback=trajectory.node_id in fallbacks,
+            evaluation=evaluations_by_node.get(trajectory.node_id),
         )
         for trajectory in trajectories
     )
@@ -907,7 +1207,7 @@ def build_report(
         header=header,
         nodes=nodes,
         family=family,
-        historical=_historical_lines(artifacts.result),
+        historical=_historical_lines(evaluations),
         observations=cross_node_observations(trajectories, artifacts.result),
         notes=artifacts.notes,
         fallback_nodes=fallback_nodes,
@@ -936,7 +1236,10 @@ def _fact_lines(
 ) -> list[str]:
     lines: list[str] = []
     for label, value in rows:
-        lines.extend(_wrapped(f"{indent}{label:<{label_width}}", value))
+        # A label at or past the column width would otherwise run straight into
+        # its value with no separator. Alignment is worth less than legibility.
+        width = max(label_width, len(label) + 1)
+        lines.extend(_wrapped(f"{indent}{label:<{width}}", value))
     return lines
 
 
@@ -1045,7 +1348,9 @@ def render_text(report: RunReport) -> str:
     lines.extend(["", "-" * TEXT_WIDTH, "FAMILY SUMMARY", "-" * TEXT_WIDTH])
     lines.extend(_fact_lines(report.family, indent="  ", label_width=16))
     if report.historical:
-        lines.append("  historical targets (exact token equality):")
+        lines.append(
+            "  historical targets (gold proto-forms withheld from the model):"
+        )
         for line in report.historical:
             lines.extend(_wrapped("    - ", line))
 
