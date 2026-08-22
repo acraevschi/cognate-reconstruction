@@ -446,7 +446,7 @@ def test_every_committed_rule_field_is_described_for_the_model() -> None:
 # ---------------------------------------------------------------------------
 # A cascade preview validates the rules it previewed
 #
-# The workflow SKILL.md prescribes — test, cascade, refine, commit — had no
+# The workflow system_prompt.md prescribes — test, cascade, refine, commit — had no
 # legal path through the commit contract: a refined rule only ever existed
 # inside the cascade, and the cascade did not satisfy the per-rule requirement.
 # ---------------------------------------------------------------------------
@@ -758,7 +758,7 @@ def test_a_rule_validated_for_another_scope_is_named_as_such() -> None:
 #
 # Reproduced from the run that died on it: two unconditioned rules collide in
 # the cascade preview, the model refines them into conditioned ones exactly as
-# SKILL.md step 9 asks, and commits the refined order.
+# system_prompt.md step 9 asks, and commits the refined order.
 # ---------------------------------------------------------------------------
 
 

@@ -6,6 +6,6 @@ from importlib.resources import files
 
 
 def load_agent_instructions() -> str:
-    return files("cognate_reconstruction.agent").joinpath("SKILL.md").read_text(
+    return files("cognate_reconstruction.agent").joinpath("system_prompt.md").read_text(
         encoding="utf-8"
     )

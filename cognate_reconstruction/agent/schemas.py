@@ -1188,6 +1188,6 @@ COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
 A requirement that lives only in code is one the model discovers by being
 rejected, which costs a turn and teaches the wrong lesson — that the harness is
 capricious rather than that the claim needs stating. These sentences duplicate
-`agent/SKILL.md` on purpose: the skill is the manual and this is the checklist
+`agent/system_prompt.md` on purpose: the system prompt is the manual and this is the checklist
 attached to the specific node.
 """

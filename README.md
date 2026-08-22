@@ -97,7 +97,7 @@ cognate_reconstruction/
 └── agent/
     ├── providers/      provider protocol and LiteLLM adapter
     ├── tools/          deterministic model-facing tools
-    ├── SKILL.md        hypothesis-manager instructions
+    ├── system_prompt.md the model's system prompt (hypothesis-manager instructions)
     ├── error_codes.py  closed rejection vocabulary and its classification
     ├── holdout.py      deterministic per-node development/held-out concept split
     ├── orchestrator.py bounded/retrying model loop
@@ -145,7 +145,7 @@ Start with:
   signal belongs — the reasoning behind the mechanical/workflow/linguistic
   split, and why a report and a gate are different kinds of decision;
 - [the migration note](MIGRATION.md) for what moved and why;
-- [the agent instructions](cognate_reconstruction/agent/SKILL.md) for the exact
+- [the agent instructions](cognate_reconstruction/agent/system_prompt.md) for the exact
   comparative-method and tool-use policy; and
 - [the archive boundary](#archive-boundary) before reviving any archived corpus
   code from the predecessor repository.
@@ -788,7 +788,7 @@ a segment into one the child does not otherwise have loses nothing and is not
 flagged.
 
 The requirement is stated in the prompt payload's `commit_requirements` as well
-as in `agent/SKILL.md`, because a requirement living only in code is one the
+as in `agent/system_prompt.md`, because a requirement living only in code is one the
 model discovers by being rejected.
 
 **What is discarded is counted.** `test_sound_law`, `test_rule_cascade`, and the
@@ -1027,7 +1027,7 @@ than the evidence is still legible — it is just no longer laundered through th
 coverage number.
 
 The metric was fixed rather than the instruction. Telling the model in
-`agent/SKILL.md` to scope rules only to children that exhibit the target would
+`agent/system_prompt.md` to scope rules only to children that exhibit the target would
 depend on the model complying, and would also press it to narrow a *linguistic*
 claim about which branches a correspondence holds for in order to satisfy a
 *mechanical* counter. That coupling is the defect, not the scope.
@@ -1639,13 +1639,13 @@ benchmark:
 | `tools/outgroup_probe.py` | Unchanged: 66 ties, ceiling 29; alphabetical 18, per-daughter 18, per-clade 23, morphs-first 25. `polarize` exposes this evidence to the model and nothing was wired into the scorer |
 | Cost of one `polarize` call | 0.23 s and 3.0 KB over ten nodes and all 46 concepts — the same order as the correspondence survey it follows. Tool schemas grew 20.3 → 23.9 KB per request |
 | Backward compatibility | `tests/workbench/fixtures/trajectory_real_pre_change.jsonl` still loads; its step reports `contrast_reducing_rule_count` as "not recorded" rather than zero, and its payload carries neither `concept_holdout` nor `commit_requirements` |
-| Live `google/gemma-4-26b-a4b`, three-language input | Clean: nine tool calls, none rejected, 34.6 s, `high_quality: 1/1`, correct `p a` / `p u r`. The committed rationale named the direction unprompted — *"Language B's f is a regular lenition of \*p"* — which is the behaviour the rewritten `SKILL.md` asks for |
+| Live `google/gemma-4-26b-a4b`, three-language input | Clean: nine tool calls, none rejected, 34.6 s, `high_quality: 1/1`, correct `p a` / `p u r`. The committed rationale named the direction unprompted — *"Language B's f is a regular lenition of \*p"* — which is the behaviour the rewritten `system_prompt.md` asks for |
 | Live `google/gemma-4-26b-a4b` on the full 7-node benchmark | **The run reached the root**, which no previous live attempt had: 7 nodes attempted, 5 committed, 2 walked over as identity fallbacks, `result.json` written, and a held-out score against gold Proto-Polynesian of **21/46 exact (0.46), 31/46 in beam (0.67)**. 95 tool calls, 12 rejected, all protocol; the two failures were `AgentLoopLimitError` at the driver's 16-turn smoke budget, not stalls. See the findings below |
 | Did the model reach for the evidence? | Yes, unprompted, on its third tool call at `tongic` — `polarize` told it six out-groups show `ʔ` in the same twelve aligned columns. Five of the ten committed rules carry a `directionality_rationale`, and four of the five cite out-group evidence by name: *"Outgroups like East Futuna and Samoan also preserve ʔ"*, *"polarize confirms k is the more widespread reflex in outgroups"* |
 | **`marquesic`, the node the gap analysis singled out** | **Fixed.** The pre-change run committed `f > h / #_` and `t > k / _a` scoped to North Marquesan — both backwards, since Hawaiian innovated them. This run committed `k > t` scoped to **Hawaiian**, with *"Hawaiian innovated k > t. NorthMarquesan preserves the parent k"*. The specific error this change exists to prevent did not recur, and the branch is named |
 | Is the requirement a stall source? | No. `missing-directionality-rationale` fired **once in 95 tool calls**, at `futunic`, and the session recovered on the next turn. The other 11 rejections are the pre-existing anomaly-schema friction, unrelated to this work |
 | `tongic` is still wrong, and now says so | It committed `ʔ > Ø` scoped to Tongan — still the branch that *preserves* `*ʔ`. What changed is that the claim is now in the open and visibly self-contradictory: the rationale reads *"Outgroups … also preserve ʔ, indicating Tongan's loss is the innovation"* while Tongan is the branch that has it, and the summary claims a parent with initial `ʔ` under a rule that deletes it. That is the designed outcome — the harness must not reject on content — and the correct rule there is `Ø > ʔ` on Niuean, which the DSL cannot express. See `prompts/06-proto-inventory.md` |
-| One weakness the run exposed, and what was done about it | At `futunic` the model pasted the harness's own finding back as its rationale — *"ʔ > Ø deletes ʔ from [EastUvea]; ʔ is attested in 8 of 11 available nodes"* — which satisfies the field and answers nothing. The old remediation rendered that note immediately after the `rule_id`, which invited the copy. **The fix is in what the rejection asks for, not in what it checks**: the counts are now labelled *"What the harness found"*, the request for the claim is separate and explicit, and it says restating the counts is not an answer. `SKILL.md` says the same. A rationale that still restates them is still accepted — content is never judged — and the test pins both halves |
+| One weakness the run exposed, and what was done about it | At `futunic` the model pasted the harness's own finding back as its rationale — *"ʔ > Ø deletes ʔ from [EastUvea]; ʔ is attested in 8 of 11 available nodes"* — which satisfies the field and answers nothing. The old remediation rendered that note immediately after the `rule_id`, which invited the copy. **The fix is in what the rejection asks for, not in what it checks**: the counts are now labelled *"What the harness found"*, the request for the claim is separate and explicit, and it says restating the counts is not an answer. `system_prompt.md` says the same. A rationale that still restates them is still accepted — content is never judged — and the test pins both halves |
 
 Re-run on **2026-08-21** for the evaluation harness:
 

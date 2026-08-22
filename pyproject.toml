@@ -28,4 +28,4 @@ where = ["."]
 include = ["cognate_reconstruction*"]
 
 [tool.setuptools.package-data]
-cognate_reconstruction = ["py.typed", "agent/SKILL.md"]
+cognate_reconstruction = ["py.typed", "agent/system_prompt.md"]

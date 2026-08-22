@@ -215,7 +215,7 @@ research-owner decision; see README, "Decisions that require research-owner inpu
 
 The same evidence is now exposed to the *model*, through the `polarize` tool, and the
 three findings above are its design. Counting per clade, the presence-only asymmetry,
-and morphology-first are stated in the tool description and in `agent/SKILL.md`; the
+and morphology-first are stated in the tool description and in `agent/system_prompt.md`; the
 two losing policies stay in this probe as the runnable form of why. If the aggregation
 in `polarize` changes, re-run this: the probe is the independent check that the
 per-clade, presence-only reading is still what the numbers support.
