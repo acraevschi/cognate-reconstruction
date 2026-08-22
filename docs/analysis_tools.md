@@ -1,6 +1,6 @@
 # Analysis tools
 
-Five standalone scripts under `tools/`. None needs a model, a provider, or the network:
+Six standalone scripts under `tools/`. None needs a model, a provider, or the network:
 they exercise the deterministic layer directly, so they run in seconds and can be pointed at
 any prepared benchmark input.
 
@@ -45,9 +45,9 @@ declarative file, so a second family is a definition rather than a second script
 
 ## `oracle_ceiling.py` — what a flawless model would score
 
-Gives every branch the best child-to-parent segment map the DSL can express, computed
-directly against the withheld gold, then runs the real `RuleBasedReconstructor` bottom-up.
-Whatever it reports is the accuracy no model can beat under the current architecture,
+Gives every branch the best child-to-parent rule set an oracle can write, computed directly
+against the withheld gold, then runs the real `RuleBasedReconstructor` bottom-up. Whatever it
+reports is the accuracy no model can beat under the current architecture *and that oracle*,
 because the model's only job — choosing rules — has been done perfectly.
 
 It prints three exact numbers — the third is the point — and the graded distances beside
@@ -55,14 +55,14 @@ them:
 
 ```
 top  exact   27/46   58.7%   what the beam reports
-beam exact   39/46   84.8%   correct form present anywhere in the beam
-selection gap            26.1%   computed but not chosen
+beam exact   40/46   87.0%   correct form present anywhere in the beam
+selection gap                 28.3%   computed but not chosen
 
 graded, against the same gold (lower is better for NED):
-  top  NED    0.158   mean normalized edit distance of the reported form
-  beam NED    0.043   best any retained candidate reached
-  NED gap     0.115   distance recoverable by choosing better
-  B-Cubed F1  0.960   structural agreement, higher is better
+  top  NED    0.147   mean normalized edit distance of the reported form
+  beam NED    0.030   best any retained candidate reached
+  NED gap     0.118   distance recoverable by choosing better
+  B-Cubed F1  0.963   structural agreement, higher is better
 ```
 
 The graded row exists because the exact counts move in steps of 1/46. A change that leaves
@@ -74,15 +74,17 @@ far more often than it reports one, which means accuracy is being lost after the
 finished, in how a parent is chosen from the child evidence. Watch this number across
 changes to `traversal/reconstructor.py` and `traversal/beam.py`.
 
-Current figures on the 46-concept Polynesian benchmark, beam width 5, recorded 2026-08-18
-after branch-support weighting landed. Before and after, at four widths:
+Current figures on the 46-concept Polynesian benchmark, beam width 5, at four widths. The
+2026-08-18 columns are the branch-support before/after; the last column is the same
+context-free oracle after the 2026-08-22 instrument repairs, and the only thing that moved is
+beam-exact:
 
-| beam width | top-1 before | top-1 after | beam-exact before | beam-exact after |
-| --- | --- | --- | --- | --- |
-| 1 | 32.6% | **47.8%** | 32.6% | 47.8% |
-| 3 | 54.3% | **56.5%** | 78.3% | 78.3% |
-| 5 | 54.3% | **58.7%** | 84.8% | 84.8% |
-| 10 | 54.3% | **56.5%** | 84.8% | 84.8% |
+| beam width | top-1 before | top-1 after | beam-exact before | beam-exact after | beam-exact, repaired |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 32.6% | **47.8%** | 32.6% | 47.8% | 47.8% |
+| 3 | 54.3% | **56.5%** | 78.3% | 78.3% | 78.3% |
+| 5 | 54.3% | **58.7%** | 84.8% | 84.8% | **87.0%** |
+| 10 | 54.3% | **56.5%** | 84.8% | 84.8% | **87.0%** |
 
 Top-1 rose at every width and beam-exact fell at none, which is the shape a *selection* fix
 should have: the same candidates, chosen better. Had top-1 risen while beam-exact fell, the
@@ -90,20 +92,21 @@ change would have been trading candidates away rather than choosing among them, 
 be a regression however good the headline looked.
 
 Top-1 was flat at 54.3% for every width of 3 or more before the change, and beam-exact still
-saturates at 84.8% by width 5 — so the remaining 26.1 points do not close by widening the
-beam either. Note that width 10 now scores *below* width 5: an ordinary beam-search artifact,
-where a wider beam keeps a distractor that accumulates enough mass to win.
+saturates by width 5 — so the remaining 28.3 points do not close by widening the beam either.
+Note that width 10 scores *below* width 5 on top-1: an ordinary beam-search artifact, where a
+wider beam keeps a distractor that accumulates enough mass to win.
 
 **These figures are now pinned in the test suite.**
 `tests/workbench/test_oracle_ceiling_regression.py` asserts top-1, beam-exact, *and the gap
-between them* at beam width 5, plus the whole width curve, against a checked-in fixture that
-is the real benchmark with per-form provenance stripped — the oracle reads only segments, the
-tree, and the gold binding, so the fixture reproduces the full-dataset numbers exactly, and a
-skipped test verifies that against `runs/benchmarks/polynesian.json` when the local corpus is
-present. The gap is asserted and not only the accuracies: a change that raises top-1 while
-lowering beam-exact has traded candidates away rather than chosen better among them, and an
-accuracy-only assertion would call that a win. The test imports `measure()` from this script,
-so the number the suite pins and the number the script prints come from one implementation.
+between them* at beam width 5, plus the whole width curve, for **both** oracles, against a
+checked-in fixture that is the real benchmark with per-form provenance stripped — the oracle
+reads only segments, the tree, and the gold binding, so the fixture reproduces the
+full-dataset numbers exactly, and a skipped test verifies that against
+`runs/benchmarks/polynesian.json` when the local corpus is present. The gap is asserted and
+not only the accuracies: a change that raises top-1 while lowering beam-exact has traded
+candidates away rather than chosen better among them, and an accuracy-only assertion would
+call that a win. The test imports `measure()` from this script, so the number the suite pins
+and the number the script prints come from one implementation.
 
 Why a regression test rather than a habit: prompt 04 edited `traversal/reconstructor.py` — it
 added `contrast_reducing_rule_count` to the diagnostics — and the only thing that showed the
@@ -113,14 +116,123 @@ The oracle is honest about what it cannot express: rules whose ordering would fo
 are dropped with a warning, and morphological boundaries are skipped because the DSL forbids
 them as rule targets.
 
-**It is also weaker than the DSL, which matters when reading a miss.** `oracle_map()` assigns
-one target per source segment, globally — it is context-free — while the rule language has
-left/right contexts and word edges. A form the oracle cannot produce is therefore *not*
-evidence that the architecture cannot produce it. Tongan `ʔ e l e l o` reaches gold
-`ʔ a l e l o` with the single rule `e > a / ʔ_`, which the DSL expresses and the oracle
-cannot write. Treat the ceiling as a bound on *this oracle*, not on the harness, and never
-quote a miss as proof of a structural limit without checking whether a context-sensitive rule
-would reach it.
+### Two oracles, and the second never replaces the first
+
+`--oracle context_free` (the default) assigns one target per source segment, **globally**. The
+rule language does not: it has left and right contexts and word edges. So a form the
+context-free oracle cannot produce is *not* evidence that the architecture cannot produce it.
+Tongan `ʔ e l e l o` reaches gold `ʔ a l e l o` with the single rule `e > a / ʔ_`, which the
+DSL expresses and that oracle cannot write.
+
+`--oracle contextual` is the rule writer as strong as the rule language. Per branch, per
+aligned column against the withheld gold, it records the source segment, the gold target and
+the child-side neighbours; per source segment it searches the environments the DSL can spell —
+word-initial, word-final, a single left token, a single right token, and the four two-part
+combinations — for environments that **purely** separate one target from another; it emits the
+conditioned rules before the unconditioned default, orders sources by the same feeding
+argument `order_rules()` uses, and **falls back to the context-free cascade on any branch it
+would make worse**, which is what makes it ≥ the first measure per branch by construction
+rather than by argument.
+
+Polynesian, beam width 5, both columns from the same run of the same reconstructor:
+
+| Measure | context-free (the pinned baseline) | context-sensitive |
+| --- | --- | --- |
+| top-1 exact | 27/46 — 58.7% | **33/46 — 71.7%** |
+| beam exact | 40/46 — 87.0% | 40/46 — 87.0% |
+| exact selection gap | 13 concepts, 28.3 pts | **7 concepts, 15.2 pts** |
+| mean top NED | 0.147 | **0.097** |
+| mean beam-best NED | 0.030 | **0.024** |
+| mean top B-Cubed F1 | 0.963 | 0.963 |
+| rules written | 52 over 16 branches | **249 over 16 branches**, 1 branch fell back |
+
+| beam width | top-1 cf | top-1 ctx | beam-exact cf | beam-exact ctx |
+| --- | --- | --- | --- | --- |
+| 1 | 22 | 22 | 22 | 22 |
+| 3 | 26 | **32** | 36 | **39** |
+| 5 | 27 | **33** | 40 | 40 |
+| 10 | 26 | **33** | 40 | 40 |
+
+**Six concepts of top-1 were being attributed to the architecture and belong to the oracle.**
+Nothing regressed at any width, which is the shape the fallback guarantees.
+
+**The context-free measure keeps its identity and stays the default**, because every recorded
+baseline on this page was taken with it and silently redefining it would make every
+before/after uncomparable — the failure `tools/_bootstrap.py` exists to prevent at one remove.
+New measures land beside it, never in place of it.
+
+**Neither number is a target.** The contextual oracle writes 249 rules across 16 branches,
+roughly sixteen per branch and many of them conditioned on a single word. That is a perfect
+rule writer, not a plausible analysis, which is exactly what an oracle is for: it bounds the
+architecture. Quoting 33/46 as "what a good model should get" is the same category error as
+quoting a context-free miss as a structural limit.
+
+### Which node's gold, stated rather than assumed
+
+`measure()` took `bindings[0]` and scored the **root** beam against it. On a family carrying
+gold at several nodes that is whichever binding was written first — `east` on
+`synthetic_hard`, not `proto` — so the published figure was the root beam scored against a
+sister's gold, under the root's name. It now defaults to the root's own binding, refuses to
+guess where the root has none, scores the beam at whichever node it was given, and carries
+`gold_node_id` in the text output and in `--json`. `measuring:` already stopped a figure being
+quoted from the wrong checkout; nothing stopped one being quoted from the wrong node.
+
+```bash
+python tools/oracle_ceiling.py runs/benchmarks/synthetic_hard.json --gold-node east
+```
+
+### Every gold alternative is scored, not only the last
+
+The gold used to be built with a dict comprehension over `binding.forms`, so a concept whose
+binding carries alternatives kept whichever was written last. Two Polynesian concepts do, and
+`1443` WALK carries four — `r oː`, `ʔ a l u`, `s a ʔ e l e`, `f a n o` — of which only
+`f a n o` survived. `HistoricalTargetEvaluation` has always scored through
+`compare_to_nearest` over `target_segment_alternatives`, so the harness honoured all four and
+the instrument bounding it did not. Scoring through `compare_to_nearest` moves context-free
+beam-exact **39 → 40** and the graded means with it (top NED 0.158 → 0.147, beam-best NED
+0.043 → 0.030, B-Cubed F1 0.960 → 0.963); top-1 does not move, and the contextual oracle does
+not move at all.
+
+### The rule ordering was backwards, and fixing it moved the ceiling by zero
+
+`order_rules()` documents the feeding argument correctly — "a rule whose target is another
+rule's replacement must therefore run first" — and from `febf03b` (2026-08-17) to 2026-08-22
+implemented the opposite, emitting a source once nothing mapped *into* it. On its own worked
+example it returned `[(k,t), (t,s)]` where the docstring says `[(t,s), (k,t)]`.
+
+It fired on the real benchmark. Hawaiian merges nothing but chain-shifts twice — `*t > k` and
+`*k > ʔ` — so its oracle map is `{ʔ: k, k: t, …}` and the emitted order was `ʔ > k` before
+`k > t`:
+
+```
+Hawaiian  ʔ a k a   --[ʔ > k]-->  k a k a  --[k > t]-->  t a t a     reported
+Hawaiian  ʔ a k a   --[k > t]-->  ʔ a t a  --[ʔ > k]-->  k a t a     gold
+```
+
+Per branch, applying each daughter's own context-free cascade to its own forms and counting
+exact matches against the root gold:
+
+| branch | before | after |
+| --- | --- | --- |
+| **Hawaiian** | **15/46** | **22/46** |
+| every other daughter | unchanged | unchanged |
+| total over ten daughters | 214 | **221** |
+
+Only Hawaiian moves, because only Hawaiian has a chain shift. (Counting against every gold
+alternative rather than the last-listed one, the same figures are 215 → 222: Tongan's
+`ʔ a l u` for `1443` was always correct and was always scored a miss.)
+
+**And the tree-level ceiling does not move at all.** With the ordering corrected and nothing
+else changed, top-1 is 27/46, beam-exact 39/46, mean top NED 0.158, and the whole width curve
+is identical to the figure pinned before the fix. A branch that produces seven more correct
+forms changes nothing about what the root reports, which is the most direct evidence on this
+page that the accuracy this harness loses is not lost in the rules — it is lost in the step
+that picks one whole string out of a beam. It is also why the pinned figure survived the
+defect: reassuring about the pin, alarming about the instrument.
+
+On `synthetic_hard`, which was generated with a chain shift on purpose, the same fix is worth
+seven concepts *at the root*: scored against `proto`, top-1 goes **15/25 → 22/25**, beam-exact
+25/25 throughout, mean top NED 0.098 → 0.030.
 
 ### Every run says which source it measured
 
@@ -145,6 +257,61 @@ just running the script in each, and the two `measuring:` lines prove they were 
 `--json` carries the same field. A machine consumer is exactly the reader least able to
 notice that a number came from the wrong checkout, so `measuring` is in every JSON object
 these scripts emit, alongside `benchmark`.
+
+## `assembly_ceiling.py` — what a flawless *assembler* would reach
+
+The companion to `oracle_ceiling.py`, answering the other half of the question. The oracle
+asks what a perfect rule writer reaches when a proto-form has to be one branch's whole output,
+selected from a beam. This asks what a perfect assembler reaches when each column of the
+multiple alignment contributes one proto-phoneme, or nothing — the shape
+`docs/proto_inventory_design.md` proposes. That makes reachability decidable rather than
+searchable: it is a subsequence problem over the columns, so the script computes an exact
+bound in one pass, with no beam, no rules and no model.
+
+Polynesian, 46 concepts:
+
+| assembly variant | reachable | cannot reach |
+| --- | --- | --- |
+| flat — align all ten daughters at the root, assemble once | **43/46 — 93.5%** | `1028`, `1217`, `778` |
+| node-local — assemble at each internal node from its children, bottom-up | **44/46 — 95.7%** | `1028`, `778` |
+| free choice — any proto-phoneme, not only an attested reflex | 46/46 | — |
+
+**The free-choice row is printed to be dismissed.** The alignment always has enough columns,
+so the bound is vacuous; it is computed only so nobody re-derives it and believes it. The
+informative rows are the reflex-restricted ones, and they are a **lower** bound, because a
+proto-phoneme genuinely need not be one of its reflexes:
+
+- `1028` YAWN, gold `m a w a + w a` — **no daughter shows `w` anywhere.** EastFutuna and
+  Samoan show `v`, the rest a gap.
+- `778` SMOKE, gold `ʔ a h u + a f i` — the same: `f` appears in no daughter (Samoan `s`, the
+  rest `h` or `ʔ`).
+- `1217` FATHER, gold `t a m a + n a` — the daughters carry two lexemes (`m a t u a` against
+  `t a m a`), and the ten-way SCA alignment puts them in non-overlapping columns. That is an
+  alignment failure, not an assembly one, and it is exactly why node-local scores *above*
+  flat: the same material aligned in smaller groups on the way up is aligned correctly, and
+  `t a m a + n a` assembles at the root.
+
+**node-local is the honest number for the proposed design**, because assembly would happen at
+each node over that node's active children, exactly as rules do now. That it comes out above
+flat rather than below is a finding about the aligner: a single ten-way alignment is not the
+best view of the evidence, and the bottom-up one repairs a case it gets wrong. Both variants
+are reported; neither should be quoted alone.
+
+Read against the oracle table above, per-set assembly raises the *top-1* ceiling by eleven
+concepts over the context-free oracle and by six over the context-sensitive one, and raises
+reachability by four. It is overwhelmingly a **selection** fix wearing a generation change's
+clothes: the answer stops having to be chosen out of a beam because it is constructed.
+
+`--gold-node` works as it does for the oracle. On `synthetic_hard` scored at `east`, both
+variants reach 22/25 and miss exactly `leaf`, `tooth` and `tree` — the three concepts whose
+`*ʔ` both of `east`'s children lost, so the correspondence set is `⟨Ø : Ø⟩` and assembly is as
+stuck there as a cascade is. Scored at `proto`, where `west` still attests the segment, all
+three come back and every variant reaches 25/25.
+
+**Like the oracle, this is a bound and not a target.** The assembled intermediate forms are
+what a perfect column-wise chooser with full knowledge of the gold would produce, not
+plausible reconstructions, and a miss here is no more a structural limit than an oracle miss
+is.
 
 ## `tiebreak_probe.py` — does branch support decide anything?
 
@@ -177,7 +344,7 @@ the leaf-adjacent binary nodes, which is where the losses in the selection gap o
 | central_eastern | 2 | 1/46 |
 | proto_polynesian | 2 | 1/46 |
 
-By the root only one concept is still an exact tie, yet 12 of its 19 misses have the correct
+By the root only one concept is still an exact tie, yet 13 of its 19 misses have the correct
 form somewhere in the beam. The coin-flips happen low in the tree and harden into accumulated
 mass on the way up, so a node reporting no ties is not evidence that its inputs were chosen on
 evidence. This is a report and nothing consumes it: a tie is the honest output when the
@@ -259,10 +426,36 @@ Note what this measures: a property of the gold and the daughters' forms under t
 DSL, **not** of the harness. A better scorer cannot move it; a different representation of
 what gets committed is what would.
 
+**Quote it beside the cascade-based split, never alone.** This script applies a segment *map*
+by dictionary lookup; `oracle_ceiling.py` applies the real ordered *cascade* through
+`RuleEngine`, and the cascade reaches more. Asking the same question of it — does any single
+daughter, transformed by its own oracle cascade, reach the root gold? — gives:
+
+| | `branch_recoverability.py` (map) | oracle cascade, context-free | oracle cascade, contextual |
+| --- | --- | --- | --- |
+| reachable from some single daughter | 37/46 | **39/46** | **40/46** |
+| out of reach from every daughter | 9 | 7 | 6 |
+
+Context-free the six-plus-one are `1212, 1217, 1221, 1408, 1439, 646, 778`; context-sensitive
+they are `1212, 1217, 1408, 1439, 1443, 778`. `1028`, `1221` and `646` are reachable from a
+single branch once the rule writer is as strong as the rule language, so the falsification
+list is shorter than the map-based one — which is the difference between the instrument and
+the architecture, and the reason a miss under either measure is not a structural limit.
+
 ## When to re-run
 
-- **Any change to the beam, the scorer, or rule application** → `oracle_ceiling.py`, and say
-  what happened to the selection gap in the change description.
+- **Any change to the beam, the scorer, or rule application** → `oracle_ceiling.py`, both
+  oracles, and say what happened to the selection gap in the change description. Report the
+  two columns separately: the context-free one is what every baseline on this page was
+  measured with, and a new measure that replaced it rather than landing beside it would make
+  every recorded before/after uncomparable.
+- **Any change to the DSL's environment vocabulary** → `oracle_ceiling.py --oracle
+  contextual`, since the contextual builder searches exactly that space and its ceiling moves
+  with it. The context-free column is the control: if it moves too, something other than the
+  environment vocabulary changed.
+- **Any change to alignment, or to what a node may commit** → `assembly_ceiling.py`. Both
+  variants: node-local currently scores *above* flat, and a change that makes them converge
+  has probably changed how the aligner groups a concept.
 - **Any change to tie-breaking or candidate merging** → `tiebreak_probe.py`, and
   `outgroup_probe.py` if the change claims to use evidence rather than segment order.
 - **Any change to alignment or evidence tools** → `correspondence_inventory.py`, to check the
@@ -272,8 +465,8 @@ what gets committed is what would.
   `polarize` tool → `outgroup_probe.py`, and say what happened to the per-clade and
   per-daughter numbers. A change that makes them converge has probably reintroduced the
   majority vote.
-- **Any change to the DSL** → `branch_recoverability.py`, since expressiveness changes move
-  the reachability split directly.
+- **Any change to the DSL** → `branch_recoverability.py` and `assembly_ceiling.py`, since
+  expressiveness changes move the reachability split directly.
 - **Any change to benchmark selection or preparation** → rebuild both definitions with
   `build-benchmark` and check the concept counts here still hold (46 for Polynesian, 900 for
   Romance). A silent change in selection would move every baseline on this page at once.

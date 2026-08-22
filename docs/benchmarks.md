@@ -10,10 +10,12 @@ Three things are called "a benchmark" here and they answer different questions:
 | **Published** (`benchmarks/*.json`) | a proto-form somebody published, or an attested ancestor | how the harness compares to the literature and to published baselines | severe, and not fixable |
 | **Synthetic** (`benchmarks/synthetic/*.json`) | a proto-lexicon written in this repository | whether the harness recovers changes it cannot have memorized | none by construction |
 | **Oracle ceiling** (`tools/oracle_ceiling.py`) | the same gold, with perfect rules supplied | what a flawless model could score under this architecture | not applicable |
+| **Assembly ceiling** (`tools/assembly_ceiling.py`) | the same gold, assembled column-wise | what a flawless *assembler* could reach if a proto-form were built per correspondence set rather than selected whole | not applicable |
 
 An oracle number bounds the architecture. A live number measures a model. They
 are never interchangeable and the sweep report prints them in separate blocks
-for that reason.
+for that reason. The two ceilings are likewise not interchangeable with each
+other: both are bounds on a perfect chooser, and neither is a target.
 
 ## Building a published benchmark
 
@@ -175,10 +177,34 @@ Three families ship:
 | `synthetic_hard` | 5 | 25 | A merger only a sister disambiguates; a segment lost everywhere except one branch; a chain shift whose rules must be ordered; a conditioned split. Gold at three nodes. |
 | `synthetic_noisy` | 4 | 16 | `synthetic_regular` with two irregular forms, a loan, and a semantic mismatch. |
 
-Under oracle rules `synthetic_regular` scores 16/16 top-1 and
-`synthetic_hard` 22/25 top-1 with 25/25 in the beam — which is the property that
-says these are sound benchmarks rather than hard ones: the gold is reachable,
-and what is lost is lost in selection.
+Under oracle rules `synthetic_regular` scores 16/16 top-1 and `synthetic_hard`
+22/25 top-1 with 25/25 in the beam — which is the property that says these are
+sound benchmarks rather than hard ones: the gold is reachable, and what is lost
+is lost in selection. `synthetic_noisy` scores 16/16.
+
+**Read `synthetic_hard`'s figure as re-derived, not as unchanged.** Until
+2026-08-22 `oracle_ceiling.py` took the first `target` binding rather than the
+root's, and this family carries gold at three nodes with `east` written first —
+so the published 22/25 was the *root* beam scored against `east`'s gold, under
+the root's name. Against `proto`'s own gold the same oracle scored 15/25, and
+the seven missing concepts were the chain shift this family was built to contain,
+mis-ordered by `order_rules()`. Both defects are fixed; the root now scores
+22/25 against its own gold, and the two 22/25 figures are different
+measurements that coincide. Per node, beam width 5, context-free oracle:
+
+| `synthetic_hard`, `--gold-node` | top-1 | beam exact |
+| --- | --- | --- |
+| `proto` (the default: the root's own binding) | 22/25 | 25/25 |
+| `west` | 22/25 | 25/25 |
+| `east` | 22/25 | 22/25 — misses `leaf`, `tooth`, `tree` |
+
+`east` is the interesting row and it is the one §1.4 of
+`docs/proto_inventory_design.md` is about: both of `east`'s children lost `*ʔ`,
+so no rule and no assembly recovers it there. The segment survives the run only
+because `west` retains it and the root can still see it.
+
+`--oracle contextual` reaches the same 22/25 on this family — the changes are
+regular and unconditioned, so there is nothing for an environment to buy.
 
 ### Noise is a knob, off by default
 
@@ -279,22 +305,42 @@ as `held-out concepts` and the second as `gold exact` / `gold distance` /
 Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the
 live figures measure one model on one seed.
 
-| Measure | Oracle ceiling | Live `google/gemma-4-26b-a4b` |
-| --- | --- | --- |
-| top-1 exact | 27/46 — 58.7% | 21/46 — 45.7% |
-| beam exact | 39/46 — 84.8% | 31/46 — 67.4% |
-| exact selection gap | 26.1 points | 21.7 points |
-| mean top NED | 0.158 | 0.214 |
-| mean beam-best NED | 0.043 | 0.081 |
-| NED selection gap | 0.115 | 0.133 |
-| mean top B-Cubed F1 | 0.960 | 0.950 |
+| Measure | Oracle ceiling, context-free | Oracle ceiling, context-sensitive | Live `google/gemma-4-26b-a4b` |
+| --- | --- | --- | --- |
+| top-1 exact | 27/46 — 58.7% | 33/46 — 71.7% | 21/46 — 45.7% |
+| beam exact | 40/46 — 87.0% | 40/46 — 87.0% | 31/46 — 67.4% |
+| exact selection gap | 28.3 points | 15.2 points | 21.7 points |
+| mean top NED | 0.147 | 0.097 | 0.214 |
+| mean beam-best NED | 0.030 | 0.024 | 0.081 |
+| NED selection gap | 0.118 | 0.073 | 0.133 |
+| mean top B-Cubed F1 | 0.963 | 0.963 | 0.950 |
+
+The two oracle columns are two measures and not a before/after. The context-free
+one is what every earlier baseline in this repository was taken with and is the
+default; the context-sensitive one is a rule writer as strong as the DSL and
+lands beside it. See `docs/analysis_tools.md` for both and for why quoting either
+as "what a good model should get" is a category error.
+
+The oracle rows were re-recorded 2026-08-22 when four defects in the instrument
+were repaired. Beam-exact moved 39 → 40 and the graded means with it, because the
+oracle now scores against every gold alternative through `compare_to_nearest`, as
+`HistoricalTargetEvaluation` always did. Top-1 did not move — not even under a
+rule-ordering fix worth seven forms to Hawaiian, which is the finding
+`docs/analysis_tools.md` records at length.
 
 The live row is `runs/google-gemma-4-26b-a4b-20260820-212424`, one seed, seven
 nodes attempted, five committed and two walked over as identity fallbacks. It is
 a starting point, not a result: one seed is not a measurement, which is what
-`run-benchmark` exists to fix.
+`run-benchmark` exists to fix. It was measured before the alternatives fix, so
+its beam-exact and graded figures are on the stricter last-alternative-only
+reading and are not exactly comparable to the oracle columns; re-running the
+sweep re-records them.
 
 The oracle-ceiling figures are pinned in the suite by
-`tests/workbench/test_oracle_ceiling_regression.py`, including the gap between
-them, so a change to the beam cannot quietly make reconstructions worse while
-every test passes.
+`tests/workbench/test_oracle_ceiling_regression.py` — both oracles, including the
+gap between top-1 and beam-exact — so a change to the beam cannot quietly make
+reconstructions worse while every test passes.
+
+The assembly ceiling for the same benchmark is 44/46 node-local and 43/46 flat;
+it answers a different question and is documented in
+[analysis tools](analysis_tools.md).
