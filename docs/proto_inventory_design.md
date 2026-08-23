@@ -66,6 +66,12 @@ part of the review. Stage 0 lands the first as
 
 ### 0.3 The result: the cap moved, substantially
 
+> **These are the figures as this session measured them, before the four defects
+> §0.5 goes on to name were repaired.** They are kept because §0.5's argument is
+> about them. The current values are in `docs/benchmarks.md` and in §7: the
+> context-sensitive oracle is 33/46 top-1, 40/46 beam-exact and 0.097 mean top
+> NED, and the context-free one is 27/46, 40/46 and 0.147.
+
 Polynesian, 46 concepts, beam width 5,
 `measuring: /Users/acraev/Work/cognate-reconstruction/cognate_reconstruction`.
 The context-free column reproduces the pinned regression numbers exactly, which
@@ -266,6 +272,15 @@ and not measurable as accuracy at all. `f > p / _eː` scoped to Tongan alongside
 representational defect whether or not it costs a concept.
 
 ### 1.2 The ceiling of the proposed architecture
+
+> **The figures in §§1.2–1.3 are pre-stage-0 and are kept as the argument that
+> made the case, not as current measurements.** Prompt 07 repaired four defects
+> in `tools/oracle_ceiling.py` and landed `tools/assembly_ceiling.py`, and §12.5
+> then made the harness's own aligner see morphological boundaries. Node-local
+> assembly is **44/46**, not 39/46; flat is 43/46, not 42/46; the
+> context-sensitive branch-cascade oracle is 33/46 top-1 and 40/46 beam-exact.
+> §7 carries the current numbers with the commands that produce them, and
+> `docs/benchmarks.md` is the authority for the oracle rows.
 
 A proto-form assembled per correspondence set is a **column-wise choice over the
 aligned daughters**: for each column of the multiple alignment, one
@@ -1956,26 +1971,25 @@ Stated before any code, as the prompt requires. Every number is the **oracle**
 figure unless it says "live"; oracle numbers bound the architecture and live
 numbers measure a model, and they are never interchangeable.
 
-> **Every threshold below is a pre-stage-0 number and must be re-derived before
-> it is used.** This section was written before prompt 07 repaired four defects
-> in `tools/oracle_ceiling.py` and landed `tools/assembly_ceiling.py`; the
-> repaired instrument moves the node-local assembly ceiling from 39/46 to 44/46,
-> the context-sensitive oracle from 32/46 to 33/46, beam-exact to 40/46 for both,
-> and makes `1217` reachable. §12.5 has the comparison. The *questions* below
-> stand; the numbers do not.
+> **Every figure below was re-derived 2026-08-23** against
+> `tools/oracle_ceiling.py` and `tools/assembly_ceiling.py` as prompt 07
+> repaired them and as §12.5's boundary fix left them. The *questions* are the
+> ones this section was written with and are unchanged; only the numbers were
+> wrong, and §12.5 records what they were and why. Every command that produces
+> one is in §7.5.
 
 ### 7.1 What must be true
 
-The "expect" column is derived from the ceiling measurements in §1.2 and is a
-prediction, not a measurement of the unbuilt thing. The "stop" column is the
-part that binds.
+The "expect" column is derived from the ceiling measurements §1.2 argued from,
+re-measured against the repaired instruments, and is a prediction, not a
+measurement of the unbuilt thing. The "stop" column is the part that binds.
 
 | # | Instrument | Expect | **Stop if** |
 | --- | --- | --- | --- |
-| 1 | oracle assembly ceiling, Polynesian, width 5 | top-1 **≥ 39/46**, the measured node-local assembly ceiling | **top-1 < 32/46** — no better than the context-sensitive branch-cascade oracle, so the change bought nothing an `--oracle contextual` flag would not have shown |
-| 2 | oracle, reachability | `assembly_beam_exact` **≥ 41/46**, matching the strongest branch-cascade oracle | **< 40/46** — below the corrected context-free pinned figure, meaning the architecture can produce *fewer* correct answers than before. This is the prompt's beam-exact stop condition in the new architecture's terms |
-| 3 | `cross_branch_assembly_rate`, oracle | **> 0 at some node**, and `1212`, `1408`, `1439` convert to top-1 hits | **= 0 at every node** — the mixing mechanism never fired, so whatever moved was not this |
-| 4 | oracle graded | mean top NED **≤ 0.080** | **> 0.110** — worse than the context-sensitive branch-cascade top-1 it replaces |
+| 1 | oracle assembly ceiling, Polynesian, width 5 | top-1 **≥ 44/46**, the measured node-local assembly ceiling | **top-1 < 33/46** — no better than the context-sensitive branch-cascade oracle, so the change bought nothing an `--oracle contextual` flag would not have shown |
+| 2 | oracle, reachability | `assembly_beam_exact` **≥ 40/46**, matching *both* branch-cascade oracles, with 44/46 the node-local ceiling it could reach | **< 40/46** — below what both branch-cascade oracles reach, meaning the architecture can produce *fewer* correct answers than before. This is the prompt's beam-exact stop condition in the new architecture's terms |
+| 3 | `cross_branch_assembly_rate`, oracle | **> 0 at some node**, and `1212`, `1217`, `1408`, `1439`, `1443` convert to top-1 hits | **= 0 at every node** — the mixing mechanism never fired, so whatever moved was not this |
+| 4 | oracle graded | mean top NED **≤ 0.080** | **> 0.097** — worse than the context-sensitive branch-cascade top-1 it replaces |
 | 5 | `score-synthetic` on `synthetic_hard`, 5 seeds | rule precision not lower and `misdirected_rule_count` not higher than the same seeds under the rule commit shape | either worsens — **right forms via worse-attributed changes is a worse result, not a better one** |
 | 6 | `run-benchmark --seeds 5`, live, both benchmarks | top-1 up with non-overlapping spread | spreads overlap — one seed is not evidence and neither is five that disagree |
 | 7 | suite | green at every stage | any stage leaves it red |
@@ -1985,13 +1999,21 @@ accident. Conditions 1 and 2 together are the shape check: **top-1 up and
 reachability not down**, which is the same shape the branch-support change had
 and the same shape `test_oracle_ceiling_regression.py` asserts the gap for.
 
-The three concepts named in condition 3 are what is left of the prompt's
-eight-concept prediction after §0.4. `1212`, `1408` and `1439` are the concepts
-that are simultaneously (a) unreachable from any single branch under a
-context-sensitive oracle and (b) reachable by flat assembly. `1217` and `1443`
-are on the mixing list and *not* assemblable, so they must not be expected to
-convert, and expecting them would be building a stop condition the mechanism
-cannot satisfy.
+**Condition 2 changed shape, not question.** It read "≥ 41/46", set one above a
+then-measured 41; both oracles now report beam-exact **40/46**, so as phrased it
+was unsatisfiable. The question it asks — *can the new architecture produce
+fewer correct answers than the old one?* — is unchanged, and the honest form of
+it is "not below 40", with expect and stop adjacent because "reachability not
+down" is exactly a floor. It is not a demanding condition and was never meant to
+be; condition 1 is where the demand lives.
+
+**Condition 4's 0.080 is kept deliberately.** It was never derived from the
+stale instrument: it was set as a target *below* the context-sensitive oracle's
+mean top NED, which was then 0.110 and is now **0.097**. The stop threshold moves
+with the measure, the target does not, and 0.080 stays a real improvement over
+what assembly replaces. For scale, the same oracle's mean *beam-best* NED is
+0.024, which is roughly where a mechanism that removes the whole-string selection
+step should be heading.
 
 ### 7.2 What would show this was the wrong change
 
@@ -2003,10 +2025,30 @@ patch:
   by fixing `traversal/beam.py` at a fraction of the cost and without touching
   the trajectory schema. If this happens, the right change is a selection fix
   and this design should be abandoned in favour of one.
-- **`unaccounted_column_rate` above ~0.3 at most nodes under the oracle.** The
-  correspondence sets do not cover the evidence, the alignment is doing more
-  work than the inventory, and the committed object is a fiction over a residue
-  policy.
+
+  One caution before that verdict is reached: a rate of 0 is also the signature
+  of the survey and the assembler seeing different columns, which has now
+  happened twice — §12.3's beam-candidate mismatch and §12.5's stripped
+  boundaries. **Suspect the instrument before the mechanism**, and check that a
+  complete inventory still leaves `unaccounted_column_rate` near its floor.
+
+- **`unaccounted_column_rate` above ~0.3 at most nodes under the oracle**, *read
+  against the family's floor*. The correspondence sets would then not cover the
+  evidence, the alignment would be doing more work than the inventory, and the
+  committed object would be a fiction over a residue policy.
+
+  **The floor is not zero and has to be subtracted first.** On Polynesian, with a
+  proto-phoneme committed for **every one of the 246 sets the survey returns**,
+  the rate is **0.125** — 42 unaccounted columns of 336, in 11 of 46 concepts,
+  and all 11 carry more than one cognate set. That is the alignment/cognacy limit
+  §12.4 quantifies: `summarize_correspondences` aligns per `(concept, cognate
+  set)` while the assembler aligns whatever candidates the children's beams offer,
+  because a beam candidate carries no cognate-set identity. So on this family the
+  threshold has about **0.18 of headroom, not 0.3**, and on another family the
+  floor must be re-measured the same way before the threshold means anything —
+  commit every set the survey returns, read `unaccounted_column_rate`, and compare
+  the live rate against *that*.
+
 - **`alignment_overrides` correlates with accuracy across live seeds, or
   `override_singleton_sets_created` dominates.** The model is fitting the
   alignment to the answer and §6.1's constraints are not holding — the first
@@ -2020,9 +2062,91 @@ patch:
 
 - Top-1 rising on one seed. `run-benchmark --seeds N` exists for this.
 - Any number from `tools/` whose `measuring:` line was not read.
+- Any correspondence-set count or assembly ceiling quoted without the flags that
+  produced it. The same benchmark gives 216 or 246 sets depending on `--reading`
+  and `--boundaries`, and 38/46 or 44/46 node-local depending on `--boundaries`
+  alone. A figure whose reading is not stated cannot be compared to anything.
 - The `synthetic_hard` oracle figure as currently published (§0.5).
 - Beam-exact under the new architecture compared against beam-exact under the
   old one without saying that the two beams contain different kinds of thing.
+
+### 7.4 Which concepts condition 3 names, and why those five
+
+Condition 3's list is the concepts that are simultaneously **(a)** unreachable
+from any single branch under a context-sensitive oracle and **(b)** reachable by
+assembly. Both halves moved when the instruments were repaired, so both are
+re-derived here rather than quoted.
+
+**(a), from `tools/branch_recoverability.py`.** The script gained `--method`,
+because the figure §0.4 quotes for this was produced by an ad-hoc script that is
+not in the repository, and a threshold nothing can reproduce is not a threshold.
+`map` applies a best segment map by lookup and is the original measure; `cascade`
+builds the branch's real ordered rule set and runs it through `RuleEngine`.
+
+| | reachable from one branch | needs mixing | reachable from none |
+| --- | --- | --- | --- |
+| `--method map` | 37/46 | 8 — `1028`, `1212`, `1217`, `1221`, `1408`, `1439`, `1443`, `646` | 1 — `778` |
+| `--method cascade --oracle context_free` | 39/46 | 6 — `1212`, `1217`, `1221`, `1408`, `1439`, `646` | 1 — `778` |
+| **`--method cascade --oracle contextual`** | **40/46** | **5 — `1212`, `1217`, `1408`, `1439`, `1443`** | 1 — `778` |
+
+The contextual row reproduces §0.4 exactly, including its five concepts. The
+context-free cascade row comes out one concept above the 38 §0.4 records, which
+is prompt 07's repairs showing through; §0.4's figures were taken before them.
+
+**One thing the table must not be read as.** The contextual oracle is `>=` the
+context-free one *per branch*, not per concept: `branch_rules` keeps whichever
+cascade scores more exact forms on that branch as a whole, so a branch can lose a
+concept while gaining others. That is why `1443` is on the contextual mixing list
+and not on the context-free one, and why the lists are not nested.
+
+**(b), from `tools/assembly_ceiling.py polynesian`.** Node-local assembly reaches
+44/46 and cannot reach `1028` and `778`. So the intersection is all five of (a):
+
+```
+1212  1217  1408  1439  1443
+```
+
+**Two names dropped off the "cannot convert" side, and for different reasons.**
+
+- **`1217` FATHER** is now reachable node-locally. The daughters carry two
+  lexemes — `m a t u a` against `t a m a` — and the flat ten-way SCA alignment
+  puts them in non-overlapping columns, which is why flat assembly still misses
+  it. The bottom-up pass aligns the same material in smaller groups and gets it
+  right, and node-local is the honest number because that is how assembly
+  actually runs. It is the one case where node-local scores *above* flat.
+- **`1443` WALK** became reachable when `tools/assembly_ceiling.py` was repaired;
+  §1.2's four-concept flat-unreachable list is a pre-repair figure. It is on
+  condition 3's list rather than off it.
+
+**What is still not expected to convert**, and must not be built into a stop
+condition: `1028` YAWN and `778` SMOKE. Neither is assemblable — gold `m a w a +
+w a` wants a `w` no daughter shows anywhere, and `ʔ a h u + a f i` wants an `f`
+that appears in no daughter — so a column restricted to attested reflexes cannot
+produce them however good the analysis is. `778` is additionally unreachable from
+every branch. A proto-phoneme genuinely need not be one of its reflexes, so a
+model could still get them right; the *ceiling* cannot promise it.
+
+### 7.5 Every command in this section
+
+```bash
+# conditions 1 and 4, and the stop thresholds they quote
+python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle contextual --json
+python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --json
+
+# conditions 1 and 3(b): the assembly ceiling, and what stripping boundaries cost
+python tools/assembly_ceiling.py runs/benchmarks/polynesian.json --json
+python tools/assembly_ceiling.py runs/benchmarks/polynesian.json --boundaries strip
+
+# condition 3(a): which concepts no single branch reaches
+python tools/branch_recoverability.py polynesian --method cascade --oracle contextual --json
+
+# §7.2's floor: commit a value for every set the survey returns and read the rate
+#   (no script; the recipe is in §12.5 and the figure is 0.125 on Polynesian)
+```
+
+Both ceiling tools accept `--gold-node`; on a multi-gold family the root's
+binding is the default and anything else must be named. Read `measuring:` on
+every line of output before quoting a number from it.
 
 ---
 
@@ -2148,7 +2272,9 @@ the guard and it is a real artifact.
   after, both commit shapes, recorded in `docs/benchmarks.md`.
 - `score-synthetic` gains the inventory comparison (§9.2).
 - **Decision point.** §7's conditions are evaluated here. Stage 4 proceeds only
-  if they hold.
+  if they hold. Its thresholds were re-derived against the repaired instruments
+  on 2026-08-23 and every one is reproducible from a command in §7.5; a session
+  evaluating them re-runs those commands rather than quoting the table.
 
 Both commit shapes still accepted. A regression is a revert of one document.
 
@@ -2965,50 +3091,74 @@ segment is" is true of the alignment and not just of the ID. Both halves are
 pinned by a test, because the interaction was worth checking rather than
 assuming.
 
-#### §7's thresholds quote the instrument prompt 07 repaired
+#### §7's thresholds quoted the instrument prompt 07 repaired
+
+*Found 2026-08-23, **re-derived 2026-08-23** in the commit after §12.5's boundary
+fix, and in that order deliberately: §7's thresholds are stated against
+`tools/assembly_ceiling.py`, which aligns with boundaries, while the
+implementation ran without them. Re-deriving first would have pinned numbers the
+fix immediately invalidated — the mistake §7 had already made once.*
 
 §7 was written before stage 0, against the measurements in §0 and §1.2. Prompt 07
 then repaired four defects in `tools/oracle_ceiling.py`, landed
 `tools/assembly_ceiling.py`, and re-recorded everything — and nobody re-stated §7
-in the repaired instrument's terms. Every threshold in §7.1 is therefore a
+in the repaired instrument's terms. Every threshold in §7.1 was therefore a
 pre-repair number:
 
-| §7 condition | as written | under the repaired instrument |
+| §7 condition | as written | re-derived |
 | --- | --- | --- |
-| 1, expect | top-1 ≥ **39/46** (node-local assembly) | node-local assembly is **44/46** |
-| 1, stop if | top-1 < **32/46** (context-sensitive oracle) | that oracle is **33/46** |
-| 2, expect | beam-exact ≥ **41/46** | both oracles now report **40/46** |
-| 4, stop if | mean top NED > **0.110** | the context-sensitive oracle is **0.097** |
-| 3, watch | `1212`, `1408`, `1439` convert; `1217` and `1443` cannot | `1217` **is** reachable node-locally — smaller alignment groups fix the case flat alignment gets wrong — and the unreachable list is now `1028` and `778` alone |
+| 1, expect | top-1 ≥ **39/46** (node-local assembly) | **≥ 44/46** |
+| 1, stop if | top-1 < **32/46** (context-sensitive oracle) | **< 33/46** |
+| 2, expect | beam-exact ≥ **41/46** | **≥ 40/46**, both oracles' figure |
+| 2, stop if | < **40/46** | unchanged at **< 40/46** |
+| 4, expect | mean top NED ≤ **0.080** | unchanged — a target below the measure, not a reading of it |
+| 4, stop if | mean top NED > **0.110** | **> 0.097** |
+| 3, watch | `1212`, `1408`, `1439` convert; `1217` and `1443` cannot | **`1212`, `1217`, `1408`, `1439`, `1443`** convert; `1028` and `778` cannot |
 
-Condition 2 is the one that has gone from demanding to unsatisfiable-as-phrased:
-"≥ 41/46" was set one above the then-measured 41, and beam-exact is now pinned at
-40 for both oracles. Condition 1's "expect" is five concepts too low, so a change
-could clear it while leaving five reachable concepts on the table.
+Condition 2 was the one that had gone from demanding to unsatisfiable-as-phrased:
+"≥ 41/46" was set one above a then-measured 41, and beam-exact is 40 for both
+oracles. Condition 1's "expect" was five concepts too low, so a change could have
+cleared it while leaving five reachable concepts on the table.
 
 This is exactly the failure prompt 07 exists to prevent, one level up: *do not
-quote an oracle number produced before the repair*. §7 is not wrong about what to
-measure — the shape check (top-1 up, reachability not down) and the mechanism
-check (`cross_branch_assembly_rate` > 0 somewhere) both stand. Its **numbers**
-need re-deriving against `--oracle contextual` and `tools/assembly_ceiling.py` as
-they now stand, and that re-derivation is stage 3's first task, before any live
-seed is run.
+quote an oracle number produced before the repair*. §7 was not wrong about what
+to measure — the shape check (top-1 up, reachability not down) and the mechanism
+check (`cross_branch_assembly_rate` > 0 somewhere) both stood, and both are
+unchanged. Only its numbers were wrong.
 
----
+Three things the re-derivation needed that were not there:
+
+- **`tools/branch_recoverability.py` gained `--method`.** Condition 3's half (a)
+  — "unreachable from any single branch under a context-sensitive oracle" — was
+  measured in §0.4 by a script that is not in the repository. A threshold nothing
+  can reproduce is not a threshold, so the cascade method now lives in the script
+  that owns the question. `--method cascade --oracle contextual` reproduces §0.4's
+  40/5/1 and its five concepts exactly; `--method cascade --oracle context_free`
+  comes out at 39 against §0.4's 38, which is prompt 07's repairs showing through.
+- **§7.2's residue threshold needed a floor.** "Above ~0.3 at most nodes" means
+  nothing without knowing what a *complete* inventory leaves behind. On Polynesian
+  that is **0.125**, entirely in multi-etymon concepts, so the real headroom is
+  0.18. §7.2 now says so, and says how to re-measure it for another family.
+- **§7.5 lists every command.** Every figure in §7 is now reproducible from a line
+  in the document, which is what the appendix table has always asked of the rest
+  of this file.
 
 ## Appendix: every figure in this document, and where it came from
 
-All measured 2026-08-21 in this checkout,
+All measured 2026-08-21 in this checkout unless the row says otherwise,
 `measuring: /Users/acraev/Work/cognate-reconstruction/cognate_reconstruction`.
+The §12.5 and §7 rows were measured 2026-08-23, before and after the boundary
+fix; where a figure has a before and an after, both are in §12.5 with the flags
+that produced them.
 
 | Figure | Source |
 | --- | --- |
-| 27/46, 39/46, 0.158, 0.043, 0.960 | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json --json`; matches the pinned test |
-| 32/46, 41/46, 0.110, 0.020, 0.965 | context-sensitive oracle, this session's script |
+| 27/46, 39/46, 0.158, 0.043, 0.960 | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json --json`; **pre-repair** — now 27/46, 40/46, 0.147, 0.030, 0.963 |
+| 32/46, 41/46, 0.110, 0.020, 0.965 | context-sensitive oracle, this session's script; **pre-repair** — now `--oracle contextual`, 33/46, 40/46, 0.097, 0.024, 0.963 |
 | width curve, both oracles | same script, `--widths 1,3,5,10` |
 | 38/46 and 40/46 single-daughter reach | same script, cascade-applied per daughter |
 | 37 / 8 / 1 | `tools/branch_recoverability.py`, map-applied per daughter |
-| 42/46 flat, 39/46 node-local, 46/46 free-choice assembly | this session's `assembly_ceiling.py` |
+| 42/46 flat, 39/46 node-local, 46/46 free-choice assembly | this session's `assembly_ceiling.py`; **pre-repair** — now 43/46, 44/46, 46/46 |
 | 15/25 and 16/25 on `synthetic_hard` against `proto` | contextual-oracle script with `--gold-node proto` |
 | 22/25 as published | `tools/oracle_ceiling.py runs/benchmarks/synthetic_hard.json`, scored against `east` |
 | Hawaiian 15/46 → 22/46, total 214 → 221, tree-level unchanged | this session's `order_fix.py`, patching `oracle_ceiling.order_rules` |
@@ -3028,6 +3178,8 @@ All measured 2026-08-21 in this checkout,
 | 44/46 and 38/46 node-local assembly, and the six concepts between them | `tools/assembly_ceiling.py polynesian --boundaries {include,strip}` |
 | 0.125 / 0.761 / 46 of 46, and 42 unaccounted columns of 336 in 11 multi-etymon concepts | every set the survey returns committed through `test_proto_assembly`, post-boundary-fix; §12.5 |
 | payload sizes before and after the boundary fix | the same registry calls, in one checkout, both settings; §12.5 |
+| §7's re-derived thresholds: 44/46, 33/46, 40/46, 0.097 | `tools/oracle_ceiling.py … --oracle contextual --json` and `tools/assembly_ceiling.py … --json`, 2026-08-23; §7.5 lists every command |
+| §7.4's 37/8/1, 39/6/1 and 40/5/1 | `tools/branch_recoverability.py polynesian --method {map,cascade} --oracle {context_free,contextual}` |
 | forms for 1205, 1355, 1215, 1028, 1217, 1443, 778 | `runs/benchmarks/polynesian.json` |
 | 21/46, 31/46, 0.214, 0.081, 0.950 live | `docs/benchmarks.md`, run `runs/google-gemma-4-26b-a4b-20260820-212424`, quoted not re-measured |
 | suite at 320 | `pytest -q -k "not local_run_artifacts"` |

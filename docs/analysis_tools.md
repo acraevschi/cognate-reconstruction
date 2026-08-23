@@ -486,35 +486,54 @@ it. This counts, per branch, how many gold forms are therefore out of reach, and
 concepts three ways: reachable from a single branch, needing evidence mixed across branches,
 or unreachable from every branch.
 
-Polynesian baseline: 37 of 46 reachable from some single branch, 8 needing a mix, 1 reachable
-from none; per-branch deletion losses run from 7/46 (Tongan) to 17/46 (North Marquesan).
+Polynesian baseline, `--method map`: 37 of 46 reachable from some single branch, 8 needing a
+mix, 1 reachable from none; per-branch deletion losses run from 7/46 (Tongan) to 17/46 (North
+Marquesan). The deletion losses do not depend on `--method`.
 
 The middle number bounds what any amount of better *selection* can achieve. Closing it needs
 proto-forms assembled from several branches at once.
 
 The script names the concepts in each class rather than only counting them, in text and in
-`--json`: the 8 are `1028, 1212, 1217, 1221, 1408, 1439, 1443, 646` and the unreachable one
-is `778`. That list is the concrete prediction any change to the combination model has to
+`--json`: under `--method map` the 8 are `1028, 1212, 1217, 1221, 1408, 1439, 1443, 646` and
+the unreachable one is `778`. That list is the concrete prediction any change to the combination model has to
 move — see `prompts/06-proto-inventory.md`, which uses it as a falsification condition.
 Note what this measures: a property of the gold and the daughters' forms under the current
 DSL, **not** of the harness. A better scorer cannot move it; a different representation of
 what gets committed is what would.
 
-**Quote it beside the cascade-based split, never alone.** This script applies a segment *map*
-by dictionary lookup; `oracle_ceiling.py` applies the real ordered *cascade* through
-`RuleEngine`, and the cascade reaches more. Asking the same question of it — does any single
-daughter, transformed by its own oracle cascade, reach the root gold? — gives:
+**Quote it beside the cascade-based split, never alone — and since 2026-08-23 the script
+produces both.** `--method map` applies a segment map by dictionary lookup and is the
+original measure; `--method cascade` builds each branch's real ordered rule set through
+`oracle_ceiling.py` and runs it through `RuleEngine`, which is what the harness would do, and
+`--oracle contextual` makes that rule writer as strong as the DSL. The cascade reaches more.
 
-| | `branch_recoverability.py` (map) | oracle cascade, context-free | oracle cascade, contextual |
+| `--method` | reachable from some single daughter | needs mixing | reachable from none |
 | --- | --- | --- | --- |
-| reachable from some single daughter | 37/46 | **39/46** | **40/46** |
-| out of reach from every daughter | 9 | 7 | 6 |
+| `map` (default; every figure before 2026-08-23) | 37/46 | 8 | 1 |
+| `cascade --oracle context_free` | **39/46** | 6 | 1 |
+| `cascade --oracle contextual` | **40/46** | **5** | 1 |
 
-Context-free the six-plus-one are `1212, 1217, 1221, 1408, 1439, 646, 778`; context-sensitive
-they are `1212, 1217, 1408, 1439, 1443, 778`. `1028`, `1221` and `646` are reachable from a
-single branch once the rule writer is as strong as the rule language, so the falsification
-list is shorter than the map-based one — which is the difference between the instrument and
-the architecture, and the reason a miss under either measure is not a structural limit.
+The middle class is the falsification list. Under `map` it is
+`1028, 1212, 1217, 1221, 1408, 1439, 1443, 646`; under the context-free cascade
+`1212, 1217, 1221, 1408, 1439, 646`; under the contextual cascade
+`1212, 1217, 1408, 1439, 1443`. `778` is out of reach from every branch in all three.
+`1028`, `1221` and `646` are reachable from a single branch once the rule writer is as strong
+as the rule language, so the falsification list is shorter than the map-based one — which is
+the difference between the instrument and the architecture, and the reason a miss under either
+measure is not a structural limit.
+
+**The lists are not nested, and that is not a defect.** The contextual oracle is `>=` the
+context-free one *per branch*, by construction — `branch_rules` keeps whichever cascade scores
+more exact forms on that branch as a whole — but not per concept, so a branch can lose one
+concept while gaining several. That is why `1443` is on the contextual list and not on the
+context-free one.
+
+The third class is deliberately method-independent: "some branch still retains every gold
+segment" is a property of the aligned forms, so all three rows partition the same 46 concepts
+and only the boundary between the first two moves.
+
+`docs/proto_inventory_design.md` §7.4 reads this table together with the assembly ceiling,
+which is what turns it into the design's mechanism check.
 
 ## When to re-run
 
@@ -541,7 +560,8 @@ the architecture, and the reason a miss under either measure is not a structural
   per-daughter numbers. A change that makes them converge has probably reintroduced the
   majority vote.
 - **Any change to the DSL** → `branch_recoverability.py` and `assembly_ceiling.py`, since
-  expressiveness changes move the reachability split directly.
+  expressiveness changes move the reachability split directly. State `--method` and
+  `--oracle` beside the number; the same benchmark gives 37, 39 or 40 depending on them.
 - **Any change to benchmark selection or preparation** → rebuild both definitions with
   `build-benchmark` and check the concept counts here still hold (46 for Polynesian, 900 for
   Romance). A silent change in selection would move every baseline on this page at once.

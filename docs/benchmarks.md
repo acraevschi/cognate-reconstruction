@@ -353,6 +353,22 @@ The oracle-ceiling figures are pinned in the suite by
 gap between top-1 and beam-exact — so a change to the beam cannot quietly make
 reconstructions worse while every test passes.
 
-The assembly ceiling for the same benchmark is 44/46 node-local and 43/46 flat;
-it answers a different question and is documented in
+The oracle rows did not move again on 2026-08-23, when `LingPyAligner` stopped
+stripping morphological boundaries. That is the expected result and was checked
+rather than assumed: `tools/oracle_ceiling.py` runs `RuleBasedReconstructor` over
+`make_leaf_beam` and never calls the shared aligner, so a movement here would
+have meant something unintended had changed.
+
+The assembly ceiling for the same benchmark is 44/46 node-local and 43/46 flat,
+with boundaries included — which is what the instrument has always done and what
+the harness now does too. Stripping them takes both to 38/46, and the script
+takes `--boundaries strip` so that comparison is reproducible. It answers a
+different question from the oracle and is documented in
 [analysis tools](analysis_tools.md).
+
+`tools/branch_recoverability.py` reports the third measure in this family: how
+many concepts no single branch can reach, which is what per-set assembly exists
+to move. It takes `--method`, and the answer depends on it — 37/8/1 under the
+segment map, 39/6/1 under the real cascade, 40/5/1 under the cascade with
+`--oracle contextual`. §7.4 of `docs/proto_inventory_design.md` reads all three
+together; none should be quoted alone.

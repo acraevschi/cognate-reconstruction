@@ -2,6 +2,60 @@
 
 ## Unreleased
 
+### §7's falsification thresholds, re-derived against the repaired instruments
+
+`docs/proto_inventory_design.md` §7 decides whether stage 4 happens, and every
+number in it was written before stage 0 — before prompt 07 repaired four defects
+in `tools/oracle_ceiling.py` and landed `tools/assembly_ceiling.py`. It carried a
+banner saying so. The banner is gone because the numbers under it are now true.
+No behaviour changed; this is measurement and documentation, plus one flag on one
+analysis script.
+
+| condition | as written | re-derived |
+| --- | --- | --- |
+| 1, expect | top-1 ≥ 39/46 | **≥ 44/46**, the node-local assembly ceiling |
+| 1, stop if | top-1 < 32/46 | **< 33/46**, the context-sensitive oracle |
+| 2, expect | `assembly_beam_exact` ≥ 41/46 | **≥ 40/46** — as phrased it was unsatisfiable, since both oracles report 40 |
+| 3, watch | `1212`, `1408`, `1439` convert; `1217` and `1443` cannot | **`1212`, `1217`, `1408`, `1439`, `1443`** convert; `1028` and `778` cannot |
+| 4, stop if | mean top NED > 0.110 | **> 0.097** |
+
+The questions are untouched. The shape check — top-1 up, reachability not down —
+and the mechanism check — `cross_branch_assembly_rate` > 0 somewhere — are the
+ones this section was written with.
+
+- **`tools/branch_recoverability.py` gains `--method {map,cascade}`** and
+  `--oracle`. Condition 3's "unreachable from any single branch under a
+  context-sensitive oracle" was measured by a script that is not in the
+  repository, and a threshold nothing can reproduce is not a threshold. The
+  cascade method now lives in the script that owns the question: 37/8/1 under the
+  segment map, **39/6/1** under the real cascade, **40/5/1** with
+  `--oracle contextual`. The lists are not nested — `branch_rules` keeps whichever
+  cascade scores better on a branch *as a whole*, so a branch can lose one concept
+  while gaining several — and §7.4 says so rather than hiding it.
+- **`1217` and `1443` moved off the "cannot convert" side**, for different
+  reasons. `1217` is reachable node-locally because the bottom-up pass aligns
+  `m a t u a` against `t a m a` in smaller groups than the flat ten-way alignment,
+  which gets it wrong; it is the one concept where node-local scores above flat.
+  `1443` became reachable when the assembly ceiling was repaired, so §1.2's
+  four-concept flat-unreachable list is a pre-repair figure.
+- **§7.2's residue threshold now states its floor.** "Above ~0.3 at most nodes"
+  means nothing without knowing what a *complete* inventory leaves behind. On
+  Polynesian that is **0.125** — 42 unaccounted columns of 336, in 11 of 46
+  concepts, and all 11 carry more than one cognate set — so the real headroom is
+  0.18, not 0.3, and §7.2 says how to re-measure the floor for another family.
+- **§7.5 lists every command**, so every figure in the section is reproducible
+  from a line in the document, and the appendix table names them.
+- **§7.2 gained one caution**, earned twice over: `cross_branch_assembly_rate = 0`
+  is the design's own stop condition and also the signature of the survey and the
+  assembler seeing different columns. Suspect the instrument first.
+- `docs/analysis_tools.md` and `docs/benchmarks.md` carry the same figures, and
+  §§1.2–1.3 gained a banner marking them as the pre-stage-0 argument rather than
+  current measurements.
+
+The oracle rows did not move for the boundary fix that landed immediately before
+this, which was checked rather than assumed: `tools/oracle_ceiling.py` never
+calls the shared aligner.
+
 ### Morphological boundaries are aligned material
 
 `LingPyAligner` aligned `phonetic_segments`, which strips `+` and `-`, for every
