@@ -71,7 +71,7 @@ the runtime classification tree.
 | Observability and recovery | Implemented with limits | Console and JSONL events, failed trajectories, transient retries, run limits, and completed-node checkpoints. A failed node is recorded and walked over with a marked identity fallback rather than ending the run; `--fail-fast` and `--max-failed-nodes` bound that. No mid-node resume. |
 | Trajectory curation | Implemented at a mechanical level | Version 2.0 validation, summaries, workflow-quality filtering, and generic tool-training export. No expert linguistic grader or deterministic replay command. |
 | Research-grade evaluation | Implemented and graded; still one model, few seeds | Held-out gold evaluation reports edit distance, normalized edit distance, and B-Cubed F1 beside exact match, per concept and per node, with distributions rather than pooled means, and a beam-aware best-NED next to the top candidate's. Every node carrying gold is evaluated, not only the root. `build-benchmark` turns a declarative definition plus local CLDF into a runnable input, and two are checked in (Polynesian, Romance/Ab Antiquo). `run-benchmark` runs N seeds and aggregates with spread. `build-synthetic` generates a family from a known cascade, so the *changes* and their *direction* can be scored, not only the forms. A validated quality objective still does not exist and nothing here gates anything. See [benchmarks and evaluation](docs/benchmarks.md). |
-| Reconstruction quality | Measured, pinned, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With oracle rules on every branch the correct form is in the beam 84.8% of the time and is reported 58.7% of the time; graded, mean NED is 0.158 at the top against 0.043 anywhere in the beam. **26 points, and 0.115 NED, are still lost in how a parent is chosen from child evidence, after the model has finished.** Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. Both numbers *and the gap between them* are now pinned by a regression test, so a beam change cannot quietly make reconstructions worse while every test passes. See [the analysis tools](docs/analysis_tools.md). |
+| Reconstruction quality | Measured, pinned, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With context-free oracle rules on every branch the correct form is in the beam 87.0% of the time and is reported 58.7% of the time; graded, mean NED is 0.147 at the top against 0.030 anywhere in the beam. **28 points, and 0.118 NED, are still lost in how a parent is chosen from child evidence, after the model has finished.** A second oracle as strong as the DSL's own environments reports 71.7% at the same 87.0% in the beam, so six of those points belonged to the instrument rather than the architecture — and the gap does not close. Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. Both oracles *and the gap between them* are pinned by a regression test, so a beam change cannot quietly make reconstructions worse while every test passes. See [the analysis tools](docs/analysis_tools.md). |
 | Training backend | Not implemented | Trajectory export is the boundary for later work; no TRL/Unsloth training pipeline is included. |
 | Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. There is still no interactive trace browser, and the turn-by-turn timeline lives in the run-triage skill. |
 
@@ -116,7 +116,7 @@ MIGRATION.md
 
 `tools/` is deliberately outside the package. The test suite proves the harness
 is mechanically correct and says nothing about whether it reconstructs *well*;
-these five scripts measure the second thing against a gold proto-language. Each
+these six scripts measure the second thing against a gold proto-language. Each
 takes a benchmark name as well as a path and has a `--json` mode, so the
 multi-seed runner consumes them rather than re-implementing the measurements.
 They are analysis instruments rather than product surface: not covered by the
@@ -1366,6 +1366,7 @@ questions.**
 | Published (`benchmarks/*.json`) | a published proto-form, or an attested ancestor | how the harness compares to the literature and to published baselines | severe, and not fixable |
 | Synthetic (`benchmarks/synthetic/*.json`) | a proto-lexicon written in this repository | whether the harness recovers changes it cannot have memorized | none by construction |
 | Oracle ceiling (`tools/oracle_ceiling.py`) | the same gold, with perfect rules supplied | what a flawless model could score under this architecture | not applicable |
+| Assembly ceiling (`tools/assembly_ceiling.py`) | the same gold, assembled column-wise | what a flawless assembler could reach if a proto-form were built per correspondence set rather than selected whole | not applicable |
 
 **An oracle number bounds the architecture; a live number measures a model.**
 They are never interchangeable, and the multi-seed report prints them in
@@ -1938,16 +1939,16 @@ future ideas.
   innovation is attested by every branch that inherited it, so support can be
   confidently wrong exactly where a reconstruction is interesting.
 - **Most of the selection gap is still open, and it originates at the binary
-  nodes nearest the leaves.** With oracle rules the correct Proto-Polynesian
-  form is in the beam 84.8% of the time and reported 58.7% of the time. Branch
-  support closed 4.3 of the 30.4 points; the rest survives because five of the
+  nodes nearest the leaves.** With context-free oracle rules the correct
+  Proto-Polynesian form is in the beam 87.0% of the time and reported 58.7% of
+  the time. Branch support closed 4.3 of the 30.4 points; the rest survives because five of the
   benchmark's seven nodes are binary, where two disagreeing children are
   one-to-one and support says nothing, so `TIE_BREAK_POLICY` — segment order,
   deliberately arbitrary — decides. `tie_broken_concept_count` shows where:
   22 of 46 concepts at `tongic`, 18 at `marquesic`, 16 at `futunic`, but only 1
   at the root. **The coin-flips happen low in the tree and harden into
   accumulated mass on the way up** — by the root only one miss is still an exact
-  tie, yet 12 of its 19 misses have the correct form in the beam. A node that
+  tie, yet 13 of its 19 misses have the correct form in the beam. A node that
   reports no ties is therefore not evidence that its inputs were chosen on
   evidence.
 - **A better tie-break is nearly exhausted as a lever, and that is the more
@@ -1979,14 +1980,18 @@ future ideas.
   majority vote over shared innovations, and treating a segment's *absence* as
   out-group evidence scores below segment order. Nothing here is committed —
   changing which candidate wins the beam is a research-owner decision.
-- **Do not read `oracle_ceiling.py` as a bound on the rule language.** Its oracle
-  map is context-free — one target per source segment, globally — while the DSL
-  has contexts. Forms it cannot reach may still be reachable: `ʔ e l e l o` →
-  `ʔ a l e l o` needs only `e > a / ʔ_`. An earlier revision of this entry
-  claimed the leftover ties needed segments from two daughters at once and that
-  cross-branch composition was where the gap lived. Both were artifacts of the
-  oracle's weakness, and the correction is recorded in
-  `prompts/06-proto-inventory.md`.
+- **Do not read `oracle_ceiling.py --oracle context_free` as a bound on the rule
+  language.** Its oracle map is context-free — one target per source segment,
+  globally — while the DSL has contexts. Forms it cannot reach may still be
+  reachable: `ʔ e l e l o` → `ʔ a l e l o` needs only `e > a / ʔ_`. An earlier
+  revision of this entry claimed the leftover ties needed segments from two
+  daughters at once and that cross-branch composition was where the gap lived.
+  Both were artifacts of the oracle's weakness, and the correction is recorded in
+  `prompts/06-proto-inventory.md`. `--oracle contextual` is the measure that says
+  how much: six concepts of top-1 on Polynesian. It stays a second measure and
+  never the default, because every baseline recorded in this repository was taken
+  with the context-free one, and it is no more a target than the first — it
+  writes 249 rules over 16 branches, many conditioned on a single word.
 - Two weightings that look like the obvious fix are traps, and neither is
   implemented: weighting branches by descendant-leaf count would give
   `nuclear_polynesian` 8:2 over `tongic` at the root, and per-column majority
@@ -2070,8 +2075,11 @@ future ideas.
   expert-judgment metric and no validated quality objective.
 - **The graded scores say where the selection gap is, not only that it exists.**
   Mean top NED against mean beam-best NED is the graded selection gap, and it is
-  large under oracle rules (0.158 against 0.043) *and* under a live model (0.214
+  large under oracle rules (0.147 against 0.030) *and* under a live model (0.214
   against 0.081). Selection, not generation, is the bottleneck in both regimes.
+  It stays large under an oracle as strong as the DSL's environments (0.097
+  against 0.024), which is the strongest statement of it: making the rule writer
+  perfect in a way the rule language permits does not close the gap.
 - **One live reading is not a measurement.** The Polynesian figures below come
   from a single seed of one model. `run-benchmark` exists because the same input
   fails differently on every run; until several seeds have been aggregated,
