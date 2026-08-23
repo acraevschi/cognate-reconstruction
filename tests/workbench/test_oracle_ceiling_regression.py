@@ -410,3 +410,166 @@ def test_the_gold_binding_defaults_to_the_root_and_is_never_guessed() -> None:
             "proto",
             None,
         )
+
+
+# ---------------------------------------------------------------------------
+# The instrument and the implementation must see the same columns
+# ---------------------------------------------------------------------------
+
+
+def _assembly_module():
+    """Import `tools/assembly_ceiling.py`, the same way as its sibling above."""
+    tools = str(REPO_ROOT / "tools")
+    if tools not in sys.path:
+        sys.path.insert(0, tools)
+    spec = importlib.util.spec_from_file_location(
+        "assembly_ceiling", REPO_ROOT / "tools" / "assembly_ceiling.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def _harness_rows(pairs, aligner):
+    """`assembly_ceiling.align_rows`, run through the aligner the harness uses.
+
+    `pairs` is `[(node_id, segments), ...]` in the order the instrument feeds
+    its matrix. A node contributing two forms contributes two members of one
+    variety, which is two rows of that matrix. Column *structure* is compared,
+    not row order, so the two need not agree about which row is which.
+    """
+    from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
+
+    if len(pairs) == 1:
+        return [tuple(pairs[0][1])]
+    by_node: dict[str, list[tuple[str, ...]]] = {}
+    for node_id, segments in pairs:
+        by_node.setdefault(node_id, []).append(segments)
+    if len(by_node) < 2:
+        # The aligner refuses a single variety; nothing can read a
+        # correspondence out of one node anyway.
+        return [tuple(segments) for _node, segments in pairs]
+    result = aligner.align_multiple(
+        [
+            LanguageLexicon(
+                variety_id=node_id,
+                name=node_id,
+                forms=tuple(
+                    LexicalForm(
+                        form_id=f"{node_id}:{index}",
+                        variety_id=node_id,
+                        concept_id="c",
+                        segments=segments,
+                    )
+                    for index, segments in enumerate(forms)
+                ),
+            )
+            for node_id, forms in by_node.items()
+        ]
+    )
+    if not result.alignments:
+        return [tuple(segments) for _node, segments in pairs]
+    return [
+        member.aligned_segments
+        for member in result.alignments[0].members
+        if not member.is_anchor
+    ]
+
+
+def test_the_ceiling_instrument_and_the_harness_align_the_same_columns(
+    payload: WorkbenchPayload,
+) -> None:
+    """The check whose absence let a silent regression live in the shipped path.
+
+    `tools/assembly_ceiling.py` has its own `align_rows` and the harness runs
+    `LingPyAligner.align_multiple`, and that separation is deliberate: an
+    instrument that imported the thing it measures would agree with it by
+    construction. The cost of the separation is that the two can drift with
+    nothing saying so — which is exactly what happened. The instrument aligned
+    `form.segments`, the harness aligned `phonetic_segments`, and so the
+    instrument reported a node-local ceiling of 44/46 for an implementation that
+    could only reach 38/46. No test in the suite could see it, because no test
+    compared them.
+
+    Measured on this fixture at the time of writing: **322 of 322** node-concept
+    pairs identical, against **225 of 322** while boundaries were stripped, and
+    the node-local ceiling 44/46 under both aligners rather than 44 against 38.
+
+    This asserts the *property*, not those numbers — that every column the
+    instrument sees is a column the harness sees. A ceiling measured on one
+    alignment does not bound an implementation running another, whatever the two
+    happen to score.
+    """
+    from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
+    from cognate_reconstruction.tree import (
+        assign_node_ids,
+        parse_newick,
+        postorder_groups,
+    )
+
+    instrument = _assembly_module()
+    aligner = LingPyAligner()
+    root = parse_newick(payload.newick)
+    node_ids = assign_node_ids(root)
+    binding = _oracle_module().select_binding(
+        payload, node_ids[id(root)], None
+    )
+    gold: dict[str, tuple[tuple[str, ...], ...]] = {}
+    for form in binding.forms:
+        previous = gold.get(form.concept_id, ())
+        if form.segments not in previous:
+            gold[form.concept_id] = (*previous, form.segments)
+
+    forms_by_node: dict[str, dict[str, list[tuple[str, ...]]]] = {}
+    for lexicon in payload.lexicons:
+        per_concept = forms_by_node.setdefault(lexicon.variety_id, {})
+        for form in lexicon.forms:
+            per_concept.setdefault(form.concept_id, []).append(form.segments)
+
+    rows_by_node = {
+        leaf.label: forms_by_node.get(leaf.label, {}) for leaf in root.get_leaves()
+    }
+    compared = 0
+    reached_instrument: list[str] = []
+    reached_harness: list[str] = []
+    for children, parent in postorder_groups(root):
+        parent_id = node_ids[id(parent)]
+        child_ids = [node_ids[id(child)] for child in children]
+        produced: dict[str, list[tuple[str, ...]]] = {}
+        for concept_id in sorted(
+            {c for child_id in child_ids for c in rows_by_node[child_id]}
+        ):
+            pairs = [
+                (child_id, segments)
+                for child_id in child_ids
+                for segments in rows_by_node[child_id].get(concept_id, ())
+            ]
+            rows = [segments for _child, segments in pairs]
+            columns = instrument.column_options(instrument.align_rows(rows))
+            harness_columns = instrument.column_options(
+                _harness_rows(pairs, aligner)
+            )
+            compared += 1
+            assert columns == harness_columns, (
+                f"the ceiling instrument and the harness's aligner disagree "
+                f"about concept {concept_id!r} at {parent_id!r}. A ceiling "
+                f"measured on one alignment does not bound an implementation "
+                f"running the other."
+            )
+            targets = gold.get(concept_id)
+            if targets is None:
+                produced[concept_id] = [max(rows, key=len)]
+                continue
+            produced[concept_id] = [instrument.reaches(columns, targets)[1]]
+            if parent_id == binding.node_id:
+                if produced[concept_id][0] in targets:
+                    reached_instrument.append(concept_id)
+                if instrument.reaches(harness_columns, targets)[1] in targets:
+                    reached_harness.append(concept_id)
+        rows_by_node[parent_id] = produced
+
+    assert compared > 300, "the walk stopped early and proved almost nothing"
+    # And the number the design quotes is a number the implementation can reach.
+    assert reached_instrument == reached_harness
+    assert len(reached_instrument) == 44

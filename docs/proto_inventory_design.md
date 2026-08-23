@@ -3061,6 +3061,32 @@ reason §1.2 already gives — a segment no daughter shows — which is what mak
 six attributable to the boundary and to nothing else. Both of §7 condition 3's
 boundary-bearing witnesses, `1212` and `1439`, are among them.
 
+##### Does the ceiling still bound the implementation? Measured, not argued
+
+`tools/assembly_ceiling.py` keeps its own `align_rows` and the harness runs
+`LingPyAligner.align_multiple`, and that separation is the point — an instrument
+that imported the thing it measures would agree with it by construction. Its
+cost is that the two can drift with nothing saying so, which is what this section
+is about. So the agreement is now a measurement rather than an inference: walk
+the tree bottom-up as the node-local pass does and, at every (node, concept),
+align the same rows both ways and compare the column structure.
+
+| | identical column structure | node-local ceiling, instrument | node-local ceiling, harness |
+| --- | --- | --- | --- |
+| boundaries stripped | 225 of 322 — **69.9%** | 44/46 | **38/46** |
+| boundaries included | **322 of 322 — 100%** | 44/46 | **44/46**, same two concepts missed |
+
+The top row is the defect stated exactly: the instrument was reporting a ceiling
+of 44/46 for an implementation that could only reach 38/46, and 97 of 322
+alignments differed. The bottom row is what makes the 44/46 quotable at all — a
+ceiling measured on one alignment does not bound an implementation running
+another, whatever the two happen to score.
+
+`tests/workbench/test_oracle_ceiling_regression.py` pins the *property* — every
+column the instrument sees is a column the harness sees — rather than those
+counts, and fails on the pre-fix aligner naming the first concept that diverges.
+It is the test whose absence let this live: no test in the suite compared the two.
+
 ##### What did not move, and one thing that quietly became true
 
 `tools/oracle_ceiling.py` is unchanged — 27/46 top-1, 40/46 beam-exact, and the
@@ -3178,6 +3204,7 @@ that produced them.
 | 44/46 and 38/46 node-local assembly, and the six concepts between them | `tools/assembly_ceiling.py polynesian --boundaries {include,strip}` |
 | 0.125 / 0.761 / 46 of 46, and 42 unaccounted columns of 336 in 11 multi-etymon concepts | every set the survey returns committed through `test_proto_assembly`, post-boundary-fix; §12.5 |
 | payload sizes before and after the boundary fix | the same registry calls, in one checkout, both settings; §12.5 |
+| 322 of 322 column agreement, against 225 of 322 stripped | the node-local walk run through both aligners; pinned as a property by `test_oracle_ceiling_regression.py` |
 | §7's re-derived thresholds: 44/46, 33/46, 40/46, 0.097 | `tools/oracle_ceiling.py … --oracle contextual --json` and `tools/assembly_ceiling.py … --json`, 2026-08-23; §7.5 lists every command |
 | §7.4's 37/8/1, 39/6/1 and 40/5/1 | `tools/branch_recoverability.py polynesian --method {map,cascade} --oracle {context_free,contextual}` |
 | forms for 1205, 1355, 1215, 1028, 1217, 1443, 778 | `runs/benchmarks/polynesian.json` |

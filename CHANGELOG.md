@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+### Pin that the assembly ceiling still bounds the thing it measures
+
+`tools/assembly_ceiling.py` keeps its own `align_rows` and the harness runs
+`LingPyAligner.align_multiple`. That separation is deliberate — an instrument
+that imported the thing it measures would agree with it by construction — and
+its cost is that the two can drift with nothing saying so. They did: the
+instrument reported a node-local ceiling of 44/46 for an implementation that
+could only reach 38/46, and no test in the suite could see it, because no test
+compared them.
+
+Walking the tree bottom-up and comparing column structure at every
+(node, concept), on the checked-in Polynesian fixture:
+
+| | identical column structure | node-local, instrument | node-local, harness |
+| --- | --- | --- | --- |
+| boundaries stripped | 225 of 322 — 69.9% | 44/46 | **38/46** |
+| boundaries included | **322 of 322 — 100%** | 44/46 | **44/46**, same two missed |
+
+`test_the_ceiling_instrument_and_the_harness_align_the_same_columns` pins the
+*property* — every column the instrument sees is a column the harness sees —
+rather than those counts, and fails against the pre-fix aligner naming the first
+concept that diverges. It is what turns "44/46 is the ceiling" from an inference
+into a statement about the code that runs. `docs/proto_inventory_design.md`
+§12.5 and `docs/analysis_tools.md` carry the measurement.
+
+Suite: **393 passed** (392 before).
+
 ### §7's falsification thresholds, re-derived against the repaired instruments
 
 `docs/proto_inventory_design.md` §7 decides whether stage 4 happens, and every

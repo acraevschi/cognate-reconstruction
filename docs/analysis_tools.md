@@ -342,6 +342,20 @@ the six attributable to the boundary and to nothing else.
 harness's aligner was repaired. It is not a variant of the measurement worth taking on new
 work.
 
+**Does this instrument still bound the harness?** It has its own `align_rows` and the harness
+runs `LingPyAligner.align_multiple`, deliberately: an instrument that imported the thing it
+measures would agree with it by construction. The cost is that the two can drift silently, and
+they did. Walking the tree bottom-up and comparing column structure at every (node, concept):
+
+| | identical column structure | node-local, instrument | node-local, harness |
+| --- | --- | --- | --- |
+| boundaries stripped | 225 of 322 — 69.9% | 44/46 | **38/46** |
+| boundaries included | **322 of 322 — 100%** | 44/46 | **44/46** |
+
+`tests/workbench/test_oracle_ceiling_regression.py` pins the property — every column the
+instrument sees is a column the harness sees — rather than the counts. Re-run it after any
+change to either aligner; a ceiling measured on one alignment bounds nothing running another.
+
 ## `tiebreak_probe.py` — does branch support decide anything?
 
 Three synthetic nodes, no arguments. Four children agreeing against one dissenting, with and
