@@ -15,8 +15,13 @@ from cognate_reconstruction.agent.schemas import (
 )
 from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.agent.tools.evidence import selected_evidence
+from cognate_reconstruction.agent.tools.inventory_evidence import (
+    apply_alignment_overrides,
+)
 from cognate_reconstruction.alignment.correspondence_sets import (
     build_correspondence_sets,
+    complementary_candidates,
+    one_reading_per_node,
 )
 from cognate_reconstruction.schemas.alignment import (
     GAP_SEGMENT_TOKENS,
@@ -81,11 +86,24 @@ def summarize_correspondences(
     # whether one happened to be supplied.
     try:
         alignment_map = context.aligner.align_multiple(
-            lexicons,
+            # One reading per node, so a correspondence is between the nodes'
+            # reported forms and so the set IDs below are ones the assembler can
+            # reproduce from a candidate tuple. See `one_reading_per_node`.
+            one_reading_per_node(lexicons),
             respect_cognate_sets=arguments.respect_cognate_sets,
             correspondence_detail=CorrespondenceDetail.SUMMARY,
         )
-        inventory = build_correspondence_sets(alignment_map, node_ids=node_ids)
+        alignment_map = apply_alignment_overrides(
+            alignment_map,
+            context.alignment_overrides(arguments.alignment_overlay_id),
+            node_ids,
+        )
+        inventory = build_correspondence_sets(
+            alignment_map,
+            node_ids=node_ids,
+            segmentation_overlay_id=arguments.segmentation_overlay_id,
+            alignment_overlay_id=arguments.alignment_overlay_id,
+        )
     except ToolInputError:
         raise
     except ValueError as error:
@@ -101,6 +119,11 @@ def summarize_correspondences(
     matched = tuple(item for item in filtered if item.support >= arguments.min_support)
     page = matched[arguments.offset : arguments.offset + arguments.limit]
     next_offset = arguments.offset + len(page)
+    # Computed over the page, not over the whole inventory: the pairs a reader
+    # can act on are the ones whose set IDs are in front of them.
+    candidates, candidate_count = complementary_candidates(
+        alignment_map, page, node_ids=node_ids
+    )
     return SummarizeCorrespondencesResult(
         node_ids=node_ids,
         alignment_count=inventory.alignment_count,
@@ -111,4 +134,7 @@ def summarize_correspondences(
         sets=page,
         next_offset=next_offset if next_offset < len(matched) else None,
         segmentation_overlay_id=arguments.segmentation_overlay_id,
+        alignment_overlay_id=arguments.alignment_overlay_id,
+        complementary_candidates=candidates,
+        complementary_candidate_count=candidate_count,
     )

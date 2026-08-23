@@ -29,9 +29,14 @@ WHOLE_LEXICON_WHEN_UNSCOPED = frozenset(
         "polarize",
         "test_sound_law",
         "test_rule_cascade",
+        "test_proto_assembly",
     }
 )
 """Tools that cover every concept of their scope when `concept_ids` is empty.
+
+An unscoped `test_proto_assembly` assembles every concept at the node, which is
+the whole point of the call — on Polynesian a preview covers all 46 for 27.8 KB —
+so it belongs here for the same reason `test_rule_cascade` does.
 
 `get_alignments` is excluded because its own validator refuses a call naming
 neither concepts nor forms. `search_forms` is excluded because an unscoped

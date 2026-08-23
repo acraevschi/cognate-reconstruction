@@ -10,7 +10,11 @@ from cognate_reconstruction.agent.orchestrator import (
     RunBudgetExceeded,
     failed_node_trajectory,
 )
-from cognate_reconstruction.agent.schemas import PriorNodeReconstruction
+from cognate_reconstruction.agent.schemas import (
+    PriorNodeInventory,
+    PriorNodeReconstruction,
+    ProtoInventorySpec,
+)
 from cognate_reconstruction.agent.tools import summarize_commit
 from cognate_reconstruction.agent.trajectory import AgentRunResult, AgentTrajectory
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
@@ -27,6 +31,8 @@ from cognate_reconstruction.schemas.traversal import (
     NodeFailureRecord,
     NodeReconstructionContext,
 )
+from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
+from cognate_reconstruction.traversal.assembler import ProtoInventoryAssembler
 from cognate_reconstruction.traversal.beam import beam_to_lexicon
 from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
 
@@ -149,6 +155,16 @@ class AgenticNodeReconstructor:
         self.orchestrator = orchestrator
         self.deterministic = deterministic or RuleBasedReconstructor()
         self.aligner = aligner or LingPyAligner()
+        # Same beam width, anchor policy and anchor factor as the rule path, so
+        # which protocol a node committed under changes what is assembled and
+        # nothing about how the beam is scored or pruned.
+        self.assembler = ProtoInventoryAssembler(
+            beam_width=self.deterministic.beam_width,
+            anchor_policy=self.deterministic.anchor_policy,
+            anchor_match_factor=self.deterministic.anchor_match_factor,
+            aligner=self.aligner,
+            engine=self.deterministic.engine,
+        )
         self.fail_fast = fail_fast
         self.max_failed_nodes = max_failed_nodes
         self.run_results: list[AgentRunResult] = []
@@ -159,8 +175,12 @@ class AgenticNodeReconstructor:
         self.node_failures: list[NodeFailureRecord] = []
         # Committed hypotheses from nodes already completed in this family run.
         # Each node still gets a fresh conversation; this is retrieved through a
-        # bounded tool, not merged into the prompt.
-        self.prior_reconstructions: dict[str, PriorNodeReconstruction] = {}
+        # bounded tool, not merged into the prompt. Both commit shapes are kept,
+        # because a run walks nodes committed under whichever protocol was
+        # current when each of them ran.
+        self.prior_reconstructions: dict[
+            str, PriorNodeReconstruction | PriorNodeInventory
+        ] = {}
 
     def clear_run_results(self) -> None:
         self.run_results.clear()
@@ -239,8 +259,15 @@ class AgenticNodeReconstructor:
             anchor_policy=self.deterministic.anchor_policy,
             evidence=evidence_context.available_nodes if evidence_context else (),
             concepts=evidence_context.concepts if evidence_context else (),
-            prior_reconstructions=self._visible_prior_reconstructions(
-                evidence_context
+            prior_reconstructions=tuple(
+                item
+                for item in self._visible_prior_reconstructions(evidence_context)
+                if isinstance(item, PriorNodeReconstruction)
+            ),
+            prior_inventories=tuple(
+                item
+                for item in self._visible_prior_reconstructions(evidence_context)
+                if isinstance(item, PriorNodeInventory)
             ),
         )
         try:
@@ -267,17 +294,38 @@ class AgenticNodeReconstructor:
             )
             for child in child_beams
         )
-        step = self.deterministic.reconstruct(
-            parent_node_id,
-            scored_children,
-            rules=committed.parsed_rules,
-            anomalies=committed.request.anomalies,
-            anchors=anchors,
-            evidence_context=evidence_context,
-            # Only this layer knows what the session looked at; the step is
-            # where a reader goes looking for it.
-            inspected_concept_ids=run_result.inspected_concept_ids,
-        )
+        if isinstance(committed, CommittedProtoInventory):
+            overrides = context.alignment_overrides(
+                committed.request.alignment_overlay_id
+            )
+            step = self.assembler.reconstruct(
+                parent_node_id,
+                scored_children,
+                inventory=committed,
+                anomalies=committed.request.anomalies,
+                anchors=anchors,
+                evidence_context=evidence_context,
+                inspected_concept_ids=run_result.inspected_concept_ids,
+                overrides=overrides,
+                override_singleton_sets_created=sum(
+                    override.joins_set_id is None for override in overrides
+                ),
+                held_out_unaccounted_column_rate=(
+                    _held_out_unaccounted_rate(context, committed)
+                ),
+            )
+        else:
+            step = self.deterministic.reconstruct(
+                parent_node_id,
+                scored_children,
+                rules=committed.parsed_rules,
+                anomalies=committed.request.anomalies,
+                anchors=anchors,
+                evidence_context=evidence_context,
+                # Only this layer knows what the session looked at; the step is
+                # where a reader goes looking for it.
+                inspected_concept_ids=run_result.inspected_concept_ids,
+            )
         finalized = self.orchestrator.finalize(run_result, step)
         self.run_results.append(finalized)
         self.trajectories.append(finalized.trajectory)
@@ -355,7 +403,7 @@ class AgenticNodeReconstructor:
     def _visible_prior_reconstructions(
         self,
         evidence_context: NodeReconstructionContext | None,
-    ) -> tuple[PriorNodeReconstruction, ...]:
+    ) -> tuple[PriorNodeReconstruction | PriorNodeInventory, ...]:
         """Prior hypotheses for nodes this node is already allowed to see.
 
         Gated on the traverser's own reconstructed-evidence set, which post-order
@@ -370,3 +418,37 @@ class AgenticNodeReconstructor:
             if item.kind is EvidenceKind.RECONSTRUCTED
             and item.node_id in self.prior_reconstructions
         )
+
+
+def _held_out_unaccounted_rate(
+    context: AgentContext,
+    committed: CommittedProtoInventory,
+) -> float | None:
+    """Recompute the held-out column rate from the commit, for the step.
+
+    Recomputed rather than lifted out of the tool result, exactly as
+    `held_out_convergence_rate` is: a trajectory has to carry the number even
+    when the result message was truncated or compacted away.
+    """
+    from cognate_reconstruction.agent.tools.proto_assembly import (
+        held_out_unaccounted_column_rate,
+    )
+
+    spec = ProtoInventorySpec(
+        child_node_ids=committed.request.child_node_ids,
+        alignment_overlay_id=committed.request.alignment_overlay_id,
+        assembly_validation_call_id=(
+            committed.request.assembly_validation_call_id
+        ),
+        commitments=committed.request.commitments,
+        residue_policy=committed.request.residue_policy,
+        residue_witness_child_id=committed.request.residue_witness_child_id,
+        residue_dispositions=committed.request.residue_dispositions,
+        restorations=committed.request.restorations,
+    )
+    return held_out_unaccounted_column_rate(
+        context,
+        spec,
+        node_id=committed.request.node_id,
+        segmentation_overlay_id=committed.request.segmentation_overlay_id,
+    )

@@ -321,6 +321,18 @@ default; the context-sensitive one is a rule writer as strong as the DSL and
 lands beside it. See `docs/analysis_tools.md` for both and for why quoting either
 as "what a good model should get" is a category error.
 
+**Nothing in this table has moved for the per-correspondence-set commit
+protocol, and that is correct.** Stages 1 and 2 add the assembler and the tools;
+they change no default, and `agent/system_prompt.md` still teaches the
+branch-cascade workflow, so every figure here was produced by the same path that
+produced it before. The oracle assembly ceiling and the live before/after over
+five seeds on both benchmarks are recorded when the instructions are flipped —
+that is stage 3, and it is the point at which §7 of
+`docs/proto_inventory_design.md` becomes evaluable. Until then there is no
+per-set number in this document, deliberately: one seed is not a measurement,
+and a number recorded before the workflow that produces it exists would be a
+number measuring nothing.
+
 The oracle rows were re-recorded 2026-08-22 when four defects in the instrument
 were repaired. Beam-exact moved 39 → 40 and the graded means with it, because the
 oracle now scores against every gold alternative through `compare_to_nearest`, as

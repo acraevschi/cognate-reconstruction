@@ -28,6 +28,8 @@ from cognate_reconstruction.agent.providers import ProviderTransientError
 from cognate_reconstruction.agent.providers.protocol import LLMProvider
 from cognate_reconstruction.agent.schemas import (
     COMMIT_REQUIREMENT_NOTES,
+    CommittedHypothesis,
+    CommittedReconstruction,
     ConceptHoldout,
     LLMMessage,
     LLMToolCall,
@@ -42,12 +44,43 @@ from cognate_reconstruction.agent.schemas import (
 from cognate_reconstruction.agent.tools import ToolRegistry, default_tool_registry
 from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.agent.trajectory import (
+    INVENTORY_SCHEMA_VERSION,
+    TRAJECTORY_SCHEMA_VERSION,
     AgentNodeMetrics,
     AgentRunResult,
     AgentTrajectory,
     TrajectorySink,
 )
+from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
 from cognate_reconstruction.schemas.traversal import ReconstructionStep
+
+
+def _commit_event_fields(commit: CommittedHypothesis) -> dict[str, object]:
+    """What a NODE_COMMIT event says, under whichever protocol was used.
+
+    An inventory has no rule IDs and no cascade to reference, so an event shaped
+    for rules would report an empty list and read as an identity commit. It says
+    what it actually committed instead.
+    """
+    if isinstance(commit, CommittedProtoInventory):
+        return {
+            "commit_shape": "inventory",
+            "committed_set_count": len(commit.request.commitments),
+            "proto_phonemes": list(commit.proto_phonemes),
+            "residue_policy": commit.request.residue_policy.value,
+            "anomaly_count": len(commit.request.anomalies),
+            "assembly_validation_call_id": (
+                commit.request.assembly_validation_call_id
+            ),
+        }
+    return {
+        "commit_shape": "rules",
+        "rule_ids": [rule.rule.rule_id for rule in commit.parsed_rules],
+        "anomaly_count": len(commit.request.anomalies),
+        "cascade_validation_call_id": (
+            commit.request.cascade_validation_call_id
+        ),
+    }
 
 
 class AgentLoopLimitError(RuntimeError):
@@ -104,11 +137,20 @@ COMPACTABLE_TOOL_NAMES: frozenset[str] = frozenset(
 )
 """Tools whose superseded results may be dropped from the live prompt.
 
-Read-only evidence, and nothing else. A `test_sound_law` or `test_rule_cascade`
-result carries the validation ID a commit is checked against, `segment_morphemes`
-carries an overlay ID, and a `commit_reconstruction` result ends the session:
-none of those are re-derivable from a later call, so none are eligible however
-much context they cost.
+Read-only evidence, and nothing else. A `test_sound_law`, `test_rule_cascade`, or
+`test_proto_assembly` result carries the validation ID a commit is checked
+against, `segment_morphemes` and `realign` carry overlay IDs, and a
+`commit_reconstruction` result ends the session: none of those are re-derivable
+from a later call, so none are eligible however much context they cost.
+
+`test_proto_assembly` is the one to watch, because it is the successor to the
+largest observed context consumer in a live run — `test_rule_cascade` at 399 KB
+across three calls at one node — and it is ineligible here for exactly the same
+reason. What keeps it affordable is not compaction but its *shape*: the part a
+commit is checked against is a few hundred bytes, the per-concept evidence is
+re-derivable by calling the tool again, and `detail` defaults to omitting the
+per-column resolutions. Compaction today is all-or-nothing per tool message, so
+that split has to be in the result rather than in the compactor.
 """
 
 _SELECTION_ARGUMENT_KEYS: frozenset[str] = frozenset(
@@ -878,10 +920,18 @@ class AgentOrchestrator:
             if duration_seconds is not None
             else time.monotonic() - state.started_monotonic
         )
-        rule_count = len(context.commit.parsed_rules) if context.commit else 0
-        anomaly_count = (
-            len(context.commit.request.anomalies) if context.commit else 0
-        )
+        commit = context.commit
+        # `committed_rule_count` counts committed *claims*: rules under the
+        # branch-cascade protocol, correspondence sets under the per-set one.
+        # See `AgentNodeMetrics.committed_rule_count` for why the field name is
+        # kept.
+        if commit is None:
+            rule_count = 0
+        elif isinstance(commit, CommittedProtoInventory):
+            rule_count = len(commit.request.commitments)
+        else:
+            rule_count = len(commit.parsed_rules)
+        anomaly_count = len(commit.anomalies) if commit else 0
         inspection_names = {
             "list_concepts",
             "search_forms",
@@ -906,12 +956,12 @@ class AgentOrchestrator:
         held_out = (
             held_out_evaluation(
                 context,
-                context.commit.parsed_rules,
+                commit.parsed_rules,
                 segmentation_overlay_id=(
-                    context.commit.request.segmentation_overlay_id
+                    commit.request.segmentation_overlay_id
                 ),
             )
-            if context.commit is not None
+            if isinstance(commit, CommittedReconstruction)
             else None
         )
         return AgentNodeMetrics(
@@ -936,6 +986,9 @@ class AgentOrchestrator:
             concepts_available=len(available_concept_ids),
             sound_law_tests=sound_law_tests,
             cascade_tests=state.successful_tool_names.count("test_rule_cascade"),
+            assembly_tests=state.successful_tool_names.count(
+                "test_proto_assembly"
+            ),
             input_tokens=self._usage_total(
                 state.provider_responses, "input_tokens"
             ),
@@ -960,9 +1013,10 @@ class AgentOrchestrator:
                 context.commit is not None and inspection_count == 0
             ),
             identity_without_testing=(
-                context.commit is not None
+                commit is not None
                 and rule_count == 0
                 and sound_law_tests == 0
+                and state.successful_tool_names.count("test_proto_assembly") == 0
             ),
         )
 
@@ -997,6 +1051,11 @@ class AgentOrchestrator:
             ),
             trajectory_schema_sha256=_sha256_json(
                 AgentTrajectory.model_json_schema()
+            ),
+            schema_version=(
+                INVENTORY_SCHEMA_VERSION
+                if isinstance(context.commit, CommittedProtoInventory)
+                else TRAJECTORY_SCHEMA_VERSION
             ),
             initial_payload=payload,
             tool_definitions=definitions,
@@ -1336,16 +1395,7 @@ class AgentOrchestrator:
                             AgentEventKind.NODE_COMMIT,
                             context.node_id,
                             "accepted reconstruction commit",
-                            rule_ids=[
-                                rule.rule.rule_id
-                                for rule in context.commit.parsed_rules
-                            ],
-                            anomaly_count=len(
-                                context.commit.request.anomalies
-                            ),
-                            cascade_validation_call_id=(
-                                context.commit.request.cascade_validation_call_id
-                            ),
+                            **_commit_event_fields(context.commit),
                         )
                         trajectory = self._trajectory(
                             context,

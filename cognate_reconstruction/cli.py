@@ -980,6 +980,16 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
         "committed_rules": sum(
             item.metrics.committed_rule_count for item in completed
         ),
+        # How many nodes this build has committed under each protocol. The
+        # migration's daily progress signal, out of data every record already
+        # carries — which is exactly what a progress-tracking archive is for.
+        "commit_shapes": dict(
+            sorted(
+                Counter(
+                    item.commit_shape or "none" for item in completed
+                ).items()
+            )
+        ),
         "committed_no_op_rules": sum(
             item.committed_no_op_rule_count for item in completed
         ),
@@ -1053,6 +1063,31 @@ def _distribution_summary(trajectories, completed) -> dict[str, Any]:
         "rule_coverage_distribution": _distribution(
             [step.diagnostics.rule_coverage for step in steps]
         ),
+        # What replaces rule coverage on an inventory node: coverage over
+        # alignment columns rather than over (rule x in-scope child) pairs.
+        # Reported beside it rather than in place of it, because during the
+        # migration both kinds of node exist in one archive.
+        "unaccounted_column_rate_distribution": _distribution(
+            [
+                step.diagnostics.unaccounted_column_rate
+                for step in steps
+                if step.diagnostics.unaccounted_column_rate is not None
+            ]
+        ),
+        "cross_branch_assembly_rate_distribution": _distribution(
+            [
+                step.diagnostics.cross_branch_assembly_rate
+                for step in steps
+                if step.diagnostics.cross_branch_assembly_rate is not None
+            ]
+        ),
+        "alignment_override_distribution": _distribution(
+            [
+                float(step.diagnostics.alignment_overrides)
+                for step in steps
+                if step.diagnostics.alignment_overrides is not None
+            ]
+        ),
     }
 
 
@@ -1088,6 +1123,37 @@ def _per_node_rows(trajectories) -> list[dict[str, Any]]:
                 ),
                 "tie_broken_concept_count": (
                     diagnostics.tie_broken_concept_count if diagnostics else None
+                ),
+                "commit_shape": item.commit_shape,
+                "committed_set_count": (
+                    diagnostics.committed_set_count if diagnostics else None
+                ),
+                "proto_phoneme_count": (
+                    diagnostics.proto_phoneme_count if diagnostics else None
+                ),
+                "unaccounted_column_rate": (
+                    diagnostics.unaccounted_column_rate if diagnostics else None
+                ),
+                "cross_branch_assembly_rate": (
+                    diagnostics.cross_branch_assembly_rate
+                    if diagnostics
+                    else None
+                ),
+                "alignment_overrides": (
+                    diagnostics.alignment_overrides if diagnostics else None
+                ),
+                "override_singleton_sets_created": (
+                    diagnostics.override_singleton_sets_created
+                    if diagnostics
+                    else None
+                ),
+                "restored_segment_count": (
+                    diagnostics.restored_segment_count if diagnostics else None
+                ),
+                "held_out_unaccounted_column_rate": (
+                    diagnostics.held_out_unaccounted_column_rate
+                    if diagnostics
+                    else None
                 ),
             }
         )

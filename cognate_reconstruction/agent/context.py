@@ -18,9 +18,13 @@ from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.traversal import NodeEvidence
 
+from cognate_reconstruction.schemas.inventory import AlignmentOverride
+
 from .schemas import (
-    CommittedReconstruction,
+    CommittedHypothesis,
+    PriorNodeInventory,
     PriorNodeReconstruction,
+    TestProtoAssemblyResult,
     TestRuleCascadeResult,
     TestSoundLawResult,
 )
@@ -38,11 +42,21 @@ class AgentContext:
     # Read-only hypotheses committed at nodes already completed in this run.
     # They are prior claims, never evidence, and never influence scoring.
     prior_reconstructions: tuple[PriorNodeReconstruction, ...] = ()
+    prior_inventories: tuple[PriorNodeInventory, ...] = ()
     rule_engine: RuleEngine = field(default_factory=RuleEngine)
     overlays: dict[str, dict[str, LexicalForm]] = field(default_factory=dict)
+    # Alignment overlays are the same shape as segmentation overlays one level
+    # up: immutable, ID'd, session-local, never crossing a node boundary and
+    # never entering a checkpoint. Nothing a model does to an alignment persists.
+    alignment_overlays: dict[str, dict[str, AlignmentOverride]] = field(
+        default_factory=dict
+    )
     validations: dict[str, TestSoundLawResult] = field(default_factory=dict)
     cascade_validations: dict[str, TestRuleCascadeResult] = field(default_factory=dict)
-    commit: CommittedReconstruction | None = None
+    assembly_validations: dict[str, TestProtoAssemblyResult] = field(
+        default_factory=dict
+    )
+    commit: CommittedHypothesis | None = None
     held_out_share: float = DEFAULT_HELD_OUT_SHARE
     # Derived, never supplied: the split is a function of the node ID and the
     # children's concepts, which is what makes it survive a resume unchanged.
@@ -144,4 +158,55 @@ class AgentContext:
         )
         overlay_id = f"seg-{hashlib.sha256(material.encode()).hexdigest()[:12]}"
         self.overlays[overlay_id] = base
+        return overlay_id
+
+    def alignment_overrides(
+        self,
+        overlay_id: str | None,
+    ) -> tuple[AlignmentOverride, ...]:
+        """Every override an alignment overlay carries, in concept order."""
+        if overlay_id is None:
+            return ()
+        try:
+            overrides = self.alignment_overlays[overlay_id]
+        except KeyError as error:
+            raise ToolInputError(
+                f"unknown alignment overlay {overlay_id!r}",
+                code="unknown-overlay",
+            ) from error
+        return tuple(overrides[concept_id] for concept_id in sorted(overrides))
+
+    def store_alignment_overlay(
+        self,
+        overrides: tuple[AlignmentOverride, ...],
+        *,
+        base_overlay_id: str | None,
+    ) -> str:
+        """Record one immutable alignment overlay and return its ID.
+
+        Cumulative over a base, exactly as `store_overlay` is: a session that
+        repairs three concepts in three calls ends with one overlay carrying all
+        three, so a commit cites one ID rather than reconciling several.
+        """
+        base = (
+            dict(self.alignment_overlays[base_overlay_id])
+            if base_overlay_id is not None
+            else {}
+        )
+        if base_overlay_id is not None and base_overlay_id not in self.alignment_overlays:
+            raise ToolInputError(
+                f"unknown alignment overlay {base_overlay_id!r}",
+                code="unknown-overlay",
+            )
+        base.update({override.concept_id: override for override in overrides})
+        material = "\n".join(
+            f"{concept_id}\t"
+            + "|".join(
+                " ".join("Ø" if segment is None else segment for segment in row)
+                for row in override.rows
+            )
+            for concept_id, override in sorted(base.items())
+        )
+        overlay_id = f"aln-{hashlib.sha256(material.encode()).hexdigest()[:12]}"
+        self.alignment_overlays[overlay_id] = base
         return overlay_id

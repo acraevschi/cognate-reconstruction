@@ -2,6 +2,142 @@
 
 ## Unreleased
 
+### Reconstructing per correspondence set — the deterministic core and the tools
+
+Stages 1 and 2 of `docs/proto_inventory_design.md`. A node may now commit a
+**proto-inventory** — a proto-phoneme for each correspondence set over its active
+children — and deterministic code assembles each parent form column by column
+out of it. The branch-cascade commit path is untouched and still the one the
+instructions teach; `system_prompt.md` is rewritten and the change is measured in
+a separate session, and nothing here is a default.
+
+The reason it exists, in one case: a set `⟨Tongan ʔ : Niuean Ø⟩` reconstructs
+`*ʔ`, so Proto-Tongic `*ʔ a l e l o` assembles from a form neither daughter
+produces. As a branch-scoped rule that needs an insertion the DSL cannot write —
+a live `tongic` node proposed `Ø > ʔ / #_` three times, was refused
+`dsl-parse-error` three times, and fell back to identity.
+
+**Everything this adds is a report.** Nothing new filters a trajectory, weights a
+candidate, or decides whether a run was valid. `confidence` is the only quantity
+that reaches the beam and it already did, now attached to a correspondence
+rather than to a rewrite.
+
+- **`schemas/inventory.py`** — `CorrespondenceCommitment`, `ResiduePolicy`,
+  `ResidueDisposition`, `SegmentRestoration`, `AlignmentOverride`, and the commit
+  and result models, with `derive_set_id` naming a set by its content: the reflex
+  tuple, the child order, and **both** overlays, because a segmentation overlay
+  changes what a segment is and an alignment overlay changes which columns
+  exist.
+- **`traversal/assembler.py`** — the assembly algorithm of §4.4, implemented
+  deliberately rather than incidentally in four places. An unaccounted column
+  *carries through* rather than vanishing, which makes assembly monotonic;
+  an inventory that asserts nothing short-circuits to the existing identity path
+  bit-for-bit, so `_fallback_step` is unchanged; conditioning is evaluated in
+  proto terms in two passes; and assembly runs over the children's **full
+  beams**, because 43 of 46 concepts carry more than one candidate at the
+  Polynesian root and assembling from top candidates alone would make every
+  intermediate error permanent. Alignments are cached by candidate tuple, which
+  the design calls a requirement rather than an optimisation.
+- **`alignment/environments.py`** — one definition of "the environment of an
+  aligned column", used by the complementary-pair report, the
+  `non-complementary-split` rejection, and the assembler's pass 2. A model handed
+  a distinguishing token must not then be refused for using it.
+- **Three new tools.** `test_proto_assembly` previews what an inventory
+  assembles and is the call a commit is checked against; its result is *split*
+  so the bulky half can be dropped from the live prompt while the validation ID
+  and the verdict stay — which had to be right in the first version, because a
+  result schema enters trajectories the moment a tool ships. `realign` re-lays
+  one concept's columns under four constraints, of which the load-bearing one is
+  that a realignment must name the correspondence set it joins and the harness
+  verifies the set actually gains that support. And restorations let a node
+  reconstruct a segment every active child lost on cited out-group evidence,
+  with three arithmetic refusals.
+- **`summarize_correspondences` gains `set_id` and `complementary_candidates`.**
+  The pair report carries the tokens observed beside each set, because a report
+  that states a conclusion and withholds the evidence for it is the shape §6.2
+  exists to avoid. It is retrieval and not phonology: no feature table, no
+  natural class, nothing ranked.
+- **`commit_reconstruction` takes `rules` xor `inventory`.** A call carrying both
+  is refused. Every commitment cites a set the harness re-derives from the node's
+  own forms with the support it counted itself — stronger than the per-rule
+  validation invariant, not weaker.
+- **`schema_version` widens to `["2.0", "3.0"]`**, stamped per record rather than
+  per build, because `committed_reconstruction.request.rules` is what every
+  downstream reader indexes and some records no longer have it.
+  `summarize-trajectories` reports `commit_shapes` — the migration's daily
+  progress signal.
+- **The `high_quality` gate dispatches on commit shape.** This is the one place
+  the change could have done irreversible damage: three of the gate's five
+  conditions read counters an inventory session leaves at zero, so left alone
+  every such session would have passed all three unconditionally, the suite would
+  have stayed green, and the loosened corpora could not be un-selected. A test
+  pins equivalent workflow behaviour to the same verdict under either protocol
+  and catches the equivalent defect under either.
+  `docs/report_reject_or_score.md` gained a section on gates that loosen.
+- **`child_convergence_rate` and `divergent_concept_count` are retired, not
+  reimplemented.** One candidate tuple assembles into exactly one parent form, so
+  branch divergence about the parent is structurally impossible — the metric's
+  subject is gone. They stay `None`-defaulted and 2.0 records keep their real
+  values. Two numbers replace them because the one was doing two jobs:
+  `cross_branch_assembly_rate` and `unaccounted_column_rate`.
+
+**One defect found while implementing that the design does not name, and it was
+load-bearing.** `summarize_correspondences` aligned the child *lexicons*, which
+at an internal node means every retained beam candidate; the assembler aligns one
+candidate per child. Two different alignments, two different column boundaries,
+so a model would have committed values for sets the assembler never sees and
+`cross_branch_assembly_rate` would have read 0 everywhere — the design's own stop
+condition, fired by a bug rather than by the mechanism being useless.
+`one_reading_per_node` fixes it in both paths: one form per node per (concept,
+cognate set). `tools/correspondence_inventory.py` gains `--reading` so it can
+reproduce either view and stay the independent check;
+`docs/analysis_tools.md` records where the two now differ (188 of 216 sets
+identical on Polynesian). Three smaller corrections are in
+`docs/proto_inventory_design.md` §12.3, kept with their reasoning rather than
+deleted.
+
+**Measured, not predicted.** `test_proto_assembly` costs **23.5 KB** for all 46
+Polynesian concepts at `detail="summary"` — inside the 27.8 KB §6.8 budgeted,
+against the 399 KB across three calls that `test_rule_cascade` cost at one live
+node — and the half that cannot be dropped from the live prompt is **1.4 KB**.
+A complete inventory over all 218 sets assembles all 46 concepts with
+`unaccounted_column_rate` 0.141 and `cross_branch_assembly_rate` 0.783; **all**
+of that residue is in the 11 concepts whose daughters carry more than one cognate
+set, which is a floor imposed by multi-etymon glosses rather than by the
+inventory, and §7.2's 0.3 threshold has to be read against it. These are
+structural figures about the mechanism, not oracle or live accuracy numbers, and
+no accuracy number is recorded here: `system_prompt.md` still teaches the rule
+workflow, so there is nothing yet to measure. `docs/proto_inventory_design.md`
+§12.4 carries all of it.
+
+**And a live model drove the whole surface.** Against LM Studio
+`google/gemma-4-26b-a4b` on a two-daughter Tongic fixture, with a throwaway
+instruction, the model surveyed, previewed, refined and committed an inventory,
+and the harness assembled `*ʔ a l e l o` — the form the recorded live `tongic`
+failure could not express. It cost three protocol rejections, one of which was
+writing `"reflexes": ["∅", "ʔ"]` where `null` was meant; `Ø` and `∅` are now
+accepted, which is what `GAP_SEGMENT_TOKENS` already promised elsewhere. That is
+a usability check, not a measurement — one node, one seed, four concepts, and an
+instruction that is not the one session C will write.
+
+**Two findings that block stage 3 and are deliberately not fixed here**, both in
+`docs/proto_inventory_design.md` §12.5. First, **the assembler drops
+morphological boundaries and the rule path does not** — assembly builds a form
+out of alignment columns and the aligner strips `+` from every input, so
+`m a n u + l e l e` assembles as `m a n u l e l e`. That is a silent regression
+against the shipped path. On Polynesian, 8 of 46 gold concepts carry a boundary
+in every gold alternative and are unreachable by assembly by construction,
+capping top-1 at 38/46 — and two of the three concepts §7 names as proof the
+mechanism fired, `1212` and `1439`, are among them. The fix reaches
+`_alignment_inputs`, which every evidence tool shares, so it wants its own diff.
+Second, **§7's thresholds all quote the instrument prompt 07 repaired**: the
+node-local ceiling is 44/46 rather than 39/46, the context-sensitive oracle
+33/46 rather than 32/46, beam-exact 40/46 for both, and `1217` is now reachable.
+The questions §7 asks are right; its numbers need re-deriving before any live
+seed is run.
+
+Suite: 328 → 387 (`pytest -q -k "not local_run_artifacts"`).
+
 The evaluation that makes the other changes provable. Held-out comparison used
 exact token equality only, so a reconstruction one segment from
 Proto-Polynesian `ʔ a l e l o` and one sharing nothing with it both scored zero

@@ -54,10 +54,29 @@ enters the corpus.
   selected by it — already written, already exported, possibly already trained
   on. You cannot un-select them.
 
-Same asymmetry that keeps `schema_version` at `2.0`: bumping later is trivial,
-un-bumping after files exist in the wild is impossible. When the cost of being
+Same asymmetry that governs `schema_version`: bumping later is trivial,
+un-bumping after files exist in the wild is impossible — which is why it stayed
+at `2.0` through every additive change and widened to `["2.0", "3.0"]` only when
+a reader genuinely had to branch. When the cost of being
 wrong is lopsided, the cheap direction is the default and the expensive one
 needs evidence.
+
+**And a gate can go wrong without anything being added to it.** A gate can
+*loosen*. When the per-correspondence-set commit protocol landed, three of
+`high_quality`'s five failure conditions read counters that a session using the
+new protocol leaves at zero — it calls `test_proto_assembly` rather than
+`test_sound_law`, and commits correspondence sets rather than rules. Left alone,
+each condition would have quietly evaluated to "no problem": every new-protocol
+session would pass all three unconditionally, the suite would stay green because
+nothing crashed, and the corpora selected under the loosened gate could not be
+un-selected. The asymmetry is symmetric in that respect — a corpus cannot be
+un-selected whether the gate got stricter or laxer.
+
+The defence is not vigilance; it is a test that pins the gate across both
+shapes. Two sessions with equivalent workflow behaviour must earn the same
+verdict, and a session with the equivalent defect must be caught under either.
+Without that, nothing in a suite can tell "the gate passed this session" from
+"the gate could not see this session".
 
 ## The worked example: cross-node consistency
 
@@ -77,6 +96,7 @@ correct run?**
 - "The run is disqualified" — you now need evidence about how often it fires on
   correct runs, and that evidence is a corpus of graded trajectories, which does
   not exist yet.
+
 
 Adjacent nodes mapping `f` to `p` and to `b` in the same environment genuinely
 deserves attention. Whether it means one rule is wrong, the tree is wrong, the
@@ -135,6 +155,40 @@ children back a form affects which form wins the node. That is scoring, it is
 the subject of a separate entry in "Decisions that require research-owner
 input", and it is bounded — it orders candidates the harness already computed.
 It does not decide whether a run is valid, and no trajectory is filtered by it.
+
+### What happened to this example, and why it is the best possible outcome
+
+Under the per-correspondence-set commit protocol
+(`docs/proto_inventory_design.md`), **the case this example is about became
+unrepresentable.** `f > p / _eː` scoped to Tongan and `p > f / _e` scoped to
+Niuean are two claims about one correspondence, and a correspondence carries
+exactly one proto-phoneme, so a session cannot state both. Nothing detects the
+contradiction because nothing can express it.
+
+More broadly, the metric's *subject* is gone on such a node. One candidate tuple
+assembles into exactly one parent form, so "did the children end up agreeing
+about the parent?" has no content: they cannot disagree. `child_convergence_rate`
+and `divergent_concept_count` are therefore retired rather than reimplemented —
+they stay `None`-defaulted, 2.0 records keep the real values they carry, and a
+3.0 step reads as "not recorded", which is honest rather than lossy.
+
+Two things replace them, and it takes two because the one measure was doing two
+jobs: `cross_branch_assembly_rate` (did the reconstruction actually need
+evidence from more than one branch) and `unaccounted_column_rate` (how much of
+the evidence the committed inventory explained). Both are reports, for the same
+reason convergence was: a high residue rate can be an honest reading of a messy
+lexicon, and a `cross_branch_assembly_rate` of 0 is a perfectly good node whose
+children happened to agree.
+
+**The lesson worth keeping is about the decision rule rather than about this
+metric.** Running the question in the pocket — *what happens when this fires on
+a correct run?* — kept convergence out of the gate. It fired constantly and
+correctly, and gating on it would have selected for over-fitted rule sets. Then
+the representation changed and the failure it was watching for stopped being
+possible at all. Had it been wired into `high_quality`, the corpora selected
+under it would still exist and would still have been selected against a defect
+that no longer has a name. Reports can be deleted when their subject goes away.
+Gates leave a residue.
 
 ## The third worked example: a lost contrast
 

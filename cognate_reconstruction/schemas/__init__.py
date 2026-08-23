@@ -9,6 +9,7 @@ from cognate_reconstruction.schemas.alignment import (
     CorrespondenceInventory,
     CorrespondenceMap,
     CorrespondenceObservation,
+    ComplementaryCandidate,
     CorrespondenceSet,
     CorrespondenceSummary,
     MultipleAlignmentMap,
@@ -37,6 +38,20 @@ from cognate_reconstruction.schemas.historical import (
     HistoricalLineageRelation,
     HistoricalTargetEvaluation,
     TargetConceptEvaluation,
+)
+from cognate_reconstruction.schemas.inventory import (
+    AlignmentOverride,
+    AssemblyDetail,
+    ColumnResolution,
+    CommitProtoInventoryArgs,
+    CommittedProtoInventory,
+    ConceptAssemblyReport,
+    CorrespondenceCommitment,
+    ProtoInventorySpec,
+    ResidueDisposition,
+    ResiduePolicy,
+    SegmentRestoration,
+    derive_set_id,
 )
 from cognate_reconstruction.schemas.metrics import MetricDistribution
 from cognate_reconstruction.schemas.lexicon import (

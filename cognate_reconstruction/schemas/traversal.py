@@ -9,6 +9,7 @@ from pydantic import Field, model_validator
 from cognate_reconstruction.schemas.alignment import CorrespondenceMap
 from cognate_reconstruction.schemas.beam import NodeBeamState
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.inventory import ConceptAssemblyReport
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata, LanguageLexicon
 from cognate_reconstruction.schemas.rules import AnomalyReport, RuleApplicationReport
 
@@ -66,6 +67,23 @@ class ReconstructionStep(WorkbenchModel):
     correspondence_maps: tuple[CorrespondenceMap, ...] = ()
     output_beam: NodeBeamState
     rule_reports: tuple[RuleApplicationReport, ...] = ()
+    """Per-rule diffs from a branch-cascade commit; empty on an inventory step.
+
+    Kept and left empty rather than removed. It is serialized into every
+    existing `result.json` and `checkpoint.json`, so removing it would make
+    those unloadable under `extra="forbid"` for no gain — the same argument that
+    kept `tool_failures_by_type` under a name that no longer describes it. A
+    reader tells the two commit shapes apart by which of this and
+    `assembly_reports` is populated.
+    """
+    assembly_reports: tuple[ConceptAssemblyReport, ...] = ()
+    """Per concept, what the assembler did; empty on a branch-cascade step.
+
+    The compact rendering — set IDs per column, the assembled form, the
+    unaccounted count — never the alignment rows. The `correspondence_maps`
+    measurement is the precedent and the warning: 448 KB of a 10,017 KB result
+    for something no reader had asked for.
+    """
     anomaly_reports: tuple[AnomalyReport, ...] = ()
     diagnostics: ReconstructionDiagnostics
 
@@ -173,6 +191,105 @@ class ReconstructionDiagnostics(WorkbenchModel):
     invisible: the beam prints the same two probabilities whether one form won on
     support or on the order of its first differing segment. Counting them lets a
     reader tell how much of a node's output is arbitrary.
+    """
+    # Proto-inventory assembly. Every counter below is `None` on a step built
+    # from a branch-cascade commit and on every step written before the protocol
+    # existed, so absence reads as "this node did not assemble" rather than as a
+    # node that assembled nothing. All are reports: none filters a trajectory,
+    # weights a candidate, or decides whether a run was valid. See
+    # `docs/report_reject_or_score.md`.
+    committed_set_count: int | None = Field(default=None, ge=0)
+    """Correspondence sets the committed inventory carries."""
+    proto_phoneme_count: int | None = Field(default=None, ge=0)
+    """Distinct proto-phonemes reconstructed at this node.
+
+    The first-class object the whole protocol exists to produce. Deliberately
+    never scored: "is this inventory typologically credible?" would need typology
+    data this repository does not hold, would fire on correct runs — Proto-
+    Polynesian's inventory is unusual and correct — and the moment it reached
+    `high_quality` it would define "typologically ordinary" as "valid".
+    """
+    assembled_column_count: int | None = Field(default=None, ge=0)
+    """Alignment columns the assembly resolved, over every concept."""
+    unaccounted_column_count: int | None = Field(default=None, ge=0)
+    unaccounted_column_rate: float | None = Field(default=None, ge=0.0, le=1.0)
+    """Share of columns resolved by `residue_policy` rather than by a set.
+
+    What replaces `rule_coverage`, and a better shape: coverage is now over
+    alignment columns rather than over (rule × in-scope child) pairs, so the
+    scoping defect — `f > p / #_` scoped to three children scoring 0.33 against
+    the identical reconstruction scoped to one scoring 1.0 — cannot recur. A
+    column is explained or it is not, and how many children the set names does
+    not enter the fraction.
+
+    Nothing rejects on the rate. Under `min_support = 2` on Polynesian 175 of
+    216 sets are singletons; a node whose residue rate is high may be a node
+    looking honestly at a messy lexicon.
+    """
+    cross_branch_assembly_rate: float | None = Field(
+        default=None, ge=0.0, le=1.0
+    )
+    """Share of concepts no single child's derived cascade reproduces.
+
+    The number that says whether the new capability did anything at all. It is
+    decidable in one pass over the children — apply each child's derived
+    cascade, compare — with no prior knowledge of which concepts mixed, and its
+    converse doubles as the verification of those derived rules.
+    """
+    columns_decided_by_residue_policy: int | None = Field(default=None, ge=0)
+    """Successor to `tie_broken_concept_count`'s first half.
+
+    Under assembly, ties between whole strings mostly disappear and the
+    arbitrariness moves into the columns. Without this the beam would print one
+    candidate at p = 1.00 whether every column was evidenced or half of them
+    were defaults.
+    """
+    columns_decided_by_tie_break: int | None = Field(default=None, ge=0)
+    """Columns two committed sets both matched, decided by `TIE_BREAK_POLICY`.
+
+    Shown to the model first: `test_proto_assembly` lists every such column so
+    the session can condition one of the sets, split a set, or say in the
+    summary that the evidence does not decide. The policy stays the last resort
+    and stays documented as arbitrary.
+    """
+    mean_set_support: float | None = Field(default=None, ge=0.0)
+    """Mean support of the committed sets.
+
+    What separates an inventory built on recurrence from one built on one word
+    each. Committing a support-1 set is legal and deliberately so — the whole
+    Polynesian benchmark has 175 singletons against 41 recurrent sets — but it
+    is visible.
+    """
+    restored_segment_count: int | None = Field(default=None, ge=0)
+    """Segments every active child lost, restored on cited out-group evidence."""
+    alignment_overrides: int | None = Field(default=None, ge=0)
+    """Concepts at this node carrying a model-supplied alignment.
+
+    A node that reconstructed most of its concepts through hand-aligned
+    overlays is a node whose reconstruction is the model's alignment, and a
+    reader must be able to see that in one line. Reported and not enforced:
+    "was this realignment *right*?" is a linguistic question.
+    """
+    override_singleton_sets_created: int | None = Field(default=None, ge=0)
+    """Overrides that named no set to join, and so bypassed the join check."""
+    held_out_unaccounted_column_rate: float | None = Field(
+        default=None, ge=0.0, le=1.0
+    )
+    """The committed inventory applied to the concepts this node withheld.
+
+    The direct analogue of `held_out_convergence_rate`, and it catches the same
+    thing: an inventory fitted to five concepts explains nothing on the concepts
+    it never saw. Reported, never enforced.
+    """
+    contrast_reducing_set_count: int | None = Field(default=None, ge=0)
+    """Committed sets that delete a segment or merge two into one.
+
+    The successor to `contrast_reducing_rule_count`, computed from the inventory
+    rather than by applying a cascade: two sets sharing one `proto_segment`
+    without complementary conditioning is a merger, and a non-null reflex
+    against a null `proto_segment` is a deletion. Same arithmetic, same
+    discipline, better evidence — it now sees the merger *as* a merger rather
+    than inferring it from a mapping.
     """
 
 

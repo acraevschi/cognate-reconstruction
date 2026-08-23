@@ -394,10 +394,33 @@ support: the n-tuple of aligned segments across all daughters, how often it recu
 example concepts. This is the object the comparative method actually operates on.
 
 It began as the prototype for the view the agent could not ask for. The agent can ask for it
-now — `summarize_correspondences` produces the same sets through the typed tool surface — so
-what the script is *for* has changed: it is the second implementation, forty lines long and
-reading nothing but `LingPyAligner.align_multiple`, that the tool can be checked against
-when the aggregation or the aligner changes.
+now, so what the script is *for* has changed: it is the second implementation, reading nothing
+but `LingPyAligner.align_multiple`, that the tool can be checked against when the aggregation
+or the aligner changes.
+
+**The two stopped producing identical sets when the per-correspondence-set commit protocol
+landed, and `--reading` is how they are compared.** `summarize_correspondences` now keeps one
+form per node per (concept, cognate set) before aligning, because a set ID it hands a model
+has to name columns the assembler can reproduce from one candidate per child, and at an
+internal node a child's lexicon is *every* retained beam candidate. Measured on Polynesian,
+`--min-support 1`:
+
+| `--reading` | distinct sets | at support ≥ 2 | singletons |
+| --- | --- | --- | --- |
+| `all` (default; every recorded baseline) | 216 | 41 | 175 |
+| `reported` (what the tool does) | 218 | 39 | 179 |
+
+188 sets are identical between the two; 28 exist only under `all` and 30 only under
+`reported`. The difference is larger than the ~11 leaf cases where one node genuinely
+contributes two forms to one cognate set, because dropping a row re-aligns the whole concept
+and shifts neighbouring columns too.
+
+Neither is wrong. `all` is what SCA does over the raw lexicons and is what every recorded
+baseline in this document used; `reported` is a correspondence between the languages'
+reported forms. They are kept apart rather than merged so this script stays an independent
+check: `--reading reported` reproduces the tool exactly, and the reduction is re-implemented
+here rather than imported, because importing the thing under test would make the check
+vacuous.
 
 For ten Polynesian daughters it produces 216 sets in about 22 KB — smaller than a single
 `get_alignments` call for six concepts across two languages. Most of the tail is

@@ -440,8 +440,14 @@ into one code costs nothing in auditability.
 
 ### The commit contract
 
-`commit_reconstruction` requires per rule only the `dsl`, the
-`source_child_ids`, and the model's own `confidence`:
+`commit_reconstruction` takes **either `rules` or `inventory`, never both**. A
+call carrying both is refused: they are two protocols for the same claim and
+nothing can tell which one was meant. Both are accepted during the migration to
+per-correspondence-set commits; see "Committing a proto-inventory" below for the
+second, and `docs/proto_inventory_design.md` for why it exists.
+
+Under the rule protocol, `commit_reconstruction` requires per rule only the
+`dsl`, the `source_child_ids`, and the model's own `confidence`:
 
 - `validation_call_id` may be omitted. The harness then resolves it by looking
   for a successful same-session validation whose parsed rule, child scope, and
@@ -627,6 +633,77 @@ by placeholders would be worthless both as a record and as supervision — and t
 where they differed, so a session that only fit inside its context because the
 harness dropped evidence is legible as such.
 
+### Committing a proto-inventory
+
+The second commit shape, additive and not yet the default. Instead of an ordered
+branch-scoped rewrite cascade, a session commits a mapping from **correspondence
+sets to proto-phonemes**, and deterministic code assembles each parent form
+column by column out of them.
+
+Three things follow from that and are worth knowing before reading the code.
+
+- **The parent segment comes from the set, not from any child's string.** A set
+  `⟨Tongan ʔ : Niuean Ø⟩` reconstructs `*ʔ`, so Proto-Tongic `*ʔ a l e l o`
+  assembles from a form neither daughter produces. Under the rule protocol that
+  needs an insertion, which the DSL cannot write: a live `tongic` node proposed
+  `Ø > ʔ / #_` three times, was refused `dsl-parse-error` three times, and fell
+  back to identity.
+- **Sets are independent, so there is no order.** Hawaiian's `*k > ʔ` and
+  `*t > k` are one reconstruction as a cascade only if the rules run in the
+  right order, and nothing in the rule commit contract asks the model to say
+  which. As two correspondence sets there is no order to get wrong.
+- **A set carries exactly one value.** `f > p / _eː` scoped to Tongan beside
+  `p > f / _e` scoped to Niuean are two claims about one correspondence; a
+  correspondence has one proto-phoneme, so the contradiction is unrepresentable
+  rather than merely detected.
+
+The workflow is `summarize_correspondences` → `polarize` → assign a
+proto-phoneme per set → `test_proto_assembly` → read the unaccounted columns →
+refine → `test_proto_assembly` again → commit. The refinement loop closes on
+itself: the call a session refines against is the same call the commit is
+checked against, which is precisely what the rule protocol lacked.
+
+**What is checked.** Every commitment cites a `set_id` the harness re-derives
+from the node's own forms, with the reflexes and the support it counted itself —
+stronger than the rule invariant, not weaker, because the evidence is not merely
+*tested* but *re-derived*. Every committed set must have been exercised by a
+same-session `test_proto_assembly`; coverage is over **sets**, not concepts, and
+unions across calls, so a large family can be previewed in batches. A claimed
+conditioned split (`merges_with_set_id`) is checked against the node's own
+columns. A set that deletes or merges a distinction needs a
+`directionality_rationale`, rejected on absence and never on content, exactly as
+a rule is.
+
+**What is reported and not checked.** `unaccounted_column_rate` — the successor
+to `rule_coverage`, and a better shape, because a column is explained or it is
+not and how many children a set names does not enter the fraction.
+`cross_branch_assembly_rate`, which says whether the new capability fired at all.
+`mean_set_support`, `restored_segment_count`, `alignment_overrides`,
+`columns_decided_by_residue_policy`, `columns_decided_by_tie_break`, and the
+proto-phoneme inventory itself. The inventory is **printed and never scored**:
+"is this typologically credible?" would need typology data this repository does
+not hold, would fire on correct runs, and the moment it reached `high_quality`
+it would define "typologically ordinary" as "valid".
+
+**`residue_policy` is required with no default.** A column no committed set
+explains either carries through from a named witness child (`retain_from_witness`)
+or contributes nothing (`drop`). Carry-through is the reading the assembler is
+built around and `drop` is the assertion, not the other way round: carry-through
+makes assembly monotonic, so committing more sets refines a reconstruction and
+committing none leaves it where the children are. An empty inventory is an
+identity reconstruction, the same claim `rules: []` makes, with the same
+deterministic result.
+
+**Two smaller tools come with it.** `realign` re-lays the aligner's columns for
+one concept, for the case where SCA has misaligned a form — a compound against a
+simplex, two lexemes in one concept — and not as a routine step. It is
+session-local, never crosses a node boundary, and a realignment must name the
+correspondence set the moved column joins, which the harness verifies. And a
+restoration lets a node reconstruct a segment **every** active child lost, on
+cited out-group evidence that is checked: an unattesting citation, a descendant
+cited as an out-group, and a restoration at a node with no out-group at all are
+each refused.
+
 ### What crosses a node boundary
 
 Every node gets a fresh conversation: the orchestrator rebuilds `messages` from
@@ -641,7 +718,11 @@ rather than pushed into the prompt:
   `search_forms(scope="available_tree")`, as before; and
 - the hypothesis committed at an already-reconstructed node — its rule DSL,
   child scope, confidence, anomalies, and summary — through
-  `get_node_reconstruction`, one node per call.
+  `get_node_reconstruction`, one node per call. A node committed as an inventory
+  returns its proto-phonemes, its correspondence sets, and the cascade they
+  derive, **with the set IDs stripped**: a set ID names a reflex tuple over
+  *that* node's children under *that* node's overlays, so it means nothing here
+  and carrying it across would invite citing a set this node cannot reproduce.
 
 The second exists because the comparative method is iterative: a correspondence
 established at one node constrains its neighbours, and without this every
@@ -888,7 +969,17 @@ benchmark has to preserve.
 
 ## Deterministic beam and diagnostics
 
-For each concept:
+Under an inventory commit, steps 2–4 below are replaced by assembly: the same
+bounded Cartesian product over the children's candidates is walked, and each
+tuple is aligned and assembled into one parent form instead of each candidate
+being transformed through a scoped cascade. Same `beam_width`, same
+`normalize_and_prune`, same `TIE_BREAK_POLICY`, and the same `confidence` weight
+— attached to a correspondence rather than to a rewrite. Branch support has no
+subject there: one candidate tuple assembles into exactly one parent form, so
+branch divergence about the parent is structurally impossible, which is also why
+`child_convergence_rate` is retired rather than reimplemented on those nodes.
+
+For each concept, under the rule protocol:
 
 1. observed leaf variants begin as an equal-mass distribution;
 2. branch-scoped rules transform retained child candidates in order;
