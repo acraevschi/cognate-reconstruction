@@ -35,6 +35,7 @@ Usage:
     python tools/assembly_ceiling.py <benchmark-input.json>
     python tools/assembly_ceiling.py polynesian --json
     python tools/assembly_ceiling.py runs/benchmarks/synthetic_hard.json --gold-node east
+    python tools/assembly_ceiling.py polynesian --boundaries strip
 """
 
 from __future__ import annotations
@@ -53,7 +54,17 @@ from oracle_ceiling import select_binding  # noqa: E402  (same directory)
 INFINITE = float("inf")
 
 
-def align_rows(sequences: list[tuple[str, ...]]) -> list[tuple[str | None, ...]]:
+BOUNDARY_TOKENS = frozenset({"+", "-"})
+
+
+def strip_boundaries(sequence: tuple[str, ...]) -> tuple[str, ...]:
+    """`LexicalForm.phonetic_segments`, re-implemented rather than imported."""
+    return tuple(token for token in sequence if token not in BOUNDARY_TOKENS)
+
+
+def align_rows(
+    sequences: list[tuple[str, ...]], *, boundaries: str = "include"
+) -> list[tuple[str | None, ...]]:
     """SCA-align n token sequences, returning every row with None for a gap.
 
     Deliberately the same call `oracle_ceiling.align_pair` makes, over
@@ -61,9 +72,20 @@ def align_rows(sequences: list[tuple[str, ...]]) -> list[tuple[str | None, ...]]
     morphological boundaries — `ʔ a h u + a f i` — and a column that could never
     contribute a `+` would make those concepts unreachable by construction
     rather than by measurement.
+
+    `boundaries="strip"` is what the harness's shared aligner did until the
+    proto-inventory work made assembly boundary-aware, and it is kept so the
+    divergence this instrument was written to avoid stays *measurable* rather
+    than merely argued: running both ways says what stripping cost, in concepts.
+    See `docs/proto_inventory_design.md` §12.5.
     """
     from lingpy import Multiple
 
+    if boundaries == "strip":
+        sequences = [strip_boundaries(sequence) for sequence in sequences]
+    sequences = [sequence for sequence in sequences if sequence]
+    if not sequences:
+        return []
     if len(sequences) == 1:
         return [tuple(sequences[0])]
     multiple = Multiple([list(sequence) for sequence in sequences])
@@ -174,7 +196,10 @@ def _by_concept(payload: WorkbenchPayload) -> dict[str, dict[str, list]]:
 
 
 def measure(
-    payload: WorkbenchPayload, gold_node_id: str | None = None
+    payload: WorkbenchPayload,
+    gold_node_id: str | None = None,
+    *,
+    boundaries: str = "include",
 ) -> dict:
     root = parse_newick(payload.newick)
     node_ids = assign_node_ids(root)
@@ -208,7 +233,7 @@ def measure(
             flat_missed.append(concept_id)
             free_missed.append(concept_id)
             continue
-        columns = column_options(align_rows(rows))
+        columns = column_options(align_rows(rows, boundaries=boundaries))
         if reaches(columns, targets)[0] == 0:
             flat_reachable += 1
         else:
@@ -241,7 +266,7 @@ def measure(
                 for segments in rows_by_node[child_id].get(concept_id, ())
             ]
             targets = gold.get(concept_id)
-            columns = column_options(align_rows(rows))
+            columns = column_options(align_rows(rows, boundaries=boundaries))
             if targets is None:
                 # No gold here to aim at; carry the longest child form upward so
                 # a concept scored only at a higher node is not thrown away.
@@ -261,6 +286,7 @@ def measure(
     return {
         "root_node_id": root_id,
         "gold_node_id": binding.node_id,
+        "boundaries": boundaries,
         "concepts_scored": total,
         "flat_reachable": flat_reachable,
         "node_local_reachable": node_local_reachable,
@@ -277,11 +303,17 @@ def measure(
     }
 
 
-def run(payload_path: Path, gold_node_id: str | None, *, as_json: bool) -> int:
+def run(
+    payload_path: Path,
+    gold_node_id: str | None,
+    *,
+    as_json: bool,
+    boundaries: str = "include",
+) -> int:
     payload = WorkbenchPayload.model_validate_json(
         payload_path.read_text(encoding="utf-8")
     )
-    result = measure(payload, gold_node_id)
+    result = measure(payload, gold_node_id, boundaries=boundaries)
     if as_json:
         _bootstrap.emit_json(
             {
@@ -296,7 +328,8 @@ def run(payload_path: Path, gold_node_id: str | None, *, as_json: bool) -> int:
     print(f"measuring: {_bootstrap.loaded_package_path()}")
     print(
         f"root node: {result['root_node_id']}   "
-        f"gold node: {result['gold_node_id']}   concepts: {total}"
+        f"gold node: {result['gold_node_id']}   concepts: {total}   "
+        f"boundaries: {result['boundaries']}"
     )
     print()
     for key, label in (
@@ -336,6 +369,17 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--boundaries",
+        choices=("include", "strip"),
+        default="include",
+        help=(
+            "Whether '+' and '-' are aligned material. 'include' is this "
+            "instrument's own reading and every recorded baseline; 'strip' is "
+            "what the harness's shared aligner did before the proto-inventory "
+            "work, and is kept so the cost of stripping stays measurable."
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit one machine-readable object, including the measured source.",
@@ -345,6 +389,7 @@ def main() -> int:
         _bootstrap.resolve_benchmark(args.input),
         args.gold_node,
         as_json=args.json,
+        boundaries=args.boundaries,
     )
 
 

@@ -932,3 +932,67 @@ def test_every_set_the_survey_names_is_one_the_assembler_matches() -> None:
     header_size = len(json.dumps(header, ensure_ascii=False).encode())
     assert payload_size < 200 * 1024
     assert header_size < 8 * 1024
+
+
+# --------------------------------------------------------------------------
+# §12.5 — a segmentation overlay now changes columns, not only their names
+# --------------------------------------------------------------------------
+
+
+def test_a_boundary_overlay_creates_a_column_and_renames_every_set() -> None:
+    """The interaction the boundary fix had to be checked against, not assumed.
+
+    `segment_morphemes` writes boundary-only overlays and validates that the
+    phonetic tokens are unchanged, and the overlay ID has always entered every
+    `set_id` digest. While the aligner stripped boundaries, that digest was the
+    *only* thing an overlay changed: the same six columns came back under six
+    new names, so `build_correspondence_sets`'s claim that "a segmentation
+    overlay changes what a segment is" was true of the ID and of nothing else.
+
+    Now the overlay genuinely adds a column. Both halves are asserted: the new
+    `⟨+ : +⟩` set exists, and no set ID survives the overlay — so a set cited
+    from a survey run under one segmentation can never silently match a column
+    derived under another.
+    """
+    children = (
+        _lexicon("A", {"bird": ("m", "a", "n", "u", "l", "e")}),
+        _lexicon("B", {"bird": ("m", "a", "n", "u", "r", "e")}),
+    )
+    context = AgentContext(
+        node_id="PROTO", child_lexicons=children, aligner=LingPyAligner()
+    )
+    registry = default_tool_registry()
+
+    before = _call(
+        registry, context, "summarize_correspondences", "before",
+        min_support=1, limit=50,
+    )
+    assert before.ok, before.error
+    assert not [
+        item for item in before.result["sets"] if "+" in item["segments"]
+    ]
+
+    segmented = _call(
+        registry, context, "segment_morphemes", "segment",
+        segmentations=[
+            {"form_id": "A:bird", "segments": ["m", "a", "n", "u", "+", "l", "e"]},
+            {"form_id": "B:bird", "segments": ["m", "a", "n", "u", "+", "r", "e"]},
+        ],
+        rationale="the reduplicated root starts here",
+    )
+    assert segmented.ok, segmented.error
+    overlay_id = segmented.result["segmentation_overlay_id"]
+
+    after = _call(
+        registry, context, "summarize_correspondences", "after",
+        min_support=1, limit=50, segmentation_overlay_id=overlay_id,
+    )
+    assert after.ok, after.error
+    boundary = [
+        item for item in after.result["sets"] if item["segments"] == ["+", "+"]
+    ]
+    assert len(boundary) == 1
+    assert not (
+        {item["set_id"] for item in before.result["sets"]}
+        & {item["set_id"] for item in after.result["sets"]}
+    )

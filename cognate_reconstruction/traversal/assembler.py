@@ -72,6 +72,7 @@ from cognate_reconstruction.alignment.protocol import AlignmentProvider
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.rules.parser import parse_rule
 from cognate_reconstruction.schemas.beam import CandidateDerivation, NodeBeamState
+from cognate_reconstruction.schemas.common import MORPHOLOGICAL_BOUNDARY_TOKENS
 from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
     ColumnResolution,
@@ -164,6 +165,23 @@ class DerivedBranchRules:
     a rejection. Same convention as `schemas/synthetic.py`'s `invertible: false`,
     so `score-synthetic` compares like with like across the migration.
     """
+    boundary_change_child_ids: tuple[str, ...] = ()
+    """Children a committed set makes rewrite a morphological boundary.
+
+    `+` and `-` are structural, and `rules/parser.py` refuses them as rule
+    targets and as insertions on purpose — a cascade that rewrote them would be
+    the harness placing morphs. Since boundaries became alignment material, a
+    commitment *can* say something the DSL cannot write: `⟨+ : +⟩ → nothing`
+    deletes a boundary, `⟨a : a⟩ → *+` inserts one. The assembly is unaffected
+    — a parent form is built from columns, not from these rules — so the rule is
+    dropped and the child recorded, exactly as `non_invertible_child_ids`
+    records the insertion the DSL cannot write.
+
+    Recorded rather than rejected: a model that reconstructs a boundary where a
+    branch lost it has made a claim the evidence may well support, and refusing
+    the commit because the *cascade* cannot spell it would be the derived view
+    vetoing the committed one.
+    """
     unconditioned_context_child_ids: tuple[str, ...] = ()
     """Children whose derived rule lost its conditioning environment.
 
@@ -230,15 +248,19 @@ def derive_branch_rules(
 ) -> DerivedBranchRules:
     """Derive the per-branch reflex cascade implied by an inventory.
 
-    Child-to-parent, so each rule is written *reflex > proto*. Four cases, and
+    Child-to-parent, so each rule is written *reflex > proto*. Five cases, and
     they are exhaustive:
 
     - the child shows a gap against a non-null proto — no rule, and the child is
       recorded as non-invertible;
+    - either side is a morphological boundary — no rule, and the child is
+      recorded in `boundary_change_child_ids`; the DSL refuses `+` and `-` as
+      targets and as insertions, deliberately;
     - the child shows material against a null proto — `reflex > Ø`;
     - both present and different — `reflex > proto`;
     - both present and equal — no rule; that is an ordinary identity
-      correspondence, not a defect.
+      correspondence, not a defect. `⟨+ : +⟩ → *+` lands here, which is why the
+      commonest boundary commitment derives nothing and costs nothing.
 
     Two rules for one child with the same target and environment cannot arise,
     because a (set, conditioning) pair carries exactly one value. That is the
@@ -249,6 +271,7 @@ def derive_branch_rules(
     rule_set_ids: list[str] = []
     non_invertible: list[str] = []
     unconditioned: list[str] = []
+    boundary_changes: list[str] = []
     for child_index, child_id in enumerate(child_node_ids):
         for item in commitments:
             reflex = item.reflexes[child_index]
@@ -258,6 +281,13 @@ def derive_branch_rules(
                     non_invertible.append(child_id)
                 continue
             if reflex == proto:
+                continue
+            if (
+                reflex in MORPHOLOGICAL_BOUNDARY_TOKENS
+                or proto in MORPHOLOGICAL_BOUNDARY_TOKENS
+            ):
+                if child_id not in boundary_changes:
+                    boundary_changes.append(child_id)
                 continue
             environment = item.conditioning
             if environment is not None:
@@ -279,6 +309,7 @@ def derive_branch_rules(
         rules=tuple(rules),
         rule_set_ids=tuple(rule_set_ids),
         non_invertible_child_ids=tuple(non_invertible),
+        boundary_change_child_ids=tuple(boundary_changes),
         unconditioned_context_child_ids=tuple(unconditioned),
     )
 

@@ -19,6 +19,8 @@ class AlignmentProvider(Protocol):
         left: LanguageLexicon,
         right: LanguageLexicon,
         anchors: tuple[LexicalForm, ...] = (),
+        *,
+        include_boundaries: bool = True,
     ) -> CorrespondenceMap: ...
 
     def align_multiple(
@@ -28,4 +30,5 @@ class AlignmentProvider(Protocol):
         *,
         respect_cognate_sets: bool = True,
         correspondence_detail: CorrespondenceDetail = CorrespondenceDetail.FULL,
+        include_boundaries: bool = True,
     ) -> MultipleAlignmentMap: ...

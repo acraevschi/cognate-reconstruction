@@ -1093,6 +1093,14 @@ class TestProtoAssemblyResult(WorkbenchModel):
     """
     unconditioned_context_child_ids: tuple[NonEmptyStr, ...] = ()
     """Children whose derived rule lost its conditioning environment."""
+    boundary_change_child_ids: tuple[NonEmptyStr, ...] = ()
+    """Children a committed set makes rewrite a morphological boundary.
+
+    Also not an error, and the same shape as the two above: the form assembles
+    from its columns either way, and it is only the derived per-branch cascade
+    that cannot spell the change, because `+` and `-` are refused as rule
+    targets and as insertions on purpose.
+    """
 
 
 class RealignArgs(WorkbenchModel):

@@ -532,8 +532,9 @@ The *survey* is not incremental, because recurrence cannot be seen in a batch.
 correspondence sets — the n-tuple of aligned segments across the selected nodes,
 with the number of aligned columns showing it — ordered by support, with the
 output bounded by pagination rather than the input by batching. For the ten
-Polynesian daughters that is 216 sets over 46 concepts in 28 KB, of which 41 are
-attested more than once; `min_support` defaults to 2 and reports the rest as
+Polynesian daughters that is 246 sets over 46 concepts in 25 KB, of which 50 are
+attested more than once — morphological boundaries included, since those are
+aligned material and a form is assembled out of columns; `min_support` defaults to 2 and reports the rest as
 `suppressed_below_min_support`, because a correspondence occurring once is
 residue rather than evidence.
 

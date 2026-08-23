@@ -569,7 +569,12 @@ def _restoration_is_attested(
         for form in lexicon.forms:
             if form.concept_id != restoration.concept_id:
                 continue
-            if restoration.proto_segment in form.phonetic_segments:
+            # `form.segments`, so a restoration may cite a morphological
+            # boundary an out-group node still shows. A boundary is aligned
+            # material now, so it is restorable material too, and reading the
+            # phonetic string here would silently exempt the one segment class
+            # every child is most likely to have lost.
+            if restoration.proto_segment in form.segments:
                 return True
     return False
 

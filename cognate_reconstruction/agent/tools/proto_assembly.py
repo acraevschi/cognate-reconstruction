@@ -263,6 +263,7 @@ def assembly_result(
         derived_rules=committed.derived_rules,
         non_invertible_child_ids=committed.non_invertible_child_ids,
         unconditioned_context_child_ids=derived.unconditioned_context_child_ids,
+        boundary_change_child_ids=derived.boundary_change_child_ids,
     )
 
 

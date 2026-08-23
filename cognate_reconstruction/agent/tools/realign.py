@@ -12,7 +12,8 @@ much they do.
 
 1. **The rows must be the children's own forms.** Dropping the gaps from each row
    must reproduce that child's form under the current segmentation overlay, token
-   for token. Material may be moved between columns; it may not be invented,
+   for token — morphological boundaries included, since those are aligned
+   material. Material may be moved between columns; it may not be invented,
    deleted, or reordered. The same discipline `segment_morphemes` imposes, one
    level up, and checkable arithmetic rather than judgement.
 2. **An override is per concept, never a rule about the evidence.** There is no
@@ -81,7 +82,13 @@ def _check_rows_are_the_childrens_forms(
             for form in context.lexicon(child_id, segmentation_overlay_id).forms
             if form.concept_id == override.concept_id
         ]
-        attested = {form.phonetic_segments for form in forms}
+        # `form.segments`, boundaries included, because that is what the
+        # aligner now sees and what the assembler compares an override
+        # against. Against `phonetic_segments` an override on a
+        # boundary-bearing concept could satisfy this check and then match no
+        # candidate tuple in `ProtoInventoryAssembler._matching_override`,
+        # which compares the gapless rows to the children's own beam segments.
+        attested = {form.segments for form in forms}
         if not gapless:
             if attested:
                 raise ToolInputError(
@@ -106,7 +113,8 @@ def _check_rows_are_the_childrens_forms(
                     "Dropping the nulls from a row must reproduce that child's "
                     "own form, token for token. You may move material between "
                     "columns; you may not invent, delete, or reorder a segment. "
-                    "Morphological boundaries are not part of an alignment row."
+                    "Morphological boundaries are aligned material and belong "
+                    "in a row, in the position the child's form puts them."
                 ),
             )
 

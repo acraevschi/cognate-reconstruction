@@ -569,19 +569,32 @@ any single batch of alignments.
 
 `summarize_correspondences` returns it over the whole evidence set at once, which
 is why it has no batching bound on its input and bounds its *output* by
-pagination instead. For the ten Polynesian daughters that is 216 distinct sets
-over 56 cognate-set alignments, 41 of them attested more than once:
+pagination instead. For the ten Polynesian daughters that is 246 distinct sets
+over 56 cognate-set alignments, 50 of them attested more than once:
 
 ```text
 n   EFut EUve  Haw  Mri  Niu  NMq  Rar  Sam  Tah  Ton
-9      t    t    k    t    t    t    t    t    t    t
-8      l    l    l    r    l    ʔ    r    l    r    l
-4      k    k    ʔ    k    k    ʔ    k    ʔ    ʔ    k
-3      ʔ    ʔ    Ø    Ø    Ø    Ø    Ø    Ø    Ø    ʔ
-3      f    f    h    h    f    h    ʔ    f    h    f
+21     a    a    a    a    a    a    a    a    a    a
+9      l    l    l    r    l    ʔ    r    l    r    l
+7      t    t    k    t    t    t    t    t    t    t
+5      k    k    ʔ    k    k    ʔ    k    ʔ    ʔ    k
+4      ʔ    ʔ    Ø    Ø    Ø    Ø    Ø    Ø    Ø    ʔ
+3      Ø    Ø    Ø    +    Ø    Ø    Ø    +    Ø    +
 ```
 
-`min_support` defaults to 2 and the 175 singletons are reported as
+**Morphological boundaries are aligned material and appear as correspondence
+sets**, which is the last row. They were stripped before the aligner saw them
+until 2026-08-23; that cost nothing while a parent form was a child's whole
+string rewritten by rules, and cost eight of Polynesian's 46 gold concepts the
+moment forms were assembled column by column, because there is no column for a
+token the aligner never saw. A `⟨+ : Ø⟩` set is also the signal `polarize` calls
+decisive — material added at a morph boundary is innovation however well its
+segments are attested elsewhere — and the harness had no way to show one before.
+`docs/proto_inventory_design.md` §12.5 has the measurement; `LingPyAligner`
+carries an `include_boundaries` flag for a caller that genuinely wants the
+phonetic string alone.
+
+`min_support` defaults to 2 and the 196 singletons are reported as
 `suppressed_below_min_support` rather than dropped silently, because a
 correspondence occurring once is residue — compound material, a loan, a
 segmentation artefact — and a model that sees thirty rows has to know there is a

@@ -313,6 +313,35 @@ what a perfect column-wise chooser with full knowledge of the gold would produce
 plausible reconstructions, and a miss here is no more a structural limit than an oracle miss
 is.
 
+### `--boundaries`, and what the instrument was measuring that the harness was not
+
+This script has always aligned `form.segments`, boundaries included, and said so in
+`align_rows`: gold proto-forms carry them — `ʔ a h u + a f i` — and a column that could never
+contribute a `+` would make those concepts unreachable *by construction rather than by
+measurement*. Until 2026-08-23 the harness's own aligner stripped them, so the ceiling was
+measured one way and the implementation ran the other way, and the two shared no alignment
+code that could disagree out loud.
+
+`--boundaries strip` makes that gap a number instead of an argument. Polynesian, same run,
+both readings:
+
+| variant | `--boundaries include` (default) | `--boundaries strip` |
+| --- | --- | --- |
+| flat | 43/46 | 38/46 |
+| **node-local** | **44/46** | **38/46** |
+| free choice | 46/46 | 44/46 |
+| node-local cannot reach | `1028`, `778` | `1028`, `1212`, `1217`, `1239`, `1439`, `1741`, `2105`, `778` |
+
+**Six concepts, and they are not a random six.** `1212`, `1217`, `1239`, `1439`, `1741` and
+`2105` carry a morphological boundary in every gold alternative, so under `strip` no assembly
+over those columns can reach them however good the analysis is. `1028` and `778` stay out of
+reach either way, for the reasons above — a segment no daughter shows — which is what makes
+the six attributable to the boundary and to nothing else.
+
+`--boundaries strip` is kept for exactly one purpose: reproducing a figure recorded before the
+harness's aligner was repaired. It is not a variant of the measurement worth taking on new
+work.
+
 ## `tiebreak_probe.py` — does branch support decide anything?
 
 Three synthetic nodes, no arguments. Four children agreeing against one dissenting, with and
@@ -402,31 +431,53 @@ or the aligner changes.
 landed, and `--reading` is how they are compared.** `summarize_correspondences` now keeps one
 form per node per (concept, cognate set) before aligning, because a set ID it hands a model
 has to name columns the assembler can reproduce from one candidate per child, and at an
-internal node a child's lexicon is *every* retained beam candidate. Measured on Polynesian,
-`--min-support 1`:
+internal node a child's lexicon is *every* retained beam candidate.
 
-| `--reading` | distinct sets | at support ≥ 2 | singletons |
-| --- | --- | --- | --- |
-| `all` (default; every recorded baseline) | 216 | 41 | 175 |
-| `reported` (what the tool does) | 218 | 39 | 179 |
+**`--boundaries` is the second axis, and it moved every figure on this page's row.** Until
+2026-08-23 `LingPyAligner` stripped `+` and `-` before aligning, for every caller. That was
+free while a parent form was a child's whole string rewritten by rules and stopped being free
+the moment forms were assembled column by column: there is no column for a token the aligner
+never saw, so the assembler dropped boundaries the rule path kept. It now includes them, and
+`--boundaries strip` is kept here so the pre-change baselines stay reproducible rather than
+merely remembered. See `docs/proto_inventory_design.md` §12.5.
 
-188 sets are identical between the two; 28 exist only under `all` and 30 only under
-`reported`. The difference is larger than the ~11 leaf cases where one node genuinely
-contributes two forms to one cognate set, because dropping a row re-aligns the whole concept
-and shifts neighbouring columns too.
+Measured on Polynesian, `--min-support 1`, all four combinations:
 
-Neither is wrong. `all` is what SCA does over the raw lexicons and is what every recorded
-baseline in this document used; `reported` is a correspondence between the languages'
-reported forms. They are kept apart rather than merged so this script stays an independent
-check: `--reading reported` reproduces the tool exactly, and the reduction is re-implemented
-here rather than imported, because importing the thing under test would make the check
-vacuous.
+| `--reading` | `--boundaries` | distinct sets | at support ≥ 2 | singletons | inventory |
+| --- | --- | --- | --- | --- | --- |
+| `all` | `strip` (pre-2026-08-23 baseline) | 216 | 41 | 175 | 21.9 KB |
+| `all` | `include` | 237 | 60 | 177 | 24.1 KB |
+| `reported` | `strip` | 218 | 39 | 179 | 22.0 KB |
+| `reported` (what the tool does) | `include` (default) | **246** | **50** | 196 | 24.9 KB |
 
-For ten Polynesian daughters it produces 216 sets in about 22 KB — smaller than a single
-`get_alignments` call for six concepts across two languages. Most of the tail is
+Every recorded baseline elsewhere in this document that predates 2026-08-23 was measured at
+`--reading all --boundaries strip`, the first row — the two figures long quoted as "216 sets,
+41 at support ≥ 2". **Quote a set count with both flags or not at all**; the same benchmark
+gives 216 or 246 depending on them.
+
+What including boundaries buys is not the extra 28 sets but which ones they are. Boundary
+correspondences recur, so `sets_at_min_support` rises by more than a quarter — 39 to 50 — and
+a `⟨+ : Ø⟩` set is the morphology signal `polarize`'s own documentation calls decisive:
+material added at a morph boundary is innovation however well its segments are attested
+elsewhere. Under `strip` the harness had no way to *show* a session that one child carries a
+boundary another lacks.
+
+Under `strip`, 188 sets are identical between the two readings; 28 exist only under `all` and
+30 only under `reported`. The difference is larger than the ~11 leaf cases where one node
+genuinely contributes two forms to one cognate set, because dropping a row re-aligns the
+whole concept and shifts neighbouring columns too.
+
+None of the four is wrong. `all` is what SCA does over the raw lexicons; `reported` is a
+correspondence between the languages' reported forms. They are kept apart rather than merged
+so this script stays an independent check: `--reading reported --boundaries include`
+reproduces the tool exactly, and both the reduction and the boundary handling are
+re-implemented or re-flagged here rather than imported, because importing the thing under
+test would make the check vacuous.
+
+For ten Polynesian daughters it produces 246 sets in about 25 KB — still smaller than a
+single `get_alignments` call for six concepts across two languages. Much of the tail is
 compound-boundary noise, which is why `--min-support` defaults to 2: a correspondence
-occurring once is residue, not evidence. The tool agrees: 216 distinct sets, 41 at support
-≥ 2, 175 singletons.
+occurring once is residue, not evidence.
 
 ## `branch_recoverability.py` — what the DSL cannot reach
 
@@ -483,7 +534,8 @@ the architecture, and the reason a miss under either measure is not a structural
   `outgroup_probe.py` if the change claims to use evidence rather than segment order.
 - **Any change to alignment or evidence tools** → `correspondence_inventory.py`, to check the
   inventory is still coherent and still small, and that `summarize_correspondences` still
-  agrees with it set for set.
+  agrees with it set for set. State `--reading` and `--boundaries` beside the number: the same
+  benchmark gives 216 or 246 sets depending on them.
 - **Any change to how out-group evidence is aggregated**, in the scorer or in the
   `polarize` tool → `outgroup_probe.py`, and say what happened to the per-clade and
   per-daughter numbers. A change that makes them converge has probably reintroduced the

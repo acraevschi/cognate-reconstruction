@@ -2668,6 +2668,15 @@ remain, ineligible for compaction.
 do on this benchmark's alignments — and are neither oracle nor live numbers.
 They bound nothing about accuracy; they say what the residue rate means.*
 
+> **Re-measured later the same day, after §12.5's boundary fix landed.** The
+> figures below are the pre-fix ones and are kept because §12.5 quotes them as
+> its before half. Post-fix, over the 246 sets the aligner now yields:
+> `unaccounted_column_rate` **0.125**, `cross_branch_assembly_rate` **0.761**,
+> 46 of 46 concepts assembled; recurrent-only (50 sets at `min_support` 2)
+> **0.551** and 0.522. The account below of *where* the residue is survives
+> intact: 42 unaccounted columns of 336, in 11 of 46 concepts, and all 11 carry
+> more than one cognate set — still 100%. **0.125 is the floor §7 has to state.**
+
 Committing a proto-phoneme for **every** one of Polynesian's 218 correspondence
 sets, with `retain_from_witness`:
 
@@ -2702,12 +2711,13 @@ Carrying cognate sets through the beam is a much larger change and arguably a
 wrong one — which cognate set a reconstructed parent form belongs to is itself a
 claim, not a datum.
 
-**What matters for §7 is that 0.141 is a floor, not a score.** §7.2 stops the
-work if `unaccounted_column_rate` runs "above ~0.3 at most nodes under the
-oracle", on the reasoning that the sets would then not cover the evidence. On
-Polynesian the multi-etymon floor is 0.14 with a *complete* inventory, so that
-threshold has about 0.16 of headroom rather than 0.3, and a reader comparing
-against it must subtract the floor for the family in question first. The
+**What matters for §7 is that this is a floor, not a score** — 0.141 as measured
+here, 0.125 after the boundary fix. §7.2 stops the work if
+`unaccounted_column_rate` runs "above ~0.3 at most nodes under the oracle", on
+the reasoning that the sets would then not cover the evidence. On Polynesian the
+multi-etymon floor is 0.13 with a *complete* inventory, so that threshold has
+about 0.18 of headroom rather than 0.3, and a reader comparing against it must
+subtract the floor for the family in question first. The
 concepts concerned are the ones §1.2 already names — `1443` WALK carries four
 etyma and loses 5 of its 12 columns, `1212` carries three — so this is the
 alignment/cognacy limit that section describes, quantified rather than newly
@@ -2731,17 +2741,22 @@ and spent two further turns discovering that `null` was meant. `Ø` and `∅` ar
 and `AlignmentOverride.rows` accept them and normalize to `None`. No check is
 loosened — the reflex tuple is still compared against the harness's own.
 
-### 12.5 Two findings that block stage 3, neither of them stage 2's work
+### 12.5 Two findings that blocked stage 3, neither of them stage 2's work
 
 *Found 2026-08-23 while checking §7 against the instrument prompt 07 repaired.
-Both are recorded here rather than fixed, because each is a separate reviewable
-change with consequences outside stages 1–2, and neither is safe to fold into
-them silently.*
+Recorded here rather than fixed on the spot, because each is a separate
+reviewable change with consequences outside stages 1–2, and neither was safe to
+fold into them silently. The first is now fixed and this section records what it
+cost; the second is the re-derivation the fix had to land before.*
 
-#### The assembler drops morphological boundaries, and the rule path does not
+#### The assembler dropped morphological boundaries, and the rule path did not
 
-`LingPyAligner._alignment_inputs` aligns `phonetic_segments`, which strips `+`
-and `-`. Every evidence tool has always done this, and under branch cascades it
+*Found 2026-08-23, **fixed 2026-08-23** in the commit that added
+`include_boundaries` to `LingPyAligner`. The finding is kept in full because the
+measurement it rests on is the before half of the before/after below.*
+
+`LingPyAligner._alignment_inputs` aligned `phonetic_segments`, which strips `+`
+and `-`. Every evidence tool had always done this, and under branch cascades it
 cost nothing: `make_leaf_beam` carries `form.segments` *with* the boundaries, and
 `RuleEngine` passes them through untouched, so a parent form inherits the
 boundary its children showed.
@@ -2755,41 +2770,200 @@ rule path      →  m a n u + l e l e
 assembly       →  m a n u   l e l e
 ```
 
-That is a **regression against the shipped path**, not a limitation of the new
-one, and it is silent — nothing rejects, nothing counts it, the form simply comes
-out one token short.
+That was a **regression against the shipped path**, not a limitation of the new
+one, and it was silent — nothing rejected, nothing counted it, the form simply
+came out one token short.
 
 Measured on Polynesian: 128 of 520 daughter forms carry a boundary, and **8 of
 the 46 gold concepts carry one in every gold alternative** — `1028`, `1212`,
-`1217`, `1239`, `1439`, `1741`, `2105`, `778`. Those eight are unreachable by
-assembly *by construction*, which caps top-1 at **38/46** before the model does
-anything. The design expects ≥ 39/46 (§7 condition 1) and the repaired instrument
-puts the node-local ceiling at 44/46.
+`1217`, `1239`, `1439`, `1741`, `2105`, `778`. Those eight were unreachable by
+assembly *by construction*, which capped top-1 at **38/46** before the model did
+anything, against a node-local ceiling of 44/46. And two of the three concepts §7
+condition 3 names as the proof the mechanism fired — `1212` and `1439` — were in
+that list, so the check the design relies on to distinguish "the mechanism
+worked" from "something else moved" would have failed on two thirds of its
+evidence for a reason having nothing to do with the mechanism.
 
-**And two of the three concepts §7 condition 3 names as the proof the mechanism
-fired — `1212` and `1439` — are in that list.** So the check the design relies on
-to distinguish "the mechanism worked" from "something else moved" would fail on
-two thirds of its evidence for a reason that has nothing to do with the
-mechanism. `tools/assembly_ceiling.py` saw this coming and says so in
-`align_rows`: it deliberately aligns `form.segments` rather than
-`phonetic_segments` because "a column that could never contribute a `+` would
-make those concepts unreachable by construction rather than by measurement". The
-ceiling is measured one way and the implementation runs the other way.
+`tools/assembly_ceiling.py` saw this coming and says so in `align_rows`: it
+deliberately aligns `form.segments` rather than `phonetic_segments` because "a
+column that could never contribute a `+` would make those concepts unreachable by
+construction rather than by measurement". The ceiling was measured one way and
+the implementation ran the other way, and the two share no alignment code that
+could have disagreed out loud — which is why the gap survived every test in the
+suite.
 
-The fix is not local, which is why it is not folded in here. Making the assembler
-boundary-aware means the correspondence sets must have boundary columns, which
-means `_alignment_inputs` stops stripping — and that is the input to
-`summarize_correspondences`, `get_alignments`, `polarize`, and
-`tools/correspondence_inventory.py`'s recorded 216-set baseline. It is
-defensible: a `⟨+ : Ø⟩` set is exactly the morphology signal `polarize` already
-calls decisive ("material added at a morph boundary is innovation however well
-its segments are attested elsewhere"), and it would be *visible* as a
-correspondence for the first time. But it changes a shipped tool's output for
-every caller, and it belongs in its own diff with its own before/after.
+##### The fix: at the shared input, not in the assembler
 
-**It must land before stage 3 measures anything.** Measured against a
-boundary-blind assembler, the change would read as failing on precisely the
-concepts it was predicted to convert.
+`LingPyAligner.align_multiple` and `align` take `include_boundaries`, defaulting
+to `True`, and `_alignment_inputs` passes it to
+`LexicalForm.segments_for_membership` on the cognate-membership branch and
+selects `form.segments` over `form.phonetic_segments` on the other. Nothing else
+in the harness names the choice. That placement is the whole point: the survey,
+the preview, the commit-time re-derivation and the assembler all read one
+alignment, so a set ID a model is handed is a set the assembler can reproduce.
+Repairing this in `traversal/assembler.py` alone would have re-opened the exact
+defect §12.3 records — the survey naming columns the assembler cannot see, every
+boundary-bearing concept falling to residue, and `cross_branch_assembly_rate`
+reading 0, which is §7.2's stop condition fired by a bug.
+
+The default is shared rather than chosen per caller for the same reason. A caller
+that genuinely wants the phonetic string alone passes `include_boundaries=False`
+and gets exactly the old behaviour; `tools/correspondence_inventory.py` and
+`tools/assembly_ceiling.py` both grew a matching `--boundaries` flag so that the
+baselines recorded before this change stay reproducible rather than merely
+remembered.
+
+**One collision had to be handled first.** LingPy writes an alignment gap as `-`,
+and `-` is one of this repository's two morphological boundaries. Handing one to
+the aligner unencoded would read every `-` boundary back as a gap — the same
+silent one-token loss, one level down. So a `-` is re-spelled `+` on the way in
+(LingPy's SCA maps both to its own morpheme-boundary sound class `_`) and
+restored positionally on the way out, and the row's non-gap tokens are checked
+against the caller's own segments rather than assumed. It does not arise on any
+benchmark checked in here — all 148 Polynesian boundaries are `+` — which is
+precisely why it has a test.
+
+##### Whether a boundary is a correspondence: yes, and argued rather than assumed
+
+This is the substantive question and it is not settled by the bug. Making the
+aligner see `+` does not by itself make `⟨+ : +⟩` a *correspondence set*; that
+follows because `build_correspondence_sets` aggregates every column that is not
+all-gap, and nothing was carved out for boundaries. The case for leaving it that
+way, in three parts:
+
+- **It is what the evidence is.** A `⟨+ : Ø⟩` set says one child has a boundary
+  where another has none, which is exactly the signal `polarize`'s own
+  documentation calls decisive: *material added at a morph boundary is innovation
+  however well its segments are attested elsewhere.* Until now the harness had no
+  way to **show** a session that asymmetry — `polarize` could not be asked about
+  a boundary at all, because no correspondence contained one. It can now, and it
+  answers: on Polynesian, `⟨+ : Ø⟩` between EastFutuna and EastUvea matches three
+  columns in `1233`, `658` and `778`, and reports what all eight out-group nodes
+  show in each.
+- **It puts the decision where §11.1 put every other one.** The alternative was a
+  post-assembly heuristic — put a `+` back where most children had one — and that
+  is the harness deciding where morphology goes, on a majority vote, which this
+  repository has measured to reconstruct innovations. Reading the evidence and
+  naming the value is the model's job. The harness retrieves a column; it does
+  not place a morph.
+- **The DSL is unaffected, deliberately.** `rules/parser.py` still refuses `+`
+  and `-` as rule targets and as insertions, so a derived branch cascade can
+  never start rewriting boundaries. `derive_branch_rules` therefore has a fifth
+  case: either side a boundary → no rule, and the child recorded in
+  `boundary_change_child_ids`. That is the same shape as
+  `non_invertible_child_ids` — a fact about what the derived *view* cannot spell,
+  never a rejection of the commit, because the form assembles from its columns
+  either way. The commonest boundary commitment, `⟨+ : +⟩ → *+`, is an identity
+  correspondence and derives nothing at all.
+
+The cost is real and is stated below rather than waved at: more sets, bigger
+payloads on the alignment tools, and a `⟨+ : + … +⟩` row occupying space on a
+bounded page. The argument is that a dull correspondence that lets a form be
+reconstructed beats no correspondence and a form one token short.
+
+##### What it cost and what it bought, measured
+
+All on `runs/benchmarks/polynesian.json`, 2026-08-23, before and after in the
+same checkout. `strip` is the old behaviour, `include` the new.
+
+`tools/correspondence_inventory.py --min-support 1`, both readings:
+
+| `--reading` | `--boundaries` | distinct sets | at support ≥ 2 | singletons |
+| --- | --- | --- | --- | --- |
+| `all` | `strip` | 216 | 41 | 175 |
+| `all` | `include` | 237 | 60 | 177 |
+| `reported` | `strip` | 218 | 39 | 179 |
+| `reported` | `include` | **246** | **50** | 196 |
+
+The 216 and 218 figures are what `docs/analysis_tools.md` recorded, and both
+moved. Note where the growth is: `sets_at_min_support` rises by more than a
+quarter, from 39 to 50, because boundary correspondences *recur*. They are not
+tail noise.
+
+Payload sizes, through the registry over the flat ten-daughter node:
+
+| payload | `strip` | `include` |
+| --- | --- | --- |
+| `summarize_correspondences`, default page | 17.5 KB | 17.9 KB |
+| `test_proto_assembly`, `detail="summary"`, recurrent inventory, all 46 concepts | 23.5 KB | **21.7 KB** |
+| the same at `detail="full"` | 75.0 KB | 82.9 KB |
+| **the non-compactable half of either** | 1.4 KB | 1.6 KB |
+| `get_alignments`, 3 concepts × 10 nodes, `detail="full"` | 151.6 KB | 176.9 KB |
+
+The affordability precondition prompt 01 set holds. The survey grew 3%; the
+preview a session actually reads *shrank*, because the recurrent inventory now
+covers columns that previously fell to residue and the per-concept reports carry
+less; the half a session must carry to its commit went from 1.4 KB to 1.6 KB.
+`get_alignments` grew 17%, which is the one figure that got worse — it is also
+the call the tool's own docstring already tells a session to prefer
+`summarize_correspondences` over. (§12.4's "41 committed sets" beside the 23.5 KB
+was a miscount: the run was the 39 sets at `min_support` 2 under `--reading
+reported`, and the byte figure reproduces exactly.)
+
+Assembly with a value committed for **every** set, `retain_from_witness`:
+
+| | `strip` | `include` |
+| --- | --- | --- |
+| sets committed | 218 | 246 |
+| `unaccounted_column_rate` | 0.141 | **0.125** |
+| `cross_branch_assembly_rate` | 0.783 | 0.761 |
+| concepts assembled | 46 of 46 | 46 of 46 |
+| assembled forms carrying a boundary | **0 of 46** | **29 of 46** |
+
+The residue rate falls because the denominator grows faster than the numerator:
+40 unaccounted columns of 284 becomes 42 of 336. §12.4's account of *where* that
+residue is survives the change intact — all 42 columns are in 11 concepts, and
+all 11 carry more than one cognate set, 100% as before. The floor is 0.125, and
+§7 is where that has to be said.
+
+The last row is the point. Under `strip` no assembled form could carry a
+boundary; under `include`, 29 do, including every one of the eight gold concepts
+that carry one in every alternative.
+
+And the ceiling the implementation can now actually reach,
+`tools/assembly_ceiling.py polynesian --boundaries …`:
+
+| variant | `include` | `strip` |
+| --- | --- | --- |
+| flat | 43/46 | 38/46 |
+| **node-local** | **44/46** | **38/46** |
+| node-local cannot reach | `1028`, `778` | `1028`, `1212`, `1217`, `1239`, `1439`, `1741`, `2105`, `778` |
+
+**Six of the eight capped concepts become reachable**: `1212`, `1217`, `1239`,
+`1439`, `1741`, `2105`. `1028` and `778` stay out of reach either way, for the
+reason §1.2 already gives — a segment no daughter shows — which is what makes the
+six attributable to the boundary and to nothing else. Both of §7 condition 3's
+boundary-bearing witnesses, `1212` and `1439`, are among them.
+
+##### What did not move, and one thing that quietly became true
+
+`tools/oracle_ceiling.py` is unchanged — 27/46 top-1, 40/46 beam-exact, and the
+pinned regression test green — exactly as predicted, because it runs
+`RuleBasedReconstructor` over `make_leaf_beam` and never calls
+`LingPyAligner.align_multiple`. A movement there would have meant something
+unintended had changed.
+
+Two adjacent things had to move with the aligner and did:
+
+- `realign`'s constraint 1 compares the gapless rows of an override against
+  `form.segments` rather than `phonetic_segments`. Against the phonetic string an
+  override on a boundary-bearing concept could pass the check and then match no
+  candidate tuple in `ProtoInventoryAssembler._matching_override`, which compares
+  against the children's own beam segments — a second silent divergence of the
+  same kind.
+- A restoration may cite a boundary an out-group node still shows, for the same
+  reason: a boundary is restorable material now, and reading the phonetic string
+  there would have exempted the one segment class every child is most likely to
+  have lost.
+
+And `segment_morphemes` became load-bearing in a way it was not. The
+segmentation overlay ID has always entered every `set_id` digest, but while
+boundaries were stripped an overlay changed *only the digest*: the same columns
+came back under new names. It now genuinely adds a column, so
+`build_correspondence_sets`'s claim that "a segmentation overlay changes what a
+segment is" is true of the alignment and not just of the ID. Both halves are
+pinned by a test, because the interaction was worth checking rather than
+assuming.
 
 #### §7's thresholds quote the instrument prompt 07 repaired
 
@@ -2849,7 +3023,11 @@ All measured 2026-08-21 in this checkout,
 | per-tool-result sizes and per-turn prompt growth | `runs/google-gemma-4-26b-a4b-20260820-212424`, `trajectories.jsonl` and `events.jsonl` |
 | fixed prompt floor: 22.6 KB system + 23.8 KB tool schemas + 2.1 KB payload ≈ 8.8k tokens | same run, message and tool-definition sizes |
 | `east` at 22/25 node-local, the three concepts being `leaf`, `tooth`, `tree` | this session's `node_mixing.py` over the answer key |
-| correspondence sets and their supports | `tools/correspondence_inventory.py` |
+| correspondence sets and their supports | `tools/correspondence_inventory.py`; figures before 2026-08-23 are `--reading all --boundaries strip` |
+| 216 / 237 / 218 / 246 sets across the two readings and the two boundary settings | `tools/correspondence_inventory.py polynesian --reading {all,reported} --boundaries {strip,include} --min-support 1` |
+| 44/46 and 38/46 node-local assembly, and the six concepts between them | `tools/assembly_ceiling.py polynesian --boundaries {include,strip}` |
+| 0.125 / 0.761 / 46 of 46, and 42 unaccounted columns of 336 in 11 multi-etymon concepts | every set the survey returns committed through `test_proto_assembly`, post-boundary-fix; §12.5 |
+| payload sizes before and after the boundary fix | the same registry calls, in one checkout, both settings; §12.5 |
 | forms for 1205, 1355, 1215, 1028, 1217, 1443, 778 | `runs/benchmarks/polynesian.json` |
 | 21/46, 31/46, 0.214, 0.081, 0.950 live | `docs/benchmarks.md`, run `runs/google-gemma-4-26b-a4b-20260820-212424`, quoted not re-measured |
 | suite at 320 | `pytest -q -k "not local_run_artifacts"` |

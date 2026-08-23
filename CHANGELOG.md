@@ -2,6 +2,69 @@
 
 ## Unreleased
 
+### Morphological boundaries are aligned material
+
+`LingPyAligner` aligned `phonetic_segments`, which strips `+` and `-`, for every
+caller. Under branch cascades that cost nothing — `make_leaf_beam` carries
+`form.segments` and `RuleEngine` passes a boundary through untouched — and under
+assembly it silently lost a token, because a parent form is built out of
+alignment columns and there is no column for a token the aligner never saw.
+`m a n u + l e l e` and `m a n u + r e r e` assembled to `m a n u l e l e`. That
+was a regression against the shipped path, and nothing rejected or counted it.
+
+- **`align_multiple` and `align` take `include_boundaries`, defaulting to
+  `True`.** The choice is named once, at the shared input, so the survey, the
+  preview, the commit-time re-derivation and the assembler read the same
+  columns. Fixing it in `traversal/assembler.py` alone would have re-opened the
+  survey/assembler column mismatch `docs/proto_inventory_design.md` §12.3
+  records, whose failure signature is `cross_branch_assembly_rate = 0` — the
+  design's own stop condition fired by a bug.
+- **A `-` boundary is re-spelled for LingPy and restored positionally**, because
+  LingPy writes an alignment gap as `-` too. It does not arise on any benchmark
+  checked in here — all 148 Polynesian boundaries are `+` — which is why it has
+  a test.
+- **A boundary is a correspondence, argued in `docs/proto_inventory_design.md`
+  §12.5 rather than assumed.** A `⟨+ : Ø⟩` set is the signal `polarize`'s own
+  documentation calls decisive, and until now the harness could not show one.
+  The alternative — restoring a `+` where most children had one — is the harness
+  placing morphs on a majority vote, which §11.1 settled. No heuristic was added
+  and nothing is proposed: the model names the value.
+- **The DSL is untouched, deliberately.** `rules/parser.py` still refuses `+` and
+  `-` as rule targets and as insertions, so `derive_branch_rules` gains a fifth
+  case: either side a boundary → no rule, and the child reported in
+  `boundary_change_child_ids`. Same shape as `non_invertible_child_ids` — a fact
+  about what the derived *view* cannot spell, never a rejection, because the form
+  assembles from its columns either way. `⟨+ : +⟩ → *+` is an identity
+  correspondence and derives nothing.
+- **Two adjacent readings moved with it.** `realign`'s "the rows must be the
+  children's own forms" check compares against `form.segments`, or an override on
+  a boundary-bearing concept could pass and then match no candidate tuple in the
+  assembler; and a restoration may cite a boundary an out-group still shows.
+- **`tools/correspondence_inventory.py` and `tools/assembly_ceiling.py` gain
+  `--boundaries`**, so every baseline recorded before this change stays
+  reproducible. Both remain independent implementations; neither imports the tool
+  it checks.
+
+**Measured on `runs/benchmarks/polynesian.json`, before and after in one
+checkout.** Correspondence sets 218 → **246** under the tool's own reading, and
+39 → **50** at support ≥ 2, because boundary correspondences recur. The default
+survey page grew 17.5 → 17.9 KB; the `test_proto_assembly` preview a session
+reads *shrank*, 23.5 → 21.7 KB, and its non-compactable half went 1.4 → 1.6 KB;
+`get_alignments` over 3 concepts × 10 nodes grew 17%, the one figure that got
+worse. A complete inventory now assembles all 46 concepts with
+`unaccounted_column_rate` **0.125** (was 0.141) and `cross_branch_assembly_rate`
+**0.761** (was 0.783), and **29 of 46 assembled forms carry a boundary where none
+could before**. Node-local assembly reachability, measured with
+`tools/assembly_ceiling.py --boundaries`, is **44/46 with boundaries against
+38/46 without**: six of the eight gold concepts that carry a boundary in every
+alternative — `1212`, `1217`, `1239`, `1439`, `1741`, `2105` — were unreachable
+by construction and are not any more. `tools/oracle_ceiling.py` is unchanged at
+27/46 and 40/46, as predicted, because it never calls the shared aligner.
+
+Suite: **392 passed** (387 before), including a test that pins the assembled
+parent form against the rule path's on the same children, so the two commit paths
+can never again disagree about a token.
+
 ### Reconstructing per correspondence set — the deterministic core and the tools
 
 Stages 1 and 2 of `docs/proto_inventory_design.md`. A node may now commit a

@@ -13,11 +13,20 @@ import math
 
 import pytest
 
+from cognate_reconstruction.alignment.correspondence_sets import (
+    build_correspondence_sets,
+)
 from cognate_reconstruction.alignment.environments import (
     UNDECIDED,
     environment_matches,
     observed_readings,
 )
+from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
+from cognate_reconstruction.rules.parser import parse_rule
+from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
+from cognate_reconstruction.schemas.rules import ReconstructionRule
+from cognate_reconstruction.traversal.beam import make_leaf_beam
+from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
 from cognate_reconstruction.schemas.beam import (
     CandidateDerivation,
     ConceptCandidateDistribution,
@@ -840,3 +849,206 @@ def test_the_report_describes_the_form_the_beam_reports() -> None:
     reported = step.output_beam.distributions[0].candidates[0].segments
     assert len(step.assembly_reports) == 1
     assert step.assembly_reports[0].assembled_segments == reported
+
+
+# --------------------------------------------------------------------------
+# §12.5 — morphological boundaries are aligned material
+# --------------------------------------------------------------------------
+
+BIRD = {
+    "A": ("m", "a", "n", "u", "+", "l", "e", "l", "e"),
+    "B": ("m", "a", "n", "u", "+", "r", "e", "r", "e"),
+}
+
+
+def _bird_lexicon(variety_id: str) -> LanguageLexicon:
+    return LanguageLexicon(
+        variety_id=variety_id,
+        name=variety_id,
+        forms=(
+            LexicalForm(
+                form_id=f"{variety_id}:bird",
+                variety_id=variety_id,
+                concept_id="bird",
+                segments=BIRD[variety_id],
+            ),
+        ),
+    )
+
+
+def test_assembly_keeps_the_boundary_the_rule_path_keeps() -> None:
+    """The regression the two commit paths must not disagree about.
+
+    Both children read `m a n u + l e l e`-shaped, so a parent form has a `+`
+    under any reading of the evidence. The rule cascade gets that for free —
+    `make_leaf_beam` carries `form.segments` and `RuleEngine` rewrites nothing
+    it was not told to — while assembly can only emit what some alignment column
+    holds. While `LingPyAligner` stripped `+` before aligning, there was no such
+    column and the assembled form came out one token short, silently, with
+    nothing rejecting and nothing counting it.
+
+    Pinned against *both* paths on purpose. The claim is not "assembly emits a
+    boundary" but "assembly emits the same boundary the shipped path does", and
+    only a comparison can say that.
+    """
+    children = ("A", "B")
+    beams = tuple(
+        make_leaf_beam(_bird_lexicon(child), beam_width=5) for child in children
+    )
+
+    rule_step = RuleBasedReconstructor(beam_width=5).reconstruct(
+        "PROTO",
+        beams,
+        rules=[
+            ReconstructionRule(
+                rule=parse_rule("r > l"),
+                source_child_ids=("B",),
+                confidence=0.9,
+            )
+        ],
+    )
+    rule_forms = {
+        candidate.segments
+        for candidate in rule_step.output_beam.distributions[0].candidates
+    }
+    assert BIRD["A"] in rule_forms
+
+    inventory = _inventory(
+        (
+            _commitment(("m", "m"), "m", children=children, support=1),
+            _commitment(("a", "a"), "a", children=children, support=1),
+            _commitment(("n", "n"), "n", children=children, support=1),
+            _commitment(("u", "u"), "u", children=children, support=1),
+            _commitment(("+", "+"), "+", children=children, support=1),
+            _commitment(("l", "r"), "l", children=children, support=2),
+            _commitment(("e", "e"), "e", children=children, support=2),
+        ),
+        children=children,
+        witness="A",
+        node_id="PROTO",
+    )
+    step = ProtoInventoryAssembler(beam_width=5).reconstruct(
+        "PROTO", beams, inventory=inventory
+    )
+    assembled = step.assembly_reports[0].assembled_segments
+    assert assembled == BIRD["A"]
+    assert "+" in assembled
+    assert step.diagnostics.unaccounted_column_rate == 0.0
+    # And the two paths agree about the token that used to go missing.
+    assert assembled in rule_forms
+
+
+def test_a_boundary_correspondence_derives_no_rule_and_is_recorded() -> None:
+    """`+` and `-` stay untouchable by the DSL now that they are columns.
+
+    `rules/parser.py` refuses a boundary as a rule target and as an insertion,
+    deliberately: a cascade that rewrote one would be the harness placing
+    morphs. A commitment can now express what the cascade cannot spell — drop a
+    boundary, or reconstruct one where a child shows a segment — so the derived
+    view records the child and emits no rule, the same way it already records
+    the insertion the DSL cannot write.
+    """
+    children = ("A", "B")
+    # The dull, common case: both children show `+`, the proto has `+`, and no
+    # rule is derived because reflex and proto agree.
+    kept = derive_branch_rules(
+        (_commitment(("+", "+"), "+", children=children, support=4),), children
+    )
+    assert kept.rules == ()
+    assert kept.boundary_change_child_ids == ()
+
+    # The case that used to raise out of the assembler: the boundary is dropped.
+    dropped = derive_branch_rules(
+        (_commitment(("+", "+"), None, children=children, support=4),), children
+    )
+    assert dropped.rules == ()
+    assert dropped.boundary_change_child_ids == ("A", "B")
+
+    # And the mirror: a boundary reconstructed where a child shows a segment.
+    restored = derive_branch_rules(
+        (_commitment(("a", "a"), "+", children=children, support=4),), children
+    )
+    assert restored.rules == ()
+    assert restored.boundary_change_child_ids == ("A", "B")
+
+
+def test_one_child_carrying_a_boundary_makes_a_correspondence_not_a_hole() -> None:
+    """`⟨+ : Ø⟩` is the signal `polarize` calls decisive, now visible as a set.
+
+    Material added at a morph boundary is innovation however well its segments
+    are attested elsewhere, and until boundaries reached the aligner the harness
+    had no way to *show* a session that one child has a boundary another lacks.
+    It is a correspondence like any other: the model names its value, and the
+    harness neither proposes one nor puts a morph anywhere.
+    """
+    aligner = LingPyAligner()
+    simplex = LanguageLexicon(
+        variety_id="B",
+        name="B",
+        forms=(
+            LexicalForm(
+                form_id="B:bird",
+                variety_id="B",
+                concept_id="bird",
+                segments=("m", "a", "n", "u", "l", "e", "l", "e"),
+            ),
+        ),
+    )
+    alignment_map = aligner.align_multiple((_bird_lexicon("A"), simplex))
+    inventory = build_correspondence_sets(alignment_map, node_ids=("A", "B"))
+    boundary_sets = [
+        item for item in inventory.sets if item.segments[0] == "+"
+    ]
+    assert boundary_sets, [item.segments for item in inventory.sets]
+    assert boundary_sets[0].segments == ("+", None)
+
+    # And stripping is still reachable for a caller that wants the phonetic
+    # string alone: then there is no such column at all.
+    stripped = build_correspondence_sets(
+        aligner.align_multiple(
+            (_bird_lexicon("A"), simplex), include_boundaries=False
+        ),
+        node_ids=("A", "B"),
+    )
+    assert not [item for item in stripped.sets if item.segments[0] == "+"]
+
+
+def test_a_dash_boundary_survives_the_aligner_that_writes_gaps_with_one() -> None:
+    """LingPy spells a gap `-`, and `-` is also a boundary this repo allows.
+
+    Handing one to the aligner unencoded would read every `-` boundary back as
+    an alignment gap, which is the same silent one-token loss one level down. It
+    does not arise on any benchmark checked in here — Polynesian uses `+` for
+    all 148 of its boundaries — which is exactly why it needs a test.
+    """
+    aligner = LingPyAligner()
+    lexicons = tuple(
+        LanguageLexicon(
+            variety_id=variety_id,
+            name=variety_id,
+            forms=(
+                LexicalForm(
+                    form_id=f"{variety_id}:bird",
+                    variety_id=variety_id,
+                    concept_id="bird",
+                    segments=segments,
+                ),
+            ),
+        )
+        for variety_id, segments in (
+            ("A", ("m", "a", "n", "u", "-", "l", "e")),
+            ("B", ("m", "a", "n", "u", "-", "r", "e")),
+        )
+    )
+    alignment_map = aligner.align_multiple(lexicons)
+    rows = {
+        member.variety_id: member.aligned_segments
+        for member in alignment_map.alignments[0].members
+    }
+    for variety_id, expected in (
+        ("A", ("m", "a", "n", "u", "-", "l", "e")),
+        ("B", ("m", "a", "n", "u", "-", "r", "e")),
+    ):
+        assert tuple(
+            token for token in rows[variety_id] if token is not None
+        ) == expected

@@ -10,6 +10,7 @@ Usage:
     python tools/correspondence_inventory.py <benchmark-input.json> [--min-support 2] [--limit 30]
     python tools/correspondence_inventory.py polynesian --json
     python tools/correspondence_inventory.py polynesian --reading reported
+    python tools/correspondence_inventory.py polynesian --boundaries strip
 
 `--reading` decides what one node contributes to an alignment when it has more
 than one form for a cognate set. `all` is the historical default and every
@@ -18,6 +19,14 @@ cognate set), which is what `summarize_correspondences` now does so that the set
 IDs it hands a model are columns the assembler can reproduce from one candidate
 per child. Both are legitimate; they are kept apart rather than merged so this
 script stays the independent second implementation the tool is checked against.
+
+`--boundaries` decides whether `+` and `-` are aligned material. `include` is
+what `LingPyAligner` now does for every caller, and is the default here so
+`--reading reported --boundaries include` still reproduces the tool exactly.
+`strip` is what it did until morphological boundaries had to become columns for
+the assembler to carry them, and is kept because every baseline recorded before
+that change was measured that way — a figure whose reading is not stated is a
+figure that cannot be compared. See `docs/proto_inventory_design.md` §12.5.
 """
 
 from __future__ import annotations
@@ -53,14 +62,21 @@ def one_reading_per_node(lexicons):
     return tuple(reduced)
 
 
-def build(payload: WorkbenchPayload, *, reading: str = "all"):
+def build(
+    payload: WorkbenchPayload,
+    *,
+    reading: str = "all",
+    boundaries: str = "include",
+):
     node_ids = [lexicon.variety_id for lexicon in payload.lexicons]
     lexicons = (
         one_reading_per_node(payload.lexicons)
         if reading == "reported"
         else payload.lexicons
     )
-    alignment_map = LingPyAligner().align_multiple(lexicons)
+    alignment_map = LingPyAligner().align_multiple(
+        lexicons, include_boundaries=boundaries == "include"
+    )
     sets: dict[tuple, dict] = {}
     for alignment in alignment_map.alignments:
         rows = {
@@ -102,6 +118,17 @@ def main() -> None:
             "summarize_correspondences does."
         ),
     )
+    parser.add_argument(
+        "--boundaries",
+        choices=("include", "strip"),
+        default="include",
+        help=(
+            "Whether '+' and '-' are aligned material. 'include' is what the "
+            "shared aligner now does for every caller; 'strip' is what it did "
+            "before assembly had to carry a boundary, and is what every "
+            "baseline recorded before that change was measured with."
+        ),
+    )
     parser.add_argument("--limit", type=int, default=30)
     parser.add_argument(
         "--json",
@@ -114,7 +141,9 @@ def main() -> None:
     payload = WorkbenchPayload.model_validate_json(
         input_path.read_text(encoding="utf-8")
     )
-    node_ids, alignment_map, sets = build(payload, reading=args.reading)
+    node_ids, alignment_map, sets = build(
+        payload, reading=args.reading, boundaries=args.boundaries
+    )
     rows = sorted(sets.items(), key=lambda item: -item[1]["support"])
     kept = [row for row in rows if row[1]["support"] >= args.min_support]
     singletons = sum(1 for _, entry in rows if entry["support"] == 1)
@@ -127,6 +156,8 @@ def main() -> None:
             {
                 **_bootstrap.measurement_envelope(input_path),
                 "measurement": "correspondence_inventory",
+                "reading": args.reading,
+                "boundaries": args.boundaries,
                 "node_ids": list(node_ids),
                 "alignments": len(alignment_map.alignments),
                 "distinct_sets": len(rows),
@@ -149,6 +180,7 @@ def main() -> None:
         return
 
     print(f"measuring: {_bootstrap.loaded_package_path()}")
+    print(f"reading: {args.reading}   boundaries: {args.boundaries}")
     short = {node: node.split(":")[-1][:6] for node in node_ids}
     print(
         f"{len(alignment_map.alignments)} cognate-set alignments over "
