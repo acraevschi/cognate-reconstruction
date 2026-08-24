@@ -266,7 +266,7 @@ errors.
   carries both the current `configuration_sha256` **and** the checkpoint's
   `run_id`. If that line says 0 when you expected more, check those four before
   suspecting the tool — a trajectory file from a different model, a different
-  `agent/SKILL.md`, or a different invocation is filtered out by design. The
+  `agent/system_prompt.md`, or a different invocation is filtered out by design. The
   run-ID filter is the one that surprises people: two runs over the same input
   with the same settings hash identically and both default to
   `trajectories.jsonl` in the working directory, so without it one run's rules
@@ -370,7 +370,7 @@ errors.
   and `--max-failed-nodes` decide only how long the harness keeps trying, so
   loosening them and resuming is allowed — the resume prints a note that "the
   give-up thresholds changed" and proceeds. Everything semantic *is* hashed:
-  the `agent/SKILL.md` text, the tool schemas, any `--anchors` file, the model,
+  the `agent/system_prompt.md` text, the tool schemas, any `--anchors` file, the model,
   temperature, timeout, beam width, and the turn/tool-call budgets. Changing
   one of those makes an existing checkpoint refuse to resume, and the error
   names which ("the agent instructions", "the tool schemas", "the anchor file",
@@ -393,7 +393,7 @@ errors.
 | Run ends in `TooManyNodeFailuresError` | More nodes failed than `--max-failed-nodes` tolerates, and the message names each one. `result.json` was *not* written. The checkpoint holds every node below the first failure; triage before resuming. |
 | Run ends in `AgentLoopLimitError` | Model never produced a valid commit and never failed densely enough to trip either stall condition — typically a session that keeps exploring, since exploratory rejections never count. Triage it; raise `--max-turns` or use a stronger model. |
 | Run ends in `ProtocolStallError` | One of three things: a `(tool, error code)` signature recurred after a targeted correction; the trailing window filled with protocol rejections of mixed codes; or output was truncated repeatedly with no tool call. Read the message — the first two are tool-contract problems. For the third, the message states what the harness already tried (forcing a tool call, and any `max_tokens` backoff steps); what is left is raising `max_tokens` in the `--provider-config` JSON, or `--allow-truncation-backoff --truncation-max-tokens-ceiling N` to let the harness raise it for you. |
-| `checkpoint cannot be resumed because these changed: ...` | Expected after editing `agent/SKILL.md`, the tool schemas, an `--anchors` file, or any hashed flag. The named part is the one to restore — or start a new checkpoint path. |
+| `checkpoint cannot be resumed because these changed: ...` | Expected after editing the model's system prompt (`cognate_reconstruction/agent/system_prompt.md`), the tool schemas, an `--anchors` file, or any hashed flag. The named part is the one to restore — or start a new checkpoint path. **Not this file:** `SKILL.md` here is the operator skill for a coding agent and is hashed by nothing. |
 | `could not load prior hypotheses from ...` | `trajectories.jsonl` is present but does not validate. Do not delete it; a missing file only warns, so this is telling you the artifact is corrupt at the named line. |
 | `PydanticSerializationUnexpectedValue` warnings | Known nonfatal LiteLLM/Pydantic noise. Tool execution and trajectories still succeed. |
 | `[driver] inspect-run ... failed; the artifact sections are missing` | The timeline above it is still valid. Run the printed command yourself for the full error — usually a run directory holding neither `result.json` nor `trajectories.jsonl`, or a harness too old to have the subcommand. |
