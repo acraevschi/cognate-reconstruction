@@ -2,6 +2,63 @@
 
 ## Unreleased
 
+### An oracle for the architecture, not only for the rule writer
+
+`tools/oracle_ceiling.py --oracle assembly` gives every *node* a perfect
+proto-inventory — one proto-phoneme per correspondence set, voted against the
+withheld gold — and runs the real `ProtoInventoryAssembler` bottom-up. Until now
+nothing computed it, so `docs/proto_inventory_design.md` §7 conditions 1 and 2
+could not be evaluated at all: both are stated in terms of a number that did not
+exist.
+
+Polynesian, beam width 5, 46 concepts, 2026-08-24:
+
+| Measure | context-free | context-sensitive | **assembly** |
+| --- | --- | --- | --- |
+| top-1 exact | 27/46 | 33/46 | **39/46** |
+| beam exact | 40/46 | 40/46 | 39/46 |
+| selection gap | 13 concepts | 7 concepts | **0** |
+| mean top NED | 0.147 | 0.097 | **0.031** |
+| `cross_branch_assembly_rate` | — | — | 0.957, non-zero at 7 of 7 nodes |
+
+**The beam-exact column is not comparable by subtraction and the docs say so
+three times.** Under a branch cascade the beam holds one whole string per branch
+and beam-exact measures the selection slack; under assembly one candidate tuple
+assembles into exactly one form, so top-1 and beam-exact converge by
+construction. §7.3 already listed that comparison under "what is *not*
+evidence", and condition 2 has to be read against it.
+
+The oracle is given the two claims an inventory makes about a *language* — a
+value per set, optionally conditioned, and a residue policy chosen per node by
+running each — and is given neither `restorations` nor `residue_dispositions`,
+which are claims about one concept. §7.4 records `1028` YAWN and `778` SMOKE as
+concepts the ceiling cannot promise; they stay unpromised and are still misses.
+
+`test_oracle_ceiling_regression.py` pins the third block beside the two it
+already pinned, including §9.3's gap assertion in the new architecture's terms
+(`MAX_ASSEMBLY_SELECTION_GAP = 2`, currently 0) and the fixture/real-benchmark
+agreement under all three oracles.
+
+### A rule cascade may no longer delete a whole word
+
+Found by the oracle above, and reachable from both commit shapes. `RuleEngine`
+built the next `LexicalForm` from a rule's output without checking it was
+non-empty, so a cascade that consumed a form raised a bare pydantic
+`ValidationError` from inside `traversal/reconstructor.py` naming no rule, no
+form and no node. Under `rules` that needs a cascade of deletions; under
+`inventory` it needs only a *derived* view where enough sets reconstruct
+nothing, which is how it turned up — at Proto-Tongic the oracle's inventory
+derives `l > Ø` for Niuean, and `k i l i` had already lost `k` and both `i`.
+
+The refusal is per (rule, form): the form is carried through unchanged, the rest
+of the cascade still runs, and the report carries the new
+`ApplicationStatus.WOULD_EMPTY_FORM` with no match locations — applicable and
+not applied, so `rule_coverage` sees a rule that could have fired and did not.
+Every other layer already refused an empty form; only this one discovered it by
+crashing.
+
+Suite: **401 passed** (393 before).
+
 ### Pin that the assembly ceiling still bounds the thing it measures
 
 `tools/assembly_ceiling.py` keeps its own `align_rows` and the harness runs

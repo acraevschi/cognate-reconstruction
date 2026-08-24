@@ -24,7 +24,7 @@ oracle*, never the rule language: a miss here is not evidence that the
 architecture cannot reach the form, and quoting one as a structural limit is
 the mistake `prompts/06-proto-inventory.md` records.
 
-**Two oracles are pinned here, and neither replaces the other.** `context_free`
+**Three oracles are pinned here, and none replaces another.** `context_free`
 is the measure every recorded baseline used and is asserted unchanged;
 `contextual` searches the DSL's own environments as well and is asserted beside
 it. A second measure that quietly became the first would make every recorded
@@ -32,6 +32,19 @@ before/after uncomparable, so the two are separate assertions on purpose. The
 contextual one is likewise not a target: it writes 249 rules across 16 branches
 where the context-free one writes 52, many conditioned on a single word, which
 is a perfect rule writer rather than a plausible analysis.
+
+`assembly` is the third, and it measures a different architecture rather than a
+stronger rule writer: one proto-phoneme per correspondence set at each node,
+assembled column by column by the real `ProtoInventoryAssembler`. It is here
+because during the migration both architectures exist and a reader needs the
+before and the after in one file — `docs/proto_inventory_design.md` §9.3 — and
+it is pinned separately for the same reason the first two are. **Its beam-exact
+is not comparable to theirs by subtraction.** Under a branch cascade the beam
+holds one whole string per branch and beam-exact measures the selection slack;
+under assembly one candidate tuple assembles into exactly one form, so the two
+numbers converge by construction and there is almost no slack left to measure.
+§7.3 of the design says the same thing in one line: the two beams contain
+different kinds of thing.
 
 **Why the gap is asserted and not only the accuracies.** A change that raises
 top-1 while lowering beam-exact has traded candidates away rather than chosen
@@ -104,6 +117,26 @@ PINNED_CONTEXTUAL_BY_WIDTH = {
     5: (33, 40),
     10: (33, 40),
 }
+
+# The third measure, recorded 2026-08-24, and the first pinned figure in this
+# module that is not a rule cascade at all. Beam width barely moves it — 39/39
+# from width 1 to width 10 — which is the same fact the gap assertion below
+# states from the other side: assembly has no whole-string selection step for a
+# wider beam to feed.
+PINNED_ASSEMBLY_TOP_EXACT = 39
+PINNED_ASSEMBLY_BEAM_EXACT = 39
+PINNED_ASSEMBLY_BY_WIDTH = {
+    1: (39, 39),
+    3: (39, 39),
+    5: (39, 39),
+    10: (39, 39),
+}
+
+# What the design asks this test to watch under the new architecture, in place
+# of the 13-form selection gap it watches under the old one. §9.3: "a large gap
+# would mean the assembler is generating candidates it then fails to select
+# among, which is the old defect returning at a new level."
+MAX_ASSEMBLY_SELECTION_GAP = 2
 
 
 def _oracle_module():
@@ -216,7 +249,7 @@ def test_the_fixture_is_the_real_benchmark_when_the_corpus_is_present() -> None:
         FIXTURE.read_text(encoding="utf-8")
     )
     full = WorkbenchPayload.model_validate_json(real.read_text(encoding="utf-8"))
-    for oracle in ("context_free", "contextual"):
+    for oracle in ("context_free", "contextual", "assembly"):
         fixture_result = module.measure(
             stripped, PINNED_BEAM_WIDTH, oracle=oracle
         )
@@ -372,6 +405,150 @@ def test_every_gold_alternative_is_scored_not_only_the_last(payload) -> None:
     assert last_only.evaluated == EVALUATED_CONCEPTS
     assert last_only.top_exact == PINNED_TOP_EXACT
     assert last_only.beam_exact == PINNED_BEAM_EXACT - 1
+
+
+def test_the_assembly_oracle_is_pinned_beside_both_cascade_oracles(
+    payload,
+) -> None:
+    """The same question, put to the architecture that replaces the cascade.
+
+    Every branch is no longer given a rule set; every *node* is given one
+    proto-phoneme per correspondence set, voted against the withheld gold, and
+    the real `ProtoInventoryAssembler` builds each parent form out of the
+    children's aligned columns. `docs/proto_inventory_design.md` §9.3 asks for
+    exactly this and asks for it to land beside the two figures above rather
+    than in place of them.
+
+    **What this oracle is deliberately not given**, because each is a claim
+    about one concept where an inventory is a claim about a language:
+    `restorations` — which would hand it the `*w` in `1028` YAWN that no
+    daughter attests — and `residue_dispositions`. §7.4 records `1028` and `778`
+    as concepts the assembly ceiling cannot promise, and they stay unpromised:
+    both are still misses here.
+
+    It is also not a target, for the same reason the contextual one is not. It
+    commits several hundred sets across the tree, many of them conditioned on an
+    environment that is pure over a single word.
+    """
+    result = _oracle_module().measure(
+        payload, PINNED_BEAM_WIDTH, oracle="assembly"
+    )
+    assert result.oracle == "assembly"
+    assert result.evaluated == EVALUATED_CONCEPTS
+    assert result.top_exact == PINNED_ASSEMBLY_TOP_EXACT
+    assert result.beam_exact == PINNED_ASSEMBLY_BEAM_EXACT
+    assert result.gold_node_id == "proto_polynesian"
+    # An inventory writes no rules, and the counters say which architecture
+    # produced the number rather than reporting 0 for both.
+    assert result.rules_written == 0
+    assert result.commitments_written is not None
+    assert result.commitments_written > 0
+    assert len(result.residue_policy_choices) == 7
+
+
+def test_the_assembly_selection_gap_stays_small(payload) -> None:
+    """§9.3's gap assertion, in the new architecture's terms.
+
+    Under a branch cascade the gap is the headline defect: 13 of 46 forms are
+    computed and then not reported. Under assembly a candidate tuple assembles
+    into exactly one parent form, so a large gap would mean the assembler is
+    generating candidates it then fails to select among — the old defect
+    returning one level down. It is currently zero.
+    """
+    result = _oracle_module().measure(
+        payload, PINNED_BEAM_WIDTH, oracle="assembly"
+    )
+    gap = result.beam_exact - result.top_exact
+    assert 0 <= gap <= MAX_ASSEMBLY_SELECTION_GAP, (
+        "assembly is now computing correct forms it does not report. That is "
+        "the whole-string selection defect this architecture removes, "
+        "reappearing at the level of candidate tuples."
+    )
+
+
+def test_the_assembly_oracle_holds_at_every_documented_beam_width(
+    payload,
+) -> None:
+    """Flat across the curve, which is the point rather than an accident.
+
+    The cascade oracles gain 5 forms of beam-exact between width 1 and width 3
+    because a wider beam keeps more whole strings to choose among. Assembly
+    gains nothing, because there is nothing left to choose.
+    """
+    module = _oracle_module()
+    measured = {
+        width: (result.top_exact, result.beam_exact)
+        for width in PINNED_ASSEMBLY_BY_WIDTH
+        for result in (module.measure(payload, width, oracle="assembly"),)
+    }
+    assert measured == PINNED_ASSEMBLY_BY_WIDTH
+
+
+def test_assembly_graded_distances_and_mechanism_reports_are_recorded(
+    payload,
+) -> None:
+    """The graded ceiling and the two per-node reports §7 reads.
+
+    `cross_branch_assembly_rate` is condition 3's instrument: a rate of 0 at
+    every node would mean the mixing mechanism never fired and whatever moved
+    was not this change. Nothing here is a gate — these are reports, asserted so
+    that a change which silently zeroes one is visible.
+    """
+    result = _oracle_module().measure(
+        payload, PINNED_BEAM_WIDTH, oracle="assembly"
+    )
+    assert result.mean_top_normalized_edit_distance == pytest.approx(
+        0.031, abs=0.005
+    )
+    assert result.mean_beam_best_normalized_edit_distance == pytest.approx(
+        0.031, abs=0.005
+    )
+    assert result.mean_top_bcubed_f1 == pytest.approx(0.983, abs=0.005)
+    assert result.nodes_with_cross_branch_assembly == 7
+    assert result.mean_cross_branch_assembly_rate > 0.5
+    # Every column of every reported assembly was explained by a committed set.
+    # This is not §7.2's floor of 0.125 and must not be quoted as it: that floor
+    # is measured over the survey's own reading with a value committed for every
+    # set it returns, and this is measured over the columns the winning
+    # candidate tuple produced.
+    assert result.mean_unaccounted_column_rate == pytest.approx(0.0, abs=1e-9)
+
+
+def test_the_assembly_oracle_refuses_to_write_a_branch_cascade() -> None:
+    """`branch_rules` is a per-branch question and assembly is not one.
+
+    `tools/branch_recoverability.py` offers `BRANCH_ORACLES` for this reason. The
+    refusal is asserted rather than left to a `KeyError` further in, because the
+    two flags spell the same word and the failure would otherwise surface as a
+    wrong number rather than as an error.
+    """
+    module = _oracle_module()
+    assert module.BRANCH_ORACLES == ("context_free", "contextual")
+    assert module.ORACLES == ("context_free", "contextual", "assembly")
+    with pytest.raises(SystemExit) as refused:
+        module.branch_rules("child", {}, {}, {}, "assembly")
+    assert "per-branch" in str(refused.value)
+
+
+def test_column_targets_prices_an_unattested_emission_like_a_miss() -> None:
+    """The cost model, pinned as the mistake it was written to stop making.
+
+    Priced below a miss, the assignment DP scatters a short gold form across
+    whichever columns come first. On Polynesian `1237` WHERE that put `f e a`
+    into the three columns of Tongan's `ʔ i +` prefix — three unattested
+    emissions at 1/3 the price of leaving one gold segment uncovered — and every
+    one of those columns then voted for a phoneme it has no relation to.
+    """
+    module = _oracle_module()
+    columns = [frozenset({"ʔ"}), frozenset({"i"}), frozenset({"+"}),
+               frozenset({"f"}), frozenset({"eː"})]
+    cost, assignment = module.column_targets(columns, ("f", "e", "a"))
+    assert assignment[3] == "f", (
+        "the column both children show `f` in must be the one that emits `f`"
+    )
+    assert assignment[0] is None and assignment[1] is None
+    # Two prices paid: one unattested emission and one uncovered gold segment.
+    assert cost == 2
 
 
 def test_the_gold_binding_defaults_to_the_root_and_is_never_guessed() -> None:

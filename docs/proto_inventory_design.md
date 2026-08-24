@@ -2129,7 +2129,10 @@ model could still get them right; the *ceiling* cannot promise it.
 ### 7.5 Every command in this section
 
 ```bash
-# conditions 1 and 4, and the stop thresholds they quote
+# conditions 1, 2 and 4: the assembly oracle itself
+python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle assembly --json
+
+# the stop thresholds those conditions quote, which are branch-cascade figures
 python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle contextual --json
 python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --json
 
@@ -2359,7 +2362,9 @@ assembler. So:
 - Stage 2–3 — it gains the assembly numbers as a third block, computed by
   `oracle_ceiling.py --oracle assembly`. Three measures, all live, all pinned,
   because during the migration both architectures exist and a reader needs the
-  before and the after in one file.
+  before and the after in one file. **Landed 2026-08-24**: top-1 **39/46**,
+  beam-exact **39/46**, mean top NED **0.031**, `cross_branch_assembly_rate`
+  0.957 and non-zero at all 7 nodes, flat at every beam width from 1 to 10.
 - Stage 4 — the branch-cascade numbers move from `assert` to the module
   docstring, marked with the date they were recorded and the commit at which the
   path they measured was removed. They stay *computable* — the modes remain in
@@ -2370,6 +2375,24 @@ The gap assertion survives in the new architecture's terms: `assembly_beam_exact
 - assembly_top_exact`, which under assembly should be **small**, and the test
 should say why — a large gap would mean the assembler is generating candidates
 it then fails to select among, which is the old defect returning at a new level.
+It is **0** as measured, and `MAX_ASSEMBLY_SELECTION_GAP = 2` is what the test
+asserts.
+
+**What the oracle is given, and the two things it is not.** It commits one value
+per correspondence set, optionally with a `conditioning` found in the same
+bounded environment space `--oracle contextual` searches, and it picks a residue
+policy per node by running each. Those are all claims about a *language*. It is
+given no `restorations` and no `residue_dispositions`, because those are claims
+about one concept: a restoration would hand it the `*w` in `1028` YAWN that no
+daughter attests, and §7.4 records `1028` and `778` as concepts the ceiling
+cannot promise. They stay unpromised — both are still misses under this oracle.
+
+**One consequence to carry into §7.** Under a branch cascade the beam holds one
+whole string per branch, so beam-exact measures the selection slack. Under
+assembly one candidate tuple assembles into exactly one parent form, so top-1
+and beam-exact converge by construction and the slack is gone. The two
+beam-exact numbers are therefore not comparable by subtraction, which is what
+§7.3's last bullet already says and which condition 2 has to be read against.
 
 `tests/workbench/fixtures/polynesian_benchmark_segments.json` is unchanged: the
 oracle reads segments, the tree and the gold binding, and assembly reads the
@@ -3204,6 +3227,7 @@ that produced them.
 | width curve, both oracles | same script, `--widths 1,3,5,10` |
 | 38/46 and 40/46 single-daughter reach | same script, cascade-applied per daughter |
 | 37 / 8 / 1 | `tools/branch_recoverability.py`, map-applied per daughter |
+| 39/46 top-1 and beam-exact, 0.031 NED, 0.957 cross-branch, assembly | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle assembly --json`, 2026-08-24 |
 | 42/46 flat, 39/46 node-local, 46/46 free-choice assembly | this session's `assembly_ceiling.py`; **pre-repair** — now 43/46, 44/46, 46/46 |
 | 15/25 and 16/25 on `synthetic_hard` against `proto` | contextual-oracle script with `--gold-node proto` |
 | 22/25 as published | `tools/oracle_ceiling.py runs/benchmarks/synthetic_hard.json`, scored against `east` |

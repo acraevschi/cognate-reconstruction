@@ -98,7 +98,7 @@ wider beam keeps a distractor that accumulates enough mass to win.
 
 **These figures are now pinned in the test suite.**
 `tests/workbench/test_oracle_ceiling_regression.py` asserts top-1, beam-exact, *and the gap
-between them* at beam width 5, plus the whole width curve, for **both** oracles, against a
+between them* at beam width 5, plus the whole width curve, for **all three** oracles, against a
 checked-in fixture that is the real benchmark with per-form provenance stripped — the oracle
 reads only segments, the tree, and the gold binding, so the fixture reproduces the
 full-dataset numbers exactly, and a skipped test verifies that against
@@ -116,7 +116,7 @@ The oracle is honest about what it cannot express: rules whose ordering would fo
 are dropped with a warning, and morphological boundaries are skipped because the DSL forbids
 them as rule targets.
 
-### Two oracles, and the second never replaces the first
+### Three oracles, and none of them replaces another
 
 `--oracle context_free` (the default) assigns one target per source segment, **globally**. The
 rule language does not: it has left and right contexts and word edges. So a form the
@@ -166,6 +166,77 @@ roughly sixteen per branch and many of them conditioned on a single word. That i
 rule writer, not a plausible analysis, which is exactly what an oracle is for: it bounds the
 architecture. Quoting 33/46 as "what a good model should get" is the same category error as
 quoting a context-free miss as a structural limit.
+
+### The assembly oracle: the same question, a different architecture
+
+`--oracle assembly` does not write a rule cascade at all. Every *node* is given one
+proto-phoneme per correspondence set, voted against the withheld gold, and the real
+`ProtoInventoryAssembler` builds each parent form out of the children's aligned columns.
+It exists because during the migration to the proto-inventory commit shape both
+architectures are live, and a reader needs the before and the after in one place —
+`docs/proto_inventory_design.md` §9.3.
+
+How the inventory is built, per node:
+
+1. Align the children's top candidates through the assembler's own
+   `align_candidate_tuple`, so the columns voted on are the columns assembly resolves.
+   Two instrument/harness column mismatches have already been found this way (§12.3,
+   §12.5) and neither is worth finding a third time.
+2. For each concept, solve for the cheapest assignment of gold segments to columns:
+   free for a column emitting a segment its reflexes attest or emitting nothing, **1
+   for an unattested emission and 1 for a gold segment no column covers**. Pricing
+   those two the same is the whole of the cost model — priced cheaper, the DP scatters a
+   short gold form into whichever columns come first, and every one of them then votes
+   for a phoneme it has no relation to.
+3. Vote per correspondence set: the value reaching gold in the most columns showing it.
+4. Search a `conditioning` for the sets whose columns do not all want one value, in the
+   same bounded environment space the contextual rule oracle searches, read in **proto**
+   terms through `alignment/environments.py` — the code the assembler itself evaluates a
+   conditioning against.
+5. Run the unconditioned and the conditioned inventory under each residue policy, and
+   keep whichever reports the most exact forms, then the least total edit distance. The
+   graded half of that is not decoration: at an internal node the oracle is aimed at the
+   *root's* gold, which almost nothing there matches exactly, so an exact-only criterion
+   is nearly flat and would pick among the general claims by accident.
+
+**Two things it is deliberately not given**, because each is a claim about one concept
+where an inventory is a claim about a language: `restorations` — which would hand it the
+`*w` in `1028` YAWN that no daughter attests anywhere — and `residue_dispositions`. §7.4
+records `1028` and `778` as concepts the assembly ceiling cannot promise, and they stay
+unpromised: both are still misses.
+
+Polynesian, beam width 5, 46 concepts, recorded 2026-08-24:
+
+| Measure | context-free | context-sensitive | **assembly** |
+| --- | --- | --- | --- |
+| top-1 exact | 27/46 — 58.7% | 33/46 — 71.7% | **39/46 — 84.8%** |
+| beam exact | 40/46 — 87.0% | 40/46 — 87.0% | 39/46 — 84.8% |
+| exact selection gap | 13 concepts | 7 concepts | **0 concepts** |
+| mean top NED | 0.147 | 0.097 | **0.031** |
+| mean beam-best NED | 0.030 | 0.024 | 0.031 |
+| mean top B-Cubed F1 | 0.963 | 0.963 | **0.983** |
+| committed / written | 52 rules | 249 rules | 579 sets over 16 branches |
+| `cross_branch_assembly_rate` | not applicable | not applicable | 0.957, non-zero at 7 of 7 nodes |
+
+| beam width | top-1 cf | top-1 ctx | top-1 asm | beam-exact cf | beam-exact ctx | beam-exact asm |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | 22 | 22 | **39** | 22 | 22 | 39 |
+| 3 | 26 | 32 | **39** | 36 | 39 | 39 |
+| 5 | 27 | 33 | **39** | 40 | 40 | 39 |
+| 10 | 26 | 33 | **39** | 40 | 40 | 39 |
+
+**Read the beam-exact column with the caveat, or do not read it at all.** Under a branch
+cascade the beam holds one whole string per branch and beam-exact measures the *selection
+slack* — how often the right answer was computed and then not reported. Under assembly one
+candidate tuple assembles into exactly one parent form, so top-1 and beam-exact converge by
+construction; the 39 in that column is very nearly the same number as the 39 above it, not a
+comparable quantity to the 40s beside it. §7.3 of the design says it in one line: the two
+beams contain different kinds of thing. The flat width curve is the same fact from the other
+side — a wider beam has nothing left to feed.
+
+**Not a target either.** 579 committed sets across 16 branches, many conditioned on an
+environment that is pure over a single word, is a perfect analyst rather than a plausible
+analysis. What it bounds is the architecture.
 
 ### Which node's gold, stated rather than assumed
 

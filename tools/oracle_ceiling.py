@@ -13,7 +13,7 @@ Two numbers matter, and it is the gap between them that this exists to watch:
 A large gap means the combination/selection step is discarding answers the
 system already computed.
 
-**Two oracles, and they are not interchangeable.** `--oracle context_free` is
+**Three oracles, and they are not interchangeable.** `--oracle context_free` is
 the original: one target per source segment, globally, which is strictly weaker
 than the DSL. Every baseline recorded in `docs/analysis_tools.md` and every
 figure pinned by the regression test was measured with it, so it keeps its
@@ -23,8 +23,18 @@ construction. It lands *beside* the first, never in place of it: silently
 redefining the default would make every recorded before/after uncomparable,
 which is the failure `tools/_bootstrap.py` exists to prevent at one remove.
 
-Neither is a target. An oracle bounds the architecture and a miss under one is
-not a structural limit -- see the note on the contextual builder below.
+`--oracle assembly` asks the same question of the other architecture. There is
+no per-branch cascade to write: the committed object is one proto-phoneme per
+correspondence set at a node, and the parent form is assembled column by column
+from the children's beams by the real `ProtoInventoryAssembler`. So the number
+is not comparable to the two above by subtraction -- the two beams contain
+different kinds of thing, which `docs/proto_inventory_design.md` §7.3 says in as
+many words -- and it is reported beside them because during the migration both
+architectures exist and a reader needs the before and the after in one place.
+
+None of the three is a target. An oracle bounds the architecture and a miss
+under one is not a structural limit -- see the note on the contextual builder
+below, and the two claims `oracle_commitments` deliberately withholds.
 
 `measure()` is importable by the regression test in `tests/workbench`, so the
 number the suite pins and the number this script prints come from one
@@ -34,6 +44,7 @@ Usage:
     python tools/oracle_ceiling.py <benchmark-input.json> [--beam-width 5]
     python tools/oracle_ceiling.py polynesian --json
     python tools/oracle_ceiling.py polynesian --oracle contextual
+    python tools/oracle_ceiling.py polynesian --oracle assembly
     python tools/oracle_ceiling.py synthetic_hard --gold-node east
 """
 
@@ -42,24 +53,56 @@ from __future__ import annotations
 import argparse
 import collections
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import _bootstrap  # noqa: F401  (bind to this checkout; see module)
 
+from cognate_reconstruction.alignment.environments import (
+    WORD_EDGE_TOKEN,
+    context_tokens,
+    environment_matches,
+    readings_from,
+)
 from cognate_reconstruction.evaluation.metrics import compare_to_nearest
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.rules.parser import parse_rule, NoOpRuleError
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 from cognate_reconstruction.schemas.lexicon import LexicalForm
-from cognate_reconstruction.schemas.rules import ReconstructionRule
+from cognate_reconstruction.schemas.inventory import (
+    CommitProtoInventoryArgs,
+    CommittedProtoInventory,
+    CorrespondenceCommitment,
+    ResiduePolicy,
+    derive_set_id,
+)
+from cognate_reconstruction.schemas.rules import (
+    ReconstructionRule,
+    RuleEnvironment,
+    SegmentExpression,
+)
+from cognate_reconstruction.traversal.assembler import (
+    ProtoInventoryAssembler,
+    build_plan,
+)
 from cognate_reconstruction.traversal.beam import make_leaf_beam
 from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
 from cognate_reconstruction.tree import assign_node_ids, parse_newick, postorder_groups
 
 CONTEXT_FREE = "context_free"
 CONTEXTUAL = "contextual"
-ORACLES = (CONTEXT_FREE, CONTEXTUAL)
+ASSEMBLY = "assembly"
+
+BRANCH_ORACLES = (CONTEXT_FREE, CONTEXTUAL)
+"""The two that write a per-branch rewrite cascade.
+
+`assembly` is not among them and cannot be: it commits one value per
+correspondence set at a node, which is not a property of any single branch.
+`tools/branch_recoverability.py` asks a per-branch question and offers these.
+"""
+
+ORACLES = (*BRANCH_ORACLES, ASSEMBLY)
 
 
 def align_pair(left: tuple[str, ...], right: tuple[str, ...]):
@@ -441,6 +484,12 @@ def branch_rules(
     measure that claimed to be a superset and was not would be worse than no
     measure.
     """
+    if oracle == ASSEMBLY:
+        raise SystemExit(
+            "the assembly oracle commits one value per correspondence set at a "
+            "node and writes no per-branch cascade; ask it of a node, not of a "
+            f"branch. Per-branch oracles: {BRANCH_ORACLES}"
+        )
     context_free = build_rules(child_id, oracle_map(forms, gold))
     if oracle == CONTEXT_FREE:
         return context_free, False
@@ -450,6 +499,580 @@ def branch_rules(
     ):
         return context_free, True
     return contextual, False
+
+
+# --- the assembly oracle -------------------------------------------------
+#
+# The same question the two above ask -- "what would a flawless hypothesis
+# manager score?" -- put to the architecture `docs/proto_inventory_design.md`
+# proposes. There the committed object is not a per-branch cascade but one
+# proto-phoneme per correspondence set at a node, and the parent form is
+# assembled from the children's aligned columns rather than selected from a
+# beam of whole strings. So the oracle changes shape and the question does not,
+# which is exactly what §9.3 asks for.
+#
+# **Two things the oracle is deliberately not given**, because both are
+# per-concept claims and an inventory is a general one:
+#
+#   restorations       -- a gold segment no column produced. Polynesian `1028`
+#                         YAWN wants a `w` no daughter shows anywhere, and a
+#                         `restorations` entry could hand it over. Granting them
+#                         would measure the gold strings, not the inventory, and
+#                         §7.4 records `1028` and `778` as concepts the ceiling
+#                         cannot promise. They stay unpromised.
+#   residue dispositions -- the same objection, one column at a time.
+#
+# What it *is* given is the two general claims the schema carries: one value per
+# set, and a residue policy. The policy is chosen per node the way
+# `branch_rules` chooses per branch -- by running both and keeping whichever
+# scores more exact forms -- because "what happens to material my inventory does
+# not explain" is a claim about the node, not about a concept.
+
+def column_targets(
+    options: Sequence[frozenset[str]], gold: tuple[str, ...]
+) -> tuple[int, tuple[str | None, ...]]:
+    """Which gold segment each column should emit, and what the choice cost.
+
+    A column emits one proto-phoneme or nothing, left to right, and the
+    concatenation is the parent form -- so reaching a gold form is an assignment
+    problem over the columns rather than a search over strings. This returns the
+    cheapest assignment, under the same cost model
+    `tools/assembly_ceiling.py::assemble` uses, because the two instruments
+    should disagree about the architecture and not about arithmetic:
+
+        0  a column emitting a segment its own reflexes attest, and a column
+           emitting nothing. Both are what a correspondence ordinarily does.
+        1  a column emitting a segment none of its reflexes attests. Legal --
+           `*w` in Polynesian `1028` YAWN is why `proto_segment` is not
+           restricted to `reflexes` -- and priced so the oracle reaches for it
+           only where nothing attested will do.
+        1  a gold segment no column covers. Only a `restorations` entry produces
+           one and the oracle commits none, so this records a miss rather than
+           taking a transition.
+
+    **Pricing the unattested emission at 1 rather than at "cheaper than a miss"
+    is the whole of it.** Charged less, the DP will scatter a short gold form
+    across whichever columns come first -- on Polynesian `1237` WHERE it put
+    `f e a` into the three columns of Tongan's `ʔ i +` prefix, at three
+    unattested emissions, rather than leave one gold segment uncovered. Every
+    column then votes for a phoneme it has no relation to, and the inventory
+    built from those votes is noise wearing the shape of a measurement.
+
+    Ties go first to the assignment that emits more -- a node that cannot reach
+    gold still hands its material to the node above, and discarded material
+    cannot be recovered there -- and then to the one whose emitting columns are
+    furthest left, which is arbitrary and is the last resort for that reason.
+    """
+    width, length = len(options), len(gold)
+    ceiling = (length + 1, 0, 0)
+    best = [[ceiling] * (length + 1) for _ in range(width + 1)]
+    back: list[list[tuple[int, int, str | None] | None]] = [
+        [None] * (length + 1) for _ in range(width + 1)
+    ]
+    best[0][0] = (0, 0, 0)
+
+    def offer(row, column, score, origin):
+        if score < best[row][column]:
+            best[row][column] = score
+            back[row][column] = origin
+
+    for index in range(width + 1):
+        for consumed in range(length + 1):
+            cost, emitted, tie = best[index][consumed]
+            if (cost, emitted, tie) >= ceiling:
+                continue
+            if index < width:
+                # Emit nothing from this column.
+                offer(
+                    index + 1, consumed, (cost, emitted, tie), (index, consumed, None)
+                )
+                if consumed < length:
+                    wanted = gold[consumed]
+                    penalty = 0 if wanted in options[index] else 1
+                    offer(
+                        index + 1,
+                        consumed + 1,
+                        (cost + penalty, emitted - 1, tie + index),
+                        (index, consumed, wanted),
+                    )
+            if consumed < length:
+                # A gold segment no column produced.
+                offer(
+                    index,
+                    consumed + 1,
+                    (cost + 1, emitted, tie),
+                    (index, consumed, ""),
+                )
+
+    assignment: list[str | None] = [None] * width
+    position = (width, length)
+    while position != (0, 0):
+        origin = back[position[0]][position[1]]
+        if origin is None:
+            break
+        previous_index, previous_consumed, token = origin
+        if token and previous_index < position[0]:
+            assignment[previous_index] = token
+        position = (previous_index, previous_consumed)
+    return best[width][length][0], tuple(assignment)
+
+
+def _live_columns(
+    rows: Sequence[Sequence[str | None]],
+) -> list[tuple[int, tuple[str | None, ...]]]:
+    """The columns assembly will resolve, each with its index in the alignment.
+
+    An all-gap column is skipped, because `assembler.resolve_columns` skips it
+    and no correspondence set can name it -- but its *index* still matters,
+    because `alignment/environments.py` walks the alignment by absolute index.
+    Building the inventory over a different set of columns from the one assembly
+    resolves is the defect §12.3 and §12.5 each found once; it is not worth
+    finding a third time.
+    """
+    width = max((len(row) for row in rows), default=0)
+    live = []
+    for index in range(width):
+        reflexes = tuple(
+            row[index] if index < len(row) else None for row in rows
+        )
+        if any(segment is not None for segment in reflexes):
+            live.append((index, reflexes))
+    return live
+
+
+@dataclass(frozen=True)
+class ColumnEvidence:
+    """One concept's alignment at a node, and what gold wants in each column."""
+
+    rows: tuple[tuple[str | None, ...], ...]
+    live: tuple[tuple[int, tuple[str | None, ...]], ...]
+    wanted: tuple[str | None, ...]
+    scored: bool
+    """Whether this concept carries gold. An unscored concept still shows its
+    columns -- they count toward support -- and votes for nothing."""
+
+
+def column_evidence(
+    child_node_ids: Sequence[str],
+    forms_by_child: dict[str, dict[str, tuple[str, ...]]],
+    gold_alternatives: dict[str, tuple[tuple[str, ...], ...]],
+    assembler: ProtoInventoryAssembler,
+) -> tuple[ColumnEvidence, ...]:
+    """Align this node's children once, and price every column against gold.
+
+    The alignment comes from `assembler.align_candidate_tuple`, not from a
+    second aligner written here, so the columns voted on are the columns
+    assembly resolves.
+    """
+    plan = build_plan(child_node_ids, (), residue_policy=ResiduePolicy.DROP)
+    cache: dict[tuple, tuple[tuple[str | None, ...], ...]] = {}
+    concept_ids = sorted(
+        {
+            concept_id
+            for child_id in child_node_ids
+            for concept_id in forms_by_child.get(child_id, {})
+        }
+    )
+    evidence: list[ColumnEvidence] = []
+    for concept_id in concept_ids:
+        segments_by_child = {
+            child_id: forms_by_child[child_id][concept_id]
+            for child_id in child_node_ids
+            if concept_id in forms_by_child.get(child_id, {})
+        }
+        if not segments_by_child:
+            continue
+        rows = assembler.align_candidate_tuple(
+            concept_id, segments_by_child, plan, cache
+        )
+        live = tuple(_live_columns(rows))
+        targets = gold_alternatives.get(concept_id)
+        if targets is None:
+            evidence.append(
+                ColumnEvidence(
+                    rows=tuple(rows),
+                    live=live,
+                    wanted=(None,) * len(live),
+                    scored=False,
+                )
+            )
+            continue
+        options = [
+            frozenset(segment for segment in reflexes if segment is not None)
+            for _, reflexes in live
+        ]
+        _, assignment = min(
+            (column_targets(options, target) for target in targets),
+            key=lambda item: item[0],
+        )
+        evidence.append(
+            ColumnEvidence(
+                rows=tuple(rows), live=live, wanted=assignment, scored=True
+            )
+        )
+    return tuple(evidence)
+
+
+def _pick(tally: collections.Counter) -> str | None:
+    """The set's value: most columns first, then a segment over a deletion.
+
+    A deletion is the stronger claim and a tie is no evidence for it. Ties after
+    that go lexicographic, which is arbitrary and is the last resort for that
+    reason.
+    """
+    return sorted(
+        tally.items(), key=lambda item: (-item[1], item[0] is None, item[0] or "")
+    )[0][0]
+
+
+def unconditioned_values(
+    evidence: Sequence[ColumnEvidence],
+) -> tuple[dict[tuple[str | None, ...], str | None], collections.Counter]:
+    """One proto-phoneme per correspondence set, and how many columns show it.
+
+    The per-set analogue of `oracle_map`, and single-valued for the same reason:
+    a commitment carries one value per (set, conditioning) pair, so the best an
+    unconditioned inventory can do is the value that reaches gold in the most
+    columns showing that set.
+    """
+    votes: dict[tuple[str | None, ...], collections.Counter] = (
+        collections.defaultdict(collections.Counter)
+    )
+    support: collections.Counter = collections.Counter()
+    for item in evidence:
+        for _, reflexes in item.live:
+            support[reflexes] += 1
+        if not item.scored:
+            continue
+        for (_, reflexes), value in zip(item.live, item.wanted, strict=True):
+            votes[reflexes][value] += 1
+    return {
+        reflexes: _pick(tally) for reflexes, tally in votes.items()
+    }, support
+
+
+def _readings_under(
+    item: ColumnEvidence, values: dict[tuple[str | None, ...], str | None]
+) -> tuple:
+    """This concept's alignment read in proto terms, under an unconditioned map.
+
+    The assembler's pass 1, computed by the assembler's own code: a column reads
+    as the single segment its set contributes, or as nothing where the set
+    contributes nothing. It is deliberately *optimistic* about columns that end
+    up conditioned -- the assembler reads those as undecided in pass 2, so an
+    environment this oracle selects on the strength of a conditioned neighbour
+    may not fire. That costs the oracle accuracy and cannot cost it correctness,
+    which is the right way round for a bound.
+    """
+    decided: dict[int, object] = {
+        index: frozenset() for index in range(len(item.rows[0]) if item.rows else 0)
+    }
+    width = max((len(row) for row in item.rows), default=0)
+    decided = {index: frozenset() for index in range(width)}
+    for index, reflexes in item.live:
+        value = values.get(reflexes)
+        decided[index] = frozenset() if value is None else frozenset({value})
+    return readings_from(item.rows, decided)
+
+
+def _environment_parts(environment: RuleEnvironment) -> int:
+    return sum(
+        (
+            environment.left is not None,
+            environment.right is not None,
+            environment.word_initial,
+            environment.word_final,
+        )
+    )
+
+
+def _candidate_environments(
+    observations: Sequence[tuple[tuple, int, str | None]],
+) -> list[RuleEnvironment]:
+    """The bounded space this oracle searches: what a `conditioning` can spell.
+
+    The same shape `candidate_environments` searches for rules -- word edges, a
+    single left token, a single right token, and the four two-part combinations
+    -- read in *proto* terms through `alignment/environments.py`, because that
+    is what the assembler evaluates a conditioning against.
+    """
+    lefts: set[str] = set()
+    rights: set[str] = set()
+    for readings, index, _ in observations:
+        left, right = context_tokens(readings, index)
+        lefts |= {token for token in left if token != WORD_EDGE_TOKEN}
+        rights |= {token for token in right if token != WORD_EDGE_TOKEN}
+    def expression(token: str) -> SegmentExpression:
+        return SegmentExpression(tokens=(token,))
+    return [
+        RuleEnvironment(word_initial=True),
+        RuleEnvironment(word_final=True),
+        *(RuleEnvironment(left=expression(token)) for token in sorted(lefts)),
+        *(RuleEnvironment(right=expression(token)) for token in sorted(rights)),
+        RuleEnvironment(word_initial=True, word_final=True),
+        *(
+            RuleEnvironment(word_initial=True, right=expression(token))
+            for token in sorted(rights)
+        ),
+        *(
+            RuleEnvironment(left=expression(token), word_final=True)
+            for token in sorted(lefts)
+        ),
+        *(
+            RuleEnvironment(left=expression(left), right=expression(right))
+            for left in sorted(lefts)
+            for right in sorted(rights)
+        ),
+    ]
+
+
+def conditioned_values(
+    evidence: Sequence[ColumnEvidence],
+    values: dict[tuple[str | None, ...], str | None],
+) -> dict[tuple[str | None, ...], list[tuple[str | None, RuleEnvironment]]]:
+    """Conditioned splits of the sets whose columns do not all want one value.
+
+    The per-set analogue of `conditioned_rules`, and pure in the same sense: an
+    environment is usable only when every column it matches wants the same
+    value. A mixed environment would be a commitment that is wrong somewhere it
+    fires, and the point of an oracle is to be right wherever it can be.
+    """
+    observations: dict[
+        tuple[str | None, ...], list[tuple[tuple, int, str | None]]
+    ] = collections.defaultdict(list)
+    for item in evidence:
+        if not item.scored:
+            continue
+        readings = _readings_under(item, values)
+        for (index, reflexes), value in zip(item.live, item.wanted, strict=True):
+            observations[reflexes].append((readings, index, value))
+
+    splits: dict[
+        tuple[str | None, ...], list[tuple[str | None, RuleEnvironment]]
+    ] = {}
+    for reflexes, seen in observations.items():
+        default = values.get(reflexes)
+        exceptions = [item for item in seen if item[2] != default]
+        if not exceptions:
+            continue
+        usable: list[tuple[int, int, str, str | None, RuleEnvironment]] = []
+        for environment in _candidate_environments(seen):
+            matched = [
+                item
+                for item in seen
+                if environment_matches(environment, item[0], item[1]) is True
+            ]
+            if not matched:
+                continue
+            wanted = {item[2] for item in matched}
+            if len(wanted) != 1:
+                continue
+            target = wanted.pop()
+            if target == default:
+                continue
+            usable.append(
+                (
+                    -len(matched),
+                    -_environment_parts(environment),
+                    environment.model_dump_json(),
+                    target,
+                    environment,
+                )
+            )
+        selected: list[tuple[str | None, RuleEnvironment]] = []
+        covered: set[int] = set()
+        outstanding = {id(item) for item in exceptions}
+        for _, _, _, target, environment in sorted(usable, key=lambda x: x[:3]):
+            matched = {
+                id(item)
+                for item in exceptions
+                if environment_matches(environment, item[0], item[1]) is True
+            }
+            if not matched - covered:
+                continue
+            selected.append((target, environment))
+            covered |= matched
+            if covered >= outstanding:
+                break
+        if selected:
+            splits[reflexes] = selected
+    return splits
+
+
+def build_commitments(
+    child_node_ids: Sequence[str],
+    values: dict[tuple[str | None, ...], str | None],
+    support: collections.Counter,
+    splits: dict[tuple[str | None, ...], list[tuple[str | None, RuleEnvironment]]],
+) -> tuple[CorrespondenceCommitment, ...]:
+    """Turn a voted map, and optionally its splits, into a committed inventory.
+
+    A set with splits commits them *and* its unconditioned value: the assembler
+    defers such a column to pass 2, resolves it against the conditioned
+    commitments, and falls back to the unconditioned one where none is
+    satisfied. That is the elsewhere-condition, and it is why the two are
+    committed together rather than the default being dropped.
+    """
+    commitments = []
+    for reflexes in sorted(
+        support, key=lambda item: tuple("" if x is None else x for x in item)
+    ):
+        if reflexes not in values:
+            # A set seen only in concepts this node carries no gold for. Nothing
+            # checked it, so nothing commits it, and residue policy decides it.
+            continue
+        set_id = derive_set_id(
+            reflexes,
+            child_node_ids,
+            segmentation_overlay_id=None,
+            alignment_overlay_id=None,
+        )
+        for target, environment in splits.get(reflexes, ()):
+            commitments.append(
+                CorrespondenceCommitment(
+                    set_id=set_id,
+                    reflexes=reflexes,
+                    proto_segment=target,
+                    conditioning=environment,
+                    support=support[reflexes],
+                    confidence=1.0,
+                    rationale="oracle: a pure environment over this node's gold",
+                    directionality_rationale=(
+                        "oracle: computed from withheld gold, not a linguistic "
+                        "claim"
+                    ),
+                )
+            )
+        commitments.append(
+            CorrespondenceCommitment(
+                set_id=set_id,
+                reflexes=reflexes,
+                proto_segment=values[reflexes],
+                support=support[reflexes],
+                confidence=1.0,
+                rationale=(
+                    "oracle: the value reaching gold in the most columns "
+                    "showing this set"
+                ),
+                directionality_rationale=(
+                    "oracle: computed from withheld gold, not a linguistic claim"
+                ),
+            )
+        )
+    return tuple(commitments)
+
+
+def _oracle_inventory(
+    node_id: str,
+    child_node_ids: Sequence[str],
+    commitments: tuple[CorrespondenceCommitment, ...],
+    residue_policy: ResiduePolicy,
+    residue_witness_child_id: str | None,
+) -> CommittedProtoInventory:
+    return CommittedProtoInventory(
+        request=CommitProtoInventoryArgs(
+            node_id=node_id,
+            child_node_ids=tuple(child_node_ids),
+            commitments=commitments,
+            residue_policy=residue_policy,
+            residue_witness_child_id=residue_witness_child_id,
+            summary=(
+                "oracle inventory: one value per correspondence set, voted "
+                "against the withheld gold"
+            ),
+        )
+    )
+
+
+def _score_against_gold(
+    step, gold_alternatives: dict[str, tuple[tuple[str, ...], ...]]
+) -> tuple[int, float]:
+    """How close this node's reported forms are to the gold it is aimed at.
+
+    Exact hits first, then negative total edit distance. The graded half is not
+    decoration: at an internal node the oracle is aimed at the *root's* gold,
+    which almost nothing there matches exactly, so an exact-only criterion is
+    nearly flat and picks among the general claims by accident. The distance
+    still separates them, and separating them is the whole point of choosing.
+    """
+    exact = 0
+    distance = 0.0
+    for distribution in step.output_beam.distributions:
+        targets = gold_alternatives.get(distribution.concept_id)
+        if not targets:
+            continue
+        segments = distribution.candidates[0].segments
+        if segments in targets:
+            exact += 1
+        distance += compare_to_nearest(segments, targets).normalized_edit_distance
+    return exact, -distance
+
+
+def assembly_step(
+    parent_node_id: str,
+    child_node_ids: Sequence[str],
+    child_beams: tuple,
+    forms_by_child: dict[str, dict[str, tuple[str, ...]]],
+    gold_alternatives: dict[str, tuple[tuple[str, ...], ...]],
+    assembler: ProtoInventoryAssembler,
+):
+    """Assemble one node under its best oracle inventory.
+
+    Returns the step, the inventory that produced it, and a label naming the two
+    choices that were searched rather than derived.
+
+    **Both choices are settled by running them, not by arguing them**, which is
+    what `branch_rules` does per branch and for the same reason: a measure that
+    claimed to bound the architecture while leaving one of its general claims
+    unset would bound something else.
+
+      conditioning   an inventory whose sets carry pure `conditioning`
+                     environments is the analogue of `--oracle contextual`, and
+                     like it is >= the unconditioned one by *measurement*. It
+                     can lose: the assembler reads a conditioned column as
+                     undecided in pass 2, so a split selected against an
+                     optimistic neighbour may simply not fire, and where the
+                     splits cost more than they buy the unconditioned inventory
+                     is used.
+      residue policy what happens to a column no committed set explains. A
+                     policy is a claim about the node, so the oracle is entitled
+                     to it; a `residue_disposition` is a claim about one column
+                     of one concept, so it is not. See `column_evidence`.
+    """
+    evidence = column_evidence(
+        child_node_ids, forms_by_child, gold_alternatives, assembler
+    )
+    values, support = unconditioned_values(evidence)
+    splits = conditioned_values(evidence, values)
+    shapes = [
+        ("unconditioned", build_commitments(child_node_ids, values, support, {})),
+    ]
+    if splits:
+        shapes.append(
+            ("conditioned", build_commitments(child_node_ids, values, support, splits))
+        )
+    residues: list[tuple[ResiduePolicy, str | None]] = [
+        (ResiduePolicy.RETAIN_FROM_WITNESS, child_id) for child_id in child_node_ids
+    ] + [(ResiduePolicy.DROP, None)]
+
+    best = None
+    for shape, commitments in shapes:
+        for policy, witness in residues:
+            inventory = _oracle_inventory(
+                parent_node_id, child_node_ids, commitments, policy, witness
+            )
+            step = assembler.reconstruct(
+                parent_node_id, child_beams, inventory=inventory
+            )
+            scored = _score_against_gold(step, gold_alternatives)
+            if best is None or scored > best[0]:
+                label = policy.value + (
+                    f"[{witness}]" if witness is not None else ""
+                )
+                best = (scored, step, inventory, f"{shape}/{label}")
+    _, step, inventory, label = best
+    return step, inventory, label
+
 
 
 @dataclass(frozen=True)
@@ -475,6 +1098,15 @@ class OracleMeasurement:
     rules_written: int = 0
     branches: int = 0
     fallback_branches: int = 0
+    # Assembly-only, and None under the two branch-cascade oracles rather than
+    # zero: an inventory counter of 0 and an inventory counter that does not
+    # apply are different readings, and a JSON consumer must be able to tell
+    # them apart.
+    commitments_written: int | None = None
+    residue_policy_choices: tuple[str, ...] = ()
+    mean_unaccounted_column_rate: float | None = None
+    mean_cross_branch_assembly_rate: float | None = None
+    nodes_with_cross_branch_assembly: int | None = None
     misses: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = field(
         default=()
     )
@@ -528,6 +1160,15 @@ class OracleMeasurement:
             "rules_written": self.rules_written,
             "branches": self.branches,
             "fallback_branches": self.fallback_branches,
+            "commitments_written": self.commitments_written,
+            "residue_policy_choices": list(self.residue_policy_choices),
+            "mean_unaccounted_column_rate": self.mean_unaccounted_column_rate,
+            "mean_cross_branch_assembly_rate": (
+                self.mean_cross_branch_assembly_rate
+            ),
+            "nodes_with_cross_branch_assembly": (
+                self.nodes_with_cross_branch_assembly
+            ),
         }
 
 
@@ -605,27 +1246,66 @@ def measure(
         forms_by_node[leaf.label] = {
             form.concept_id: form.segments for form in lexicons[leaf.label].forms
         }
+    if oracle == ASSEMBLY:
+        # The assembly oracle's inventory has to be voted over the columns the
+        # assembler will actually resolve, and the assembler resolves the beam's
+        # candidates. Where a leaf attests a concept twice, the beam's top
+        # candidate is decided by `TIE_BREAK_POLICY` and the last form written
+        # down is decided by the file; those disagree, and only the first is a
+        # column assembly will see. The rule oracles keep the last-one-wins
+        # reading they were measured with -- `oracle_map` builds a segment map,
+        # not a column, so nothing there depends on which of the two it is.
+        for leaf in root.get_leaves():
+            forms_by_node[leaf.label] = {
+                distribution.concept_id: distribution.candidates[0].segments
+                for distribution in beams[id(leaf)].distributions
+            }
 
     reconstructor = RuleBasedReconstructor(beam_width=beam_width)
+    assembler = (
+        ProtoInventoryAssembler(beam_width=beam_width)
+        if oracle == ASSEMBLY
+        else None
+    )
     scored_node = None
     rules_written = branches = fallbacks = 0
+    commitments_written = 0
+    residue_choices: list[str] = []
+    unaccounted_rates: list[float] = []
+    cross_branch_rates: list[float] = []
     for children, parent in postorder_groups(root):
         parent_id = node_ids[id(parent)]
         child_ids = [node_ids[id(child)] for child in children]
-        rules: list[ReconstructionRule] = []
-        for child_id in child_ids:
-            built, fell_back = branch_rules(
-                child_id, forms_by_node[child_id], gold, gold_alternatives, oracle
+        child_beams = tuple(beams[id(child)] for child in children)
+        if oracle == ASSEMBLY:
+            step, inventory, residue_label = assembly_step(
+                parent_id,
+                child_ids,
+                child_beams,
+                forms_by_node,
+                gold_alternatives,
+                assembler,
             )
-            rules.extend(built)
-            rules_written += len(built)
-            branches += 1
-            fallbacks += fell_back
-        step = reconstructor.reconstruct(
-            parent_id,
-            tuple(beams[id(child)] for child in children),
-            rules=rules,
-        )
+            commitments_written += len(inventory.request.commitments)
+            branches += len(child_ids)
+            residue_choices.append(f"{parent_id}={residue_label}")
+            unaccounted_rates.append(
+                step.diagnostics.unaccounted_column_rate or 0.0
+            )
+            cross_branch_rates.append(
+                step.diagnostics.cross_branch_assembly_rate or 0.0
+            )
+        else:
+            rules: list[ReconstructionRule] = []
+            for child_id in child_ids:
+                built, fell_back = branch_rules(
+                    child_id, forms_by_node[child_id], gold, gold_alternatives, oracle
+                )
+                rules.extend(built)
+                rules_written += len(built)
+                branches += 1
+                fallbacks += fell_back
+            step = reconstructor.reconstruct(parent_id, child_beams, rules=rules)
         beams[id(parent)] = step.output_beam
         forms_by_node[parent_id] = {
             distribution.concept_id: distribution.candidates[0].segments
@@ -689,6 +1369,25 @@ def measure(
         rules_written=rules_written,
         branches=branches,
         fallback_branches=fallbacks,
+        commitments_written=(
+            commitments_written if oracle == ASSEMBLY else None
+        ),
+        residue_policy_choices=tuple(residue_choices),
+        mean_unaccounted_column_rate=(
+            sum(unaccounted_rates) / len(unaccounted_rates)
+            if unaccounted_rates
+            else None
+        ),
+        mean_cross_branch_assembly_rate=(
+            sum(cross_branch_rates) / len(cross_branch_rates)
+            if cross_branch_rates
+            else None
+        ),
+        nodes_with_cross_branch_assembly=(
+            sum(1 for rate in cross_branch_rates if rate > 0.0)
+            if oracle == ASSEMBLY
+            else None
+        ),
         misses=tuple(misses),
     )
 
@@ -725,15 +1424,21 @@ def run(
         f"root node: {result.root_node_id}   gold node: {result.gold_node_id}   "
         f"oracle: {result.oracle}"
     )
-    print(
-        f"beam width: {beam_width}   concepts: {result.evaluated}   "
-        f"rules: {result.rules_written} over {result.branches} branches"
-        + (
-            f"   ({result.fallback_branches} fell back to context-free)"
-            if result.fallback_branches
-            else ""
+    if result.oracle == ASSEMBLY:
+        print(
+            f"beam width: {beam_width}   concepts: {result.evaluated}   "
+            f"sets: {result.commitments_written} over {result.branches} branches"
         )
-    )
+    else:
+        print(
+            f"beam width: {beam_width}   concepts: {result.evaluated}   "
+            f"rules: {result.rules_written} over {result.branches} branches"
+            + (
+                f"   ({result.fallback_branches} fell back to context-free)"
+                if result.fallback_branches
+                else ""
+            )
+        )
     print()
     print(
         f"  top  exact  {result.top_exact:>3}/{result.evaluated}  "
@@ -765,6 +1470,23 @@ def run(
         f"    B-Cubed F1 {result.mean_top_bcubed_f1:6.3f}   "
         "structural agreement, higher is better"
     )
+    if result.oracle == ASSEMBLY:
+        print()
+        print("  assembly, per node (reports; nothing here is a gate):")
+        print(
+            f"    unaccounted columns  {result.mean_unaccounted_column_rate:6.3f}   "
+            "mean rate; read it against the family's floor, not against 0"
+        )
+        print(
+            f"    cross-branch         "
+            f"{result.mean_cross_branch_assembly_rate:6.3f}   "
+            f"mean rate, non-zero at {result.nodes_with_cross_branch_assembly} "
+            f"of {len(result.residue_policy_choices)} nodes"
+        )
+        print(
+            "    residue policy       "
+            + ", ".join(result.residue_policy_choices)
+        )
     print()
     print("first 12 misses (reported | gold):")
     for concept_id, got, want in result.misses[:12]:
@@ -786,7 +1508,10 @@ def main() -> int:
         help=(
             "context_free is the measure every recorded baseline used and is "
             "the default for that reason; contextual searches the DSL's own "
-            "environments and lands beside it, never in place of it."
+            "environments and lands beside it, never in place of it; assembly "
+            "commits one proto-phoneme per correspondence set at each node and "
+            "runs the real assembler, which is the same question put to the "
+            "other architecture."
         ),
     )
     parser.add_argument(

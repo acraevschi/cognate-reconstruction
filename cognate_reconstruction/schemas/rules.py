@@ -78,6 +78,21 @@ class ApplicationStatus(StrEnum):
     TARGET_ABSENT = "target_absent"
     CONTEXT_MISMATCH = "context_mismatch"
     ANCHOR_MISMATCH = "anchor_mismatch"
+    WOULD_EMPTY_FORM = "would_empty_form"
+    """The rule matched, and applying it would leave the form with no segments.
+
+    Refused rather than applied, because an empty form is not a form: every
+    other layer already says so -- `LexicalForm.segments` requires at least one
+    token and `normalize_and_prune` drops an empty candidate -- and until this
+    existed `RuleEngine.apply_rules` discovered it by handing pydantic an empty
+    tuple, raising a `ValidationError` from inside the reconstructor with no
+    rule, form, or node named. Reachable from both commit shapes: a cascade of
+    deletions under `rules`, and under `inventory` any derived view where enough
+    sets reconstruct nothing, which is how it was found.
+
+    Counted as *applicable and not applied*, so `rule_coverage` sees a rule that
+    could have fired and did not. Nothing gates on it.
+    """
 
 
 class MatchLocation(WorkbenchModel):

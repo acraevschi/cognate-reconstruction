@@ -46,7 +46,7 @@ from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 # the alternative is a duplicate three-line `RuleEngine` call that could drift.
 from oracle_ceiling import (  # noqa: E402  (same directory)
     CONTEXT_FREE,
-    ORACLES,
+    BRANCH_ORACLES,
     _apply,
     align_pair,
     branch_rules,
@@ -72,7 +72,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--oracle",
-        choices=ORACLES,
+        choices=BRANCH_ORACLES,
         default=CONTEXT_FREE,
         help=(
             "Which rule writer builds the cascade. Only meaningful with "

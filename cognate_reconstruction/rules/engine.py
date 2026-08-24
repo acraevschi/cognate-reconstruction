@@ -103,6 +103,14 @@ class RuleEngine:
                 start for start in occurrences if _context_matches(rule, form.segments, start)
             )
             output = _replace(form.segments, rule.target.tokens, rule.replacement.tokens, matching)
+            # A rule may delete material; a cascade may not delete a word. The
+            # refusal is per (rule, form) and leaves the form untouched, so the
+            # rest of the cascade still runs and the report still says what
+            # happened. See `ApplicationStatus.WOULD_EMPTY_FORM`.
+            would_empty = bool(matching) and not output and bool(form.segments)
+            if would_empty:
+                output = form.segments
+                matching = ()
             form_anchors = _anchors_for_form(anchors, form.form_id)
             anchor_ids = tuple(sorted(form_anchors))
             # An unchanged form is not an anchor match caused by this rule.
@@ -114,6 +122,12 @@ class RuleEngine:
             if not occurrences:
                 status = ApplicationStatus.TARGET_ABSENT
                 explanation = "target sequence is absent"
+            elif would_empty:
+                status = ApplicationStatus.WOULD_EMPTY_FORM
+                explanation = (
+                    "rule matched, but applying it would leave the form with no "
+                    "segments; the form is carried through unchanged"
+                )
             elif not matching:
                 status = ApplicationStatus.CONTEXT_MISMATCH
                 explanation = "target occurs, but never in the specified environment"
