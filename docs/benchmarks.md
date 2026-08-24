@@ -300,6 +300,45 @@ as `held-out concepts` and the second as `gold exact` / `gold distance` /
 `gold b-cubed`; `summarize-trajectories` keeps the second under
 `gold_target_evaluation`.
 
+## What a live number was sampled with
+
+A live figure is a measurement of one model *under one sampling configuration*,
+and until 2026-08-24 this repository did not record the second half. The harness
+sends `temperature`, `timeout` and `--provider-config` and nothing else about
+sampling, so `top_k`, `top_p`, `repeat_penalty` and `min_p` were being supplied
+by whatever the LM Studio Developer tab happened to hold. `configuration_sha256`
+hashes what the harness sends; it cannot see a server-side panel. Two runs with
+the same hash could therefore have been sampled differently, with nothing in the
+artifact saying so.
+
+It is not a theoretical gap. At `temperature 0`, sending `repeat_penalty: 1.0`
+produces different output from letting LM Studio's default 1.1 apply — a
+repetition penalty is a logit modifier applied *before* selection, so greedy
+decoding is not immune to it — while `top_k` and `top_p` genuinely are no-ops
+there, because truncating a distribution that is then argmax'd cannot remove the
+argmax. Above temperature 0 they are live again.
+
+**Every sweep from 2026-08-24 pins the model's own published configuration and
+sends it explicitly**, so it lands in `configuration_sha256` and in the
+trajectory's `provider_options`:
+
+```bash
+printf '{"top_k": 64, "top_p": 0.95, "repeat_penalty": 1.0}\n' > runs/sweeps/gemma-sampling.json
+```
+
+with `--temperature 1.0` on the command line. Those are Gemma's published
+`generation_config` values — `do_sample: true`, `temperature 1.0`, `top_k 64`,
+`top_p 0.95`, and no repetition penalty, which is why 1.0 rather than LM
+Studio's 1.1 is the setting that matches the model rather than the client.
+
+Temperature 1.0 is also what makes `--provider-seed-base` mean anything: greedy
+decoding never consults a seed, so a five-seed sweep at temperature 0 is one
+configuration run five times and its "spread" is server nondeterminism. That is
+why `run-benchmark` defaults to a non-zero temperature, and why a sweep quoted
+without its sampling configuration is a number whose reading is not stated —
+the same objection §7.3 of `docs/proto_inventory_design.md` makes to a
+correspondence count quoted without its flags.
+
 ## Recorded baselines
 
 Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the

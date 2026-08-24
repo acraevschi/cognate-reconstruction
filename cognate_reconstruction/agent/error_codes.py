@@ -119,7 +119,13 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         "alignment-failed": ToolErrorCategory.PROTOCOL,
         # An anomaly cites a form or concept outside the active evidence.
         "anomaly-unknown-reference": ToolErrorCategory.PROTOCOL,
-        # A multi-rule commit left some rule without its own rationale.
+        # A commit carrying more than one claim left one of them without its
+        # own rationale. One code for both shapes on purpose: it is the same
+        # requirement — a single top-level summary cannot attribute reasoning to
+        # an individual rule or to an individual correspondence set — and one
+        # code keeps the counts comparable across the migration. The message and
+        # the remediation say which shape was rejected and name the exact
+        # rule_ids or set_ids.
         "missing-rule-rationale": ToolErrorCategory.PROTOCOL,
         # A committed rule deletes or merges a contrast without saying which
         # branch innovated. Protocol rather than exploratory for the same reason

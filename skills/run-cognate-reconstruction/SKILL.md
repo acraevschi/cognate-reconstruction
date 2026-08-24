@@ -190,6 +190,61 @@ errors.
   llm_reconstruction python`), so `make test`, `make smoke-lexibank`, and
   `make install` are all unusable here. Call the env's python directly —
   that is exactly what the driver does.
+- **LM Studio applies its own sampling panel to anything you do not send, and
+  `configuration_sha256` cannot see it.** The harness sends `model`, `messages`,
+  `tools`, `tool_choice`, `api_base`, `temperature`, `timeout`, and whatever is
+  in `--provider-config`. Everything else — `top_k`, `top_p`, `repeat_penalty`,
+  `min_p` — comes from the Developer tab's Inference panel for the loaded model.
+  Two runs with an identical configuration hash can therefore have been produced
+  under different samplers, with nothing in the artifact saying so.
+
+  Measured 2026-08-24 against `google/gemma-4-26b-a4b`, comparing greedy output
+  at `temperature 0`:
+
+  | sent | effect |
+  | --- | --- |
+  | nothing (panel default `repeat_penalty` 1.1) | baseline |
+  | `repeat_penalty: 1.0` | **different output** |
+  | `repeat_penalty: 2.0` | different again |
+  | `top_k: 0`, `top_p: 1.0` | identical to baseline |
+
+  `top_k` and `top_p` truncate a distribution that is then argmax'd, so they are
+  no-ops at temperature 0 — but not above it. `repeat_penalty` is a *logit
+  modifier applied before selection*, so greedy decoding is not immune to it,
+  and 1.1 is LM Studio's default rather than the model's: Gemma's published
+  `generation_config` specifies `temperature 1.0`, `top_k 64`, `top_p 0.95` and
+  no repetition penalty at all.
+
+  **Send them instead of inheriting them.** Every one is overridable per request
+  and none needs the UI. `--provider-config` carries them, LiteLLM forwards them
+  to a custom-base `openai/` provider both top level and via `extra_body`, and
+  they land in `configuration_sha256` and the trajectory's `provider_options`:
+
+  ```bash
+  printf '{"top_k": 64, "top_p": 0.95, "repeat_penalty": 1.0}\n' > sampling.json
+  ```
+
+  Pass `--temperature` as the flag, not in that file: `_provider_and_configuration`
+  sets `options["temperature"]` *after* loading the provider config, so the flag
+  wins. `repeat_penalty` is not an OpenAI parameter and survives only as a
+  LiteLLM passthrough — verified, but worth re-checking after a LiteLLM upgrade.
+
+- **`--provider-seed-base` does nothing at `--temperature 0`.** Greedy decoding
+  never consults a seed, so five "seeds" become five identical configurations
+  differing only by whatever MoE-routing and batching nondeterminism the server
+  has. `run-benchmark` defaults to `--temperature 0.1` for exactly this reason.
+  A multi-seed sweep wanting real spread needs a temperature above zero, and at
+  that point the `top_k`/`top_p` row above stops being a no-op.
+
+- **Thinking mode is most of the output budget, and it is not a sampler.**
+  `google/gemma-4-26b-a4b` with LM Studio's "Enable Thinking" custom field on
+  spent **897 of 899 completion tokens** on `reasoning_content` when asked to
+  write one digit thirty times, and never emitted visible content. That is the
+  explanation for both the multi-minute turns below and for a `max_tokens` cap
+  stalling a node. It is chat-template machinery rather than a sampling
+  parameter, so unlike the table above it has not been shown to be settable per
+  request.
+
 - **LM Studio keeps models loaded while its server is off.** `lms server
   status` said "The server is not running" while `google/gemma-4-e4b` was
   loaded. Port 41343 belongs to the LM Studio app and answers HTTP but is not
