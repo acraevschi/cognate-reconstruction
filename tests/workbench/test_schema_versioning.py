@@ -9,10 +9,11 @@ would not strand the 2.0 files that already exist.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
 
 from cognate_reconstruction import cli
+from cognate_reconstruction.agent.schemas import CommittedReconstruction
 from cognate_reconstruction.agent.trajectory import (
+    INVENTORY_SCHEMA_VERSION,
     TRAJECTORY_SCHEMA_VERSION,
     AgentTrajectory,
     TrajectoryDatasetBuilder,
@@ -69,31 +70,54 @@ def test_schema_variants_report_a_wholly_outdated_file_honestly() -> None:
     )
 
 
-class _WidenedTrajectory(AgentTrajectory):
-    """`AgentTrajectory` as it would look after a future reader-visible bump."""
-
-    schema_version: Literal["2.0", "2.1"] = "2.1"
-
-
 def test_widening_the_version_literal_keeps_existing_files_loadable() -> None:
-    """Capture the constraint before anyone needs it.
+    """The constraint, now exercised for real rather than in a subclass.
 
     Bumping later is trivial; un-bumping after files exist in the wild is not.
     The bump is therefore only ever additive to the readable set: a 2.0 record
-    written today must still load, and must still say 2.0, under a reader that
-    also accepts 2.1.
+    written before the per-set commit protocol existed must still load, must
+    still say 2.0, and must keep the verdict it already had, under a reader that
+    also accepts 3.0.
+
+    This test was written by prompt 05 against a hypothetical `"2.1"` to prove
+    the widening it deliberately declined to perform. It is exercised here with
+    the real `"3.0"`.
     """
     line = REAL_PRE_CHANGE_TRAJECTORY.read_text(encoding="utf-8").strip()
-    widened = _WidenedTrajectory.model_validate_json(line)
-    assert widened.schema_version == "2.0"
-    assert widened.node_id == _pre_change().node_id
+    loaded = AgentTrajectory.model_validate_json(line)
+    assert loaded.schema_version == "2.0"
+    assert loaded.node_id == _pre_change().node_id
     # And the new version is genuinely readable too, so the widening is real
     # rather than an unexercised annotation.
     assert (
-        _WidenedTrajectory.model_validate_json(
-            widened.model_copy(
-                update={"schema_version": "2.1"}
+        AgentTrajectory.model_validate_json(
+            loaded.model_copy(
+                update={"schema_version": INVENTORY_SCHEMA_VERSION}
             ).model_dump_json(exclude_computed_fields=True)
         ).schema_version
-        == "2.1"
+        == "3.0"
     )
+
+
+def test_the_pre_change_record_keeps_the_verdict_it_already_had() -> None:
+    """The union type must not move an existing record across the gate.
+
+    `committed_reconstruction` is now a union, and the smart union has to resolve
+    a 2.0 record to `CommittedReconstruction` rather than to the inventory shape.
+    If it did not, `committed_no_op_rule_count` would read 0 for the wrong
+    reason and the workflow conditions would dispatch down the inventory branch —
+    which is exactly the silent loosening `docs/proto_inventory_design.md` §12.2
+    is about.
+    """
+    record = _pre_change()
+    assert isinstance(record.committed_reconstruction, CommittedReconstruction)
+    assert record.commit_shape == "rules"
+    assert record.high_quality is True
+    assert record.high_quality_failure_reasons == ()
+
+
+def test_a_mixed_archive_reports_how_far_the_migration_has_got() -> None:
+    """`commit_shapes` is the migration's daily progress signal."""
+    old = _pre_change()
+    summary = cli._trajectory_summary((old, old))
+    assert summary["commit_shapes"] == {"rules": 2}

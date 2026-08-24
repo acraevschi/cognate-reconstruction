@@ -72,7 +72,15 @@ INSPECTION_TOOLS = {
 # proposed a sound law and the parser refused it. Everything else is protocol
 # friction. Mirrors TOOL_ERROR_CODES in cognate_reconstruction/agent/
 # error_codes.py, duplicated because this driver is stdlib-only.
-EXPLORATORY_CODES = {"dsl-parse-error", "no-op-rule", "empty-scope"}
+EXPLORATORY_CODES = {
+    "dsl-parse-error",
+    "no-op-rule",
+    "empty-scope",
+    "non-complementary-split",
+    "realignment-does-not-join-set",
+    "restoration-unattested",
+    "restoration-cites-descendant",
+}
 
 
 # --------------------------------------------------------------------------

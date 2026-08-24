@@ -167,7 +167,15 @@ def test_the_exploratory_set_is_exactly_the_hypothesis_tester_refusing() -> None
         for code, category in TOOL_ERROR_CODES.items()
         if category is ToolErrorCategory.EXPLORATORY
     }
-    assert exploratory == {"dsl-parse-error", "no-op-rule", "empty-scope"}
+    assert exploratory == {
+        "dsl-parse-error",
+        "no-op-rule",
+        "empty-scope",
+        "non-complementary-split",
+        "realignment-does-not-join-set",
+        "restoration-unattested",
+        "restoration-cites-descendant",
+    }
 
 
 SKILL_COPIES = (

@@ -41,17 +41,107 @@ class _AlignmentInput:
     is_anchor: bool
 
 
+INCLUDE_BOUNDARIES_BY_DEFAULT = True
+"""Whether an alignment sees `+` and `-`, absent a caller saying otherwise.
+
+**One default, because the columns have to be one object.** Every consumer of an
+alignment in this repository — `summarize_correspondences`, `get_alignments`,
+`polarize`, `test_proto_assembly`, the commit-time re-derivation, and
+`traversal/assembler.py` — reads the same columns, and a set a model is handed
+must be a set the assembler can reproduce. A per-caller default would let two of
+them disagree about how many columns a form has, which is the defect
+`one_reading_per_node` exists to close, one level down.
+
+It is `True` rather than `False` because assembly builds a parent form out of
+alignment columns, so a token the aligner never sees is a token the parent can
+never carry. Stripping was free while a parent form was a child's whole string
+rewritten by rules — `make_leaf_beam` carries `form.segments` and `RuleEngine`
+passes a boundary through untouched — and stopped being free the moment a form
+was assembled column by column. `docs/proto_inventory_design.md` §12.5 measures
+what it cost: 8 of 46 Polynesian gold concepts unreachable by construction.
+
+A caller that genuinely wants the phonetic string alone — a similarity measure,
+a phonotactic count — passes `include_boundaries=False` and gets exactly the old
+behaviour.
+"""
+
+_LINGPY_GAP = "-"
+"""The token LingPy writes into `alm_matrix` for a gap.
+
+It is also, unhelpfully, one of this repository's two morphological boundaries,
+which is why boundaries cannot simply be handed to the aligner unencoded.
+"""
+
+_LINGPY_BOUNDARY = "+"
+"""What a `-` is re-spelled as on the way into LingPy.
+
+LingPy's SCA model maps `+` to the sound class `_`, its own morpheme-boundary
+class, and maps `-` to a gap. The two boundaries this repository allows are the
+same kind of object, so re-spelling one as the other loses nothing the aligner
+could have used, and the original token is restored positionally on the way out.
+"""
+
+
+def _encode_row(segments: tuple[str, ...]) -> tuple[str, ...]:
+    """Re-spell any literal `-` so LingPy cannot read it as a gap."""
+    return tuple(
+        _LINGPY_BOUNDARY if segment == _LINGPY_GAP else segment
+        for segment in segments
+    )
+
+
+def _decode_row(
+    aligned: Sequence[object],
+    encoded: tuple[str, ...],
+    original: tuple[str, ...],
+) -> tuple[str | None, ...]:
+    """Read one LingPy row back, undoing `_encode_row` where it applied.
+
+    When nothing was encoded — every case on every benchmark checked in here —
+    this is the mapping the adapter always did, token for token. When a `-` was
+    encoded, the row's non-gap tokens are restored *positionally* from the
+    caller's own segments, which relies on LingPy returning a row whose non-gap
+    tokens are its input in order. That property is asserted rather than assumed:
+    a violation would silently mis-spell a form, and there is no reading of a
+    mismatch that is safe to guess at.
+    """
+    if encoded == original:
+        return tuple(None if token == _LINGPY_GAP else str(token) for token in aligned)
+    row: list[str | None] = []
+    index = 0
+    for token in aligned:
+        if token == _LINGPY_GAP:
+            row.append(None)
+            continue
+        if index >= len(original):
+            raise RuntimeError(
+                "the aligner returned more segments than it was given for "
+                f"{original!r}"
+            )
+        row.append(original[index])
+        index += 1
+    if index != len(original):
+        raise RuntimeError(
+            f"the aligner returned {index} of {len(original)} segments for "
+            f"{original!r}"
+        )
+    return tuple(row)
+
+
 def _alignment_inputs(
     form: LexicalForm,
     *,
     is_anchor: bool,
     respect_cognate_sets: bool,
+    include_boundaries: bool = INCLUDE_BOUNDARIES_BY_DEFAULT,
 ) -> tuple[_AlignmentInput, ...]:
     if respect_cognate_sets and form.cognate_memberships:
         return tuple(
             _AlignmentInput(
                 form=form,
-                segments=form.segments_for_membership(membership),
+                segments=form.segments_for_membership(
+                    membership, include_boundaries=include_boundaries
+                ),
                 cognate_set_id=membership.cognate_set_id,
                 membership_id=membership.membership_id,
                 membership_scope=membership.scope,
@@ -65,7 +155,7 @@ def _alignment_inputs(
     return (
         _AlignmentInput(
             form=form,
-            segments=form.phonetic_segments,
+            segments=form.segments if include_boundaries else form.phonetic_segments,
             cognate_set_id=(
                 form.cognate_set_id if respect_cognate_sets else None
             ),
@@ -204,6 +294,8 @@ class LingPyAligner:
         left: LanguageLexicon,
         right: LanguageLexicon,
         anchors: tuple[LexicalForm, ...] = (),
+        *,
+        include_boundaries: bool = INCLUDE_BOUNDARIES_BY_DEFAULT,
     ) -> CorrespondenceMap:
         """Compatibility pairwise view derived from the same n-way engine.
 
@@ -211,7 +303,9 @@ class LingPyAligner:
         the aligned material itself calls `align_multiple` and reads
         `alignments` there, where it is held once.
         """
-        result = self.align_multiple((left, right), anchors)
+        result = self.align_multiple(
+            (left, right), anchors, include_boundaries=include_boundaries
+        )
         return result.pairwise_correspondences[0]
 
     def align_multiple(
@@ -221,7 +315,15 @@ class LingPyAligner:
         *,
         respect_cognate_sets: bool = True,
         correspondence_detail: CorrespondenceDetail = CorrespondenceDetail.FULL,
+        include_boundaries: bool = INCLUDE_BOUNDARIES_BY_DEFAULT,
     ) -> MultipleAlignmentMap:
+        """Align every concept's cognate set across `lexicons`.
+
+        `include_boundaries` decides whether `+` and `-` are aligned material or
+        are stripped before the aligner sees them. It defaults to including
+        them; :data:`INCLUDE_BOUNDARIES_BY_DEFAULT` records why, and why the
+        default is shared rather than chosen per caller.
+        """
         from lingpy import Multiple  # type: ignore[import-untyped]
 
         selected = tuple(lexicons)
@@ -237,6 +339,7 @@ class LingPyAligner:
                     form,
                     is_anchor=False,
                     respect_cognate_sets=respect_cognate_sets,
+                    include_boundaries=include_boundaries,
                 ):
                     grouped[(form.concept_id, item.cognate_set_id)].append(item)
         anchor_inputs = tuple(
@@ -246,6 +349,7 @@ class LingPyAligner:
                 anchor,
                 is_anchor=True,
                 respect_cognate_sets=respect_cognate_sets,
+                include_boundaries=include_boundaries,
             )
         )
 
@@ -268,9 +372,8 @@ class LingPyAligner:
                 )
             ]
             material = form_inputs + compatible_anchors
-            multiple = Multiple(
-                [list(item.segments) for item in material]
-            )
+            encoded = tuple(_encode_row(item.segments) for item in material)
+            multiple = Multiple([list(row) for row in encoded])
             multiple.prog_align(model="sca", mode=self.mode)
             members = tuple(
                 AlignmentMember(
@@ -283,13 +386,11 @@ class LingPyAligner:
                     membership_interpretation=item.membership_interpretation,
                     source_segment_indices=item.source_segment_indices,
                     source_slice_unit=item.source_slice_unit,
-                    aligned_segments=tuple(
-                        None if token == "-" else str(token) for token in aligned
-                    ),
+                    aligned_segments=_decode_row(aligned, row, item.segments),
                     is_anchor=item.is_anchor,
                 )
-                for item, aligned in zip(
-                    material, multiple.alm_matrix, strict=True
+                for item, row, aligned in zip(
+                    material, encoded, multiple.alm_matrix, strict=True
                 )
             )
             group_suffix = cognate_set_id or "unassigned"

@@ -313,6 +313,49 @@ what a perfect column-wise chooser with full knowledge of the gold would produce
 plausible reconstructions, and a miss here is no more a structural limit than an oracle miss
 is.
 
+### `--boundaries`, and what the instrument was measuring that the harness was not
+
+This script has always aligned `form.segments`, boundaries included, and said so in
+`align_rows`: gold proto-forms carry them — `ʔ a h u + a f i` — and a column that could never
+contribute a `+` would make those concepts unreachable *by construction rather than by
+measurement*. Until 2026-08-23 the harness's own aligner stripped them, so the ceiling was
+measured one way and the implementation ran the other way, and the two shared no alignment
+code that could disagree out loud.
+
+`--boundaries strip` makes that gap a number instead of an argument. Polynesian, same run,
+both readings:
+
+| variant | `--boundaries include` (default) | `--boundaries strip` |
+| --- | --- | --- |
+| flat | 43/46 | 38/46 |
+| **node-local** | **44/46** | **38/46** |
+| free choice | 46/46 | 44/46 |
+| node-local cannot reach | `1028`, `778` | `1028`, `1212`, `1217`, `1239`, `1439`, `1741`, `2105`, `778` |
+
+**Six concepts, and they are not a random six.** `1212`, `1217`, `1239`, `1439`, `1741` and
+`2105` carry a morphological boundary in every gold alternative, so under `strip` no assembly
+over those columns can reach them however good the analysis is. `1028` and `778` stay out of
+reach either way, for the reasons above — a segment no daughter shows — which is what makes
+the six attributable to the boundary and to nothing else.
+
+`--boundaries strip` is kept for exactly one purpose: reproducing a figure recorded before the
+harness's aligner was repaired. It is not a variant of the measurement worth taking on new
+work.
+
+**Does this instrument still bound the harness?** It has its own `align_rows` and the harness
+runs `LingPyAligner.align_multiple`, deliberately: an instrument that imported the thing it
+measures would agree with it by construction. The cost is that the two can drift silently, and
+they did. Walking the tree bottom-up and comparing column structure at every (node, concept):
+
+| | identical column structure | node-local, instrument | node-local, harness |
+| --- | --- | --- | --- |
+| boundaries stripped | 225 of 322 — 69.9% | 44/46 | **38/46** |
+| boundaries included | **322 of 322 — 100%** | 44/46 | **44/46** |
+
+`tests/workbench/test_oracle_ceiling_regression.py` pins the property — every column the
+instrument sees is a column the harness sees — rather than the counts. Re-run it after any
+change to either aligner; a ceiling measured on one alignment bounds nothing running another.
+
 ## `tiebreak_probe.py` — does branch support decide anything?
 
 Three synthetic nodes, no arguments. Four children agreeing against one dissenting, with and
@@ -394,16 +437,61 @@ support: the n-tuple of aligned segments across all daughters, how often it recu
 example concepts. This is the object the comparative method actually operates on.
 
 It began as the prototype for the view the agent could not ask for. The agent can ask for it
-now — `summarize_correspondences` produces the same sets through the typed tool surface — so
-what the script is *for* has changed: it is the second implementation, forty lines long and
-reading nothing but `LingPyAligner.align_multiple`, that the tool can be checked against
-when the aggregation or the aligner changes.
+now, so what the script is *for* has changed: it is the second implementation, reading nothing
+but `LingPyAligner.align_multiple`, that the tool can be checked against when the aggregation
+or the aligner changes.
 
-For ten Polynesian daughters it produces 216 sets in about 22 KB — smaller than a single
-`get_alignments` call for six concepts across two languages. Most of the tail is
+**The two stopped producing identical sets when the per-correspondence-set commit protocol
+landed, and `--reading` is how they are compared.** `summarize_correspondences` now keeps one
+form per node per (concept, cognate set) before aligning, because a set ID it hands a model
+has to name columns the assembler can reproduce from one candidate per child, and at an
+internal node a child's lexicon is *every* retained beam candidate.
+
+**`--boundaries` is the second axis, and it moved every figure on this page's row.** Until
+2026-08-23 `LingPyAligner` stripped `+` and `-` before aligning, for every caller. That was
+free while a parent form was a child's whole string rewritten by rules and stopped being free
+the moment forms were assembled column by column: there is no column for a token the aligner
+never saw, so the assembler dropped boundaries the rule path kept. It now includes them, and
+`--boundaries strip` is kept here so the pre-change baselines stay reproducible rather than
+merely remembered. See `docs/proto_inventory_design.md` §12.5.
+
+Measured on Polynesian, `--min-support 1`, all four combinations:
+
+| `--reading` | `--boundaries` | distinct sets | at support ≥ 2 | singletons | inventory |
+| --- | --- | --- | --- | --- | --- |
+| `all` | `strip` (pre-2026-08-23 baseline) | 216 | 41 | 175 | 21.9 KB |
+| `all` | `include` | 237 | 60 | 177 | 24.1 KB |
+| `reported` | `strip` | 218 | 39 | 179 | 22.0 KB |
+| `reported` (what the tool does) | `include` (default) | **246** | **50** | 196 | 24.9 KB |
+
+Every recorded baseline elsewhere in this document that predates 2026-08-23 was measured at
+`--reading all --boundaries strip`, the first row — the two figures long quoted as "216 sets,
+41 at support ≥ 2". **Quote a set count with both flags or not at all**; the same benchmark
+gives 216 or 246 depending on them.
+
+What including boundaries buys is not the extra 28 sets but which ones they are. Boundary
+correspondences recur, so `sets_at_min_support` rises by more than a quarter — 39 to 50 — and
+a `⟨+ : Ø⟩` set is the morphology signal `polarize`'s own documentation calls decisive:
+material added at a morph boundary is innovation however well its segments are attested
+elsewhere. Under `strip` the harness had no way to *show* a session that one child carries a
+boundary another lacks.
+
+Under `strip`, 188 sets are identical between the two readings; 28 exist only under `all` and
+30 only under `reported`. The difference is larger than the ~11 leaf cases where one node
+genuinely contributes two forms to one cognate set, because dropping a row re-aligns the
+whole concept and shifts neighbouring columns too.
+
+None of the four is wrong. `all` is what SCA does over the raw lexicons; `reported` is a
+correspondence between the languages' reported forms. They are kept apart rather than merged
+so this script stays an independent check: `--reading reported --boundaries include`
+reproduces the tool exactly, and both the reduction and the boundary handling are
+re-implemented or re-flagged here rather than imported, because importing the thing under
+test would make the check vacuous.
+
+For ten Polynesian daughters it produces 246 sets in about 25 KB — still smaller than a
+single `get_alignments` call for six concepts across two languages. Much of the tail is
 compound-boundary noise, which is why `--min-support` defaults to 2: a correspondence
-occurring once is residue, not evidence. The tool agrees: 216 distinct sets, 41 at support
-≥ 2, 175 singletons.
+occurring once is residue, not evidence.
 
 ## `branch_recoverability.py` — what the DSL cannot reach
 
@@ -412,35 +500,54 @@ it. This counts, per branch, how many gold forms are therefore out of reach, and
 concepts three ways: reachable from a single branch, needing evidence mixed across branches,
 or unreachable from every branch.
 
-Polynesian baseline: 37 of 46 reachable from some single branch, 8 needing a mix, 1 reachable
-from none; per-branch deletion losses run from 7/46 (Tongan) to 17/46 (North Marquesan).
+Polynesian baseline, `--method map`: 37 of 46 reachable from some single branch, 8 needing a
+mix, 1 reachable from none; per-branch deletion losses run from 7/46 (Tongan) to 17/46 (North
+Marquesan). The deletion losses do not depend on `--method`.
 
 The middle number bounds what any amount of better *selection* can achieve. Closing it needs
 proto-forms assembled from several branches at once.
 
 The script names the concepts in each class rather than only counting them, in text and in
-`--json`: the 8 are `1028, 1212, 1217, 1221, 1408, 1439, 1443, 646` and the unreachable one
-is `778`. That list is the concrete prediction any change to the combination model has to
+`--json`: under `--method map` the 8 are `1028, 1212, 1217, 1221, 1408, 1439, 1443, 646` and
+the unreachable one is `778`. That list is the concrete prediction any change to the combination model has to
 move — see `prompts/06-proto-inventory.md`, which uses it as a falsification condition.
 Note what this measures: a property of the gold and the daughters' forms under the current
 DSL, **not** of the harness. A better scorer cannot move it; a different representation of
 what gets committed is what would.
 
-**Quote it beside the cascade-based split, never alone.** This script applies a segment *map*
-by dictionary lookup; `oracle_ceiling.py` applies the real ordered *cascade* through
-`RuleEngine`, and the cascade reaches more. Asking the same question of it — does any single
-daughter, transformed by its own oracle cascade, reach the root gold? — gives:
+**Quote it beside the cascade-based split, never alone — and since 2026-08-23 the script
+produces both.** `--method map` applies a segment map by dictionary lookup and is the
+original measure; `--method cascade` builds each branch's real ordered rule set through
+`oracle_ceiling.py` and runs it through `RuleEngine`, which is what the harness would do, and
+`--oracle contextual` makes that rule writer as strong as the DSL. The cascade reaches more.
 
-| | `branch_recoverability.py` (map) | oracle cascade, context-free | oracle cascade, contextual |
+| `--method` | reachable from some single daughter | needs mixing | reachable from none |
 | --- | --- | --- | --- |
-| reachable from some single daughter | 37/46 | **39/46** | **40/46** |
-| out of reach from every daughter | 9 | 7 | 6 |
+| `map` (default; every figure before 2026-08-23) | 37/46 | 8 | 1 |
+| `cascade --oracle context_free` | **39/46** | 6 | 1 |
+| `cascade --oracle contextual` | **40/46** | **5** | 1 |
 
-Context-free the six-plus-one are `1212, 1217, 1221, 1408, 1439, 646, 778`; context-sensitive
-they are `1212, 1217, 1408, 1439, 1443, 778`. `1028`, `1221` and `646` are reachable from a
-single branch once the rule writer is as strong as the rule language, so the falsification
-list is shorter than the map-based one — which is the difference between the instrument and
-the architecture, and the reason a miss under either measure is not a structural limit.
+The middle class is the falsification list. Under `map` it is
+`1028, 1212, 1217, 1221, 1408, 1439, 1443, 646`; under the context-free cascade
+`1212, 1217, 1221, 1408, 1439, 646`; under the contextual cascade
+`1212, 1217, 1408, 1439, 1443`. `778` is out of reach from every branch in all three.
+`1028`, `1221` and `646` are reachable from a single branch once the rule writer is as strong
+as the rule language, so the falsification list is shorter than the map-based one — which is
+the difference between the instrument and the architecture, and the reason a miss under either
+measure is not a structural limit.
+
+**The lists are not nested, and that is not a defect.** The contextual oracle is `>=` the
+context-free one *per branch*, by construction — `branch_rules` keeps whichever cascade scores
+more exact forms on that branch as a whole — but not per concept, so a branch can lose one
+concept while gaining several. That is why `1443` is on the contextual list and not on the
+context-free one.
+
+The third class is deliberately method-independent: "some branch still retains every gold
+segment" is a property of the aligned forms, so all three rows partition the same 46 concepts
+and only the boundary between the first two moves.
+
+`docs/proto_inventory_design.md` §7.4 reads this table together with the assembly ceiling,
+which is what turns it into the design's mechanism check.
 
 ## When to re-run
 
@@ -460,13 +567,15 @@ the architecture, and the reason a miss under either measure is not a structural
   `outgroup_probe.py` if the change claims to use evidence rather than segment order.
 - **Any change to alignment or evidence tools** → `correspondence_inventory.py`, to check the
   inventory is still coherent and still small, and that `summarize_correspondences` still
-  agrees with it set for set.
+  agrees with it set for set. State `--reading` and `--boundaries` beside the number: the same
+  benchmark gives 216 or 246 sets depending on them.
 - **Any change to how out-group evidence is aggregated**, in the scorer or in the
   `polarize` tool → `outgroup_probe.py`, and say what happened to the per-clade and
   per-daughter numbers. A change that makes them converge has probably reintroduced the
   majority vote.
 - **Any change to the DSL** → `branch_recoverability.py` and `assembly_ceiling.py`, since
-  expressiveness changes move the reachability split directly.
+  expressiveness changes move the reachability split directly. State `--method` and
+  `--oracle` beside the number; the same benchmark gives 37, 39 or 40 depending on them.
 - **Any change to benchmark selection or preparation** → rebuild both definitions with
   `build-benchmark` and check the concept counts here still hold (46 for Polynesian, 900 for
   Romance). A silent change in selection would move every baseline on this page at once.

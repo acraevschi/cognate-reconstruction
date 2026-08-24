@@ -218,6 +218,16 @@ class CorrespondenceSet(WorkbenchModel):
     this inventory is `get_alignments` or `search_forms` over those concepts.
     """
 
+    set_id: NonEmptyStr | Literal[""] = ""
+    """This set's deterministic ID, or "" when nobody derived one.
+
+    Defaulted and additive: `tools/correspondence_inventory.py` and every other
+    caller predating the proto-inventory protocol build sets without it, and
+    records written before it existed still load. A commitment cites this ID and
+    the harness re-derives the set from the node's own forms to check the
+    citation, so an empty one is a set nothing can commit against rather than a
+    set with an unknown name. See `schemas/inventory.py::derive_set_id`.
+    """
     segments: tuple[str | None, ...] = Field(min_length=2)
     support: int = Field(ge=1)
     concept_count: int = Field(ge=1)
@@ -233,6 +243,52 @@ class CorrespondenceSet(WorkbenchModel):
             raise ValueError(
                 "sampled concept IDs cannot exceed the concept count"
             )
+        return self
+
+
+class ComplementaryCandidate(WorkbenchModel):
+    """Two sets whose occurrences never share an environment. A report.
+
+    The harness reports the pair and never proposes the collapse: deciding that
+    two correspondences are one phoneme with a conditioned split is
+    phonemicising, which is the model's job. The asymmetry is the same one that
+    governs `polarize` — retrieve the distribution, never name the value.
+
+    It fires on correct runs constantly. Two sets in complementary distribution
+    are frequently just two phonemes, so this is printed and never counted.
+    """
+
+    set_ids: tuple[NonEmptyStr, NonEmptyStr]
+    distinguishing_node_ids: tuple[NonEmptyStr, ...] = ()
+    """Nodes whose reflex differs between the two sets."""
+    shared_environment_count: Literal[0] = 0
+
+    left_context_tokens: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
+    right_context_tokens: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
+    """Distinct tokens observed adjacent to each set's occurrences.
+
+    Sorted, and positional against `set_ids`. A word edge is reported as `#`,
+    which cannot collide with a segment because `rules/parser.py::_tokens`
+    refuses `#` inside a segment expression.
+
+    Without these the report states a conclusion — "these two are in
+    complementary distribution" — while withholding the evidence for it, and a
+    model would have to go pull alignments to find out what distinguishes them
+    before it could write the `conditioning`. This is retrieval, not phonology:
+    the tokens are present in this node's own data, no feature table is
+    imported, no natural class is named, and nothing is ranked. A reader may see
+    `("e", "i")` as "front vowels"; the harness must not, and does not say so.
+
+    Adjacency here is the definition in `alignment/environments.py`, which is
+    the same one `non-complementary-split` rejects under and the same one the
+    assembler resolves a conditioned column with. That is deliberate: a model
+    handed these tokens must not then be refused for using them.
+    """
+
+    @model_validator(mode="after")
+    def validate_pair(self) -> ComplementaryCandidate:
+        if self.set_ids[0] == self.set_ids[1]:
+            raise ValueError("a complementary candidate needs two distinct sets")
         return self
 
 

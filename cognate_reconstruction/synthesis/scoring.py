@@ -28,6 +28,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
+from cognate_reconstruction.traversal.assembler import derive_branch_rules
+
 from cognate_reconstruction.agent.trajectory import AgentTrajectory
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.rules.parser import parse_rule
@@ -206,6 +209,53 @@ class SyntheticRunScore:
         }
 
 
+def _branch_claims(
+    commit,
+) -> tuple[tuple[tuple[str, ...], str, float, str | None], ...]:
+    """Every branch-scoped rule a commit asserts, under either protocol.
+
+    An inventory commits no rules; it *derives* them, and the derived cascade is
+    what these measurements are computed against — which is exactly why §4.3 of
+    `docs/proto_inventory_design.md` requires them to be derived and verified. It
+    keeps rule precision, rule recall, functional recovery, and above all
+    `misdirected_rule_count` comparable across the migration rather than
+    replaced by something new. A rule derived for a branch the answer key gave
+    no rule to is still a rule pointed at a branch that did not change.
+
+    The `directionality_rationale` a derived rule carries is the one on the
+    commitment it came from, which is why `DerivedBranchRules` records that
+    provenance.
+    """
+    if isinstance(commit, CommittedProtoInventory):
+        derived = derive_branch_rules(
+            commit.request.commitments, commit.request.child_node_ids
+        )
+        rationales = {
+            item.set_id: item.directionality_rationale
+            for item in commit.request.commitments
+        }
+        return tuple(
+            (
+                rule.source_child_ids,
+                rule.rule.source,
+                rule.confidence,
+                rationales.get(set_id),
+            )
+            for rule, set_id in zip(
+                derived.rules, derived.rule_set_ids, strict=True
+            )
+        )
+    return tuple(
+        (
+            rule.source_child_ids,
+            rule.dsl,
+            rule.confidence,
+            rule.directionality_rationale,
+        )
+        for rule in commit.request.rules
+    )
+
+
 def committed_branch_rules(
     trajectories: Sequence[AgentTrajectory],
 ) -> tuple[tuple[CommittedBranchRule, ...], tuple[str, ...], tuple[str, ...]]:
@@ -223,15 +273,15 @@ def committed_branch_rules(
             failed.append(trajectory.node_id)
             continue
         committed.append(trajectory.node_id)
-        for rule in commit.request.rules:
-            for child_id in rule.source_child_ids:
+        for record in _branch_claims(commit):
+            for child_id in record[0]:
                 rules.append(
                     CommittedBranchRule(
                         parent_node_id=trajectory.node_id,
                         child_node_id=child_id,
-                        dsl=rule.dsl,
-                        confidence=rule.confidence,
-                        directionality_rationale=rule.directionality_rationale,
+                        dsl=record[1],
+                        confidence=record[2],
+                        directionality_rationale=record[3],
                     )
                 )
     return tuple(rules), tuple(committed), tuple(failed)

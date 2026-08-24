@@ -6,11 +6,13 @@ from dataclasses import dataclass
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import (
+    AssemblyDetail,
     CommitReconstructionArgs,
     CommitReconstructionResult,
     CommittedReconstruction,
     CommittedSoundRule,
     ContrastReductionReport,
+    ProtoInventorySpec,
     ValidationKind,
 )
 from cognate_reconstruction.agent.tools.contrast import (
@@ -22,8 +24,45 @@ from cognate_reconstruction.agent.tools.errors import (
     parse_rule_or_reject,
 )
 from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
+from cognate_reconstruction.agent.tools.proto_assembly import (
+    assemble_node,
+    assembly_result,
+    held_out_unaccounted_column_rate,
+)
 from cognate_reconstruction.schemas.common import WorkbenchModel
+from cognate_reconstruction.schemas.inventory import CorrespondenceCommitment
 from cognate_reconstruction.schemas.rules import ParsedSoundRule, ReconstructionRule
+from cognate_reconstruction.traversal.assembler import (
+    ContrastReducingSet,
+    inventory_contrast_reductions,
+)
+
+
+def _validate_anomaly_references(
+    arguments: CommitReconstructionArgs,
+    context: AgentContext,
+) -> None:
+    """Anomalies must cite material this node actually holds. Either shape."""
+    active_form_ids = {form.form_id for form in context.all_forms} | {
+        anchor.form_id for anchor in context.active_anchors
+    }
+    active_concept_ids = {form.concept_id for form in context.all_forms} | {
+        anchor.concept_id for anchor in context.active_anchors
+    }
+    for anomaly in arguments.anomalies:
+        if anomaly.form_id is not None and anomaly.form_id not in active_form_ids:
+            raise ToolInputError(
+                f"anomaly references unknown form {anomaly.form_id!r}",
+                code="anomaly-unknown-reference",
+            )
+        if (
+            anomaly.concept_id is not None
+            and anomaly.concept_id not in active_concept_ids
+        ):
+            raise ToolInputError(
+                f"anomaly references unknown concept {anomaly.concept_id!r}",
+                code="anomaly-unknown-reference",
+            )
 
 _RuleIdentity = tuple[
     tuple[str, ...],
@@ -526,6 +565,228 @@ def _require_directionality_rationales(
     )
 
 
+def _require_rationales_on_multi_set_commits(
+    commitments: tuple[CorrespondenceCommitment, ...],
+) -> None:
+    """The `rationale` rule, one commit shape over.
+
+    Same argument as for rules: the required top-level `summary` says everything
+    a per-set note would on a one-commitment inventory, and cannot attribute
+    reasoning to one of several sets on any other.
+    """
+    if len(commitments) <= 1:
+        return
+    missing = [item.set_id for item in commitments if item.rationale is None]
+    if not missing:
+        return
+    raise ToolInputError(
+        f"{len(missing)} of {len(commitments)} committed correspondence sets "
+        "omit 'rationale'. It is required on every commitment of an inventory "
+        "that carries more than one, because the single top-level 'summary' "
+        "cannot attribute reasoning to an individual set",
+        code="missing-rule-rationale",
+        remediation=(
+            "Add a 'rationale' to each of these sets: "
+            + ", ".join(f"{set_id!r}" for set_id in missing)
+            + ". A one-set inventory still needs none; the 'summary' carries it."
+        ),
+    )
+
+
+def _require_directionality_on_reducing_sets(
+    commitments: tuple[CorrespondenceCommitment, ...],
+    reductions: tuple[ContrastReducingSet, ...],
+) -> None:
+    """A set that gives up a distinction has to say which branch innovated.
+
+    Detected mechanically off the inventory — a non-null reflex against a null
+    `proto_segment` is a deletion, two sets sharing one `proto_segment` without
+    complementary conditioning is a merger — and rejected on *absence* only. The
+    harness never evaluates whether the stated reason is good; the whole point of
+    demanding the sentence is that a human reviewer can read it later.
+    """
+    if not reductions:
+        return
+    notes = {item.set_id: item.note for item in reductions}
+    missing = [
+        item.set_id
+        for item in commitments
+        if item.set_id in notes and item.directionality_rationale is None
+    ]
+    if not missing:
+        return
+    raise ToolInputError(
+        f"{len(missing)} committed set(s) remove a distinction and omit "
+        "'directionality_rationale'. A set that reconstructs nothing where a "
+        "child shows material, or that shares its proto-phoneme with another "
+        "set unconditioned, has to say which branch innovated: the harness "
+        "cannot invert a merger later and nothing else records the claim",
+        code="missing-directionality-rationale",
+        remediation=(
+            "What the harness found:\n"
+            + "\n".join(f"  - {set_id!r}: {notes[set_id]}" for set_id in missing)
+            + "\nWhat it needs from you, on each of those sets: a "
+            "'directionality_rationale' naming *which of the active children "
+            "innovated*, what the change is called if it has a name, and what "
+            "evidence outside those children polarizes it. polarize reports "
+            "what nodes outside the active children show in the same columns. "
+            "The harness does not judge what you write; it records that you "
+            "wrote it, so a reviewer can check it."
+        ),
+    )
+
+
+def _resolve_assembly_validation(
+    context: AgentContext,
+    spec: ProtoInventorySpec,
+) -> str:
+    """Bind an inventory to a same-session preview that covers every set.
+
+    **Coverage is over sets, not over concepts**, and where several previews were
+    needed their coverage unions. That is what makes the invariant satisfiable on
+    a large family: on Polynesian one preview covers all 46 concepts for 27.8 KB,
+    but at 900 concepts it must be batched, and requiring every concept to have
+    been previewed would make a commit need dozens of calls. It is the sets that
+    are the claims.
+    """
+    named = spec.assembly_validation_call_id
+    previews = context.assembly_validations
+    if named is not None:
+        preview = previews.get(named)
+        if preview is None:
+            raise ToolInputError(
+                f"commit references an unknown assembly validation call "
+                f"{named!r}",
+                code="missing-assembly-validation",
+                remediation=_describe_assembly_validations(context),
+            )
+        covered = set(preview.covered_set_ids)
+    else:
+        covered = {
+            set_id
+            for preview in previews.values()
+            for set_id in preview.covered_set_ids
+        }
+    required = {item.set_id for item in spec.commitments}
+    if not required:
+        # An empty inventory asserts nothing, exactly as `rules: []` does, and
+        # there is nothing for a preview to have exercised.
+        return named or ""
+    uncovered = sorted(required - covered)
+    if uncovered:
+        raise ToolInputError(
+            f"{len(uncovered)} committed correspondence set(s) were not "
+            "exercised by any test_proto_assembly call in this session",
+            code="missing-assembly-validation",
+            remediation=(
+                "Uncovered sets: "
+                + ", ".join(f"{set_id!r}" for set_id in uncovered)
+                + ".\nCall test_proto_assembly with the whole inventory you "
+                "intend to commit. The preview that validates a commit is the "
+                "same call you refine against, so there is nothing to test "
+                "twice.\n"
+                + _describe_assembly_validations(context)
+            ),
+        )
+    if named is not None:
+        return named
+    matching = [
+        call_id
+        for call_id, preview in previews.items()
+        if required <= set(preview.covered_set_ids)
+    ]
+    return matching[-1] if matching else next(reversed(previews))
+
+
+def _describe_assembly_validations(context: AgentContext) -> str:
+    if not context.assembly_validations:
+        return (
+            "No test_proto_assembly call has succeeded in this session. Every "
+            "committed correspondence set needs one; call test_proto_assembly "
+            "with the inventory you intend to commit, or commit an empty "
+            "inventory for an identity reconstruction."
+        )
+    lines = ["Successful test_proto_assembly calls in this session:"]
+    lines.extend(
+        f'  - "{call_id}" covering {len(preview.covered_set_ids)} set(s): '
+        + ", ".join(preview.covered_set_ids)
+        for call_id, preview in context.assembly_validations.items()
+    )
+    lines.append(
+        "Coverage is over sets and unions across calls, so an inventory built "
+        "up over several previews is committable without re-previewing all of "
+        "it."
+    )
+    return "\n".join(lines)
+
+
+def _commit_inventory(
+    arguments: CommitReconstructionArgs,
+    context: AgentContext,
+) -> CommitReconstructionResult:
+    """The per-correspondence-set commit path."""
+    spec = arguments.inventory
+    assert spec is not None  # guarded by the caller
+    if tuple(spec.child_node_ids) != context.child_ids:
+        raise ToolInputError(
+            f"the inventory's child_node_ids {list(spec.child_node_ids)} are "
+            f"not this node's active children {list(context.child_ids)}",
+            code="inactive-children",
+            remediation=(
+                "child_node_ids fixes the column order of every commitment's "
+                "'reflexes' and must be exactly the active children, in the "
+                "order summarize_correspondences returned them: "
+                + ", ".join(context.child_ids)
+            ),
+        )
+    if spec.alignment_overlay_id is not None:
+        # Raises unknown-overlay for a stale or fabricated ID.
+        context.alignment_overrides(spec.alignment_overlay_id)
+    _require_rationales_on_multi_set_commits(spec.commitments)
+    validation_call_id = _resolve_assembly_validation(context, spec)
+    reductions = inventory_contrast_reductions(spec.commitments)
+    _require_directionality_on_reducing_sets(spec.commitments, reductions)
+
+    resolved = spec.model_copy(
+        update={"assembly_validation_call_id": validation_call_id or None}
+    )
+    # Re-derives every cited set, checks the complementarity claims and the
+    # restorations, and assembles the whole node. A refusal here is the same
+    # refusal test_proto_assembly would have given.
+    step, committed = assemble_node(
+        context,
+        resolved,
+        node_id=arguments.node_id,
+        segmentation_overlay_id=arguments.segmentation_overlay_id,
+        summary=arguments.summary,
+    )
+    committed = committed.model_copy(
+        update={
+            "request": committed.request.model_copy(
+                update={"anomalies": arguments.anomalies}
+            )
+        }
+    )
+    context.commit = committed
+    return CommitReconstructionResult(
+        reconstruction=committed,
+        assembly=assembly_result(
+            validation_call_id or "commit",
+            step,
+            committed,
+            resolved,
+            segmentation_overlay_id=arguments.segmentation_overlay_id,
+            detail=AssemblyDetail.SUMMARY,
+        ),
+        held_out_unaccounted_column_rate=held_out_unaccounted_column_rate(
+            context,
+            resolved,
+            node_id=arguments.node_id,
+            segmentation_overlay_id=arguments.segmentation_overlay_id,
+        ),
+    )
+
+
 def commit_reconstruction(
     raw_arguments: WorkbenchModel,
     context: AgentContext,
@@ -550,6 +811,9 @@ def commit_reconstruction(
             f"unknown segmentation overlay {arguments.segmentation_overlay_id!r}",
             code="unknown-overlay",
         )
+    _validate_anomaly_references(arguments, context)
+    if arguments.inventory is not None:
+        return _commit_inventory(arguments, context)
     _require_rationales_on_multi_rule_commits(arguments.rules)
     active_children = set(context.child_ids)
     parsed_rules: list[ReconstructionRule] = []
@@ -665,24 +929,6 @@ def commit_reconstruction(
                 "tested cascade",
                 code="cascade-signature-mismatch",
                 remediation=describe_session_validations(context),
-            )
-
-    active_form_ids = {form.form_id for form in context.all_forms} | {
-        anchor.form_id for anchor in context.active_anchors
-    }
-    active_concept_ids = {form.concept_id for form in context.all_forms} | {
-        anchor.concept_id for anchor in context.active_anchors
-    }
-    for anomaly in arguments.anomalies:
-        if anomaly.form_id is not None and anomaly.form_id not in active_form_ids:
-            raise ToolInputError(
-                f"anomaly references unknown form {anomaly.form_id!r}",
-                code="anomaly-unknown-reference",
-            )
-        if anomaly.concept_id is not None and anomaly.concept_id not in active_concept_ids:
-            raise ToolInputError(
-                f"anomaly references unknown concept {anomaly.concept_id!r}",
-                code="anomaly-unknown-reference",
             )
 
     reconstruction = CommittedReconstruction(

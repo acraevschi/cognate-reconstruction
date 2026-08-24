@@ -68,6 +68,18 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         "no-op-rule": ToolErrorCategory.EXPLORATORY,
         # The requested child/concept selection matched no form at all.
         "empty-scope": ToolErrorCategory.EXPLORATORY,
+        # A claimed conditioned split is not complementary over the actual
+        # columns: the split was proposed and the data refutes it.
+        "non-complementary-split": ToolErrorCategory.EXPLORATORY,
+        # A realignment was proposed and the named set did not gain the support
+        # claimed for it — an alignment hypothesis the evidence did not bear out.
+        "realignment-does-not-join-set": ToolErrorCategory.EXPLORATORY,
+        # A restoration cites a node that does not attest the segment there: a
+        # reconstruction the cited evidence does not support.
+        "restoration-unattested": ToolErrorCategory.EXPLORATORY,
+        # A restoration cites a descendant rather than an out-group — a claim
+        # about the evidence that the harness refutes from the tree.
+        "restoration-cites-descendant": ToolErrorCategory.EXPLORATORY,
         # -- protocol: argument shape, reference, and bookkeeping friction
         # An omitted validation_call_id matched no same-session validation.
         "validation-unresolved": ToolErrorCategory.PROTOCOL,
@@ -115,6 +127,20 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # sound law, it found a required field absent. What is *in* the field is
         # never inspected — see commit_reconstruction._require_directionality_rationales.
         "missing-directionality-rationale": ToolErrorCategory.PROTOCOL,
+        # A commitment cites a correspondence set this node's data does not
+        # contain: a stale or fabricated ID. Stale is the common case — a
+        # realignment invalidates every ID derived under the previous overlay.
+        "unknown-correspondence-set": ToolErrorCategory.PROTOCOL,
+        # A commitment's `support` differs from the re-derived support. A
+        # transcription error rather than a hypothesis: support is copied from
+        # the harness's own inventory and must never be a model claim.
+        "correspondence-support-mismatch": ToolErrorCategory.PROTOCOL,
+        # An inventory commit with no covering same-session test_proto_assembly.
+        "missing-assembly-validation": ToolErrorCategory.PROTOCOL,
+        # A restoration at a node with no out-group, the root included.
+        # Structurally impossible there, so retrying teaches nothing: nothing
+        # lies outside the root to polarize a loss.
+        "restoration-without-outgroup": ToolErrorCategory.PROTOCOL,
         # The model called a tool that is not registered.
         "unknown-tool": ToolErrorCategory.PROTOCOL,
         # No structural code was attached; see UNCLASSIFIED_ERROR_CODE.

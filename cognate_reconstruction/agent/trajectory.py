@@ -11,16 +11,34 @@ from typing import Literal, Protocol
 from pydantic import Field, model_validator
 
 from cognate_reconstruction.agent.schemas import (
-    CommittedReconstruction,
+    CommittedHypothesis,
     LLMMessage,
     LLMToolDefinition,
     NodePromptPayload,
     ProviderResponseMetadata,
 )
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
 from cognate_reconstruction.schemas.traversal import ReconstructionStep
 
 TRAJECTORY_SCHEMA_VERSION = "2.0"
+"""What a record written under the branch-cascade commit shape says."""
+
+INVENTORY_SCHEMA_VERSION = "3.0"
+"""What a record carrying a proto-inventory commit says.
+
+Bumped because a *reader* must behave differently, which is the only thing that
+justifies a bump. `committed_reconstruction.request.rules` is the object every
+downstream reader indexes, and after this change some records do not have it —
+`inspect_run.py`, `synthesis/scoring.py`, and the `high_quality` gate all have
+to branch. Prompt 05 is the worked example coming out the other way: it added
+defaulted fields, nothing reachable from `AgentTrajectory` moved, and records
+kept reading as current without a bump.
+
+The version is stamped per record rather than per build, so a run that commits
+rules at one node and an inventory at another writes 2.0 for the first and 3.0
+for the second — which is exactly what the field is for.
+"""
 
 MAX_PROTOCOL_FAILURE_RATE = 0.25
 """Share of a node's tool calls that may be *protocol* failures before
@@ -112,11 +130,33 @@ class AgentNodeMetrics(WorkbenchModel):
     concepts_available: int | None = Field(default=None, ge=0)
     sound_law_tests: int = Field(ge=0)
     cascade_tests: int = Field(ge=0)
+    assembly_tests: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Successful test_proto_assembly calls. The successor to both "
+            "counters above: an inventory has no order to preview and one "
+            "preview covers a whole inventory, so the analogue of 'N rules "
+            "against M sound-law tests' is 'sets committed with no covering "
+            "preview at all'. Defaulted, so records written before the per-set "
+            "protocol read as what they are."
+        ),
+    )
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
     cost_usd: float | None = Field(default=None, ge=0.0)
-    committed_rule_count: int = Field(ge=0)
+    committed_rule_count: int = Field(
+        ge=0,
+        description=(
+            "Committed rules, or committed correspondence sets on an inventory "
+            "node. The field name is kept because it is persisted and records "
+            "already carry it — the same argument that kept "
+            "tool_failures_by_type under a name whose meaning had moved. "
+            "len(commitments) is the right analogue: it is the unit the model "
+            "actually committed and the unit a reviewer counts."
+        ),
+    )
     committed_anomaly_count: int = Field(ge=0)
     # Held-out reporting. Defaulted so records written before the split existed
     # read as "not recorded" rather than as a node that held nothing out.
@@ -178,7 +218,7 @@ class AgentNodeMetrics(WorkbenchModel):
 
 class AgentTrajectory(WorkbenchModel):
     trajectory_id: NonEmptyStr
-    schema_version: Literal["2.0"] = TRAJECTORY_SCHEMA_VERSION
+    schema_version: Literal["2.0", "3.0"] = TRAJECTORY_SCHEMA_VERSION
     run_id: NonEmptyStr
     configuration_sha256: NonEmptyStr
     node_id: NonEmptyStr
@@ -193,7 +233,13 @@ class AgentTrajectory(WorkbenchModel):
     messages: tuple[LLMMessage, ...]
     provider_responses: tuple[ProviderResponseMetadata, ...] = ()
     metrics: AgentNodeMetrics
-    committed_reconstruction: CommittedReconstruction | None = None
+    committed_reconstruction: CommittedHypothesis | None = None
+    """What this node committed, under either protocol.
+
+    The field name is unchanged on purpose. Renaming it would make every 2.0
+    record unloadable under `extra='forbid'` for a purely cosmetic gain — the
+    same argument that kept `tool_failures_by_type`.
+    """
     reconstruction_step: ReconstructionStep | None = None
     completed: bool
     failure: NonEmptyStr | None = None
@@ -249,6 +295,39 @@ class AgentTrajectory(WorkbenchModel):
                 f"{metrics.protocol_failure_rate:.2f}, above the "
                 f"{MAX_PROTOCOL_FAILURE_RATE} workflow threshold"
             )
+        reasons.extend(self._workflow_failure_reasons())
+        return tuple(reasons)
+
+    def _workflow_failure_reasons(self) -> tuple[str, ...]:
+        """The workflow conditions, dispatched on which protocol was committed.
+
+        **This is the one place the change could have loosened the gate without
+        anyone noticing.** The three rule-shaped conditions read counters that
+        are both zero on a session that called `test_proto_assembly` instead of
+        `test_sound_law`. Widening `committed_reconstruction` to the union and
+        leaving them alone would make every inventory session pass all three
+        unconditionally — the suite stays green because nothing crashed, the gate
+        becomes strictly more permissive, and corpora selected under it cannot be
+        un-selected. That is the asymmetry `docs/report_reject_or_score.md` names
+        in "Why 'gate' is a special word".
+
+        So the dispatch is explicit and the inventory branch is a real check, not
+        a fallback that evaluates to "no problem". Equivalent workflow behaviour
+        under either protocol earns the same verdict; a commit with no covering
+        preview is caught under either.
+        """
+        metrics = self.metrics
+        if self.commit_shape == "inventory":
+            # `cascade_tests` has no analogue: correspondence sets are
+            # independent and there is no order to preview.
+            if metrics.committed_rule_count > 0 and metrics.assembly_tests == 0:
+                return (
+                    f"{metrics.committed_rule_count} correspondence set(s) "
+                    "committed without a same-session test_proto_assembly "
+                    "preview",
+                )
+            return ()
+        reasons: list[str] = []
         if (
             metrics.committed_rule_count > 0
             and metrics.sound_law_tests < metrics.committed_rule_count
@@ -265,6 +344,20 @@ class AgentTrajectory(WorkbenchModel):
         return tuple(reasons)
 
     @property
+    def commit_shape(self) -> str | None:
+        """Which protocol this node committed under, or `None` if it did not.
+
+        Derived rather than persisted: both commit models carry their own
+        `commit_shape` literal, and `summarize-trajectories` reads this to say
+        how many nodes a build has committed under the new protocol — the
+        migration's daily progress signal, out of data every record already
+        carries.
+        """
+        if self.committed_reconstruction is None:
+            return None
+        return self.committed_reconstruction.commit_shape
+
+    @property
     def committed_no_op_rule_count(self) -> int:
         """Count historical commits whose rules cannot change any token sequence.
 
@@ -272,17 +365,26 @@ class AgentTrajectory(WorkbenchModel):
         deliberately remains separate so append-only trajectories written before
         that enforcement can still be loaded, audited, and excluded from curated
         exports.
+
+        **0 for an inventory commit, and that is a decision rather than a
+        missing attribute.** A commitment whose `proto_segment` equals every
+        child's reflex derives no rule at all; that is an ordinary identity
+        correspondence, not a defect, and there is no analogue of a rule that
+        cannot change any token sequence. 0 because the check is meaningless
+        here and 0 because the attribute was absent look identical in the
+        output, which is exactly why it is written down.
         """
-        if self.committed_reconstruction is None:
+        commit = self.committed_reconstruction
+        if commit is None or isinstance(commit, CommittedProtoInventory):
             return 0
         return sum(
             rule.rule.target.tokens == rule.rule.replacement.tokens
-            for rule in self.committed_reconstruction.parsed_rules
+            for rule in commit.parsed_rules
         )
 
 
 class AgentRunResult(WorkbenchModel):
-    reconstruction: CommittedReconstruction
+    reconstruction: CommittedHypothesis
     trajectory: AgentTrajectory
     inspected_concept_ids: tuple[NonEmptyStr, ...] = ()
     """Concepts the session named, for the deterministic step to record.
@@ -314,7 +416,7 @@ class JsonlTrajectorySink:
 
 class TrainingExample(WorkbenchModel):
     example_id: NonEmptyStr
-    schema_version: Literal["2.0"] = TRAJECTORY_SCHEMA_VERSION
+    schema_version: Literal["2.0", "3.0"] = TRAJECTORY_SCHEMA_VERSION
     run_id: NonEmptyStr
     node_id: NonEmptyStr
     messages: tuple[LLMMessage, ...]

@@ -35,6 +35,7 @@ from cognate_reconstruction.schemas.historical import (
     GoldEvidenceKind,
     HistoricalTargetEvaluation,
 )
+from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon
 
 RESULT_FILE = "result.json"
@@ -206,12 +207,26 @@ def _environment_text(environment) -> str:
 def committed_rule_views(
     trajectories: Iterable[AgentTrajectory],
 ) -> tuple[CommittedRuleView, ...]:
+    """Every committed rule in a run, whichever protocol produced it.
+
+    An inventory commits no rules; it *derives* them, and the derived cascade is
+    the object the three cross-node observations are about — whether adjacent
+    nodes claim the same correspondence, whether confidence in one rule varies
+    across the tree, whether a parent ever mentions a correspondence established
+    below it. Reading only `parsed_rules` would blank all three on every
+    inventory run and print "No cross-node observations." on a run full of them.
+    """
     views: list[CommittedRuleView] = []
     for trajectory in trajectories:
         commit = trajectory.committed_reconstruction
         if commit is None:
             continue
-        for parsed in commit.parsed_rules:
+        rules = (
+            commit.derived_rules
+            if isinstance(commit, CommittedProtoInventory)
+            else commit.parsed_rules
+        )
+        for parsed in rules:
             views.append(
                 CommittedRuleView(
                     node_id=trajectory.node_id,
@@ -777,14 +792,7 @@ def directionality_evidence(
             if step is not None
             else None
         ),
-        rules_with_rationale=(
-            sum(
-                rule.directionality_rationale is not None
-                for rule in commit.request.rules
-            )
-            if commit is not None
-            else 0
-        ),
+        rules_with_rationale=_claims_with_directionality(commit),
     )
 
 
@@ -843,6 +851,11 @@ def _diagnostic_rows(
     if step is None:
         return ()
     diagnostics = step.diagnostics
+    if diagnostics.committed_set_count is not None:
+        # An inventory node. Every rule counter above is structurally zero here
+        # — an inventory commits no rules — so printing them would report a
+        # flawless cascade at a node that never wrote one.
+        return _inventory_diagnostic_rows(trajectory, step, diagnostics)
     # `applicable_rule_results` was added with the coverage-denominator fix and
     # defaults to 0, so an older step reports "0 applicable" alongside real
     # applications. Say that rather than printing the contradiction.
@@ -968,10 +981,67 @@ def _diagnostic_rows(
     )
 
 
+def _claims_with_directionality(commit) -> int:
+    """Committed claims carrying a directionality rationale, either shape."""
+    if commit is None:
+        return 0
+    if isinstance(commit, CommittedProtoInventory):
+        return sum(
+            item.directionality_rationale is not None
+            for item in commit.request.commitments
+        )
+    return sum(
+        rule.directionality_rationale is not None for rule in commit.request.rules
+    )
+
+
+def _reflex_text(reflexes: tuple[str | None, ...]) -> str:
+    return " : ".join("Ø" if item is None else item for item in reflexes)
+
+
+def _inventory_rule_rows(commit: CommittedProtoInventory) -> tuple[RuleRow, ...]:
+    """The committed sets, in the table the rule cascade used to fill.
+
+    Same table because a reader wants the same thing from it — what was claimed,
+    on what evidence, with what confidence and why — and because the committed
+    object is the inventory rather than the cascade it implies. The derived
+    rules are a view, and `committed_rule_views` is where they are read.
+    """
+    request = commit.request
+    return tuple(
+        RuleRow(
+            rule_id=item.set_id,
+            dsl=(
+                f"{_reflex_text(item.reflexes)} > "
+                f"*{item.proto_segment if item.proto_segment else 'Ø'}"
+                + (
+                    f" / {_environment_text(item.conditioning)}"
+                    if item.conditioning is not None
+                    else ""
+                )
+            ),
+            scope=", ".join(
+                child_id
+                for child_id, reflex in zip(
+                    request.child_node_ids, item.reflexes, strict=False
+                )
+                if reflex is not None
+            ),
+            confidence=f"{item.confidence:.2f}",
+            validation=request.assembly_validation_call_id or "-",
+            supporting_forms=str(item.support),
+            rationale=item.rationale or "-",
+        )
+        for item in request.commitments
+    )
+
+
 def _rule_rows(trajectory: AgentTrajectory) -> tuple[RuleRow, ...]:
     commit = trajectory.committed_reconstruction
     if commit is None:
         return ()
+    if isinstance(commit, CommittedProtoInventory):
+        return _inventory_rule_rows(commit)
     return tuple(
         RuleRow(
             rule_id=rule.rule_id or "?",
@@ -1609,3 +1679,153 @@ def inspect_run(
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(document, encoding="utf-8")
     return render_text(report), document
+
+
+def _inventory_diagnostic_rows(
+    trajectory: AgentTrajectory,
+    step,
+    diagnostics,
+) -> tuple[tuple[str, str], ...]:
+    """What an inventory node reports instead of the rule counters.
+
+    Every number here is a report. None of them filters a trajectory, weights a
+    candidate, or decides whether a run was valid — and in particular the
+    inventory itself is *printed* rather than scored: "is this inventory
+    typologically credible?" would need typology data this repository does not
+    hold, would fire on correct runs, and the moment it reached `high_quality`
+    it would define "typologically ordinary" as "valid".
+    """
+    commit = trajectory.committed_reconstruction
+    phonemes = (
+        commit.proto_phonemes
+        if isinstance(commit, CommittedProtoInventory)
+        else ()
+    )
+    rows: list[tuple[str, str]] = [
+        (
+            "proto-inventory",
+            f"{diagnostics.proto_phoneme_count} phoneme(s) from "
+            f"{diagnostics.committed_set_count} correspondence set(s)"
+            + (f": {' '.join(phonemes)}" if phonemes else ""),
+        ),
+        (
+            "set support",
+            "not recorded"
+            if diagnostics.mean_set_support is None
+            else f"{diagnostics.mean_set_support:.2f} mean aligned columns "
+            "per committed set",
+        ),
+        # What replaces rule coverage, and a better shape: a column is explained
+        # or it is not, and how many children a set names does not enter the
+        # fraction.
+        (
+            "unaccounted columns",
+            f"{_reported(diagnostics.unaccounted_column_count)} of "
+            f"{_reported(diagnostics.assembled_column_count)}"
+            + (
+                f" ({diagnostics.unaccounted_column_rate:.2f})"
+                if diagnostics.unaccounted_column_rate is not None
+                else ""
+            ),
+        ),
+        (
+            "contrast loss",
+            "not recorded"
+            if diagnostics.contrast_reducing_set_count is None
+            else (
+                f"{diagnostics.contrast_reducing_set_count} of "
+                f"{_reported(diagnostics.committed_set_count)} set(s) delete or "
+                "merge a distinction"
+            ),
+        ),
+        # The number that says whether the new capability did anything at all.
+        # 0.0 on a node whose children happen to agree is a perfectly good node.
+        (
+            "cross-branch assembly",
+            "not recorded"
+            if diagnostics.cross_branch_assembly_rate is None
+            else (
+                f"{diagnostics.cross_branch_assembly_rate:.2f} of concepts "
+                "need evidence no single child's derived cascade reproduces"
+            ),
+        ),
+        (
+            "held-out columns",
+            "not recorded"
+            if diagnostics.held_out_unaccounted_column_rate is None
+            else (
+                f"{diagnostics.held_out_unaccounted_column_rate:.2f} "
+                "unaccounted on the concepts this node withheld"
+            ),
+        ),
+        (
+            "column decisions",
+            f"{_reported(diagnostics.columns_decided_by_residue_policy)} by "
+            "residue policy, "
+            f"{_reported(diagnostics.columns_decided_by_tie_break)} by an "
+            "arbitrary tie-break",
+        ),
+    ]
+    if diagnostics.restored_segment_count:
+        rows.append(
+            (
+                "restorations",
+                f"{diagnostics.restored_segment_count} segment(s) every active "
+                "child lost, restored on cited out-group evidence",
+            )
+        )
+    if diagnostics.alignment_overrides:
+        # A node that reconstructed most of its concepts through hand-aligned
+        # overlays is a node whose reconstruction is the model's alignment, and
+        # a reader must be able to see that in one line.
+        rows.append(
+            (
+                "alignment overrides",
+                f"{diagnostics.alignment_overrides} concept(s) re-laid by the "
+                f"model, {_reported(diagnostics.override_singleton_sets_created)}"
+                " of them joining no existing set",
+            )
+        )
+    if isinstance(commit, CommittedProtoInventory) and (
+        commit.non_invertible_child_ids
+    ):
+        rows.append(
+            (
+                "non-invertible children",
+                ", ".join(commit.non_invertible_child_ids)
+                + " — a committed set gives them a gap against a reconstructed "
+                "segment, which is the insertion the DSL cannot write. The form "
+                "assembles anyway; only the derived view cannot be spelled",
+            )
+        )
+    rows.append(
+        (
+            "evidence coverage",
+            "not recorded"
+            if diagnostics.concepts_available is None
+            else (
+                f"{_reported(diagnostics.concepts_inspected)} of "
+                f"{diagnostics.concepts_available} concepts inspected"
+            ),
+        )
+    )
+    rows.append(
+        (
+            "tie-broken forms",
+            "not recorded"
+            if diagnostics.tie_broken_concept_count is None
+            else (
+                f"{diagnostics.tie_broken_concept_count} of "
+                f"{len(step.output_beam.distributions)} reported form(s) chosen "
+                "by an arbitrary segment order"
+            ),
+        )
+    )
+    rows.append(
+        (
+            "anomalies",
+            f"{diagnostics.anomaly_count} "
+            f"({diagnostics.anomaly_rate:.2f} per concept)",
+        )
+    )
+    return tuple(rows)

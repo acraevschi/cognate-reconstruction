@@ -10,11 +10,25 @@ from typing import Any, Literal
 from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.alignment import (
+    ComplementaryCandidate,
     CorrespondenceDetail,
     CorrespondenceSet,
     MultipleAlignmentMap,
 )
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.inventory import (
+    AlignmentOverride,
+    AssemblyDetail,
+    ColumnResolution,
+    CommitProtoInventoryArgs,
+    CommittedProtoInventory,
+    ConceptAssemblyReport,
+    CorrespondenceCommitment,
+    ProtoInventorySpec,
+    ResidueDisposition,
+    ResiduePolicy,
+    SegmentRestoration,
+)
 from cognate_reconstruction.schemas.lexicon import LexicalForm
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.rules import (
@@ -353,6 +367,14 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
         ),
     )
     segmentation_overlay_id: NonEmptyStr | None = None
+    alignment_overlay_id: NonEmptyStr | None = Field(
+        default=None,
+        description=(
+            "The alignment_overlay_id returned by realign, to survey the "
+            "columns as you re-laid them. It is part of every returned set_id, "
+            "so a commit must cite IDs derived under the overlay it names."
+        ),
+    )
     respect_cognate_sets: bool = True
     offset: int = Field(default=0, ge=0)
     limit: int = Field(default=30, ge=1, le=200)
@@ -408,6 +430,32 @@ class SummarizeCorrespondencesResult(WorkbenchModel):
     sets: tuple[CorrespondenceSet, ...]
     next_offset: int | None = Field(default=None, ge=0)
     segmentation_overlay_id: NonEmptyStr | None = None
+    alignment_overlay_id: NonEmptyStr | None = Field(
+        default=None,
+        description=(
+            "The alignment overlay these sets were derived under, if any. It is "
+            "part of every set_id, so a set cited under a different overlay is "
+            "a set the harness cannot reproduce."
+        ),
+    )
+    complementary_candidates: tuple[ComplementaryCandidate, ...] = Field(
+        default=(),
+        description=(
+            "Pairs of the returned sets whose occurrences never share an "
+            "environment, with the tokens observed beside each. A fact about "
+            "the distribution, not a proposal: whether the pair is one phoneme "
+            "with a conditioned split or simply two phonemes is your judgement, "
+            "and you assert it with merges_with_set_id."
+        ),
+    )
+    complementary_candidate_count: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Complementary pairs found among the returned sets. Larger than the "
+            "sample when the list was truncated."
+        ),
+    )
 
 
 class ListAvailableNodesArgs(WorkbenchModel):
@@ -628,6 +676,41 @@ class PriorNodeReconstruction(WorkbenchModel):
     identity_reconstruction: bool
 
 
+class PriorCommittedSet(WorkbenchModel):
+    """One correspondence set from an already-completed node, read-only.
+
+    `set_id` is deliberately stripped. A set ID is derived from a reflex tuple
+    over *that* node's children under *that* node's overlays, so it is
+    meaningless anywhere else and citing one here would be citing a set this
+    node's data cannot reproduce.
+    """
+
+    reflexes: tuple[str | None, ...] = Field(min_length=2)
+    proto_segment: NonEmptyStr | None = None
+    support: int = Field(ge=1)
+    confidence: float = Field(gt=0.0, le=1.0)
+
+
+class PriorNodeInventory(WorkbenchModel):
+    """The inventory committed at one already-reconstructed node.
+
+    Mirrors `PriorNodeReconstruction` and carries the same framing: a prior
+    node's inventory is another session's hypothesis, carries no independent
+    evidential weight, and must never appear as support for a commitment here.
+    It carries `child_node_ids` beside the reflex tuples because without them
+    another node cannot interpret a single column.
+    """
+
+    node_id: NonEmptyStr
+    child_node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
+    proto_phonemes: tuple[NonEmptyStr, ...] = ()
+    sets: tuple[PriorCommittedSet, ...] = ()
+    derived_rules: tuple[PriorCommittedRule, ...] = ()
+    anomalies: tuple[AnomalyReport, ...] = ()
+    summary: NonEmptyStr
+    identity_reconstruction: bool
+
+
 class GetNodeReconstructionArgs(WorkbenchModel):
     node_id: NonEmptyStr = Field(
         description=(
@@ -638,8 +721,24 @@ class GetNodeReconstructionArgs(WorkbenchModel):
 
 
 class GetNodeReconstructionResult(WorkbenchModel):
-    reconstruction: PriorNodeReconstruction
+    reconstruction: PriorNodeReconstruction | None = None
+    """The prior node's rules, when it committed under the branch-cascade shape."""
+    inventory: PriorNodeInventory | None = None
+    """The prior node's inventory, when it committed under the per-set shape.
+
+    Exactly one of the two is present. Both shapes stay readable during the
+    migration, because a run walks nodes committed under whichever protocol was
+    current when each of them ran.
+    """
     provenance: Literal["prior_node_hypothesis"] = "prior_node_hypothesis"
+
+    @model_validator(mode="after")
+    def validate_one_shape(self) -> GetNodeReconstructionResult:
+        if (self.reconstruction is None) == (self.inventory is None):
+            raise ValueError(
+                "a prior node hypothesis is either a rule set or an inventory"
+            )
+        return self
 
 
 class ConceptConvergenceReport(WorkbenchModel):
@@ -906,6 +1005,157 @@ class TestRuleCascadeResult(WorkbenchModel):
     held_out: HeldOutEvaluation | None = None
 
 
+class TestProtoAssemblyArgs(WorkbenchModel):
+    """Preview what a proposed inventory assembles, before committing it."""
+
+    commitments: tuple[CorrespondenceCommitment, ...] = Field(
+        description=(
+            "The correspondence-set commitments to preview. Order carries no "
+            "meaning. An empty list previews the identity reconstruction an "
+            "empty inventory commits."
+        ),
+    )
+    restorations: tuple[SegmentRestoration, ...] = ()
+    residue_policy: ResiduePolicy = Field(
+        description=(
+            "What happens to a column no committed set explains. Required, with "
+            "no default, exactly as at commit time — previewing under a "
+            "different policy from the one you commit would preview a different "
+            "reconstruction."
+        ),
+    )
+    residue_witness_child_id: NonEmptyStr | None = None
+    residue_dispositions: tuple[ResidueDisposition, ...] = ()
+    concept_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Concepts to assemble; empty previews every concept at this node. "
+            "Coverage for a commit is over *sets*, not concepts, so batching a "
+            "large family across several calls is fine — their coverage unions."
+        ),
+    )
+    segmentation_overlay_id: NonEmptyStr | None = None
+    alignment_overlay_id: NonEmptyStr | None = None
+    detail: AssemblyDetail = Field(
+        default=AssemblyDetail.SUMMARY,
+        description=(
+            "'summary' (the default) returns the assembled forms and the "
+            "per-concept counts; 'full' adds the per-column resolutions, which "
+            "is what to read when a form came out wrong and you need to see "
+            "which column did it."
+        ),
+    )
+
+
+class TestProtoAssemblyResult(WorkbenchModel):
+    """What a proposed inventory assembles, split at the compaction line.
+
+    Everything above `concepts` is what a commit is checked against and must
+    survive for the whole session: a few hundred bytes. Everything below is
+    re-derivable by calling this tool again, which is exactly the test
+    `COMPACTABLE_TOOL_NAMES` applies.
+
+    That split has to be the shape from the first version, because a result
+    schema is recorded in trajectories the moment the tool ships.
+    `test_rule_cascade` is the cautionary tale and the resemblance is
+    uncomfortable — both are the call that validates a commit, both carry an ID
+    that cannot be re-derived — and it measured 399 KB across three calls at one
+    live node against 22 KB for all the evidence that node inspected.
+    """
+
+    # --- the part a commit is checked against; never compactable, tiny ---
+    validation_call_id: NonEmptyStr
+    covered_set_ids: tuple[NonEmptyStr, ...] = ()
+    unaccounted_column_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    cross_branch_assembly_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    ambiguous_columns: tuple[ColumnResolution, ...] = Field(
+        default=(),
+        description=(
+            "Columns more than one committed set matched. Disambiguate them by "
+            "conditioning one of the sets, by splitting a set, or by saying in "
+            "your summary that the evidence does not decide; otherwise the beam "
+            "picks by mass and then by an arbitrary segment order."
+        ),
+    )
+    assembled_concept_count: int = Field(default=0, ge=0)
+    segmentation_overlay_id: NonEmptyStr | None = None
+    alignment_overlay_id: NonEmptyStr | None = None
+    residue_policy: ResiduePolicy | None = None
+    # --- the bulky, re-derivable part ---
+    concepts: tuple[ConceptAssemblyReport, ...] = ()
+    derived_rules: tuple[ReconstructionRule, ...] = ()
+    non_invertible_child_ids: tuple[NonEmptyStr, ...] = ()
+    """Children some committed set assigns a gap against a reconstructed segment.
+
+    Not an error. It is the insertion the DSL cannot write, recorded rather than
+    rejected: the parent segment comes from the set, so the form assembles
+    anyway and only the *derived view* for that child cannot be spelled.
+    """
+    unconditioned_context_child_ids: tuple[NonEmptyStr, ...] = ()
+    """Children whose derived rule lost its conditioning environment."""
+    boundary_change_child_ids: tuple[NonEmptyStr, ...] = ()
+    """Children a committed set makes rewrite a morphological boundary.
+
+    Also not an error, and the same shape as the two above: the form assembles
+    from its columns either way, and it is only the derived per-branch cascade
+    that cannot spell the change, because `+` and `-` are refused as rule
+    targets and as insertions on purpose.
+    """
+
+
+class RealignArgs(WorkbenchModel):
+    """Re-lay the aligner's columns for concepts it got wrong.
+
+    For the case where SCA has misaligned a form — a compound against a simplex,
+    two lexemes in one concept — and not a routine step. The default is to
+    accept the aligner's output.
+    """
+
+    overrides: tuple[AlignmentOverride, ...] = Field(min_length=1)
+    base_alignment_overlay_id: NonEmptyStr | None = None
+    segmentation_overlay_id: NonEmptyStr | None = None
+    rationale: NonEmptyStr
+
+
+class RealignResult(WorkbenchModel):
+    alignment_overlay_id: NonEmptyStr
+    joined_set_support_delta: dict[str, int] = Field(
+        default_factory=dict,
+        description=(
+            "Per named joins_set_id, how much support it actually gained. The "
+            "claim is verified: a realignment whose named set does not gain the "
+            "columns claimed for it is refused."
+        ),
+    )
+    invalidated_set_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Set IDs derived under the previous alignment overlay that no "
+            "longer exist. A realignment changes which columns exist, so it "
+            "changes what a set is; cite IDs from a survey taken under the new "
+            "overlay."
+        ),
+    )
+    override_concept_count: int = Field(default=0, ge=0)
+    node_concept_count: int = Field(default=0, ge=0)
+    new_set_override_count: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Overrides that named no set to join. Legal — the first attestation "
+            "of a real correspondence has to be expressible — and counted "
+            "separately, because it is the mode that bypasses the join check."
+        ),
+    )
+    advisory: NonEmptyStr
+    """How much of this node now carries an override. Never a refusal.
+
+    Modelled on `contrast_reduction`: this is legitimate, common, and worth your
+    attention before you commit. A session realigning a large share of its
+    concepts is fitting the evidence rather than reading it.
+    """
+
+
 class MorphemeSegmentation(WorkbenchModel):
     form_id: NonEmptyStr
     segments: tuple[NonEmptyStr, ...] = Field(min_length=1)
@@ -1086,9 +1336,19 @@ class CommitReconstructionArgs(WorkbenchModel):
         ),
     )
     rules: tuple[CommittedSoundRule, ...] = Field(
+        default=(),
         description=(
-            "The ordered rule cascade to commit. Use an empty list for an "
-            "identity reconstruction."
+            "The ordered rule cascade to commit, under the branch-cascade "
+            "protocol. Mutually exclusive with 'inventory'; a call carrying "
+            "both is refused. Omit both for an identity reconstruction."
+        ),
+    )
+    inventory: ProtoInventorySpec | None = Field(
+        default=None,
+        description=(
+            "The proto-inventory to commit, under the per-correspondence-set "
+            "protocol: a value for each correspondence set, plus the policy for "
+            "columns no set explains. Mutually exclusive with 'rules'."
         ),
     )
     anomalies: tuple[AnomalyReport, ...] = Field(
@@ -1109,24 +1369,88 @@ class CommitReconstructionArgs(WorkbenchModel):
         ids = [rule.rule_id for rule in self.rules]
         if len(ids) != len(set(ids)):
             raise ValueError("committed rule IDs must be unique")
+        if self.rules and self.inventory is not None:
+            raise ValueError(
+                "a commit carries either 'rules' or 'inventory', never both: "
+                "they are two protocols for the same claim and the harness "
+                "cannot tell which one you meant"
+            )
+        if self.inventory is not None and self.cascade_validation_call_id is not None:
+            raise ValueError(
+                "cascade_validation_call_id has no meaning for an inventory "
+                "commit: correspondence sets are independent and there is no "
+                "order to preview"
+            )
         return self
 
 
 class CommittedReconstruction(WorkbenchModel):
+    commit_shape: Literal["rules"] = "rules"
+    """Which protocol this commit was made under.
+
+    Defaulted, so every record written before the per-set protocol existed reads
+    as what it is. It is what lets a reader of a mixed archive branch without
+    probing which request shape is present.
+    """
     request: CommitReconstructionArgs
     parsed_rules: tuple[ReconstructionRule, ...]
+
+    @property
+    def identity_reconstruction(self) -> bool:
+        return not self.parsed_rules
+
+    @property
+    def anomalies(self) -> tuple[AnomalyReport, ...]:
+        return self.request.anomalies
+
+
+CommittedHypothesis = CommittedReconstruction | CommittedProtoInventory
+"""What a node committed, under either protocol.
+
+A plain union rather than a tagged one, deliberately. A discriminated union
+requires its tag in the input, and every 2.0 record on disk was written before
+`commit_shape` existed — tagging would make the whole existing archive
+unloadable to buy a dispatch the two shapes' disjoint required fields already
+give unambiguously. `CommittedReconstruction` is first so an old record matches
+first.
+"""
 
 
 class CommitReconstructionResult(WorkbenchModel):
     status: Literal["committed"] = "committed"
-    reconstruction: CommittedReconstruction
+    reconstruction: CommittedHypothesis
     # The session's last observation should be what its hypothesis actually
     # produced, not just that the commit parsed. Defaulted for older records.
     convergence: ChildConvergenceSummary | None = None
+    """Did the children agree, under a committed cascade?
+
+    `None` on an inventory commit, and not because it was not computed: one
+    candidate tuple assembles into exactly one parent form, so branch divergence
+    about the parent is structurally impossible and the measure has no subject.
+    `assembly` carries what replaced it.
+    """
     contrast_reductions: tuple[ContrastReductionReport, ...] = ()
     """What this commit gave up, and how much of the tree still shows it."""
     held_out: HeldOutEvaluation | None = None
     """The committed cascade on the concepts the node held out."""
+    assembly: TestProtoAssemblyResult | None = None
+    """What the committed inventory assembles, over every concept at this node.
+
+    Recomputed from the commit rather than lifted out of the preview: a preview
+    may have been scoped to a subset of concepts, and the last thing a session
+    sees should be what its hypothesis produced over the whole node.
+    """
+    held_out_unaccounted_column_rate: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "The committed inventory on the concepts this node withheld: the "
+            "share of *their* columns no committed set explains. Reported, "
+            "never enforced — an inventory fitted to five concepts is meant to "
+            "look poor here, not to be forbidden."
+        ),
+    )
 
 
 class NodeLexiconSummary(WorkbenchModel):

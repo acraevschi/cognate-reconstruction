@@ -7,9 +7,11 @@ from cognate_reconstruction.agent.schemas import (
     ListAvailableNodesArgs,
     ListConceptsArgs,
     PolarizeArgs,
+    RealignArgs,
     SearchFormsArgs,
     SegmentMorphemesArgs,
     SummarizeCorrespondencesArgs,
+    TestProtoAssemblyArgs,
     TestRuleCascadeArgs,
     TestSoundLawArgs,
 )
@@ -25,6 +27,7 @@ from cognate_reconstruction.agent.tools.get_alignments import get_alignments
 from cognate_reconstruction.agent.tools.get_node_reconstruction import (
     get_node_reconstruction,
     summarize_commit,
+    summarize_inventory,
 )
 from cognate_reconstruction.agent.tools.evidence import (
     list_available_nodes,
@@ -32,6 +35,8 @@ from cognate_reconstruction.agent.tools.evidence import (
     search_forms,
 )
 from cognate_reconstruction.agent.tools.polarize import polarize
+from cognate_reconstruction.agent.tools.proto_assembly import test_proto_assembly
+from cognate_reconstruction.agent.tools.realign import realign
 from cognate_reconstruction.agent.tools.registry import ToolRegistry, ToolSpec
 from cognate_reconstruction.agent.tools.segment_morphemes import segment_morphemes
 from cognate_reconstruction.agent.tools.test_sound_law import test_sound_law
@@ -180,6 +185,54 @@ def default_tool_registry() -> ToolRegistry:
     )
     registry.register(
         ToolSpec(
+            name="test_proto_assembly",
+            description=(
+                "Assemble this node's parent forms from a proposed inventory: "
+                "a proto-phoneme for each correspondence set, plus the policy "
+                "for columns no set explains. Returns the assembled form per "
+                "concept, how many columns went unaccounted, which columns two "
+                "of your sets both matched, and the per-branch rules the "
+                "inventory implies. This is the call a commit is checked "
+                "against and the call to refine against: read the unaccounted "
+                "columns, condition a set, split one, change a value, and run "
+                "it again. Coverage is over sets rather than concepts, so "
+                "batching a large family across several calls is fine — their "
+                "coverage unions. detail='summary' (the default) omits the "
+                "per-column resolutions; ask for 'full' when a form came out "
+                "wrong and you need to see which column did it. Every "
+                "commitment needs the set_id, the reflexes and the support "
+                "count copied back from the survey exactly — support is the "
+                "harness's own count and is re-derived — plus your own "
+                "confidence. Write a gap as null, 'Ø' or '∅'."
+            ),
+            args_model=TestProtoAssemblyArgs,
+            handler=test_proto_assembly,
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="realign",
+            description=(
+                "Re-lay the aligner's columns for one or more concepts, and "
+                "return an alignment_overlay_id to cite in later calls. For the "
+                "case where the aligner has misaligned a form — a compound "
+                "against a simplex, two lexemes in one concept — and not a "
+                "routine step; the default is to accept the aligner's output. "
+                "Dropping the nulls from each row must reproduce that child's "
+                "own form: you may move material between columns, never invent, "
+                "delete, or reorder a segment. Say which correspondence set the "
+                "moved column joins in joins_set_id and the harness verifies "
+                "that the set really gains that support, refusing the call if "
+                "it does not; use null for the first attestation of a "
+                "correspondence, which is counted separately. A realignment "
+                "invalidates every set_id derived under the previous alignment."
+            ),
+            args_model=RealignArgs,
+            handler=realign,
+        )
+    )
+    registry.register(
+        ToolSpec(
             name="segment_morphemes",
             description="Create a temporary boundary-only segmentation overlay.",
             args_model=SegmentMorphemesArgs,
@@ -190,17 +243,22 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="commit_reconstruction",
             description=(
-                "Commit ordered individually validated rules and anomalies. "
-                "Rules must change their targets; use rules=[] for identity. "
-                "Each rule needs a successful same-session test_sound_law "
-                "validation: give its ID as the per-rule validation_call_id, "
-                "or omit that field and the harness resolves the unique "
-                "validation with the identical DSL and child scope. "
-                "supporting_form_ids defaults to that validation's forms. "
-                "Set cascade_validation_call_id only to an ID returned by "
-                "test_rule_cascade; omit it if no cascade preview was run. A "
-                "successful commit reports how far the children converged on "
-                "one parent form; divergence is recorded, never rejected."
+                "Commit this node's hypothesis, as either an 'inventory' or a "
+                "'rules' cascade — never both. An inventory gives each "
+                "correspondence set a proto-phoneme and states what happens to "
+                "columns no set explains; every committed set must have been "
+                "exercised by a same-session test_proto_assembly, its support "
+                "must match the harness's own count, and a set that deletes or "
+                "merges a distinction needs a directionality_rationale. A rules "
+                "cascade commits ordered individually validated rules: each "
+                "needs a successful same-session test_sound_law validation, "
+                "given as the per-rule validation_call_id or resolved by the "
+                "harness from the identical DSL and child scope, and "
+                "cascade_validation_call_id may name a test_rule_cascade "
+                "preview of the whole order. Either shape may be empty for an "
+                "identity reconstruction. A successful commit reports what the "
+                "hypothesis actually produced; an unexplained residue is "
+                "recorded, never rejected."
             ),
             args_model=CommitReconstructionArgs,
             handler=commit_reconstruction,
@@ -217,6 +275,9 @@ __all__ = [
     "default_tool_registry",
     "describe_session_validations",
     "polarize",
+    "realign",
     "summarize_commit",
+    "summarize_inventory",
     "summarize_correspondences",
+    "test_proto_assembly",
 ]
