@@ -1510,6 +1510,16 @@ COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
     "test_proto_assembly covering it. Coverage is over sets rather than "
     "concepts, so several previews over different concept batches union; the "
     "assembly_validation_call_id may be omitted and resolved from them.",
+    "Two fields of a commitment are required and are the ones most often "
+    "omitted. 'reflexes' carries one entry per active child in order, "
+    "including the children showing nothing, written as null: a set only one "
+    "child attests is ['ʔ', null] and never ['ʔ']. 'proto_segment' has no "
+    "default and must be present even when the value is null, because "
+    "'reconstructs nothing' and 'not stated' are different claims.",
+    "An inventory carrying more than one commitment needs a 'rationale' on "
+    "every one of them; the top-level summary cannot attribute reasoning to an "
+    "individual set. A one-set inventory needs none. The same asymmetry "
+    "applies to a rules commit.",
     "Every non-empty committed rule, under the 'rules' shape, needs a "
     "successful same-session test_sound_law call or test_rule_cascade preview "
     "of the identical rule, child scope, and segmentation overlay.",

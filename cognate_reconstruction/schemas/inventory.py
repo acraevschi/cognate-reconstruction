@@ -126,20 +126,26 @@ class CorrespondenceCommitment(WorkbenchModel):
     reflexes: tuple[str | None, ...] = Field(
         min_length=2,
         description=(
-            "The set's segments, positional against child_node_ids. Use null "
-            "for an alignment gap; 'Ø' and '∅' are accepted and mean the same. "
-            "Required even though set_id determines it: a commit a human "
-            "cannot read without re-running a tool is not an audit record."
+            "The set's segments: exactly one entry per child in "
+            "child_node_ids, in that order, INCLUDING the children that show "
+            "nothing there — write those as null. A set only one child attests "
+            "is still ['ʔ', null] and never ['ʔ']. 'Ø' and '∅' are accepted "
+            "for a gap and mean the same as null. Required even though set_id "
+            "determines it: a commit a human cannot read without re-running a "
+            "tool is not an audit record."
         ),
     )
     proto_segment: NonEmptyStr | None = Field(
         description=(
-            "The proto-phoneme you reconstruct for this set, or null for 'this "
-            "set reconstructs nothing' — every branch showing material here "
-            "innovated it. It is deliberately not restricted to the segments in "
-            "'reflexes': Proto-Polynesian *w survives as v or as nothing in "
-            "every daughter, and a schema that could only emit an observed "
-            "reflex would make it unreconstructable."
+            "Required, with no default: the proto-phoneme you reconstruct for "
+            "this set, or an explicit null for 'this set reconstructs "
+            "nothing' — every branch showing material here innovated it. There "
+            "is no default because those are different claims and omitting the "
+            "field would silently make the stronger one. It is deliberately "
+            "not restricted to the segments in 'reflexes': Proto-Polynesian *w "
+            "survives as v or as nothing in every daughter, and a schema that "
+            "could only emit an observed reflex would make it "
+            "unreconstructable."
         ),
     )
     conditioning: RuleEnvironment | None = Field(

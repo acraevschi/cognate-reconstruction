@@ -342,6 +342,19 @@ errors.
      model with no cap can generate until the context is exhausted; a cap turns a
      15-minute turn into `finish_reason="length"`, which the harness already
      recovers from by forcing a tool call.
+
+     **Size the cap for an inventory commit, not for a rule commit.** A
+     `commit_reconstruction` carrying `rules` is a handful of short objects; one
+     carrying an `inventory` is one object per correspondence set, each with a
+     `set_id`, a reflex per child, a value, a support count, a confidence and a
+     rationale. Measured 2026-08-24 on `google/gemma-4-26b-a4b` over an
+     eight-set node: 3072 was ample under the cascade protocol and stalled the
+     same node under the inventory protocol with
+     `ProtocolStallError: model output was truncated 3 times`, all three
+     responses reporting exactly 3071 output tokens. Uncapped, the same node
+     committed. If a node stalls on truncation while the tool it was calling was
+     `commit_reconstruction` or `test_proto_assembly`, raise the cap rather than
+     reading it as a model that cannot converge.
   3. **Make the bound tighter, before the first node.** Lower `--timeout` so a
      genuine hang surfaces in minutes rather than a quarter of an hour. Note
      `--max-run-seconds` does *not* help: `_check_run_budget()` runs before and

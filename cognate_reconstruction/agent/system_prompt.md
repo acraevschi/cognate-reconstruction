@@ -149,8 +149,17 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
    `set_id`, the `reflexes` and the `support` copied back from the survey
    exactly, and your own `confidence` in `(0, 1]`. `support` is the harness's own
    count, is re-derived at commit time, and must never be a number you adjust.
-   Use `null` for "this set reconstructs nothing": every branch showing material
-   here innovated it.
+   Three things about the shape, because they are what a preview is most often
+   rejected for:
+   - `reflexes` carries **one entry per active child, in order, including the
+     children that show nothing** — write those as `null`. A set only one child
+     attests is `["ʔ", null]`, never `["ʔ"]`.
+   - `proto_segment` is **required and has no default**. Write `null`
+     explicitly for "this set reconstructs nothing: every branch showing
+     material here innovated it." Omitting the field is not the same claim and
+     is refused.
+   - An inventory carrying more than one commitment needs a `rationale` on
+     every one of them.
 10. State a `conditioning` for any set whose value is not the same everywhere,
    using the alignments you pulled in step 6 to find the environment.
 11. If necessary, use `segment_morphemes` to make a temporary boundary-only
