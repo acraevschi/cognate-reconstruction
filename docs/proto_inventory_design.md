@@ -3061,6 +3061,26 @@ reason §1.2 already gives — a segment no daughter shows — which is what mak
 six attributable to the boundary and to nothing else. Both of §7 condition 3's
 boundary-bearing witnesses, `1212` and `1439`, are among them.
 
+##### What a session sees under the instructions that still ship
+
+Stage 3 flips `agent/system_prompt.md`; until it does, every live node runs the
+branch-cascade workflow — and now sees boundary correspondence sets while being
+taught a DSL that refuses `+` and `-` as rule targets. That combination is
+reachable today, so it was checked rather than left to be discovered.
+
+A rule about a boundary is refused at the parser: `+ > Ø` and `+ > Ø / #_` give
+*"morphological boundaries may constrain context but not be targets"*, `a > a +
+a` gives *"rules may not insert morphological boundaries"*. All are
+`dsl-parse-error`, which `agent/error_codes.py` classifies **exploratory** — the
+model proposed a rule and the parser refused — so none of them counts toward
+`high_quality` or toward the stall detector's protocol window. The message names
+the problem without a remediation because it is already the whole answer.
+
+That is the right outcome and not a gap to close before stage 3: the evidence is
+visible, acting on it through the wrong mechanism is refused legibly, and the
+refusal is free. A boundary is committable through the inventory shape today and
+will be teachable when the instructions flip.
+
 ##### Does the ceiling still bound the implementation? Measured, not argued
 
 `tools/assembly_ceiling.py` keeps its own `align_rows` and the harness runs
