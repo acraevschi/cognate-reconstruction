@@ -16,6 +16,7 @@ from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import LLMToolCall
 from cognate_reconstruction.agent.tools import default_tool_registry
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
+from cognate_reconstruction.schemas.inventory import CorrespondenceCommitment
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.traversal import (
     EvidenceKind,
@@ -996,3 +997,44 @@ def test_a_boundary_overlay_creates_a_column_and_renames_every_set() -> None:
         {item["set_id"] for item in before.result["sets"]}
         & {item["set_id"] for item in after.result["sets"]}
     )
+
+
+def test_every_way_a_model_writes_a_gap_means_the_same_gap() -> None:
+    """The rejection class that stalled ten nodes on the Polynesian sweep.
+
+    `_normalize_gaps` originally took `Ø` and `∅`, because a model that knows
+    the sound-law DSL knows those. A model writing a JSON array of segments
+    reaches for something else: on 2026-08-24 the live sweep sent `['+', '']`
+    and `['+', 'null']` against the set `['+', None]` twenty-four times, was
+    refused each time, and stalled ten nodes out of protocol-failure repeats.
+
+    Widening the accepted spellings loosens no check: the reflex tuple is still
+    compared against the harness's own inventory, and `set_id` is still derived
+    from it.
+    """
+    for spelling in ("", "null", "None", "Ø", "∅"):
+        commitment = CorrespondenceCommitment(
+            set_id="cs-whatever",
+            reflexes=["+", spelling],
+            proto_segment="+",
+            support=3,
+            confidence=0.9,
+        )
+        assert commitment.reflexes == ("+", None), spelling
+
+
+def test_a_lowercase_slashed_o_is_a_vowel_and_not_a_gap() -> None:
+    """Why the gap spellings are matched exactly and never case-folded.
+
+    `ø` U+00F8 is the close-mid front rounded vowel. Only `Ø` U+00D8 means the
+    gap. Folding case would silently delete a real reflex, which is a worse
+    failure than the one the widening fixes.
+    """
+    commitment = CorrespondenceCommitment(
+        set_id="cs-whatever",
+        reflexes=["ø", "a"],
+        proto_segment="ø",
+        support=3,
+        confidence=0.9,
+    )
+    assert commitment.reflexes == ("ø", "a")

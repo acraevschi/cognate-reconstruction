@@ -137,6 +137,13 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # contain: a stale or fabricated ID. Stale is the common case — a
         # realignment invalidates every ID derived under the previous overlay.
         "unknown-correspondence-set": ToolErrorCategory.PROTOCOL,
+        # A commitment's `reflexes` differ from the cited set's own. Split
+        # from the support code below on 2026-08-24: they are different
+        # mistakes with different fixes — one is a mis-spelled gap, the
+        # other a mis-copied integer — and one code for both made the tally
+        # useless exactly when a sweep needed reading. The module raising
+        # them already documented them as distinct.
+        "correspondence-reflex-mismatch": ToolErrorCategory.PROTOCOL,
         # A commitment's `support` differs from the re-derived support. A
         # transcription error rather than a hypothesis: support is copied from
         # the harness's own inventory and must never be a model claim.

@@ -37,6 +37,30 @@ from cognate_reconstruction.schemas.rules import (
     RuleEnvironment,
 )
 
+WRITTEN_GAP_SPELLINGS: frozenset[str] = GAP_SEGMENT_TOKENS | frozenset(
+    {"", "null", "None"}
+)
+"""Every spelling of "there is nothing here" accepted inside `reflexes`.
+
+Wider than `GAP_SEGMENT_TOKENS`, which is the *filter* vocabulary a caller uses
+to ask `summarize_correspondences` for the gap. This is the *writing*
+vocabulary, and a model writing a JSON array of segments reaches for more than
+two things: `Ø` and `∅` because it knows the DSL, and `""` or `"null"` because
+it is writing JSON and the field beside it is a string. Measured on the
+Polynesian sweep of 2026-08-24, where `['+', '']` and `['+', 'null']` against
+the set `['+', None]` were the single largest rejection class and stalled ten
+nodes.
+
+**Not case-folded, deliberately.** `ø` U+00F8 is the close-mid front rounded
+vowel and a perfectly good segment; only `Ø` U+00D8 means the gap. Folding case
+here would silently delete a real reflex, which is a worse failure than the one
+this fixes.
+
+`""` cannot collide with a segment either: `NonEmptyStr` refuses it everywhere a
+segment is accepted, so it has no other meaning to take away.
+"""
+
+
 def _normalize_gaps(row: object) -> object:
     """Accept the DSL's gap spellings where the model has to write a gap.
 
@@ -52,6 +76,12 @@ def _normalize_gaps(row: object) -> object:
     was meant. Normalizing here removes a rejection class without loosening a
     check — the reflex tuple is still compared against the harness's own.
 
+    The accepted spellings live in `WRITTEN_GAP_SPELLINGS`, which is wider
+    than the two the first version took: the same failure recurred on the
+    Polynesian sweep of 2026-08-24 with `""` and `"null"`, which is what a
+    model writing JSON reaches for rather than what a model that knows the
+    DSL reaches for.
+
     The list-to-tuple conversion is not incidental. A `mode="before"` validator
     takes the raw input, so the fields it hands on are validated strictly rather
     than in the JSON mode the tool boundary parses in, where a list is a legal
@@ -61,7 +91,7 @@ def _normalize_gaps(row: object) -> object:
     if not isinstance(row, (list, tuple)):
         return row
     return tuple(
-        None if isinstance(item, str) and item in GAP_SEGMENT_TOKENS else item
+        None if isinstance(item, str) and item in WRITTEN_GAP_SPELLINGS else item
         for item in row
     )
 
