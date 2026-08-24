@@ -1493,19 +1493,38 @@ class NodePromptPayload(WorkbenchModel):
 
 
 COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
-    "Every non-empty committed rule needs a successful same-session "
-    "test_sound_law call or test_rule_cascade preview of the identical rule, "
-    "child scope, and segmentation overlay.",
-    "Any rule that deletes a segment or merges two segments into one also needs "
-    "a 'directionality_rationale' naming which branch innovated and why. The "
-    "harness detects those rules mechanically and rejects a commit that omits "
-    "it, naming the exact rule_ids; it never judges what the rationale says.",
-    "A rule scoped to a child that preserves a contrast, deleting it, is almost "
-    "always the wrong direction. Call polarize before committing any rule whose "
-    "direction the children alone do not force.",
+    "This node's hypothesis is committed as an 'inventory' — one proto_segment "
+    "per correspondence set, plus the residue_policy for columns no set "
+    "explains — or as a 'rules' cascade. Never both; a call carrying both is "
+    "refused. Prefer the inventory: a rule rewrites one child's own segments, "
+    "so a parent segment no single child preserves cannot be produced by any "
+    "cascade.",
+    "Every commitment copies back the set_id, the reflexes and the support "
+    "exactly as the harness reported them. The inventory is re-derived from "
+    "this node's own forms at commit time: a set the data does not contain is "
+    "refused as 'unknown-correspondence-set', and an altered support as "
+    "'correspondence-support-mismatch'. Support is the one number separating a "
+    "correspondence from residue and it is never a model claim. A realign "
+    "invalidates every set_id derived under the previous alignment.",
+    "Every committed correspondence set needs a successful same-session "
+    "test_proto_assembly covering it. Coverage is over sets rather than "
+    "concepts, so several previews over different concept batches union; the "
+    "assembly_validation_call_id may be omitted and resolved from them.",
+    "Every non-empty committed rule, under the 'rules' shape, needs a "
+    "successful same-session test_sound_law call or test_rule_cascade preview "
+    "of the identical rule, child scope, and segmentation overlay.",
+    "Anything that discards material needs a 'directionality_rationale' naming "
+    "which branch innovated and why: under 'inventory', a non-null reflex "
+    "against a null proto_segment, or two sets sharing one proto_segment "
+    "without complementary conditioning; under 'rules', a rule that deletes a "
+    "segment or merges two into one. The harness detects those mechanically "
+    "and rejects a commit that omits it, naming the exact sets or rule_ids; it "
+    "never judges what the rationale says.",
+    "Reconstructing the value that neutralises a contrast the family still "
+    "shows is almost always the wrong direction. Call polarize before "
+    "committing any value the children alone do not force.",
     "This node's concepts are split into a development set and a held-out set. "
-    "Every rule report carries a held-out summary; it is reported, never "
-    "enforced.",
+    "Every report carries a held-out summary; it is reported, never enforced.",
 )
 """What a session is told about the commit contract before it starts.
 
@@ -1514,4 +1533,11 @@ rejected, which costs a turn and teaches the wrong lesson — that the harness i
 capricious rather than that the claim needs stating. These sentences duplicate
 `agent/system_prompt.md` on purpose: the system prompt is the manual and this is the checklist
 attached to the specific node.
+
+**Both commit shapes are covered because both are accepted.** Through stages 2
+and 3 of `docs/proto_inventory_design.md` a session may commit either, and a
+checklist naming only one would be a rejection waiting to happen for the other.
+The note that says which to prefer comes first for the same reason the manual
+says it early: a session that reaches for the cascade because nothing told it
+otherwise has already chosen.
 """

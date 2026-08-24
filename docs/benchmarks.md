@@ -322,16 +322,20 @@ lands beside it. See `docs/analysis_tools.md` for both and for why quoting eithe
 as "what a good model should get" is a category error.
 
 **Nothing in this table has moved for the per-correspondence-set commit
-protocol, and that is correct.** Stages 1 and 2 add the assembler and the tools;
-they change no default, and `agent/system_prompt.md` still teaches the
-branch-cascade workflow, so every figure here was produced by the same path that
-produced it before. The oracle assembly ceiling and the live before/after over
-five seeds on both benchmarks are recorded when the instructions are flipped —
-that is stage 3, and it is the point at which §7 of
-`docs/proto_inventory_design.md` becomes evaluable. Until then there is no
-per-set number in this document, deliberately: one seed is not a measurement,
-and a number recorded before the workflow that produces it exists would be a
-number measuring nothing.
+protocol, and that is correct.** Stages 1 and 2 added the assembler and the
+tools without changing a default, so every figure here was produced by the same
+path that produced it before, and it stays the recorded before.
+
+The oracle assembly ceiling now exists — `tools/oracle_ceiling.py --oracle
+assembly`, top-1 **39/46** on Polynesian at width 5 against 27/46 and 33/46 for
+the two branch-cascade oracles, with the full table in `docs/analysis_tools.md`.
+It bounds the architecture and is not a live number.
+
+`agent/system_prompt.md` now teaches the inventory workflow, which is the flip
+stage 3 is named for. The live before/after over five seeds on both benchmarks
+belongs in this document and is not in it yet; until it is, there is no live
+per-set number here, deliberately, because one seed is not a measurement and a
+number recorded before the sweep that produces it would be measuring nothing.
 
 The oracle rows were re-recorded 2026-08-22 when four defects in the instrument
 were repaired. Beam-exact moved 39 → 40 and the graded means with it, because the

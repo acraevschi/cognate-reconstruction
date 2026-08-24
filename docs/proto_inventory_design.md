@@ -2262,15 +2262,20 @@ the guard and it is a real artifact.
 
 ### Stage 3 — flip the instructions and measure
 
-- `system_prompt.md` teaches the inventory workflow (§6.6 step list), the
-  edge-case framing for `realign` (§6.1), and when a restoration is warranted
-  (§6.9). The file was renamed from `SKILL.md` at design time, because two
-  unrelated files carried that name — the model's system prompt and the
-  harness's own operator skill under `skills/` — and the collision was a
-  standing source of confusion. Content unchanged, so `instruction_sha256` and
-  every resume check are unaffected.
-  `COMMIT_REQUIREMENT_NOTES` updated, because a requirement living only in code
-  is one the model discovers by being rejected.
+- **Done 2026-08-24.** `system_prompt.md` teaches the inventory workflow (§6.6
+  step list), the edge-case framing for `realign` (§6.1), and when a restoration
+  is warranted (§6.9). The rule cascade keeps a section of its own, because it
+  stays an accepted commit shape through this stage; what changed is which one
+  the manual leads with and why. The file was renamed from `SKILL.md` at design
+  time, because two unrelated files carried that name — the model's system
+  prompt and the harness's own operator skill under `skills/` — and the
+  collision was a standing source of confusion.
+  `COMMIT_REQUIREMENT_NOTES` covers both shapes for the same reason, because a
+  requirement living only in code is one the model discovers by being rejected.
+  **This changes `instruction_sha256`**, so every checkpoint written before it
+  refuses to resume, naming the instructions as the part that moved. That is the
+  mechanism working: a resumed run must not mix nodes reconstructed under two
+  different manuals.
 - `run-benchmark --seeds 5` on Polynesian and `synthetic_hard`, before and
   after, both commit shapes, recorded in `docs/benchmarks.md`.
 - `score-synthetic` gains the inventory comparison (§9.2).
@@ -3084,12 +3089,13 @@ reason §1.2 already gives — a segment no daughter shows — which is what mak
 six attributable to the boundary and to nothing else. Both of §7 condition 3's
 boundary-bearing witnesses, `1212` and `1439`, are among them.
 
-##### What a session sees under the instructions that still ship
+##### What a session saw under the instructions that shipped before stage 3
 
-Stage 3 flips `agent/system_prompt.md`; until it does, every live node runs the
-branch-cascade workflow — and now sees boundary correspondence sets while being
-taught a DSL that refuses `+` and `-` as rule targets. That combination is
-reachable today, so it was checked rather than left to be discovered.
+Recorded because it was true and measured, and because the branch-cascade
+workflow is still an accepted commit shape: a session that takes it sees
+boundary correspondence sets while being taught a DSL that refuses `+` and `-`
+as rule targets. That combination was reachable before the instructions flipped
+and is reachable now, so it was checked rather than left to be discovered.
 
 A rule about a boundary is refused at the parser: `+ > Ø` and `+ > Ø / #_` give
 *"morphological boundaries may constrain context but not be targets"*, `a > a +
@@ -3099,10 +3105,13 @@ model proposed a rule and the parser refused — so none of them counts toward
 `high_quality` or toward the stall detector's protocol window. The message names
 the problem without a remediation because it is already the whole answer.
 
-That is the right outcome and not a gap to close before stage 3: the evidence is
-visible, acting on it through the wrong mechanism is refused legibly, and the
-refusal is free. A boundary is committable through the inventory shape today and
-will be teachable when the instructions flip.
+That is the right outcome and was not a gap to close before stage 3: the
+evidence is visible, acting on it through the wrong mechanism is refused
+legibly, and the refusal is free. A boundary is committable through the
+inventory shape, and since 2026-08-24 `agent/system_prompt.md` says so — the
+Sound Rule DSL section states that a set may take `+` as its `proto_segment`
+and that only the *derived* per-branch rule for such a set cannot be written,
+which is what `boundary_change_child_ids` reports.
 
 ##### Does the ceiling still bound the implementation? Measured, not argued
 

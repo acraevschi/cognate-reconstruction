@@ -2,6 +2,44 @@
 
 ## Unreleased
 
+### The manual now teaches the inventory, and the checklist covers both shapes
+
+Stage 3's flip. `agent/system_prompt.md` led with a workflow — survey, polarize,
+align, write a rule, test it, cascade it, commit — that produced a branch
+cascade, and mentioned `test_proto_assembly`, `commit_reconstruction`'s
+`inventory` argument, `realign` and restorations nowhere at all. The tools have
+existed since stage 2; nothing told a session they were there.
+
+It now teaches §6.6's loop — survey, polarize, align, assign a value per set,
+preview, read the unaccounted columns, refine, preview, commit — and says why
+the loop closes: the preview a refinement is tested by *is* the preview a commit
+is checked against, so there is no object that exists only inside a test and
+then needs a second one. Four sections are new: the residue policy, conditioning
+and complementary splits, restorations with §6.9's three refusals and the root's
+structural limit, and `realign` with §6.1's framing — an edge case for a compound
+against a simplex or two lexemes in one concept, never a routine step, and a
+session realigning a large share of its concepts is fitting the evidence rather
+than reading it.
+
+The rule cascade keeps a section of its own, because it stays an accepted commit
+shape through this stage. What changed is which one the manual leads with, and
+that it now says what the cascade cannot do: a rule rewrites one child's own
+segments, so a parent segment no single child preserves is unreachable by any
+cascade. `⟨language_a v : language_b Ø⟩` reconstructs `*w` in one commitment and
+in no rule.
+
+`COMMIT_REQUIREMENT_NOTES` covered only the rule shape and was therefore wrong
+for half the sessions it was shown to. It now covers both, leading with which to
+prefer.
+
+**This changes `instruction_sha256`.** Every checkpoint written before it
+refuses to resume, naming the instructions as the part that moved — which is the
+mechanism working, not a regression: a resumed run must not mix nodes
+reconstructed under two different manuals.
+
+`docs/running_inference.md`'s tool table was missing `test_proto_assembly` and
+`realign` outright; both are there now.
+
 ### An oracle for the architecture, not only for the rule writer
 
 `tools/oracle_ceiling.py --oracle assembly` gives every *node* a perfect

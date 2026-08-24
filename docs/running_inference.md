@@ -462,12 +462,19 @@ is retrieved on demand.
 | `search_forms` | Exact semantic/segment/cognate/node filtering. |
 | `polarize` | What every node outside the active children shows in the aligned columns of one correspondence, with counts and the observed/reconstructed split. No verdict on which value is original. |
 | `list_available_nodes` | Observed and completed internal evidence only, flagging nodes with a retrievable hypothesis. |
-| `get_node_reconstruction` | Rules, anomalies, and summary committed at one already-reconstructed node; read-only and never scored. |
+| `get_node_reconstruction` | The inventory or rules, anomalies, and summary committed at one already-reconstructed node; read-only, never scored, `set_id`s stripped because they name a tuple over another node's children. |
 | `get_alignments` | LingPy MSA held once, plus one pairwise correspondence view per node pair referencing it by ID. |
 | `segment_morphemes` | Immutable boundary-only overlay; phonetic tokens cannot change. |
+| `realign` | Immutable, session-local alignment overlay; rows must reproduce each child's own form, and a named `joins_set_id` must really gain the support claimed. |
+| `test_proto_assembly` | The parent forms a proposed inventory assembles, the unaccounted columns, the columns two sets both matched, and the per-branch cascade the inventory derives. |
 | `test_sound_law` | Parsed literal DSL and exact per-form diff. |
 | `test_rule_cascade` | Ordered, branch-scoped full-cascade preview and final forms. |
-| `commit_reconstruction` | Exact validation references, scopes, order, support, anomalies, and optional cascade check. |
+| `commit_reconstruction` | An `inventory` or a `rules` cascade, never both: exact validation references, scopes, support, anomalies, and the optional cascade check. |
+
+Since 2026-08-24 `agent/system_prompt.md` teaches the inventory workflow and the
+rule cascade is documented beside it as the older accepted shape. Both commit
+paths are live; `docs/proto_inventory_design.md` §8 stage 4 is what removes one,
+and it is gated on the falsification numbers in §7.
 
 Rule IDs are optional labels in cascade and commit calls. If omitted, the
 harness deterministically derives a stable ID from the exact DSL and ordered

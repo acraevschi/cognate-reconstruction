@@ -758,7 +758,7 @@ def test_a_rule_validated_for_another_scope_is_named_as_such() -> None:
 #
 # Reproduced from the run that died on it: two unconditioned rules collide in
 # the cascade preview, the model refines them into conditioned ones exactly as
-# system_prompt.md step 9 asks, and commits the refined order.
+# the cascade section of system_prompt.md asks, and commits the refined order.
 # ---------------------------------------------------------------------------
 
 
