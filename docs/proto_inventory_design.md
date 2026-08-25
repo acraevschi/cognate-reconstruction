@@ -2151,6 +2151,189 @@ Both ceiling tools accept `--gold-node`; on a multi-gold family the root's
 binding is the default and anything else must be named. Read `measuring:` on
 every line of output before quoting a number from it.
 
+### 7.6 Whether condition 6 is evaluable on Polynesian
+
+**This section decides nothing.** Condition 6 is not re-litigated here and no
+threshold moves. What follows is the measurement-design finding that the live
+half of §7 ran into, the arithmetic under it, and a recommendation for the
+research owner. Everything is measured from the four sweep directories of
+2026-08-24 under `runs/sweeps/`, which are gitignored; every figure below can be
+re-derived from the `result.json` of the named seed.
+
+#### The mechanism
+
+`benchmarks/polynesian.json` binds gold at **one** of the tree's seven internal
+nodes, `proto_polynesian`. `benchmarks/synthetic/synthetic_hard.json` binds gold
+at **three** of four — `proto`, `west`, `east`.
+
+A seed contributes a scoreable evaluation at a gold node only if that node
+committed a real reconstruction. `benchmarks/sweep.py:270` excludes any
+evaluation with `failure_fallback` set, and correctly: a fallback node's beam is
+the harness's identity commit, so scoring it measures the fallback. On Polynesian
+that means **one node of seven decides whether a seed produces any number at
+all.**
+
+Observed, per seed and per node:
+
+| condition | seed | node | | top exact |
+| --- | --- | --- | --- | --- |
+| `polynesian-before` | 00 | `proto_polynesian` | committed | 0.500 |
+| `polynesian-before` | 01 | `proto_polynesian` | committed | 0.413 |
+| `polynesian-before` | 02 | `proto_polynesian` | **fallback** | 0.478 |
+| `polynesian-after` | 00 | `proto_polynesian` | **fallback** | 0.543 |
+| `polynesian-after` | 01 | — | stopped mid-flight, no `result.json` | — |
+
+So `polynesian-before` yielded **two** scored seeds of three and
+`polynesian-after` **none** of the two that ran. Six other nodes were
+reconstructed in each of those seeds and none of them is scoreable, because
+nothing is bound to them.
+
+#### 1. The arithmetic
+
+Four Polynesian seeds completed across the two conditions and **two lost the
+root**, so the estimate of the rate at which a seed is scoreable is
+`p = 1 − 2/4 = 0.50`; counting `polynesian-after` seed-01, which ran but was
+stopped rather than failing, gives at best `p = 3/5 = 0.60`. Take the more
+favourable one. Under a binomial with `p = 0.6`, for `N` seeds launched in one
+condition:
+
+| N | E[scored] | P(≥2) | P(≥3) | P(≥5) | P(≥3 in **both** conditions) | P(≥5 in **both**) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3 | 1.8 | 0.648 | 0.216 | 0.000 | **0.047** | 0.000 |
+| 5 | 3.0 | 0.913 | 0.683 | 0.078 | 0.466 | 0.006 |
+| 8 | 4.8 | 0.991 | 0.950 | 0.594 | 0.903 | 0.353 |
+| 11 | 6.6 | 0.999 | 0.994 | 0.901 | 0.988 | 0.811 |
+| 13 | 7.8 | 1.000 | 0.999 | 0.968 | 0.997 | **0.937** |
+
+Condition 6 says `--seeds 5`. Read the table at the row that matters:
+
+- At the **3 seeds per condition** the sweep actually ran, the probability of
+  getting even three scored seeds on *both* sides was **0.047**. The sweep was
+  about 95% likely to fail to produce a comparison, before the model was
+  consulted at all. It did fail, and that is the expected outcome of the design
+  rather than a result about the architecture.
+- At the **5 seeds per condition** condition 6 asks for, P(five scored on both
+  sides) is **0.006**.
+- To get five scored seeds in both conditions nine times in ten needs **13 seeds
+  per condition, 26 Polynesian runs**. A Polynesian seed took 49, 88, 56 and 49
+  minutes in this sweep (mean 61), so that is about **26 hours** of serial
+  LM Studio time for one line of one falsification table.
+
+**And `p` itself is not known to one significant figure.** The 95%
+Clopper–Pearson interval on a root-failure rate of 2 in 5 is **[0.053, 0.853]**,
+so `p` is plausibly anywhere in [0.147, 0.947], and the seed count that follows
+ranges from **6 to 60 per condition** — 12 to 120 runs, 12 to 122 hours. Five
+seeds cannot pin down the rate that decides how many seeds are needed. Adding
+seeds to learn the rate is the only way out of that circle, and it costs the same
+hours.
+
+#### 2. What is actually being estimated, which is the larger problem
+
+Two findings from the same artifacts say that more seeds would not repair
+condition 6 on this benchmark, only narrow the spread of a quantity that does not
+mean what the condition assumes.
+
+**(a) The excluded seeds are not missing at random, and they are not the bad
+ones.** The two Polynesian roots that fell back scored **0.478** and **0.543**
+top-exact; the two that committed scored **0.500** and **0.413**, mean 0.457. In
+every observation available, the identity fallback scored at or above the model's
+own mean. The same holds on `synthetic_hard`: `east` fell back in **6 of 6 seeds
+in both conditions** and its identity beam scores **0.880** every time, which is
+exactly the assembly oracle's own top-1 on that benchmark (22/25); `west`'s one
+fallback scored 0.880 against a committed before-condition mean of 0.700.
+
+The exclusion rule is right — scoring a fallback measures the fallback, not a
+reconstruction. But its consequence is that condition 6 compares the two
+instruction sets *on the subset of seeds where the model committed*, and drops,
+unreported, both the rate at which each condition commits at all and the fact
+that not committing scored better here. Four observations is far too few to
+call that a bias with a direction, and it is more than enough to say the
+quantity is not "top-1 accuracy of the architecture".
+
+**(b) The pooled ± that condition 6 would be read against is mostly node
+difficulty, not seed variance.** §7's live table quotes `synthetic_hard` as
+0.448 ± 0.246 before against 0.720 ± 0.201 after, spreads overlapping. Split by
+gold node, which is what a multi-gold benchmark makes possible:
+
+| gold node | before | after | overlap? |
+| --- | --- | --- | --- |
+| `proto` | 0.280 ± 0.120, range **0.160–0.400**, n=3 | 0.547 ± 0.023, range **0.520–0.560**, n=3 | **no** |
+| `west` | 0.700 ± 0.028, range **0.680–0.720**, n=2 | 0.893 ± 0.101, range **0.800–1.000**, n=3 | **no** |
+| `east` | never scored — identity fallback in 3/3 | never scored — identity fallback in 3/3 | — |
+| *pooled* | 0.448 ± 0.246 | 0.720 ± 0.201 | yes, heavily |
+
+The pooled standard deviation is dominated by the 0.28-against-0.70 gap between
+two nodes of different difficulty. Separated, **both scored nodes show
+non-overlapping ranges in the direction condition 6 predicts.** At n=2 and n=3
+that is a weak test and must not be quoted as satisfying condition 6; it is
+strong enough to say that pooling across gold nodes destroys the very property
+the condition asks about, and that condition 6 must be read **per gold node**
+whatever else is decided.
+
+#### 3. The options
+
+- **A — more Polynesian seeds.** 26 runs (~26 h) for the point estimate, 12 to
+  120 runs at the interval's edges. Buys a spread. Fixes neither (a) nor (b),
+  because Polynesian has one gold node and cannot be read per-node.
+- **B — define `hillburmish`.** `docs/benchmarks.md` records it as nine
+  varieties plus Old Burmese, giving **two gold nodes in one tree**, which is
+  the property Polynesian lacks. But it is a candidate, not a definition; the
+  same document says which datasets carry a claim is a research-owner question;
+  and a new family needs its own oracle ceiling and its own
+  `unaccounted_column_rate` floor before any threshold applies to it (§7.2). It
+  is the right long-term answer to the gold-binding problem and it delays
+  condition 6 rather than enabling it.
+- **C — read condition 6 on `synthetic_hard`, per gold node, and report
+  Polynesian beside it without a verdict.** Costs one sweep of 10 runs (~3 h),
+  uses the benchmark that degrades gracefully — every one of its six seeds
+  produced at least one scoreable evaluation, against Polynesian's two of five —
+  and is the only option under which the per-node reading in (b) is available at
+  all. Its weakness is real and must be stated wherever the verdict is: it is a
+  synthetic family, and condition 6 as written says "both benchmarks".
+- **D — bind gold at more Polynesian nodes.** Ruled out, not recommended
+  against: `walworthpolynesian` contains one proto variety, so there is no second
+  gold node to bind. The option does not exist on this dataset.
+
+#### The recommendation
+
+**C, with the per-node reading from (b) made mandatory, and B raised separately
+as the fix for the gold-binding problem rather than for this sweep.**
+
+Concretely, for the research owner to accept or reject:
+
+1. Condition 6's verdict is taken from `synthetic_hard`, at 5 seeds per
+   condition, **reported per gold node and never pooled**. The reason is stated
+   in the report: pooling mixes node difficulty into the spread, and on a
+   single-gold benchmark the per-node reading is unavailable.
+2. Polynesian is run at 5 seeds per condition and **reported, not scored**: the
+   scoreable-seed count is published beside every number, and no verdict is
+   taken from a line whose n is not stated. This is the "record the trip, put
+   the argument in prose" treatment §7.3 already applies to condition 2.
+3. Every condition-6 report also publishes, per node, **the rate at which that
+   node committed at all** and **what the identity fallback scored there**.
+   Finding (a) says those two numbers are not incidental to the comparison; on
+   this data they were larger than the difference the condition is measuring.
+4. `hillburmish` is proposed as a definition on its own merits, with its own
+   ceiling and floor measured before anything is claimed from it — not as a
+   substitute for step 1.
+
+What this does **not** claim: that the architecture is better or worse. Nothing
+in this section is a verdict on §7, and the live half of §7 stays unevaluated
+until a sweep is run under a design the research owner has accepted.
+
+#### One thing the re-run has to settle first
+
+The sweeps of 2026-08-24 built their *before* condition as a **separate checkout
+at the pre-stage-3 commit**. Tasks 1–3 of this prompt changed schemas both
+conditions share, and one of them — the `AnomalyReport` descriptions — targets a
+rejection class that is **13 of 20 pre-stage-3**. So re-running *before* in the
+old checkout would compare the flip *and* three schema fixes, and re-running it
+on the current tree with only the instructions reverted would isolate the flip.
+The flip is exactly two surfaces, `agent/system_prompt.md` and
+`COMMIT_REQUIREMENT_NOTES` in `agent/schemas.py` (`991bc16`), so the second
+construction is small and well defined. It is also a measurement-design choice
+and belongs with the decision above rather than under it.
+
 ---
 
 ## 8. Staged implementation plan
