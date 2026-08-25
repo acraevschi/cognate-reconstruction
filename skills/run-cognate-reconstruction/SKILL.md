@@ -238,6 +238,26 @@ errors.
   wins. `repeat_penalty` is not an OpenAI parameter and survives only as a
   LiteLLM passthrough — verified, but worth re-checking after a LiteLLM upgrade.
 
+- **`run-benchmark --infer-arg` needs `=`, not a space.** The value it forwards
+  is itself a flag, so `--infer-arg --timeout --infer-arg 600` makes argparse
+  read `--timeout` as the *next option* rather than as the argument, and the
+  sweep dies with `argument --infer-arg: expected one argument` before a single
+  seed runs. Write `--infer-arg=--timeout --infer-arg=600`. It fails fast and
+  costs nothing, unlike the traps above, but it fails identically for both
+  conditions of a paired sweep and is easy to misread as an environment problem.
+
+- **A "before" sweep runs the code of whatever directory you launch it from.**
+  `_command_run_benchmark` spawns each seed as `python -m
+  cognate_reconstruction.cli infer`, and `-m` resolves from the *current working
+  directory* first. Pointing `--benchmark` at an old checkout's payload is
+  therefore not enough — the payload comes from the old tree and the harness
+  from the installed one, and the sweep is silently an "after" sweep with an
+  "after" instruction hash. `cd` into the old checkout before launching, and
+  **verify rather than assume**: the first seed's `checkpoint.json` carries
+  `configuration_components["the agent instructions"]`, which must equal the
+  hash the historical run recorded. That check costs one minute and catches the
+  failure that otherwise costs the whole sweep.
+
 - **`--provider-seed-base` does nothing at `--temperature 0`.** Greedy decoding
   never consults a seed, so five "seeds" become five identical configurations
   differing only by whatever MoE-routing and batching nondeterminism the server
