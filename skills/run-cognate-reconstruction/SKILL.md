@@ -265,6 +265,21 @@ errors.
   A multi-seed sweep wanting real spread needs a temperature above zero, and at
   that point the `top_k`/`top_p` row above stops being a no-op.
 
+- **A seed makes turn 0 reproducible and nothing after it.** The provider
+  generates the `call_id` on every tool call, and the harness echoes it back into
+  the next prompt as the tool message's `tool_call_id`, so from turn 1 onward the
+  context carries a random nine-digit number that differs between runs. Measured
+  2026-08-25 across three shared seeds of two `synthetic_hard` sweeps at an
+  identical `configuration_sha256`: turn 0 was identical every time — same tool,
+  same arguments — and turn 1 already diverged, on one seed from `polarize` to
+  `get_alignments`. So `--provider-seed-base` buys **independent** samples, not
+  **reproducible** ones, and **an identical `configuration_sha256` never implies
+  an identical trajectory.** Two consequences when comparing sweeps: a run cannot
+  be replayed to debug it, and two sweeps at the same configuration are poolable
+  as independent draws rather than being a reproduction and a failure to
+  reproduce. The same two sweeps differed by 2.67 against 1.40 nodes committed a
+  seed, which reads as a broken environment and is ordinary spread at n=3.
+
 - **Thinking mode is most of the output budget, and it is not a sampler.**
   `google/gemma-4-26b-a4b` with LM Studio's "Enable Thinking" custom field on
   spent **897 of 899 completion tokens** on `reasoning_content` when asked to

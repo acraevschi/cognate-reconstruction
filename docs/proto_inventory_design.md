@@ -2263,12 +2263,21 @@ gold node, which is what a multi-gold benchmark makes possible:
 | *pooled* | 0.448 ± 0.246 | 0.720 ± 0.201 | yes, heavily |
 
 The pooled standard deviation is dominated by the 0.28-against-0.70 gap between
-two nodes of different difficulty. Separated, **both scored nodes show
-non-overlapping ranges in the direction condition 6 predicts.** At n=2 and n=3
-that is a weak test and must not be quoted as satisfying condition 6; it is
-strong enough to say that pooling across gold nodes destroys the very property
-the condition asks about, and that condition 6 must be read **per gold node**
-whatever else is decided.
+two nodes of different difficulty. Separated, both scored nodes showed
+non-overlapping ranges in the direction condition 6 predicts — at n=2 and n=3,
+which is why this was written as too weak to quote as satisfying the condition.
+
+> **Superseded on 2026-08-25, and in the direction the caution predicted.**
+> At 8 before-seeds and 5 after-seeds the ranges **stop being disjoint**:
+> `proto` becomes 0.160–0.400 against 0.400–0.680, touching at a point, and
+> `west` becomes 0.680–0.720 against 0.680–1.000, overlapping outright. The
+> three-seed reading above was an artifact of three seeds, exactly as the
+> paragraph it sits in warned. §7.7 has the re-run and the verdict; what
+> survives from this sub-finding is only its second half.
+
+What survives is the part that does not depend on n: pooling across gold nodes
+destroys the very property the condition asks about, so condition 6 must be read
+**per gold node** whatever else is decided.
 
 #### 3. The options
 
@@ -2333,6 +2342,141 @@ The flip is exactly two surfaces, `agent/system_prompt.md` and
 `COMMIT_REQUIREMENT_NOTES` in `agent/schemas.py` (`991bc16`), so the second
 construction is small and well defined. It is also a measurement-design choice
 and belongs with the decision above rather than under it.
+
+### 7.7 The re-run of 2026-08-25, and what condition 6 does
+
+Run after tasks 1–3 of prompt 10 landed and with the tree frozen: `synthetic_hard`,
+**5 seeds per condition**, `google/gemma-4-26b-a4b`, temperature 1.0,
+`top_k` 64 / `top_p` 0.95 / `repeat_penalty` 1.0, `--provider-seed-base 1000`,
+`--max-tool-calls 48`, `--timeout 600`, uncapped `max_tokens`. Directories
+`runs/sweeps/synthetic_hard-{before,after}-r2`.
+
+**Polynesian was not re-run.** At the measured 61 minutes a seed it needs about
+ten hours for five seeds per condition, against a five-hour budget for the whole
+re-run, and §7.6's arithmetic says two or three seeds would produce nothing
+evaluable. So **condition 6 has no real-data reading**, and this section is not
+one. That is a gap in the evidence, not a result about the architecture.
+
+The *before* condition is the pre-stage-3 checkout **unchanged**, verified rather
+than assumed: its first seed records instruction hash `c4d25af1…` and
+`configuration_sha256` `d93f3596…`, both byte-identical to the 2026-08-24 before
+run. **Tasks 1–3 are therefore on the after side only**, which is stated again
+wherever it matters below.
+
+#### First, why the two before runs are poolable
+
+The 2026-08-24 before run committed 2.67 ± 0.58 nodes a seed; the re-run, at the
+identical `configuration_sha256`, committed **1.40 ± 0.55**. That looks like a
+failed reproduction and is not one.
+
+A fixed provider seed cannot reproduce a multi-turn run here. The provider
+generates the `call_id` on every tool call and the harness echoes it back into
+the next prompt as the tool message's `tool_call_id`, so from turn 1 onward the
+context carries a random nine-digit number that differs between runs. Measured on
+all three shared seeds: **turn 0 is identical** — same tool, same arguments, the
+seed doing its job — and **turn 1 already diverges**, on seed 0 from `polarize`
+to `get_alignments`. Divergence is structural, not drift, and not LM Studio's
+panel.
+
+The consequence is worth stating plainly because it changes how any two sweeps
+are compared: `--provider-seed-base` buys **independent** samples, never
+**reproducible** ones, and an identical `configuration_sha256` never implies an
+identical trajectory. So the two before runs are eight independent draws from one
+configuration and are pooled below; the two after runs are **not** pooled,
+because tasks 1 and 3 edited `system_prompt.md` and their instruction hashes
+differ. The after column is the re-run alone.
+
+#### Condition 6, per gold node
+
+Top-1 exact at each gold node, with the rate at which that node produced a
+scoreable reconstruction at all, and what the identity fallback scored there —
+the three numbers §7.6's recommendation asks to be published together.
+
+| gold node | before, 8 seeds | after, 5 seeds | condition 6 |
+| --- | --- | --- | --- |
+| `proto` | committed **4/8**, 0.290 ± 0.100, range 0.160–0.400 | committed **5/5**, 0.528 ± 0.100, range 0.400–0.680 | up; ranges **touch at 0.400** |
+| `west` | committed **2/8**, 0.700 ± 0.028, range 0.680–0.720 | committed **5/5**, 0.816 ± 0.115, range 0.680–1.000 | up; ranges **overlap** |
+| `east` | committed **1/8**, 0.880 (n=1) | committed **0/5**, never scored | no comparison exists |
+
+Identity fallbacks at the same nodes: `proto` before 0.36, 0.44, 0.48; `west`
+before 0.88; `east` 0.88 in every seed of both conditions.
+
+**Condition 6 trips as written.** Its stop column is "spreads overlap", and at
+`west` they overlap outright, at `proto` they meet at a point, and `east` cannot
+be compared at all. Top-1 is up at both comparable nodes and that is not
+sufficient for the condition as phrased. Recorded, not rewritten — the same
+treatment §7.3 gives condition 2.
+
+**The argument, in prose, and it is not a defence of the threshold.** The
+quantity condition 6 compares is conditioned on the node having committed, and
+the two conditions commit at very different rates: 4/8 and 2/8 against 5/5 and
+5/5. The before column is therefore computed over the subset of runs that went
+well, and the after column over all of them, so the two are not like for like and
+the gap between them is the *smaller* of the two effects. §7.6's finding (a) is
+visible directly here: at `proto`, the before condition's identity fallbacks
+scored **0.36, 0.44 and 0.48 against its own committed mean of 0.290** — under
+the pre-stage-3 instructions, committing at the root was worse than not
+committing.
+
+What is unambiguous is the quantity condition 6 does not measure:
+
+| | before, 8 seeds | after, 5 seeds |
+| --- | --- | --- |
+| nodes committed / 4 | 1.875 ± 0.835, range 1–3 | **3.000 ± 0.000**, range 3–3 |
+| protocol failures / seed | 16.0 (re-run), 9.3 (2026-08-24) | **8.4 ± 1.5** |
+| tool calls / seed | 73.4 (re-run) | **48.0 ± 1.0** |
+
+Every after seed committed three of four nodes with **zero variance**, and the
+one node it never commits, `east`, is the node whose identity beam already scores
+0.880 — the assembly oracle's own top-1 on this benchmark. Whether "reconstructs
+the same three nodes every time" should be what condition 6 measures is a
+research-owner question and is not settled here.
+
+#### What the re-run says about tasks 1–3
+
+Per seed, so the 3-seed and 5-seed runs can be read side by side. The after
+columns differ from each other by tasks 1–3 and by nothing else.
+
+| rejection class | before (8 seeds) | after, 2026-08-24 | after, re-run |
+| --- | --- | --- | --- |
+| `commitments[].confidence=missing` | 0.25 | **3.0** | **0.0** |
+| every `anomalies[].*` class together | 3.1 | **3.3** | **0.0** |
+| `rule-unsupported` | 2.9 | 0.0 | 0.0 |
+| `validation-unresolved` | 1.6 | 0.0 | 0.0 |
+| `validation-ambiguous` | 0.9 | 0.0 | 0.0 |
+| `dsl-parse-error` | 0.25 | 0.0 | 0.0 |
+| `missing-rule-rationale` | 1.25 | 3.3 | 3.0 |
+| `missing-directionality-rationale` | 0.25 | 1.7 | **3.6** |
+
+- **Task 1 is confirmed live.** `confidence=missing` went 3.0 a seed to **zero**
+  across five seeds. Nothing else touches that field.
+- **Task 3 is confirmed live, within the after condition.** Every anomaly class
+  went 3.3 a seed to **zero** while the instruction flip was held constant, and
+  the before condition — which does not carry task 3 — still shows 3.1 a seed.
+- **Task 2 is not verified.** `correspondence[]=string_type` never appears on
+  `synthetic_hard`; it was a Polynesian class, and Polynesian was not re-run.
+- **§6.6's "the loop closes" replicates at five seeds.** The four rejection
+  classes that the flip removes are 5.65 a seed before and **zero** after, in
+  both after runs.
+
+**And one thing got worse, which is the question §6.6 and §4.1 own.**
+`missing-directionality-rationale` went 0.25 a seed before to **3.6** after,
+while committed rules a seed went 2.2 to 32.6. The requirement is per claim and
+the number of claims went up by an order of magnitude, so the counter rising is
+the requirement working, not failing. Whether a per-commitment rationale is the
+right shape when a node commits thirty sets rather than three rules is a research
+question and **must not be answered by relaxing the requirement to make the
+counter fall**. Related and also unresolved: the after run made **7
+directionality claims with no `polarize` call at all**, which `inspect-run`
+reports and nothing gates.
+
+#### What this section does not establish
+
+- Nothing about real data. Polynesian was not run.
+- Nothing about condition 6 on a benchmark whose gold binding supports it;
+  §7.6's recommendation stands unexecuted.
+- Nothing about task 2, and nothing about the architecture's ceiling, which is
+  oracle work and did not move.
 
 ---
 
