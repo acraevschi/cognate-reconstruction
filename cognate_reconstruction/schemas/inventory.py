@@ -209,8 +209,16 @@ class CorrespondenceCommitment(WorkbenchModel):
         gt=0.0,
         le=1.0,
         description=(
-            "Your confidence in this reconstruction, in (0, 1]. Your own "
-            "judgement; the deterministic assembler uses it as a score weight."
+            "Required on every commitment, with no default: your confidence "
+            "in this reconstruction, in (0, 1]. An inventory of thirty sets "
+            "carries thirty of these, and a single commitment omitting it "
+            "refuses the whole commit — a set written as {'set_id': …, "
+            "'reflexes': ['p', 'f'], 'proto_segment': 'p', 'support': 11} is "
+            "rejected for exactly that. There is no default because a "
+            "confidence you did not state is not 1.0: the deterministic "
+            "assembler consumes this as a score weight, so a default would "
+            "score an unstated guess above a stated doubt. Your own "
+            "judgement, and nothing checks it against the evidence."
         ),
     )
     rationale: NonEmptyStr | None = Field(

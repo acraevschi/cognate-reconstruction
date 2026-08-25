@@ -1038,3 +1038,29 @@ def test_a_lowercase_slashed_o_is_a_vowel_and_not_a_gap() -> None:
         confidence=0.9,
     )
     assert commitment.reflexes == ("ø", "a")
+
+
+def test_the_required_fields_of_a_commitment_say_so_in_their_descriptions() -> None:
+    """The model reads the schema; a requirement cannot live only in code.
+
+    Measured on the four sweeps of 2026-08-24: `commitments[].confidence` was
+    omitted 19 times across the two flipped conditions and never once under the
+    pre-stage-3 instructions, because it is required, has no default, and its
+    description said only what the number means. `proto_segment` and `reflexes`
+    were the same failure and were fixed the same way in `655a3e4`.
+    """
+    properties = CorrespondenceCommitment.model_json_schema()["properties"]
+    required = set(CorrespondenceCommitment.model_json_schema()["required"])
+    for name in ("confidence", "proto_segment", "reflexes"):
+        assert name in required, name
+        assert "equired" in properties[name]["description"], name
+    confidence = properties["confidence"]["description"]
+    assert "no default" in confidence
+    assert "score weight" in confidence
+
+
+def test_no_commitment_field_faces_the_model_undescribed() -> None:
+    properties = CorrespondenceCommitment.model_json_schema()["properties"]
+    assert all("description" in properties[name] for name in properties), sorted(
+        name for name in properties if "description" not in properties[name]
+    )

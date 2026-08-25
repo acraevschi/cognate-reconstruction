@@ -149,7 +149,7 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
    `set_id`, the `reflexes` and the `support` copied back from the survey
    exactly, and your own `confidence` in `(0, 1]`. `support` is the harness's own
    count, is re-derived at commit time, and must never be a number you adjust.
-   Three things about the shape, because they are what a preview is most often
+   Four things about the shape, because they are what a preview is most often
    rejected for:
    - `reflexes` carries **one entry per active child, in order, including the
      children that show nothing** — write those as `null`. A set only one child
@@ -158,6 +158,11 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
      explicitly for "this set reconstructs nothing: every branch showing
      material here innovated it." Omitting the field is not the same claim and
      is refused.
+   - `confidence` is **required and has no default**, on every commitment
+     rather than only the uncertain ones. There is nothing to fall back to: the
+     assembler weights candidates by this number, so a confidence you did not
+     state cannot be read as `1.0`. Writing thirty sets means writing thirty
+     confidences.
    - An inventory carrying more than one commitment needs a `rationale` on
      every one of them.
 10. State a `conditioning` for any set whose value is not the same everywhere,
