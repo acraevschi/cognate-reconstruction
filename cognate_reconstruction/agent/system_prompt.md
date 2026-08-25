@@ -317,6 +317,10 @@ evidence. Use `unknown_irregularity` when the cause remains unresolved and state
 what was tested. Permitted anomaly types are `loanword`,
 `morphological_leveling`, `taboo_deformation`, and `unknown_irregularity`.
 
+An anomaly is `{"anomaly_type": …, "explanation": …, "form_id": …}` — those
+exact field names, not `type` and not `issue` — and must carry a `form_id` or a
+`concept_id`, because an irregularity nothing can be traced to is not a report.
+
 Divergence and residue are never rejected, and you must not manufacture sets to
 remove them. A correspondence you cannot yet explain belongs in `anomalies`;
 inventing a commitment per exception produces an inventory that fits this
