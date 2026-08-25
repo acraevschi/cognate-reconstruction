@@ -61,7 +61,7 @@ segment is accepted, so it has no other meaning to take away.
 """
 
 
-def _normalize_gaps(row: object) -> object:
+def normalize_written_gaps(row: object) -> object:
     """Accept the DSL's gap spellings where the model has to write a gap.
 
     An alignment gap is `None` in these models, and `null` is what a JSON tool
@@ -87,6 +87,13 @@ def _normalize_gaps(row: object) -> object:
     than in the JSON mode the tool boundary parses in, where a list is a legal
     tuple. `CommittedSoundRule.supply_rule_id` converts its own list fields for
     exactly this reason and this follows it.
+
+    **Public, and shared with `PolarizeArgs.correspondence`**, which takes the
+    same object: the workflow hands the model one row of
+    `summarize_correspondences` and asks it to paste that row into `polarize`
+    and then into a commitment. Two vocabularies for one row is how the
+    interface came to teach that a gap is `null` in one field and refuse it in
+    the next.
     """
     if not isinstance(row, (list, tuple)):
         return row
@@ -247,7 +254,7 @@ class CorrespondenceCommitment(WorkbenchModel):
     def accept_gap_spellings(cls, value):
         if not isinstance(value, dict) or "reflexes" not in value:
             return value
-        return {**value, "reflexes": _normalize_gaps(value["reflexes"])}
+        return {**value, "reflexes": normalize_written_gaps(value["reflexes"])}
 
     @model_validator(mode="after")
     def validate_merger_claim(self) -> CorrespondenceCommitment:
@@ -628,7 +635,7 @@ class AlignmentOverride(WorkbenchModel):
         rows = value.get("rows")
         if not isinstance(rows, (list, tuple)):
             return value
-        return {**value, "rows": tuple(_normalize_gaps(row) for row in rows)}
+        return {**value, "rows": tuple(normalize_written_gaps(row) for row in rows)}
 
     @model_validator(mode="after")
     def validate_width(self) -> AlignmentOverride:
@@ -652,5 +659,7 @@ __all__ = [
     "ResidueDisposition",
     "ResiduePolicy",
     "SegmentRestoration",
+    "WRITTEN_GAP_SPELLINGS",
     "derive_set_id",
+    "normalize_written_gaps",
 ]

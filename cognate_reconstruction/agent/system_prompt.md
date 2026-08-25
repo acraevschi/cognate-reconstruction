@@ -112,9 +112,10 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
    `offset` to see the tail rather than assuming the first page is all of it.
 4. **Decide which branch changed, before you assign a value.** For every
    correspondence where the children disagree, call `polarize` with those
-   children and the segment each shows — a row of the survey pasted back. It
-   returns what every node outside the active children shows in the same
-   columns, with counts, marked observed or reconstructed. This step is required
+   children and the segment each shows — a row of the survey pasted back,
+   including its `null`s, which is how the survey writes a child that shows
+   nothing there. It returns what every node outside the active children shows
+   in the same columns, with counts, marked observed or reconstructed. This step is required
    for any set whose value the children alone do not force, and it is the
    step live runs skipped: across a whole ten-language benchmark the out-group
    scope was consulted once.
