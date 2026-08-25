@@ -2466,9 +2466,21 @@ the number of claims went up by an order of magnitude, so the counter rising is
 the requirement working, not failing. Whether a per-commitment rationale is the
 right shape when a node commits thirty sets rather than three rules is a research
 question and **must not be answered by relaxing the requirement to make the
-counter fall**. Related and also unresolved: the after run made **7
-directionality claims with no `polarize` call at all**, which `inspect-run`
-reports and nothing gates.
+counter fall**.
+
+> **Settled by the research owner, 2026-08-25: the per-set requirement stays.**
+> Two reasons, and the second was not in the framing above. A commit carrying
+> thirty claims cannot have its reasoning attributed by one summary, which is
+> the audit property the requirement exists for. And the rationales are useful
+> to a *user* doing post-hoc analysis, not only to the validator that checks
+> their presence — a per-set justification is the only place a reader can find
+> out why one correspondence was read the way it was, and the inventory shape
+> is what makes that a per-phoneme record rather than a per-cascade one. The
+> cost is real and now quantified — output tokens are essentially the whole of
+> wall-clock time (§7.9) — and it is accepted rather than unmeasured.
+
+Related and still unresolved: the after run made **7 directionality claims with
+no `polarize` call at all**, which `inspect-run` reports and nothing gates.
 
 #### What this section does not establish
 
@@ -2477,6 +2489,171 @@ reports and nothing gates.
   §7.6's recommendation stands unexecuted.
 - Nothing about task 2, and nothing about the architecture's ceiling, which is
   oracle work and did not move.
+
+### 7.8 Condition 5, evaluated from the seeds already run
+
+Condition 5 needed no new inference. `score-synthetic` reads a run directory's
+`trajectories.jsonl`, so the 16 `synthetic_hard` seeds banked across 2026-08-24
+and the 2026-08-25 re-run answer it directly. Both halves below are pooled over
+**branch** records rather than over seeds, because a branch is the unit the
+answer key scores and a seed contributes a different number of them under the
+two commit shapes — which turns out to be most of the story.
+
+| run | all scored branches | invertible branches only | non-invertible |
+| --- | --- | --- | --- |
+| before, 2026-08-24 (3 seeds) | 0.273 (n=10) | **0.390** (n=7) | 0.000 (n=3) |
+| before, re-run (5 seeds) | 0.200 (n=7) | **0.233** (n=6) | 0.000 (n=1) |
+| after, 2026-08-24 (3 seeds) | 0.204 (n=9) | **0.306** (n=6) | 0.000 (n=3) |
+| after, re-run (5 seeds) | 0.167 (n=16) | **0.267** (n=10) | 0.000 (n=6) |
+
+`misdirected_rule_count` is **0 in every one of the 16 seeds, under both commit
+shapes.**
+
+#### The verdict
+
+**The `misdirected` half does not trip. The precision half trips as written**,
+and is recorded rather than rewritten, as §7.3 does for condition 2 and §7.7 for
+condition 6.
+
+Condition 5's stop clause is "right forms via worse-attributed changes is a worse
+result, not a better one". The evidence does not show worse attribution, and
+three things explain the number.
+
+**A merger cannot be scored, and a merger is the case this architecture exists
+for.** `rule_precision` matches a committed child-to-parent rule against the
+answer key's *inverse* rules. A non-invertible change — a merger or a deletion —
+has no inverse, so `true_inverse_rules` is empty and a **correct** rule scores
+zero. Measured on `west->d1`, whose true change is `b > p`, b merging into an
+existing p: the model committed `p > b`, which is exactly right, and scored
+**0.000**. Every non-invertible branch scores 0.000 in every run above, thirteen
+of them in total.
+
+The after condition commits at more nodes, so it lands on more of these
+guaranteed zeros — six against one in the re-run pair. It is penalised for
+attempting. §2.1's argument is that **a merger makes a branch cascade strictly
+less expressive**; the metric is blind exactly where the change is supposed to
+pay, which is a defect of the instrument and not a finding about the
+architecture.
+
+**Restricted to branches where precision is earnable at all**, the gap narrows to
+roughly 0.32 before against 0.28 after, at n=13 and n=16 — small, and well inside
+the noise of a statistic whose before-side per-seed spread is ±0.35 to ±0.43,
+because the before condition commits so few rules that a branch scores 0.0 or
+1.0 and little between.
+
+**The scorer already says precision is a lower bound.** Its own note: precision
+"match[es] rule spellings exactly and [is] a lower bound; `functional_recovery_rate`
+per branch is the measurement that survives a different spelling of the same
+change." That spelling-robust measure went **up** in both pairings —
+0.728 → 0.800 and 0.743 → 0.776.
+
+And the dominant residual miss is **shared by both shapes and is a conditioning
+omission, not a misdirection**: both write `e > a` where the answer key has
+`a > e / _ i`. The before condition got the environment right in one seed of
+five, the after condition in none. Where both attempt the chain shift at
+`proto->east`, the after condition matches `t > k` and `s > t` in **5 of 5
+seeds** against the before condition's **1 of 5**.
+
+#### One objection that does not hold, checked rather than assumed
+
+The obvious defence — that scoring *derived* rules against an answer key of
+*claimed* rules compares two different kinds of thing, per §7.3's last bullet —
+is **wrong here**, and `synthesis/scoring.py` says why in `_branch_claims`:
+deriving the cascade from the inventory is what *keeps* rule precision, rule
+recall, functional recovery and `misdirected_rule_count` comparable across the
+migration, which is why §4.3 requires the derivation. The comparison is
+legitimate. What damages the number is the invertibility blindness and the
+number of attempts, not the shape change.
+
+#### What this leaves
+
+The precision half of condition 5 is a **weak instrument across this migration**
+and it trips. The two quantities shipped beside it that survive a change of
+spelling — `misdirected_rule_count` and `functional_recovery_rate` — both point
+the other way. Nothing here is a verdict on the architecture, and no threshold
+moves; whether condition 5 should be read on invertible branches only is a
+research-owner question and is deliberately not answered here.
+
+### 7.9 What a sweep actually spends its time on
+
+Measured from the event and trajectory artifacts of the 2026-08-24 and
+2026-08-25 sweeps, `google/gemma-4-26b-a4b` under LM Studio. This exists because
+"run five seeds on both benchmarks" is a scheduling decision as much as a
+measurement one, and the intuitions about where the hours go were wrong.
+
+**Wall-clock time is model inference, essentially entirely.** SCA alignment, the
+rule engine and the assembler together are **0.1%** of a run; median tool
+execution is 0.01 s. Nothing here is fixable by optimising the harness.
+
+**And inference time is output tokens, not context.** Correlating per-turn
+latency against per-turn usage:
+
+| | corr(latency, input tokens) | corr(latency, output tokens) |
+| --- | --- | --- |
+| `polynesian-after` seed-00, 92 turns | +0.294 | **+0.971** |
+| `synthetic_hard-after-r2` seed-00, 47 turns | +0.270 | **+0.992** |
+
+Decode runs at a steady 33–39 tokens a second. A 31,000-token context costs
+almost nothing per turn, which means **prefix caching is already working** and
+the transcript growing is not the problem. This is the opposite of the natural
+assumption and it inverts the tuning advice: shrinking context buys nothing,
+shrinking generation buys everything.
+
+**Three quarters of what is generated is never seen.** Median output is 813
+tokens a turn on Polynesian; the visible content plus tool arguments is worth
+roughly 55. About **77%** of generated tokens are reasoning that never enters the
+transcript — consistent with the thinking-mode measurement the operator skill
+records. Thinking is therefore about three quarters of the wall clock of every
+run in this document.
+
+**A fifth to two fifths of generation is spent on turns that produce nothing.**
+
+| | tool calls | exact duplicates | rejected | generation on rejected turns |
+| --- | --- | --- | --- | --- |
+| `polynesian-after` (2 seeds) | 127 | 11 (9%) | **47 (37%)** | **40%** |
+| `synthetic_hard-after-r2` (5) | 240 | 26 (11%) | 42 (18%) | 22% |
+| `synthetic_hard-before-r2` (5) | 367 | 49 (13%) | 82 (22%) | 20% |
+
+An "exact duplicate" is the same tool with byte-identical arguments, repeated
+inside one node session — the answer is already in the transcript. A rejected
+turn costs **more** generation than an accepted one, not less: 875 against 730
+median tokens on Polynesian, and 749 against 268 on `synthetic_hard`. The model
+reasons longer on the turns it gets wrong.
+
+Because latency is output tokens, those shares are shares of the clock directly.
+On `polynesian-after` roughly **20 of every 49 minutes a seed** goes to calls the
+harness refuses or has already answered.
+
+**Failure is the expensive outcome, not the cheap one.** A node that commits
+takes 2–9 minutes; a node that fails burns to its turn limit and returns nothing.
+In `polynesian-after` seed-00 the three failed nodes cost 22.3 of 49.2 minutes
+(45%); in `synthetic_hard-after-r2` seed-00 the single failing `east` cost 9.0 of
+16.0 (56%). That is why the *before* condition is the slow one on an identical
+benchmark — 40.8 minutes a seed against the after condition's 14.3 — despite
+committing a third as many nodes.
+
+#### What follows, and what does not
+
+- **A rejection class removed is a speed-up as well as a quality fix.** After
+  tasks 1–3, `synthetic_hard` went 17.6 to **14.3** minutes a seed and 21% to 18%
+  rejected calls. Suggestive only — n=3 against n=5 and the ranges overlap
+  (14.0–20.0 against 11.2–16.0) — but it is the direction the anatomy predicts.
+- **Concurrency helps throughput, never latency.** The harness is strictly
+  sequential inside a seed, so parallel slots speed up nothing unless separate
+  seeds are launched as separate processes. And the headroom is not uniform: the
+  slowest single turns already observed are 845 s, 717 s and 603 s against a
+  600 s `--timeout`, all in the before condition, which already times out and
+  retries. The after condition has 2.7× headroom on Polynesian and the before
+  condition has none, so a concurrency slowdown would convert commits into
+  failures — the expensive outcome, and a corrupted measurement.
+- **KV-cache quantization attacks the wrong term.** The bottleneck is streaming
+  weights per decoded token, not the cache, and prefill is already nearly free.
+  It also changes numerics and is invisible to `configuration_sha256`, so it
+  would make new seeds non-comparable with the sixteen already banked.
+- **What is not established:** whether thinking mode *causes* the duplicate and
+  rejected calls or merely multiplies their cost. That needs a paired run with
+  thinking disabled, which would not be comparable with anything measured here
+  and has not been done.
 
 ---
 
