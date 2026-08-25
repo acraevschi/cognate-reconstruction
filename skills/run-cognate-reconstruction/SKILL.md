@@ -36,6 +36,15 @@ subcommand and which `triage` shells out to. Reach for `inspect-run` directly
 when you have a run directory and want to know what it produced; reach for
 `triage` when you want to know how the session behaved on the way there.
 
+`cognate-reconstruct visualize-run --run-dir DIR` is the third one, and the one
+to reach for when the answer is "look at it": one self-contained HTML page with
+the traversal tree and, per node, the session turn by turn — every call, what it
+asked, what came back, and each rejection with its code and the remediation the
+harness sent back. It is the fastest way to see *where* a session went wrong
+rather than that it did. Add `--serve` to watch a run that is still going; the
+page renders a finished node from its trajectory and a node in flight from its
+events.
+
 ## Prerequisites
 
 The `llm_reconstruction` Conda env already exists at

@@ -66,6 +66,13 @@ from cognate_reconstruction.ingestion.historical import (
     load_historical_lineage_bindings,
 )
 from cognate_reconstruction.ingestion.preparation import prepare_payload
+from cognate_reconstruction.visualize_run import (
+    DEFAULT_OUTPUT_NAME,
+    DEFAULT_PAYLOAD_CHARS,
+    DEFAULT_PORT,
+    serve,
+    visualize_run,
+)
 from cognate_reconstruction.schemas.anchors import AnchorFile
 from cognate_reconstruction.schemas.historical import (
     HistoricalBindingFile,
@@ -1336,6 +1343,23 @@ def _command_inspect_run(args: argparse.Namespace) -> None:
         print(f"wrote {args.html}", file=sys.stderr)
 
 
+def _command_visualize_run(args: argparse.Namespace) -> None:
+    if args.serve:
+        serve(
+            args.run_dir,
+            port=args.port,
+            payload_chars=args.max_payload_chars,
+        )
+        return
+    destination = visualize_run(
+        args.run_dir,
+        html_path=args.html,
+        form_limit=None if args.all_forms else DEFAULT_FORM_LIMIT,
+        payload_chars=args.max_payload_chars,
+    )
+    print(f"wrote {destination}")
+
+
 def _command_export_trajectories(args: argparse.Namespace) -> None:
     trajectories = TrajectoryDatasetBuilder.read_jsonl(args.input)
     examples = TrajectoryDatasetBuilder().build(
@@ -1741,6 +1765,57 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     inspect.set_defaults(handler=_command_inspect_run)
+
+    visualize = subparsers.add_parser(
+        "visualize-run",
+        help="Browse a run's sessions turn by turn, live or after the fact.",
+    )
+    visualize.add_argument(
+        "--run-dir",
+        required=True,
+        help=(
+            "Directory holding trajectories.jsonl, result.json, and "
+            "events.jsonl. With --serve, a directory a run is still writing."
+        ),
+    )
+    visualize.add_argument(
+        "--html",
+        help=(
+            "Where to write the standalone page. Defaults to "
+            f"<run-dir>/{DEFAULT_OUTPUT_NAME}."
+        ),
+    )
+    visualize.add_argument(
+        "--serve",
+        action="store_true",
+        help=(
+            "Serve the page on the loopback interface instead of writing it, "
+            "rebuilding on each request so a run in progress can be watched."
+        ),
+    )
+    visualize.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help=f"Port for --serve (default {DEFAULT_PORT}).",
+    )
+    visualize.add_argument(
+        "--max-payload-chars",
+        type=int,
+        default=DEFAULT_PAYLOAD_CHARS,
+        help=(
+            "Characters of each tool argument and result embedded in the page "
+            f"(default {DEFAULT_PAYLOAD_CHARS}). The full text stays in "
+            "trajectories.jsonl."
+        ),
+    )
+    visualize.add_argument(
+        "--all-forms",
+        action="store_true",
+        help="Embed every reconstructed form instead of the first "
+        f"{DEFAULT_FORM_LIMIT} per node.",
+    )
+    visualize.set_defaults(handler=_command_visualize_run)
 
     export = subparsers.add_parser(
         "export-trajectories",

@@ -671,6 +671,74 @@ the failure taxonomy read out of `events.jsonl`, which is the only source for
 runs written before failure counters existed — and it shells out to
 `inspect-run` for the artifact sections rather than duplicating them.
 
+### Watching one run: `visualize-run`
+
+```bash
+# one self-contained page, written next to the run
+cognate-reconstruct visualize-run --run-dir runs/family
+
+# somewhere else
+cognate-reconstruct visualize-run --run-dir runs/family --html /tmp/family.html
+
+# watch a run that is still going
+cognate-reconstruct visualize-run --run-dir runs/family --serve
+```
+
+`inspect-run` says what a run concluded. `visualize-run` says how the agent got
+there. It writes one self-contained HTML page — no external CSS, JS, fonts or
+images — with the tree the traversal walked on the left and, for the selected
+node, the session that produced its commit.
+
+Per node the page shows:
+
+- **The session shape**, one cell per tool call in order, coloured by stage:
+  survey (`list_available_nodes`, `list_concepts`, `search_forms`,
+  `summarize_correspondences`), inspect (`get_alignments`,
+  `get_node_reconstruction`, `polarize`, `realign`, `segment_morphemes`), test
+  (`test_sound_law`, `test_rule_cascade`, `test_proto_assembly`), and commit.
+  A rejected call keeps its stage colour and gains a red ring. Six amber rings
+  in a row is a session that spent its budget fighting a tool schema, and it is
+  visible before reading a word. **The stages group tool names for display and
+  carry no linguistic content**; a tool this view does not know is shown as
+  "other" rather than guessed into a stage.
+- **The timeline**, one row per call: the tool, what the call asked for in the
+  tool's own terms (`ʔ ~ Ø · Tongan, Niuean`), and what came back
+  (`columns 12 · concepts 10`). Every row expands to the full arguments and the
+  full result, and a rejection expands to its structural error code, its
+  protocol/exploratory classification, and the remediation the harness sent
+  back — which is what a reader needs to see why the next attempt failed too.
+  A filter box and a "rejections only" toggle narrow the list.
+- **The commit**, the deterministic diagnostics, the reconstructed forms, and
+  `high_quality` with the specific condition it failed, all taken from
+  `inspect_run.build_report` rather than recomputed, so the two views cannot
+  disagree.
+
+The tree numbers each internal node with the order the traversal reached it,
+and a node whose descendants include a failed session says so: *built on an
+identity fallback*. A node is reconstructed from its direct children, so a
+session that never committed low in the tree removes evidence from every node
+above it. That is a mechanical statement about the walk, not a judgement on the
+ancestor's own session. An internal node the walk reached that left no record
+here — a resumed run's earlier nodes, or a run that died mid-walk — renders as
+a node marked `unrecorded`, never as a leaf.
+
+**Nothing on this page is a gate.** It filters no trajectory, weights no
+candidate, and decides nothing about whether a run was valid. A session the
+workflow filter rejected renders in full, with the reason attached.
+
+`--serve` binds the loopback interface and rebuilds on each request instead of
+writing a file, so a run in progress can be watched. `JsonlEventSink` flushes
+one line per event and `JsonlTrajectorySink` appends one record per finished
+node, so a finished node renders from its trajectory at full fidelity and a
+node still in flight renders from its events — coarser, and labelled as such.
+The page polls, keeps your selection and whatever you had expanded, and a
+directory a run has not written to yet is a waiting page, not an error.
+
+Flags: `--run-dir` (required), `--html PATH` (default
+`<run-dir>/trajectory_view.html`), `--serve`, `--port` (default 8765),
+`--max-payload-chars` (default 20000, per argument and per result; the full
+text is always in `trajectories.jsonl`), and `--all-forms`.
+
 The export is generic multi-turn tool supervision, not a training backend.
 Legacy Stage-1/Stage-2 examples are not silently converted into this contract.
 The validator reports `committed_no_op_rules` and
