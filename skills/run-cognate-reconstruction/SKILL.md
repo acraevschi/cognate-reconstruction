@@ -17,7 +17,10 @@ Drive it with the committed driver:
 ```
 
 All paths below are relative to the repo root. Verified on macOS (darwin 25.5.0)
-against `google/gemma-4-e4b` served by LM Studio.
+against LM Studio. No model is fixed anywhere in this skill: you ask LM Studio
+which models it currently has loaded and pick one of those — see *Pick a model*.
+Where a number below was measured, the model it was measured on is named, and it
+is provenance for that number, not an instruction to use that model.
 
 **Why the driver instead of raw `infer`:** `infer` prints "accepted
 reconstruction commit" and exits 0 whatever the session cost to get there. The
@@ -71,7 +74,69 @@ python3 .claude/skills/run-cognate-reconstruction/driver.py preflight
 ```
 
 Prints the interpreter, harness version, litellm version, and the loaded LM
-Studio models; exits nonzero if anything is missing.
+Studio models; exits nonzero if anything is missing. An empty model list is
+*not* one of those failures — the endpoint answering with nothing loaded is a
+healthy server, so read the list yourself rather than trusting the `OK`.
+
+## Pick a model
+
+Every live command takes `--model <id>`, and the id has to be one LM Studio
+currently has **loaded**: both the driver and the harness preflight it against
+`GET /v1/models` and refuse an id the server does not report (`model 'X' is not
+reported by LM Studio`). So the first step of any live run is to ask the server
+what it is holding and choose from that list — never from memory, and never from
+an id written in this file or in an old run directory, since what is loaded
+changes whenever someone touches the LM Studio UI.
+
+Ask, cheapest first. The driver, which also starts the server if it is down:
+
+```bash
+python3 .claude/skills/run-cognate-reconstruction/driver.py preflight
+```
+
+It reports `lm studio  http://127.0.0.1:1234/v1 (N models)` followed by one
+`  - <id>` line per loaded model. For the ids alone, one per line:
+
+```bash
+/opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli lm-studio-models
+```
+
+Both read the same endpoint, so a raw query is the fallback when neither can run:
+
+```bash
+curl -s --max-time 8 http://127.0.0.1:1234/v1/models
+```
+
+Then choose from what came back:
+
+- **One id** — the usual case, since LM Studio is normally serving a single
+  loaded model. Take it and go; there is nothing to ask the user about.
+- **Several ids** — pick a tool-capable chat model. `/v1/models` reports no
+  capabilities, so nothing in the list tells you which those are: exclude the
+  obvious non-chat entries by id (anything named `*-embed*`/`embedding`, a
+  reranker, a whisper/TTS model) and, among the rest, prefer an
+  instruct/chat-tuned model over a base one. If two plausible chat models
+  remain, ask the user which to run rather than guessing — a run costs minutes
+  and the choice is theirs.
+- **No ids** — nothing is loaded. Neither the driver nor the CLI can load a
+  model, so this is a stop-and-report: tell the user to load one in the LM
+  Studio UI (or `~/.lmstudio/bin/lms load <id>`), then re-run `preflight`.
+
+Pass the id **verbatim**, vendor prefix included (`google/…`, `qwen/…`), and
+without an `openai/` prefix — the `lm-studio` preset adds that itself, which is
+why trajectories show a longer id than you typed (see Gotchas). Capture it once
+and reuse it for the run and its follow-ups:
+
+```bash
+MODEL=$(/opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli lm-studio-models | head -1)
+```
+
+That one-liner is only correct once you have looked at the list and know it has
+a single usable entry; with several loaded it silently picks whichever LM Studio
+happened to list first. If the model you picked turns out not to support tool
+calls, the run does not fail cleanly — it burns turns producing prose with no
+tool call and ends in `ProtocolStallError` or `AgentLoopLimitError`, so triage
+that shape as a model-choice problem before reading it as a prompt problem.
 
 ## Run: deterministic path (no model, no network)
 
@@ -94,7 +159,7 @@ traversal — it needs no provider.
 ## Run: live inference (agent path)
 
 ```bash
-python3 .claude/skills/run-cognate-reconstruction/driver.py run --model google/gemma-4-e4b --input examples/lm_studio_smoke_input.json --quiet
+python3 .claude/skills/run-cognate-reconstruction/driver.py run --model "$MODEL" --input examples/lm_studio_smoke_input.json --quiet
 ```
 
 Creates `runs/<model>-<timestamp>/` containing `result.json`,
@@ -102,10 +167,15 @@ Creates `runs/<model>-<timestamp>/` containing `result.json`,
 then triages it automatically. `runs/` is gitignored.
 
 Inputs, cheapest first:
-- `examples/lm_studio_smoke_input.json` — 2 languages, 1 concept (~60s on gemma)
-- `examples/reconstruction_input.json` — 3 languages, 2 concepts (~45s on gemma
-  in a clean 4-call session; it was ~4.5 min when the commit protocol ate the
-  turn budget, so a slow run is itself a signal — triage it)
+- `examples/lm_studio_smoke_input.json` — 2 languages, 1 concept (~60s on
+  `google/gemma-4-e4b`)
+- `examples/reconstruction_input.json` — 3 languages, 2 concepts (~45s on
+  `google/gemma-4-e4b` in a clean 4-call session; it was ~4.5 min when the
+  commit protocol ate the turn budget, so a slow run is itself a signal —
+  triage it)
+
+Both timings are that one model's; a larger model is slower per turn, so read
+them as shapes, not deadlines.
 
 Drop `--quiet` to stream the harness's own verbose event log. Use
 `--max-turns` / `--max-tool-calls` to bound a model that will not converge.
@@ -151,7 +221,7 @@ FAILED TOOL CALLS: 0 of 4  (0% of tool budget wasted)
 The underlying command the driver wraps:
 
 ```bash
-/opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli infer --preset lm-studio --model google/gemma-4-e4b --input examples/reconstruction_input.json --output runs/manual/result.json --trajectories runs/manual/trajectories.jsonl --events runs/manual/events.jsonl --temperature 0 --max-turns 16 --max-tool-calls 32
+/opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli infer --preset lm-studio --model "$MODEL" --input examples/reconstruction_input.json --output runs/manual/result.json --trajectories runs/manual/trajectories.jsonl --events runs/manual/events.jsonl --temperature 0 --max-turns 16 --max-tool-calls 32
 ```
 
 Other subcommands: `lm-studio-models`, `list-lexibank-varieties`,
@@ -498,7 +568,8 @@ errors.
 |---|---|
 | `__conda_exe:6: permission denied` | Use `/opt/anaconda3/envs/llm_reconstruction/bin/python`, not `conda run` / `make`. |
 | `curl` to :1234 returns nothing, exit 000 | LM Studio server is off: `~/.lmstudio/bin/lms server start`. |
-| `model 'X' is not reported by LM Studio` | Model is not loaded. Check `driver.py preflight` for loaded IDs. |
+| `model 'X' is not reported by LM Studio` | That id is not loaded — the message lists what is. Re-pick from the loaded set (*Pick a model*); do not reuse an id from an older run. |
+| `preflight` says `(0 models)` | Server is up with nothing loaded. Ask the user to load a model in LM Studio; neither the driver nor the CLI can load one. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |
 | Run makes no progress but the process is alive | Almost certainly a slow turn, not a hang — this model returned after 5–7 minutes repeatedly. **Wait.** A real hang surfaces as `provider_retry` with `litellm.Timeout` after ~15 min per attempt with `--timeout 300`. Only investigate past that: `find runs/<dir>/events.jsonl -mmin +16 -print`. Prevent long turns next run with `max_tokens` in `--provider-config` and a lower `--timeout`; both are hashed, so they must be set before the first node. See the gotcha above. |
 | A node ends in any error | The run continues by default: the node is recorded in `result.json:node_failures`, its parent is an identity fallback, and neither it nor anything above it is checkpointed. `inspect-run` names them at the top. Triage the node, then `--resume` — the give-up thresholds are not hashed, so you may loosen them on the way. `--fail-fast` restores the old abort; `--max-failed-nodes` (default 3) stops a run that is failing everywhere. |
