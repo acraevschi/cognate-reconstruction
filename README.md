@@ -218,7 +218,10 @@ events are append-only, while an existing checkpoint requires `--resume`.
 
 ### 3. Run a loaded LM Studio model
 
-LM Studio is a preset, not the conceptual default provider:
+LM Studio is a preset, not the conceptual default provider; `--preset gemini`
+reaches the Gemini API the same way, and any LiteLLM identifier works with no
+preset at all. See [docs/running_inference.md](docs/running_inference.md).
+
 
 ```bash
 conda run --no-capture-output -n llm_reconstruction \

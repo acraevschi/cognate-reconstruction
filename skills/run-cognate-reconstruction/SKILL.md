@@ -1,6 +1,6 @@
 ---
 name: run-cognate-reconstruction
-description: Run, smoke-test, and triage the cognate-reconstruction LLM harness. Use when asked to run the harness, start or test inference, reconstruct a proto-language, run a model against a fixture via LM Studio, screenshot/inspect a run, diagnose why an agent run failed, or read trajectories and events from runs/.
+description: Run, smoke-test, and triage the cognate-reconstruction LLM harness. Use when asked to run the harness, start or test inference, reconstruct a proto-language, run a model against a fixture via LM Studio or the hosted Gemini API, screenshot/inspect a run, diagnose why an agent run failed, or read trajectories and events from runs/.
 ---
 
 # Run the cognate-reconstruction harness
@@ -17,8 +17,10 @@ Drive it with the committed driver:
 ```
 
 All paths below are relative to the repo root. Verified on macOS (darwin 25.5.0)
-against LM Studio. No model is fixed anywhere in this skill: you ask LM Studio
-which models it currently has loaded and pick one of those — see *Pick a model*.
+against LM Studio and against the hosted Gemini API. No model is fixed anywhere
+in this skill: for a local run you ask LM Studio which models it currently has
+loaded and pick one of those (see *Pick a model*); for a hosted run see
+*Run: Gemini*.
 Where a number below was measured, the model it was measured on is named, and it
 is provenance for that number, not an instruction to use that model.
 
@@ -179,6 +181,90 @@ them as shapes, not deadlines.
 
 Drop `--quiet` to stream the harness's own verbose event log. Use
 `--max-turns` / `--max-tool-calls` to bound a model that will not converge.
+
+## Run: Gemini (hosted)
+
+Same harness, same artifacts, same triage — only the provider differs. Nothing
+local is needed: do **not** start or preflight LM Studio for a Gemini run.
+
+```bash
+. ~/.config/cognate-reconstruction/env
+python3 .claude/skills/run-cognate-reconstruction/driver.py run --preset gemini --model gemini-3.7-flash --input examples/lm_studio_smoke_input.json --quiet
+```
+
+**Source the key file first, in the same command.** The key lives in
+`~/.config/cognate-reconstruction/env` (mode 600, outside the repo) and is
+sourced from `~/.zshrc`, which a non-interactive tool call does not read. Without
+the leading `. ~/.config/...` the run stops with `API-key environment variable
+'GEMINI_API_KEY' is unset or empty` before spending anything.
+
+The model id is passed bare. The preset prefixes it with `gemini/` for LiteLLM,
+which is why trajectories show the longer id — the same rewrite the `lm-studio`
+preset does with `openai/`. Ask the API which ids the key may call:
+
+```bash
+. ~/.config/cognate-reconstruction/env && /opt/anaconda3/envs/llm_reconstruction/bin/python -m cognate_reconstruction.cli gemini-models
+```
+
+That list is the preflight the run itself performs, so an id absent from it fails
+before the first call rather than mid-session.
+
+Two flags matter more here than locally:
+
+- `--reasoning-effort {minimal,low,medium,high}`. **Gemini 3 thinks at `low`
+  unless told otherwise**, which is not a defensible default for the comparative
+  method. It is hashed into the configuration digest, so it must be chosen before
+  the first node and cannot be changed on a `--resume`.
+- `--temperature`. The driver sends `0` by default, which Gemini accepts.
+
+Measured on `gemini-3.7-flash` against the 2-language, 1-concept smoke fixture:
+~64s and ~$0.05 at the default thinking level, ~275s at `--reasoning-effort
+high`, 6–7 tool calls either way. Read these as shapes, not deadlines.
+
+### What a hosted run costs, and why
+
+Almost none of a prompt is the linguistic data. The first call of that smoke run
+was 20,880 tokens: 11,660 for the thirteen tool schemas, 8,344 for the agent
+instructions, 876 for the node payload. The API is stateless, so that
+20,004-token preamble is re-sent on every call. Cost scales as
+`(instructions + tool schemas) x turns x nodes` and is nearly independent of how
+much lexicon you feed it — so bound a long run with `--max-total-cost-usd`
+rather than by trimming concepts.
+
+Gemini caches that preamble implicitly. `inspect-run` reports the share, and the
+driver's triage prints it:
+
+```
+tokens   in 129474 (69225 cached, 53%) / out 528 / total 130002 / $0.0524
+```
+
+Measured: the first two calls of a session are cold, then 74–91% per call. Read
+it as a subset of the input, not an addition. `not reported` is not zero — LM
+Studio reports nothing, and a cold Gemini run reports nothing either.
+
+### The key is a free-tier key
+
+Two consequences, and the second is the one that matters for this project.
+
+**Rate limits are low and shared across the day.** Expect `429` and `503
+UNAVAILABLE` ("high demand") mid-session. The harness classifies both as
+transient and retries with backoff — a run recovered from a 503 on its first
+node without operator action — but a multi-seed `run-benchmark` will exhaust a
+free daily quota long before it exhausts the science. Check the current limits
+at <https://aistudio.google.com/rate-limit> before launching a sweep, and treat
+a run that dies in repeated `provider_retry` events as a quota problem, not a
+model problem.
+
+**Free-tier prompts and responses are used by Google to improve its products,
+and human reviewers may read them.** Paid-tier traffic is excluded from that.
+For this harness that is a benchmark-integrity question rather than a privacy
+one: every free-tier run sends the agent instructions, the tool schemas, and the
+benchmark payload to a training pipeline, so a benchmark exercised heavily on
+the free tier may be inside a future model's training data — and this repo's
+whole purpose is measuring models against it. Gold answers are never sent (the
+harness never shows them to the model), so the leak is the task, not the answer
+key. Use the free tier for smoke tests and plumbing checks; raise it with the
+user before running a published benchmark on it.
 
 ## Triage an existing run
 
@@ -570,6 +656,11 @@ errors.
 | `curl` to :1234 returns nothing, exit 000 | LM Studio server is off: `~/.lmstudio/bin/lms server start`. |
 | `model 'X' is not reported by LM Studio` | That id is not loaded — the message lists what is. Re-pick from the loaded set (*Pick a model*); do not reuse an id from an older run. |
 | `preflight` says `(0 models)` | Server is up with nothing loaded. Ask the user to load a model in LM Studio; neither the driver nor the CLI can load one. |
+| `API-key environment variable 'GEMINI_API_KEY' is unset or empty` | The key file was not sourced. Prefix the command with `. ~/.config/cognate-reconstruction/env &&` — `~/.zshrc` sources it, but a non-interactive tool call does not read `~/.zshrc`. |
+| `model 'X' is not served by the Gemini API` | Preflight rejected the id before any spend. The message lists what the key may call; re-pick from `gemini-models`. Not the same failure as the LM Studio row above. |
+| Gemini run dies in repeated `provider_retry` (`429`, or `503 UNAVAILABLE`) | Free-tier quota, not a model fault. A stray 503 is retried and recovers on its own; a run that keeps hitting them has exhausted the daily allowance. See <https://aistudio.google.com/rate-limit>. |
+| `the Gemini API does not support 'seed'` | Refused up front, by design: Gemini has no seed, so `--provider-seed-base` (or a `seed` in `--provider-config`) would have produced repetitions that only looked seeded. Drop it and read the sweep's spread as provider nondeterminism. |
+| Gemini run points at `localhost` and cannot connect | An `--api-base` was passed with `--preset gemini`. The preset needs none; omit it unless you are deliberately routing through a proxy. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |
 | Run makes no progress but the process is alive | Almost certainly a slow turn, not a hang — this model returned after 5–7 minutes repeatedly. **Wait.** A real hang surfaces as `provider_retry` with `litellm.Timeout` after ~15 min per attempt with `--timeout 300`. Only investigate past that: `find runs/<dir>/events.jsonl -mmin +16 -print`. Prevent long turns next run with `max_tokens` in `--provider-config` and a lower `--timeout`; both are hashed, so they must be set before the first node. See the gotcha above. |
 | A node ends in any error | The run continues by default: the node is recorded in `result.json:node_failures`, its parent is an identity fallback, and neither it nor anything above it is checkpointed. `inspect-run` names them at the top. Triage the node, then `--resume` — the give-up thresholds are not hashed, so you may loosen them on the way. `--fail-fast` restores the old abort; `--max-failed-nodes` (default 3) stops a run that is failing everywhere. |

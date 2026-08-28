@@ -176,6 +176,15 @@ class LiteLLMProvider:
         prompt_tokens = _value(raw_usage, "prompt_tokens")
         completion_tokens = _value(raw_usage, "completion_tokens")
         total_tokens = _value(raw_usage, "total_tokens")
+        # Two spellings for one number. Gemini reports it under
+        # prompt_tokens_details; the Anthropic-shaped backends report
+        # cache_read_input_tokens. Either way it is part of prompt_tokens
+        # already, so it is recorded beside the total and never added to it.
+        cached_tokens = _value(
+            _value(raw_usage, "prompt_tokens_details") or {}, "cached_tokens"
+        )
+        if cached_tokens is None:
+            cached_tokens = _value(raw_usage, "cache_read_input_tokens")
         hidden = _value(response, "_hidden_params", {}) or {}
         response_cost = _value(hidden, "response_cost")
         usage = None
@@ -185,6 +194,7 @@ class LiteLLMProvider:
                 prompt_tokens,
                 completion_tokens,
                 total_tokens,
+                cached_tokens,
                 response_cost,
             )
         ):
@@ -199,6 +209,9 @@ class LiteLLMProvider:
                 ),
                 total_tokens=(
                     int(total_tokens) if total_tokens is not None else None
+                ),
+                cached_input_tokens=(
+                    int(cached_tokens) if cached_tokens is not None else None
                 ),
                 cost_usd=(
                     float(response_cost) if response_cost is not None else None

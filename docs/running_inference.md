@@ -239,6 +239,94 @@ normalizes assistant content, function names, JSON arguments, response ID,
 provider/model IDs, finish reason, token counts, and reported cost. Invalid
 tool IDs, names, arguments, or empty choices fail explicitly.
 
+### Gemini preset
+
+The Gemini API is reached through the same LiteLLM contract as everything else.
+The preset supplies the routing, the key, and one preflight:
+
+```bash
+export GEMINI_API_KEY='...'
+
+cognate-reconstruct gemini-models
+
+cognate-reconstruct infer \
+  --preset gemini \
+  --model gemini-3.7-flash \
+  --reasoning-effort high \
+  --input runs/input.json \
+  --output runs/result.json \
+  --trajectories runs/trajectories.jsonl \
+  --events runs/events.jsonl
+```
+
+The preset prefixes the LiteLLM identifier with `gemini/` unless the model is
+already routed (`gemini/…` or `vertex_ai/…`, which is a different backend with
+its own credentials), reads the key from `GEMINI_API_KEY` unless
+`--api-key-env` names another variable, and checks the model against
+`models.list` before the run starts. `gemini-models` prints the same list;
+both send the key in the `x-goog-api-key` header rather than the `?key=` query
+parameter Google's examples show, because query strings are what proxies and
+access logs retain. `--no-preflight` skips the check. `--api-base` overrides
+the endpoint for a proxy.
+
+Three things about Gemini differ from a local OpenAI-compatible server, and the
+harness handles each rather than leaving it to the run:
+
+- **Thinking is off by default in all but name.** Gemini 3 thinks at `low`
+  unless told otherwise. `--reasoning-effort {minimal,low,medium,high}` sets it,
+  and is recorded in the configuration digest, because a run at `low` and a run
+  at `high` are not the same experiment. It is passed under the OpenAI-shaped
+  name, so any backend with a reasoning control accepts it.
+- **There is no seed.** `--provider-seed-base` and a `seed` in
+  `--provider-config` are refused up front rather than dropped, so a sweep never
+  reports spread across repetitions it only appeared to seed. Run the sweep
+  without a seed and read the spread as the provider nondeterminism it is.
+- **Thought signatures are carried, not shown.** Gemini 3 returns an encrypted
+  reasoning signature with every tool call and rejects a replayed tool-call turn
+  that arrives without it. LiteLLM smuggles it through the OpenAI tool-call ID;
+  the adapter splits it off on arrival, keeps the short ID everywhere the model
+  and the trajectories can see it, and restores the signature on the way out.
+  Without that split, every `validation_call_id` the model must quote to commit
+  a hypothesis would carry a kilobyte of base64.
+
+#### What a run actually costs
+
+Almost none of a prompt is the linguistic data. Measured against
+`gemini-3.7-flash` with `countTokens`, the first call of a two-form fixture was
+20,880 tokens: 11,660 for the thirteen tool schemas, 8,344 for the agent
+instructions, and 876 for the node payload. That 20,004-token preamble is
+identical on every call and at every node, so cost scales as
+`(instructions + tool schemas) x turns x nodes` and is nearly independent of how
+much lexicon you feed it.
+
+The preamble is also a stable cache prefix, and Gemini caches it implicitly.
+`ProviderUsage.cached_input_tokens` and `NodeMetrics.cached_input_tokens` record
+what the provider served from cache, and `inspect-run` prints it as a share:
+
+```
+tokens   in 129474 (69225 cached, 53%) / out 528 / total 130002 / $0.0524
+```
+
+Read it as a subset of the input, never an addition: the provider counts a
+cached token as prompt input and discounts its price. `null` means the provider
+reported nothing, which is not zero — a backend without caching and a cold run
+both read as `null`, and only the cost separates them. In the run above the
+first two calls were cold and the rest hit 74-91%.
+
+Two consequences worth acting on. A sweep's budget is set by turns and nodes
+rather than by corpus size, so bound it with `--max-total-cost-usd` rather than
+by trimming concepts. And anything that perturbs the preamble between calls —
+editing the instructions mid-sweep, or a tool schema that varies per node —
+throws the cache away and roughly doubles the bill without changing a single
+result.
+
+The tool schemas need no special handling. They are Pydantic JSON Schema, which
+carries `$defs`, `$ref`, and `additionalProperties`; Gemini accepts only an
+OpenAPI subset, and LiteLLM rewrites them. `tests/workbench/test_gemini_provider.py`
+asserts the rewrite is total and assembles a complete request body offline, so a
+LiteLLM upgrade that breaks either fails in the suite rather than on the first
+call of a run.
+
 ### LM Studio preset
 
 With a model already loaded and the local server running:

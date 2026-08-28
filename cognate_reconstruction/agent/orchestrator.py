@@ -1014,6 +1014,9 @@ class AgentOrchestrator:
             total_tokens=self._usage_total(
                 state.provider_responses, "total_tokens"
             ),
+            cached_input_tokens=self._usage_total(
+                state.provider_responses, "cached_input_tokens"
+            ),
             cost_usd=sum(cost_values) if cost_values else None,
             committed_rule_count=rule_count,
             committed_anomaly_count=anomaly_count,
@@ -1158,6 +1161,8 @@ class AgentOrchestrator:
                 "input": metrics.input_tokens,
                 "output": metrics.output_tokens,
                 "total": metrics.total_tokens,
+                # Part of "input", not additional to it.
+                "cached_input": metrics.cached_input_tokens,
             },
             cost_usd=metrics.cost_usd,
         )

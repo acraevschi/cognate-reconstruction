@@ -253,7 +253,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     python = find_python()
 
     if args.preset == "lm-studio":
-        models = ensure_lm_studio(args.api_base, autostart=not args.no_autostart)
+        models = ensure_lm_studio(
+            args.api_base or DEFAULT_API_BASE, autostart=not args.no_autostart
+        )
         bare = args.model.removeprefix("openai/")
         if bare not in models:
             print(f"model {bare!r} is not loaded in LM Studio.\nLoaded: "
@@ -283,6 +285,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         command += ["--api-base", args.api_base]
     if args.api_key_env:
         command += ["--api-key-env", args.api_key_env]
+    if args.reasoning_effort:
+        command += ["--reasoning-effort", args.reasoning_effort]
     if args.quiet:
         command += ["--quiet"]
 
@@ -507,9 +511,17 @@ def main() -> int:
     run.add_argument("--model", required=True)
     run.add_argument("--input", default="examples/reconstruction_input.json")
     run.add_argument("--run-dir")
-    run.add_argument("--preset", default="lm-studio", choices=["lm-studio", ""])
-    run.add_argument("--api-base", default=DEFAULT_API_BASE)
+    run.add_argument(
+        "--preset", default="lm-studio", choices=["lm-studio", "gemini", ""]
+    )
+    # No default: DEFAULT_API_BASE is LM Studio's localhost, and passing it to a
+    # hosted provider would point the run at a server that is not there. The
+    # lm-studio branch supplies it explicitly instead.
+    run.add_argument("--api-base")
     run.add_argument("--api-key-env")
+    run.add_argument(
+        "--reasoning-effort", choices=["minimal", "low", "medium", "high"]
+    )
     run.add_argument("--temperature", type=float, default=0.0)
     run.add_argument("--max-turns", type=int, default=16)
     run.add_argument("--max-tool-calls", type=int, default=32)

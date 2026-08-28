@@ -296,6 +296,124 @@ def test_a_signed_turn_becomes_a_valid_gemini_request() -> None:
     assert body["toolConfig"]["functionCallingConfig"]["mode"] == "AUTO"
 
 
+def _usage_response(usage: dict):
+    def completion(**_):
+        return {
+            "id": "response-1",
+            "model": "gemini-3.7-flash",
+            "choices": [
+                {"finish_reason": "stop", "message": {"content": "done"}}
+            ],
+            "usage": usage,
+        }
+
+    return completion
+
+
+def test_cached_prompt_tokens_are_recorded_from_gemini_s_spelling() -> None:
+    provider = LiteLLMProvider(
+        "gemini/gemini-3.7-flash",
+        completion_fn=_usage_response(
+            {
+                "prompt_tokens": 20880,
+                "completion_tokens": 182,
+                "total_tokens": 21062,
+                "prompt_tokens_details": {"cached_tokens": 20004},
+            }
+        ),
+    )
+    usage = _complete(provider).metadata.usage
+    assert usage is not None
+    assert usage.input_tokens == 20880
+    # A subset of the prompt, not an addition to it: the provider counted these
+    # as input and discounted the price. Adding them would double-count.
+    assert usage.cached_input_tokens == 20004
+
+
+def test_cached_prompt_tokens_are_recorded_from_the_other_spelling() -> None:
+    """Anthropic-shaped backends report the same number under another name."""
+    provider = LiteLLMProvider(
+        "anthropic/claude",
+        completion_fn=_usage_response(
+            {
+                "prompt_tokens": 20880,
+                "completion_tokens": 182,
+                "total_tokens": 21062,
+                "cache_read_input_tokens": 20004,
+            }
+        ),
+    )
+    usage = _complete(provider).metadata.usage
+    assert usage is not None
+    assert usage.cached_input_tokens == 20004
+
+
+def test_a_provider_that_reports_no_cache_records_none_not_zero() -> None:
+    """A backend without caching and a cold cache are different facts."""
+    provider = LiteLLMProvider(
+        "openai/local-model",
+        completion_fn=_usage_response(
+            {"prompt_tokens": 100, "completion_tokens": 5, "total_tokens": 105}
+        ),
+    )
+    usage = _complete(provider).metadata.usage
+    assert usage is not None
+    assert usage.input_tokens == 100
+    assert usage.cached_input_tokens is None
+
+
+def test_a_response_reporting_only_a_cache_hit_still_carries_usage() -> None:
+    provider = LiteLLMProvider(
+        "gemini/gemini-3.7-flash",
+        completion_fn=_usage_response({"prompt_tokens_details": {"cached_tokens": 7}}),
+    )
+    usage = _complete(provider).metadata.usage
+    assert usage is not None
+    assert usage.cached_input_tokens == 7
+
+
+def test_the_cached_share_is_summed_across_a_session() -> None:
+    """The node metric is the session total, the way the other counters are."""
+    from cognate_reconstruction.agent.orchestrator import AgentOrchestrator
+    from cognate_reconstruction.agent.schemas import (
+        ProviderResponseMetadata,
+        ProviderUsage,
+    )
+
+    responses = [
+        ProviderResponseMetadata(
+            usage=ProviderUsage(input_tokens=20880, cached_input_tokens=0)
+        ),
+        ProviderResponseMetadata(
+            usage=ProviderUsage(input_tokens=21343, cached_input_tokens=20004)
+        ),
+        ProviderResponseMetadata(usage=ProviderUsage(input_tokens=21500)),
+    ]
+    total = AgentOrchestrator._usage_total(responses, "cached_input_tokens")
+    assert total == 20004
+
+
+def test_inspect_run_reads_the_cache_as_a_share_not_a_count() -> None:
+    from cognate_reconstruction.inspect_run import _cached_share
+
+    class _Metrics:
+        input_tokens = 130778
+        cached_input_tokens = 117000
+
+    assert _cached_share(_Metrics()) == " (117000 cached, 89%)"
+
+
+def test_inspect_run_stays_silent_when_no_cache_was_reported() -> None:
+    """A backend without caching must not grow a column of misleading zeroes."""
+    from cognate_reconstruction.inspect_run import _cached_share
+
+    class _Metrics:
+        input_tokens = 130778
+        cached_input_tokens = None
+
+    assert _cached_share(_Metrics()) == ""
+
+
 def _infer_args(*extra: str, preflight: bool = False) -> argparse.Namespace:
     """Parse a real `infer` command line rather than hand-building a namespace.
 

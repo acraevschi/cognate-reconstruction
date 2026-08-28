@@ -559,6 +559,23 @@ def _reported(value: object | None) -> str:
     return "not reported" if value is None else str(value)
 
 
+def _cached_share(metrics: object) -> str:
+    """How much of the input the provider did not re-read at full price.
+
+    Every call in a session repeats the agent instructions and the tool
+    schemas, which is most of the prompt. Read as a share rather than a count:
+    "130778" says nothing about whether that preamble was cached, and the
+    difference between 0% and 90% is the difference between two sweep budgets.
+    Silent when the provider reported nothing, so backends without caching do
+    not grow a column of zeroes that would read as a cold cache.
+    """
+    cached = getattr(metrics, "cached_input_tokens", None)
+    total = getattr(metrics, "input_tokens", None)
+    if cached is None or not total:
+        return ""
+    return f" ({cached} cached, {cached / total:.0%})"
+
+
 def _session_rows(
     trajectory: AgentTrajectory,
     events: Counter[str] | None,
@@ -621,7 +638,8 @@ def _session_rows(
     rows.append(
         (
             "tokens",
-            f"in {_reported(metrics.input_tokens)} / "
+            f"in {_reported(metrics.input_tokens)}"
+            f"{_cached_share(metrics)} / "
             f"out {_reported(metrics.output_tokens)} / "
             f"total {_reported(metrics.total_tokens)}"
             + (f" / ${metrics.cost_usd:.4f}" if metrics.cost_usd else ""),

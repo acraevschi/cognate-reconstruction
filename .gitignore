@@ -15,6 +15,15 @@ venv/
 # Local Claude Code config; the canonical skill source is committed at skills/
 .claude/
 
+# Secrets. Keys belong in the environment; the harness reads them by variable
+# name (--api-key-env) and never writes them to a config, event, trajectory, or
+# checkpoint. These patterns exist so a key pasted into the tree cannot be
+# committed by accident.
+*KEY.txt
+*_key.txt
+.env
+.env.*
+
 # Run outputs
 runs/
 reconstruction_events.jsonl
