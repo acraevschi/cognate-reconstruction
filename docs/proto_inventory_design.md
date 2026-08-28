@@ -2838,12 +2838,33 @@ Only 5 and 6 run a live model, and **only condition 6 runs one on real data.**
 > matters has never been evaluated.
 
 **Recommendation: stage 4 should not be put to the research owner on this
-evidence.** Not because a condition trips; the trips are handled. Because the
-cheapest honest thing that would close §7 — the Polynesian sweep §7.6 recommends
-and §7.7 declined on budget — has not been run, and stage 4 deletes the path that
-sweep would be compared against. Deleting the branch-cascade commit path is the
-act that makes the comparison unrepeatable, so it is the wrong thing to do while
-the comparison is outstanding.
+evidence.** Not because a condition trips; the trips are handled. Because
+condition 6 has no real-data reading and stage 4 deletes the path that reading
+would be compared against — deleting the branch-cascade commit path is the act
+that makes the comparison unrepeatable, so it is the wrong thing to do while the
+comparison is outstanding.
+
+**And a Polynesian sweep will not close condition 6.** This has to be said
+plainly, because "run Polynesian and close it" is the natural next move and
+§7.6 already ruled it out. §7.6's option A — more Polynesian seeds — buys a
+spread and "fixes neither (a) nor (b), because Polynesian has one gold node and
+cannot be read per-node". §7.6's recommendation is that condition 6's **verdict**
+is taken from `synthetic_hard`, per gold node, at 5 seeds per condition — which
+**§7.7 did**, and condition 6 tripped there — while **Polynesian is run at 5
+seeds per condition and *reported, not scored***, with the scoreable-seed count
+published beside every number. So a Polynesian sweep discharges step 2 of that
+recommendation and produces a report; it cannot produce a verdict on a
+single-gold family, and no number of seeds changes that.
+
+What would make condition 6 answerable on real data is §7.6's **option B**, a
+family with two gold nodes in one tree — and §7.6 says option B "delays
+condition 6 rather than enabling it", because a new family needs its own oracle
+ceiling and its own `unaccounted_column_rate` floor (§7.2) before any threshold
+applies to it. **Condition 6 is therefore not merely unmeasured; on the datasets
+this repository has, it is unmeasurable in verdict-bearing form.** That is a
+finding about §7's design, not about the architecture, and it is the strongest
+reason to treat "§7 does not close" as a statement about the falsification set
+rather than a hesitation about the change.
 
 #### The condition §7 never asked, and what it actually says
 
@@ -2923,7 +2944,10 @@ change passes it — the third one it does not.
   committed one.** It addresses three of thirteen observed stalls by
   construction; the effect on a run is unmeasured.
 - **Nothing about condition 6.** It remains the open item and the reason §7 does
-  not close. §7.6's recommendation still stands unexecuted.
+  not close. §7.6's recommendation is *half* executed: step 1, the
+  `synthetic_hard` per-gold-node verdict at 5 seeds, is §7.7 and it tripped;
+  step 2, Polynesian run at 5 seeds and reported rather than scored, has not
+  been run. Discharging step 2 is worth doing and will not close the condition.
 
 ### 7.11 The two protocol items, closed 2026-08-28
 
