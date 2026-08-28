@@ -2902,11 +2902,10 @@ What *does* change on real data is the **failure mode**, and it inverts:
 
 Under the inventory commit shape on real data, nodes stop running out of turns
 and start being killed by the stall detector. Six of the thirteen are the
-repeated-signature rule and seven the rejected-window rule. **Three of the
-thirteen are on checks that `verify_commitments` now batches** (§7.11), where the
-stall was the harness misreading monotone progress as repetition. The other ten
-are not, and whether batching also reduces the window-rule stalls cannot be
-established without a sweep.
+repeated-signature rule and seven the rejected-window rule. **A check that
+`verify_commitments` now batches appears in nine of the thirteen** (§7.11), and
+§7.12 measures how far that accounts for them. Whether batching converts any of
+these into commits cannot be established without a sweep.
 
 #### Three conditions proposed to the research owner, beside the originals
 
@@ -3048,15 +3047,24 @@ tuple verbatim — *that set is `[None, 'a', 'a']`*. There was no missing
 information at either end.
 
 What was missing was the **rest of the list**. On `nuclear_polynesian` the model
-wrote eight rows with the gap elided. `verify_commitments` raised on the first
-offender only, so:
+sent 19 commitments and `verify_commitments` raised on the first offender only:
 
-| turn | rows correct | harness said |
+| turn | rows wrong, of 19 | harness said |
 | --- | --- | --- |
-| 1 | 0 of 8 | `cs-08968e2078cb` is wrong |
-| 2 | 6 of 8 | `cs-824774173e28` is wrong |
-| 3 | 7 of 8 | `cs-88cb018807c3` is wrong |
-| 4 | **8 of 8** | `ProtocolStallError` — *the model is not adapting to the tool contract* |
+| 1 | 15 | `cs-08968e2078cb` is wrong |
+| 2 | 9 | `cs-824774173e28` is wrong |
+| 3 | 8 | `cs-88cb018807c3` is wrong |
+| 4 | 8 | `cs-27d0ffaa5822` is wrong, and `ProtocolStallError` — *the model is not adapting to the tool contract* |
+
+> **Correction, 2026-08-28.** An earlier version of this subsection said the
+> model "fixed six of eight rows, then seven, then eight, and was killed on the
+> turn it finally had every row right". That was read off the first 8 of 19
+> commitments and is wrong. The model never converged: at the fatal turn 10
+> rows were right, 8 were still wrong, and 1 cited a set no survey in the
+> transcript returned. What is true, and is the actual argument, is in §7.12:
+> **every set the harness named and gave the model a turn to fix, the model
+> fixed — 21 of 21 across the whole after condition.** The 7 rows still wrong
+> at the end were rows the harness had never named.
 
 The stall signature is `(tool name, error code)`, which cannot tell *the same
 mistake on a new set* from *the same mistake again*. The model was adapting,
@@ -3078,9 +3086,142 @@ the next call.
 
 **Not verified live.** Whether this converts `nuclear_polynesian` into a commit
 needs a Polynesian sweep, which was not run. What can be said from the artifacts
-is the bound in §7.10: it addresses **3 of the 13** `ProtocolStallError`s in the
-after condition's Polynesian seeds by construction, and its effect on the seven
-window-rule stalls is unknown.
+is the bound §7.12 measures: a check this now batches appears in **9 of the 13**
+`ProtocolStallError`s in the after condition's Polynesian seeds. In the three
+killed by a repeated reflex-or-support signature it is the whole cause. In the
+six window-saturation stalls it is one code among several, so batching reduces
+the window's count without necessarily emptying it.
+
+### 7.12 Is the stall detector killing models that are adapting?
+
+*Measured 2026-08-28 over the 13 `ProtocolStallError`s in the five Polynesian
+after-condition seeds. Banked artifacts only; no inference was run.*
+
+§7.10 records that the failure mode inverts on real data: the before condition
+runs out of turns, the after condition is killed by the stall detector, 13 times
+against 2. Because a failed node returns nothing and is the most expensive
+outcome (§7.9), this is the largest single lever on the real-data commit rate —
+which is the one quantity where the migration currently shows no gain.
+
+This subsection asks whether those 13 deaths are the detector doing its job.
+
+#### What the detector actually keys on
+
+Two rules, both in `AgentOrchestrator`:
+
+- **Repeated signature.** The signature is `(tool name, error code)`. When it
+  occurs `max_repeated_tool_failures` times inside a trailing window of
+  `stall_window_calls`, the harness injects a correction; on a second saturation
+  of the same signature it raises. The signature carries **no item identity**, so
+  eight different commitments failing one check are indistinguishable from one
+  commitment failing eight times.
+- **Window saturation.** Protocol-category rejections in the trailing window,
+  counted without regard to which codes they were. Exploratory rejections are
+  excluded deliberately.
+
+Both messages assert the same thing: *the model is not adapting to the tool
+contract.* That assertion is testable against the transcripts, and it is mostly
+false.
+
+#### Test 1 — did the model fix what it was told about?
+
+`verify_commitments` named exactly one offending set per rejection. For every
+such rejection, does that set appear correct in the model's **next** commitment
+payload?
+
+| | |
+| --- | --- |
+| rejections naming a specific set | 25 |
+| the model was killed before it got another turn | 4 |
+| the model dropped the set from its next payload | 0 |
+| **the model got a turn to fix it** | **21** |
+| **of those, fixed** | **21 (100%)** |
+
+**Twenty-one out of twenty-one.** Across every stalled node in the after
+condition, the model repaired precisely the set the harness named, every time it
+was given the chance. The four it did not repair were named in the fatal
+rejection itself.
+
+The model's failure was never an inability to read the contract. The harness
+named one defect per turn while the payload carried up to eight defects of the
+same kind, and the detector counted the turns.
+
+#### Test 2 — the detector's own theory, applied to itself
+
+"Not adapting" has a mechanical reading: the model re-sends a call the harness
+already rejected. Comparing byte-identical arguments per node:
+
+| | stalled nodes |
+| --- | --- |
+| changed the call after every rejection | **9 of 13** |
+| re-sent a call that had already been rejected | **4 of 13** |
+
+In **9 of the 13**, the model never once repeated a rejected call. The message
+that ended those nodes states the opposite of what the transcript shows.
+
+#### Where the detector was right, which matters
+
+The counter-evidence is real and is not filed away. `tahitic` in
+`after-gapbug/seed-01` sent the **byte-identical** `test_proto_assembly` call
+three times after rejection. That is the behaviour the detector exists to catch,
+and it caught it. Three other nodes repeated a rejected call once each.
+
+So the detector is not broken in general. It is **blind to progress**, and on
+this workload progress is the normal case: 9 of 13 changed every call, and the
+one measure that tracks repair directly says 21 of 21.
+
+#### One thing this does not say
+
+It does not say the model would have committed. On `nuclear_polynesian` in
+`after/seed-00` the defect count fell 15 → 9 → 8 → 8 out of 19 rows and then
+stopped falling. The model was adapting and had **not** converged. §7.11 carries
+a correction where it previously claimed otherwise.
+
+What can be said is narrower and still strong: the reason it stopped falling is
+that the remaining rows had never been named. Seven of the eight rows still
+wrong at the fatal turn were rows the harness had not mentioned once. A model
+cannot repair a defect it has not been shown, and its record on defects it *was*
+shown is perfect.
+
+#### Recommendation, for the research owner — not implemented
+
+**Make the stall signature carry item identity, or make the detector require an
+absence of progress.** Two shapes, and the choice is a research-owner call
+because the stall detector is a termination guard and loosening one is not a
+change to make unilaterally:
+
+- **Narrow.** Extend the signature from `(tool, code)` to
+  `(tool, code, offending-item-id)` where the rejection names an item. Eight
+  sets failing one check then read as eight signatures, not one, and the rule
+  fires only on a genuine repeat. This is the smallest change that matches the
+  evidence, and it leaves the guard's strength intact for real repeats — it
+  would still have caught `tahitic`.
+- **General.** Before raising, require that the model's last payload be no
+  better than the one before it. "Better" has to be defined without linguistics;
+  the count of commitments failing the cited check is available to the harness
+  already and is what this subsection measures.
+
+**A caution about sequencing, which is the practical point.** A Polynesian sweep
+run before this is decided measures the detector as much as the architecture,
+because the detector ends 13 of 13 of the after condition's failed nodes and
+9 of those 13 involve a check whose reporting changed on 2026-08-28. §7.6 already
+holds that Polynesian cannot yield a verdict on condition 6. This is a second,
+independent reason not to spend the ten hours yet.
+
+#### Every command in this subsection
+
+```bash
+# both tests read only banked trajectories; no script is committed, because
+# neither quantity can regress from a change to this repository's code — they
+# are properties of runs already recorded.
+#
+# Test 1: for each rejection carrying "commitment 'cs-…'", look up that set_id
+#   in the next test_proto_assembly / commit_reconstruction payload and compare
+#   its reflexes (or support) against the survey the same transcript returned.
+# Test 2: hash each tool call's arguments; a repeat is a hash already seen on a
+#   call the harness rejected.
+# Both iterate runs/sweeps/polynesian-after*/seed-*/trajectories.jsonl.
+```
 
 ---
 
