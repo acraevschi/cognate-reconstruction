@@ -119,9 +119,24 @@ class ProtocolStallError(RuntimeError):
     """
 
 
-_FailureSignature = tuple[str, str]
+_FailureSignature = tuple[str, str, str]
+"""What the stall detector counts: tool name, error code, and offenders.
 
-_SUCCESS_SIGNATURE: _FailureSignature = ("", "<success>")
+The third slot is `ToolInputError.subject` when the check that refused the call
+could identify *what* was wrong, and `""` otherwise. Without it the signature
+cannot tell "the same mistake on a new item" from "the same mistake again", and
+§7.12 measured the cost of that on real data: across the after condition's
+Polynesian seeds the model repaired the item the harness named **21 times out of
+21** it was given a turn, and 9 of 13 stalled nodes never once re-sent a call the
+harness had rejected. Those nodes were ended for not adapting while adapting.
+
+This does not weaken the rule for a genuine repeat. A model that re-sends the
+same payload produces the same offenders and therefore the same signature, which
+is why the one node that sent a byte-identical call three times still stalls —
+pinned by `test_a_model_repeating_itself_still_stalls`.
+"""
+
+_SUCCESS_SIGNATURE: _FailureSignature = ("", "<success>", "")
 """Placeholder recorded for an accepted call so it occupies a window slot."""
 
 COMPACTABLE_TOOL_NAMES: frozenset[str] = frozenset(
@@ -743,7 +758,8 @@ class AgentOrchestrator:
         state.tool_failures_by_type[code] = (
             state.tool_failures_by_type.get(code, 0) + 1
         )
-        signature = (call.name, code)
+        subject = getattr(error, "subject", None) if error is not None else None
+        signature = (call.name, code, subject or "")
         occurrences = self._record_call_signature(state, signature)
         if occurrences < self.max_repeated_tool_failures:
             return self._window_intervention(context, state, error)

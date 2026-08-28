@@ -155,6 +155,19 @@ class ToolError(WorkbenchModel):
             "explaining how to construct an accepted call."
         ),
     )
+    subject: NonEmptyStr | None = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "Which items this rejection is about, as a stable digest, when the "
+            "check could identify them. Read only by the stall detector, which "
+            "counts a repeat only when the same offenders come back. "
+            "exclude=True on purpose: it is harness bookkeeping, so it must not "
+            "reach the model in the tool result and must not change a "
+            "trajectory byte. It is recoverable from 'message', which names the "
+            "offenders in full."
+        ),
+    )
 
 
 class ToolExecutionResult(WorkbenchModel):

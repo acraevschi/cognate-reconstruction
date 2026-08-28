@@ -26,6 +26,8 @@ from cognate_reconstruction.agent.schemas import (
     MessageRole,
     ProviderResponse,
     ProviderResponseMetadata,
+    ToolError,
+    ToolExecutionResult,
 )
 from cognate_reconstruction.agent.trajectory import (
     MAX_PROTOCOL_FAILURE_RATE,
@@ -1300,3 +1302,74 @@ def test_local_run_artifacts_load_and_keep_their_verdicts(path: Path) -> None:
             continue
         assert metrics.protocol_failures == metrics.failed_tool_call_count
         assert trajectory.high_quality == _pre_split_high_quality(trajectory)
+
+
+# ---------------------------------------------------------------------------
+# The stall signature carries WHICH items failed (§7.12)
+# ---------------------------------------------------------------------------
+
+
+def _stall_after(subjects: tuple[str | None, ...]) -> int | None:
+    """Feed one rejection per subject and report where the detector raises.
+
+    Everything but the subject is held constant: same tool, same error code,
+    same category. So the only thing that can separate the two tests below is
+    whether the offenders repeated.
+    """
+    from datetime import UTC, datetime
+
+    from cognate_reconstruction.agent.orchestrator import _RunState
+
+    orchestrator = AgentOrchestrator(
+        AlwaysMalformedCommitProvider(),
+        instructions="x",
+        max_repeated_tool_failures=3,
+    )
+    state = _RunState(started_at=datetime.now(UTC), started_monotonic=0.0)
+    context = _context()
+    for index, subject in enumerate(subjects, 1):
+        result = ToolExecutionResult(
+            ok=False,
+            error=ToolError(
+                error_type="ToolInputError",
+                message="commitment rejected",
+                code="correspondence-reflex-mismatch",
+                subject=subject,
+            ),
+        )
+        call = LLMToolCall(
+            call_id=f"c{index}", name="test_proto_assembly", arguments={}
+        )
+        _correction, stall = orchestrator._record_tool_failure(
+            context, state, call, result
+        )
+        if stall is not None:
+            return index
+    return None
+
+
+def test_a_model_repeating_itself_still_stalls() -> None:
+    """The guard keeps its strength where it was earning it.
+
+    `after-gapbug/seed-01/tahitic` sent the byte-identical `test_proto_assembly`
+    call three times after rejection. That is the behaviour the detector exists
+    to catch, it caught it, and widening the signature must not stop it: an
+    unchanged payload produces an unchanged offender set.
+    """
+    assert _stall_after(("same", "same", "same", "same", "same")) is not None
+
+
+def test_a_different_offender_each_turn_does_not_stall() -> None:
+    """The false positive §7.12 measured, as a test.
+
+    One mistake made across many commitments used to read as one mistake
+    repeated, because the signature was `(tool, code)` and carried no item
+    identity. The model was ending its node while repairing a different set
+    every turn.
+    """
+    assert _stall_after(("a", "b", "c", "d", "e")) is None
+
+
+def test_a_rejection_with_no_subject_keeps_the_old_behaviour() -> None:
+    """Schema rejections and rationale checks name no set, and are unchanged."""
+    assert _stall_after((None, None, None, None, None)) is not None

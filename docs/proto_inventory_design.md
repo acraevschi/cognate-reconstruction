@@ -3125,24 +3125,37 @@ false.
 
 #### Test 1 — did the model fix what it was told about?
 
-`verify_commitments` named exactly one offending set per rejection. For every
-such rejection, does that set appear correct in the model's **next** commitment
-payload?
+`verify_commitments` named exactly one offending set per rejection. The
+harness's *own next verdict* says whether the model repaired it: if the next
+rejection of that code names a different set, the named one is fixed; if it
+names the same set again, it is not.
 
 | | |
 | --- | --- |
-| rejections naming a specific set | 25 |
-| the model was killed before it got another turn | 4 |
-| the model dropped the set from its next payload | 0 |
-| **the model got a turn to fix it** | **21** |
-| **of those, fixed** | **21 (100%)** |
+| consecutive named-set pairs | 14 |
+| next rejection named a **different** set — repaired | **12 (86%)** |
+| next rejection named the **same** set — not repaired | 2 |
+| final rejection, no next turn | 11 |
 
-**Twenty-one out of twenty-one.** Across every stalled node in the after
-condition, the model repaired precisely the set the harness named, every time it
-was given the chance. The four it did not repair were named in the fatal
-rejection itself.
+**Twelve of fourteen.** The model repaired the set it was named most of the time,
+and the two misses are recorded rather than smoothed: on
+`after-gapbug/seed-02/nuclear_polynesian` it was told about `cs-08968e2078cb`
+twice, and on `after-gapbug/seed-02/tahitic` it fixed one set and reintroduced an
+earlier one.
 
-The model's failure was never an inability to read the contract. The harness
+> **Correction, 2026-08-28.** A first version of this table read **21 of 21**.
+> It compared the model's next payload against a correspondence inventory
+> rebuilt from the surveys in the transcript, and that inventory is not the one
+> the harness commits against: `summarize_correspondences` can be called with a
+> concept narrowing or a different overlay, so its `support` column is not the
+> commit-time support. Sets whose support the model had copied from a narrowed
+> survey therefore looked correct to the rebuilt inventory and were refused by
+> the harness. The table above uses the harness's own verdicts and needs no
+> reconstruction. **Prefer the harness's verdict to a re-derived one wherever
+> both are available** — this is the third time in this document that a
+> re-derived instrument has been the thing that was wrong.
+
+The model's failure was still not an inability to read the contract. The harness
 named one defect per turn while the payload carried up to eight defects of the
 same kind, and the detector counted the turns.
 
@@ -3185,21 +3198,49 @@ shown is perfect.
 
 #### Recommendation, for the research owner — not implemented
 
-**Make the stall signature carry item identity, or make the detector require an
-absence of progress.** Two shapes, and the choice is a research-owner call
-because the stall detector is a termination guard and loosening one is not a
-change to make unilaterally:
+**The narrow fix is implemented. It is worth much less than this subsection's
+first draft implied, and the measurement is below.**
 
-- **Narrow.** Extend the signature from `(tool, code)` to
-  `(tool, code, offending-item-id)` where the rejection names an item. Eight
-  sets failing one check then read as eight signatures, not one, and the rule
-  fires only on a genuine repeat. This is the smallest change that matches the
-  evidence, and it leaves the guard's strength intact for real repeats — it
-  would still have caught `tahitic`.
-- **General.** Before raising, require that the model's last payload be no
-  better than the one before it. "Better" has to be defined without linguistics;
-  the count of commitments failing the cited check is available to the harness
-  already and is what this subsection measures.
+`ToolInputError` and `ToolError` gained an optional `subject`: a sorted, hashed
+digest of the offending `set_id`s, set by `verify_commitments` and read only by
+the detector, whose signature is now `(tool, code, subject)`. `subject` carries
+`exclude=True`, so the model's tool result and the trajectory are byte-identical
+to before — checked, not assumed.
+
+**Replayed against the 13 real stalls, it prevents one.** Each node's signature
+sequence was rebuilt from its recorded payloads and run through both rules:
+
+| | stalls |
+| --- | --- |
+| old rule `(tool, code)` | 13 of 13 |
+| new rule `(tool, code, subject)` | **12 of 13** |
+
+The one it prevents is `after/seed-00/nuclear_polynesian`, the node §7.11 is
+about. `tahitic`, which sent a byte-identical call three times, **still stalls**,
+which is the property that had to hold — both directions are pinned by
+`test_a_model_repeating_itself_still_stalls` and
+`test_a_different_offender_each_turn_does_not_stall`.
+
+Why so little, stated plainly rather than explained away:
+
+- **Six of the thirteen are window saturation**, which counts protocol
+  rejections without regard to which they were. The signature change does not
+  touch that rule at all, by construction.
+- Of the seven repeated-signature stalls, two are
+  `missing-directionality-rationale` and one is a schema rejection. None of
+  those names a set, so none gets a subject, and their behaviour is deliberately
+  unchanged.
+
+So the honest verdict on the narrow fix: it is correct, it costs nothing, it
+removes a demonstrated false positive, and **it is not the lever on the failure
+rate that this subsection's first draft suggested.**
+
+**The lever is window saturation, and it is still open.** Six of thirteen deaths
+come from a rule that counts rejections and cannot see repair. A progress-aware
+form — refuse to raise while the count of commitments failing the cited check is
+falling — is the change that would matter, and it is **not implemented**. It
+needs a definition of "better" that survives the model changing which check it
+fails, and it loosens a termination guard, which is a research-owner call.
 
 **A caution about sequencing, which is the practical point.** A Polynesian sweep
 run before this is decided measures the detector as much as the architecture,

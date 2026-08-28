@@ -101,6 +101,11 @@ class ToolRegistry:
                     message=str(error),
                     code=_rejection_code(error),
                     remediation=remediation,
+                    # Harness-only, and excluded from serialization: the stall
+                    # detector counts a repeat only when the same offenders
+                    # come back. Absent on a schema rejection, which is the
+                    # pre-existing (tool, code) behaviour.
+                    subject=getattr(error, "subject", None),
                 ),
             )
         return ToolExecutionResult(ok=True, result=result.model_dump(mode="json"))
