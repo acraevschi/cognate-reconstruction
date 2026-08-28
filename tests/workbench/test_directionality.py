@@ -19,7 +19,12 @@ Four mechanisms are pinned here, none of which contains a linguistic fact:
 
 from __future__ import annotations
 
+import json
 from collections.abc import Sequence
+from pathlib import Path
+
+import pytest
+from pydantic import ValidationError
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.holdout import split_concepts
@@ -29,10 +34,12 @@ from cognate_reconstruction.agent.schemas import (
     LLMToolCall,
     LLMToolDefinition,
     MessageRole,
+    PolarizeArgs,
 )
 from cognate_reconstruction.agent.tools import default_tool_registry
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.rules import parse_rule, rule_contrast_reduction
+from cognate_reconstruction.schemas.inventory import WRITTEN_GAP_SPELLINGS
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.rules import ReconstructionRule
 from cognate_reconstruction.schemas.traversal import (
@@ -910,3 +917,101 @@ def test_the_rejection_separates_the_finding_from_the_claim_it_asks_for() -> Non
         ],
     )
     assert accepted.ok, accepted.error
+
+
+
+# ---------------------------------------------------------------------------
+# The replay: what the model wrote, against what the schema accepts.
+# ---------------------------------------------------------------------------
+
+_SWEEPS = Path(__file__).resolve().parents[2] / "runs" / "sweeps"
+_WRITTEN_GAPS: frozenset = WRITTEN_GAP_SPELLINGS | {None}
+
+
+def _gap_bearing_polarize_calls() -> list[dict]:
+    """Every `polarize` call carrying a gap, from every banked Polynesian seed.
+
+    `runs/sweeps` is gitignored, so this returns `[]` in a fresh checkout and
+    the test that reads it skips.
+    """
+    found: list[dict] = []
+    for path in sorted(_SWEEPS.glob("polynesian-*/seed-*/trajectories.jsonl")):
+        seed = f"{path.parents[1].name}/{path.parent.name}"
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            messages = json.loads(line)["messages"]
+            verdicts = {
+                message["tool_call_id"]: json.loads(message["content"])
+                for message in messages
+                if message.get("tool_call_id")
+            }
+            for message in messages:
+                for call in message.get("tool_calls") or []:
+                    if call["name"] != "polarize":
+                        continue
+                    row = call["arguments"].get("correspondence")
+                    if not isinstance(row, list):
+                        continue
+                    if not any(cell in _WRITTEN_GAPS for cell in row):
+                        continue
+                    verdict = verdicts.get(call["call_id"]) or {}
+                    found.append(
+                        {
+                            "seed": seed,
+                            "arguments": call["arguments"],
+                            "code": (
+                                None
+                                if verdict.get("ok", True)
+                                else (verdict.get("error") or {}).get("code")
+                            ),
+                        }
+                    )
+    return found
+
+
+def test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now() -> None:
+    """The coverage question the unit tests above cannot ask.
+
+    `test_a_survey_row_carrying_a_gap_can_be_pasted_straight_into_polarize`
+    fixes the set of spellings the harness *accepts* and asserts the handler
+    answers each the same way. It says nothing about whether that set covers
+    the spellings a model actually *emits* — which is the risk the widening was
+    taken to remove, and the question neither a unit test nor a live re-run can
+    settle.
+
+    Not a live re-run, deliberately. §7.7 measured that a fixed
+    `--provider-seed-base` cannot reproduce a multi-turn run: the provider mints
+    a fresh `call_id` on every tool call and the harness echoes it into the next
+    prompt, so turn 1 already diverges. A live sweep would never re-present
+    these calls; it would draw new ones and answer a weaker question at ten
+    hours' cost. Replaying the recorded arguments holds the inputs fixed, which
+    is the only way to say *the calls that were refused are accepted now*.
+
+    Validated the way `registry.execute` validates — `model_validate_json`, not
+    `model_validate`. `WorkbenchModel` is `strict=True`, and in strict python
+    mode a JSON list does not coerce to a `tuple[...]` field, so validating the
+    other way measures the harness instead of the change.
+
+    Measured 2026-08-28 over the 8 banked Polynesian seeds: 41 gap-bearing
+    calls of 112, 8 of them refused at the time (7
+    `schema:correspondence[]=string_type`, 1 `=string_too_short`), all 41
+    accepted now.
+    """
+    calls = _gap_bearing_polarize_calls()
+    if not calls:
+        pytest.skip("runs/sweeps holds no Polynesian seeds in this checkout")
+
+    refused = []
+    for call in calls:
+        try:
+            PolarizeArgs.model_validate_json(json.dumps(call["arguments"]))
+        except (ValidationError, ValueError) as error:
+            refused.append((call["seed"], call["arguments"], str(error)))
+    assert not refused, refused
+
+    # The corpus is only evidence if it still contains the failure it fixes.
+    assert [call for call in calls if call["code"]], (
+        "no historically rejected call in the corpus — the replay would pass "
+        "vacuously"
+    )
