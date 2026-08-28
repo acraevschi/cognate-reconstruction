@@ -2814,9 +2814,11 @@ IOU.
 #### Does §7 close? No — and on exactly one thing
 
 - Conditions **1, 3, 4 and 7 hold** on re-measurement. Condition 3, the mechanism
-  check and the one §7.1 says cannot be satisfied by accident, fires at **seven
-  nodes** with a mean `cross_branch_assembly_rate` of **0.957**; §7.2's first
-  abandon-the-design trigger is not close to firing. Condition 1 is **39/46**,
+  check and the one §7.1 says cannot be satisfied by accident, fires at **all
+  seven internal nodes** with a mean `cross_branch_assembly_rate` of **0.957**;
+  §7.2's first abandon-the-design trigger — the rate ~0 everywhere while top-1
+  rises, which would say the gain was really a selection fix — is not close to
+  firing. Condition 1 is **39/46**,
   five below its 44/46 expect and six clear of its 33/46 stop. Condition 4 is
   **0.031** against a target of 0.080 and a stop of 0.097. `mean_unaccounted_
   column_rate` is **0.0** under the oracle, against §7.2's 0.125 floor.
