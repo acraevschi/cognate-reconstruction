@@ -188,6 +188,57 @@ def test_polarize_reports_what_the_rest_of_the_tree_shows() -> None:
     ]
 
 
+def test_a_survey_row_carrying_a_gap_can_be_pasted_straight_into_polarize() -> None:
+    """The contradiction this closes, stated as one test.
+
+    `PolarizeArgs`' own docstring and step 4 of `system_prompt.md` both tell the
+    model to pass "a row of summarize_correspondences pasted back". A row whose
+    gap column the harness itself renders as `None` therefore had to be accepted
+    — and `tuple[NonEmptyStr, ...]` refused it, 5 times as
+    `schema:correspondence[]=string_type` on the Polynesian sweep of
+    2026-08-24, while the field description told the model to write `Ø`.
+
+    Every spelling now means the same query, and the result echoes the one
+    reading the harness took.
+    """
+    results = {
+        spelling: _call(
+            "polarize",
+            _context(),
+            child_ids=list(_ACTIVE),
+            correspondence=["ʔ", spelling],
+            position="initial",
+        )
+        for spelling in (None, "Ø", "∅", "", "null", "None")
+    }
+    for spelling, result in results.items():
+        assert result.ok, (spelling, result.error)
+        assert result.result["correspondence"] == ["ʔ", None], spelling
+        assert result.result["columns_matched"] == 2, spelling
+
+
+def test_polarize_reads_a_lowercase_slashed_o_as_a_vowel_and_not_a_gap() -> None:
+    """The same distinction `CorrespondenceCommitment.reflexes` pins.
+
+    `ø` U+00F8 is the close-mid front rounded vowel; only `Ø` U+00D8 means the
+    gap. Case-folding here would turn a query about a real segment into a query
+    about the columns where a child shows nothing, which is a different
+    question with a different answer.
+    """
+    result = _call(
+        "polarize",
+        _context(),
+        child_ids=list(_ACTIVE),
+        correspondence=["ʔ", "ø"],
+        position="initial",
+    )
+    assert result.ok, result.error
+    assert result.result["correspondence"] == ["ʔ", "ø"]
+    # Niuean shows a vowel there, not `ø`, so nothing matches — where the same
+    # query written `Ø` matches two columns.
+    assert result.result["columns_matched"] == 0
+
+
 def test_polarize_marks_a_reconstructed_node_as_not_attestation() -> None:
     """A prior hypothesis is reported, and reported as not being evidence."""
     result = _call(

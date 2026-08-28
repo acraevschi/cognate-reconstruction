@@ -36,6 +36,15 @@ subcommand and which `triage` shells out to. Reach for `inspect-run` directly
 when you have a run directory and want to know what it produced; reach for
 `triage` when you want to know how the session behaved on the way there.
 
+`cognate-reconstruct visualize-run --run-dir DIR` is the third one, and the one
+to reach for when the answer is "look at it": one self-contained HTML page with
+the traversal tree and, per node, the session turn by turn — every call, what it
+asked, what came back, and each rejection with its code and the remediation the
+harness sent back. It is the fastest way to see *where* a session went wrong
+rather than that it did. Add `--serve` to watch a run that is still going; the
+page renders a finished node from its trajectory and a node in flight from its
+events.
+
 ## Prerequisites
 
 The `llm_reconstruction` Conda env already exists at
@@ -190,6 +199,96 @@ errors.
   llm_reconstruction python`), so `make test`, `make smoke-lexibank`, and
   `make install` are all unusable here. Call the env's python directly —
   that is exactly what the driver does.
+- **LM Studio applies its own sampling panel to anything you do not send, and
+  `configuration_sha256` cannot see it.** The harness sends `model`, `messages`,
+  `tools`, `tool_choice`, `api_base`, `temperature`, `timeout`, and whatever is
+  in `--provider-config`. Everything else — `top_k`, `top_p`, `repeat_penalty`,
+  `min_p` — comes from the Developer tab's Inference panel for the loaded model.
+  Two runs with an identical configuration hash can therefore have been produced
+  under different samplers, with nothing in the artifact saying so.
+
+  Measured 2026-08-24 against `google/gemma-4-26b-a4b`, comparing greedy output
+  at `temperature 0`:
+
+  | sent | effect |
+  | --- | --- |
+  | nothing (panel default `repeat_penalty` 1.1) | baseline |
+  | `repeat_penalty: 1.0` | **different output** |
+  | `repeat_penalty: 2.0` | different again |
+  | `top_k: 0`, `top_p: 1.0` | identical to baseline |
+
+  `top_k` and `top_p` truncate a distribution that is then argmax'd, so they are
+  no-ops at temperature 0 — but not above it. `repeat_penalty` is a *logit
+  modifier applied before selection*, so greedy decoding is not immune to it,
+  and 1.1 is LM Studio's default rather than the model's: Gemma's published
+  `generation_config` specifies `temperature 1.0`, `top_k 64`, `top_p 0.95` and
+  no repetition penalty at all.
+
+  **Send them instead of inheriting them.** Every one is overridable per request
+  and none needs the UI. `--provider-config` carries them, LiteLLM forwards them
+  to a custom-base `openai/` provider both top level and via `extra_body`, and
+  they land in `configuration_sha256` and the trajectory's `provider_options`:
+
+  ```bash
+  printf '{"top_k": 64, "top_p": 0.95, "repeat_penalty": 1.0}\n' > sampling.json
+  ```
+
+  Pass `--temperature` as the flag, not in that file: `_provider_and_configuration`
+  sets `options["temperature"]` *after* loading the provider config, so the flag
+  wins. `repeat_penalty` is not an OpenAI parameter and survives only as a
+  LiteLLM passthrough — verified, but worth re-checking after a LiteLLM upgrade.
+
+- **`run-benchmark --infer-arg` needs `=`, not a space.** The value it forwards
+  is itself a flag, so `--infer-arg --timeout --infer-arg 600` makes argparse
+  read `--timeout` as the *next option* rather than as the argument, and the
+  sweep dies with `argument --infer-arg: expected one argument` before a single
+  seed runs. Write `--infer-arg=--timeout --infer-arg=600`. It fails fast and
+  costs nothing, unlike the traps above, but it fails identically for both
+  conditions of a paired sweep and is easy to misread as an environment problem.
+
+- **A "before" sweep runs the code of whatever directory you launch it from.**
+  `_command_run_benchmark` spawns each seed as `python -m
+  cognate_reconstruction.cli infer`, and `-m` resolves from the *current working
+  directory* first. Pointing `--benchmark` at an old checkout's payload is
+  therefore not enough — the payload comes from the old tree and the harness
+  from the installed one, and the sweep is silently an "after" sweep with an
+  "after" instruction hash. `cd` into the old checkout before launching, and
+  **verify rather than assume**: the first seed's `checkpoint.json` carries
+  `configuration_components["the agent instructions"]`, which must equal the
+  hash the historical run recorded. That check costs one minute and catches the
+  failure that otherwise costs the whole sweep.
+
+- **`--provider-seed-base` does nothing at `--temperature 0`.** Greedy decoding
+  never consults a seed, so five "seeds" become five identical configurations
+  differing only by whatever MoE-routing and batching nondeterminism the server
+  has. `run-benchmark` defaults to `--temperature 0.1` for exactly this reason.
+  A multi-seed sweep wanting real spread needs a temperature above zero, and at
+  that point the `top_k`/`top_p` row above stops being a no-op.
+
+- **A seed makes turn 0 reproducible and nothing after it.** The provider
+  generates the `call_id` on every tool call, and the harness echoes it back into
+  the next prompt as the tool message's `tool_call_id`, so from turn 1 onward the
+  context carries a random nine-digit number that differs between runs. Measured
+  2026-08-25 across three shared seeds of two `synthetic_hard` sweeps at an
+  identical `configuration_sha256`: turn 0 was identical every time — same tool,
+  same arguments — and turn 1 already diverged, on one seed from `polarize` to
+  `get_alignments`. So `--provider-seed-base` buys **independent** samples, not
+  **reproducible** ones, and **an identical `configuration_sha256` never implies
+  an identical trajectory.** Two consequences when comparing sweeps: a run cannot
+  be replayed to debug it, and two sweeps at the same configuration are poolable
+  as independent draws rather than being a reproduction and a failure to
+  reproduce. The same two sweeps differed by 2.67 against 1.40 nodes committed a
+  seed, which reads as a broken environment and is ordinary spread at n=3.
+
+- **Thinking mode is most of the output budget, and it is not a sampler.**
+  `google/gemma-4-26b-a4b` with LM Studio's "Enable Thinking" custom field on
+  spent **897 of 899 completion tokens** on `reasoning_content` when asked to
+  write one digit thirty times, and never emitted visible content. That is the
+  explanation for both the multi-minute turns below and for a `max_tokens` cap
+  stalling a node. It is chat-template machinery rather than a sampling
+  parameter, so unlike the table above it has not been shown to be settable per
+  request.
+
 - **LM Studio keeps models loaded while its server is off.** `lms server
   status` said "The server is not running" while `google/gemma-4-e4b` was
   loaded. Port 41343 belongs to the LM Studio app and answers HTTP but is not
@@ -342,6 +441,19 @@ errors.
      model with no cap can generate until the context is exhausted; a cap turns a
      15-minute turn into `finish_reason="length"`, which the harness already
      recovers from by forcing a tool call.
+
+     **Size the cap for an inventory commit, not for a rule commit.** A
+     `commit_reconstruction` carrying `rules` is a handful of short objects; one
+     carrying an `inventory` is one object per correspondence set, each with a
+     `set_id`, a reflex per child, a value, a support count, a confidence and a
+     rationale. Measured 2026-08-24 on `google/gemma-4-26b-a4b` over an
+     eight-set node: 3072 was ample under the cascade protocol and stalled the
+     same node under the inventory protocol with
+     `ProtocolStallError: model output was truncated 3 times`, all three
+     responses reporting exactly 3071 output tokens. Uncapped, the same node
+     committed. If a node stalls on truncation while the tool it was calling was
+     `commit_reconstruction` or `test_proto_assembly`, raise the cap rather than
+     reading it as a model that cannot converge.
   3. **Make the bound tighter, before the first node.** Lower `--timeout` so a
      genuine hang surfaces in minutes rather than a quarter of an hour. Note
      `--max-run-seconds` does *not* help: `_check_run_budget()` runs before and

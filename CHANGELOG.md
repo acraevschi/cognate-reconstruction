@@ -2,6 +2,162 @@
 
 ## Unreleased
 
+### `visualize-run`: the session, not just its conclusion
+
+`inspect-run` answers what a run concluded. Nothing answered how the agent got
+there. The turn-by-turn timeline existed only in the run-triage skill's
+`driver.py`, derived from `events.jsonl`, which is a developer tool and which
+never sees a tool call's arguments or the remediation the harness sent back.
+
+`cognate_reconstruction/visualize_run.py` adds `visualize-run`: one
+self-contained HTML page — no external CSS, JS, fonts or images — with the tree
+the traversal walked on the left and the selected node's session on the right.
+
+The session shape is a ribbon, one cell per tool call in order, coloured by
+stage: survey, inspect, test, commit. A rejected call keeps its stage colour and
+gains a red ring, so three amber rings followed by two clean amber cells reads
+as "three refused assembly previews, then it fixed them" before a word is read.
+**The stages group tool names for display and carry no linguistic content**; a
+tool the module does not know renders as "other" rather than being guessed into
+a stage, and a test asserts every shipped tool is mapped so the ribbon cannot
+quietly go grey as tools are added.
+
+Each timeline row names what the call asked for in the tool's own terms —
+`polarize · ʔ ~ Ø · Tongan, Niuean` — and what came back — `columns 12 ·
+concepts 10`. Both are retrieval from fields the tool itself wrote, never
+interpretation. Rows expand to the full arguments and full result; a rejection
+expands to its structural error code, its protocol/exploratory classification,
+and the remediation text, which is what explains why the *next* attempt failed
+too.
+
+Everything the text report already states — committed rules, diagnostics,
+reconstructed forms, `high_quality` and the condition it failed — comes from
+`inspect_run.build_report` rather than being recomputed, so the two views cannot
+disagree about a fact.
+
+**It reports and gates nothing.** No trajectory is filtered, no candidate
+weighted, no run judged valid or not. A session the workflow filter rejected
+renders in full with the reason attached, and a test holds that line.
+
+Two things the tree is for. A node whose descendants include a failed session is
+marked *built on an identity fallback*: a node is reconstructed from its direct
+children, so a session that never committed low in the tree removes evidence
+from every node above it. And an internal node the walk reached that left no
+record — a resumed run's earlier nodes, or a run that died mid-walk — renders as
+`unrecorded`, never as a leaf, because drawing a reconstructed node as a leaf
+tells a reader it was an input language.
+
+`--serve` binds the loopback interface and rebuilds per request. `JsonlEventSink`
+flushes one line per event and `JsonlTrajectorySink` appends one record per
+finished node, so a finished node renders from its trajectory at full fidelity
+and a node in flight renders from its events, labelled as such. The page keeps
+your selection and whatever you had expanded across polls, and a directory the
+run has not written to yet is a waiting page rather than an error — `load_run`
+still refuses such a directory, and `build_live_state` falls back rather than
+weakening it.
+
+22 tests in `tests/workbench/test_visualize_run.py`. The ones worth naming: an
+answer is matched to its call by call id rather than by position, because a
+provider may answer out of order and a zipped view would attribute one call's
+result to another while still looking plausible; an unanswered call does not
+read as a success; and model text reaching the page cannot close the script tag
+it is embedded in.
+
+### The manual now teaches the inventory, and the checklist covers both shapes
+
+Stage 3's flip. `agent/system_prompt.md` led with a workflow — survey, polarize,
+align, write a rule, test it, cascade it, commit — that produced a branch
+cascade, and mentioned `test_proto_assembly`, `commit_reconstruction`'s
+`inventory` argument, `realign` and restorations nowhere at all. The tools have
+existed since stage 2; nothing told a session they were there.
+
+It now teaches §6.6's loop — survey, polarize, align, assign a value per set,
+preview, read the unaccounted columns, refine, preview, commit — and says why
+the loop closes: the preview a refinement is tested by *is* the preview a commit
+is checked against, so there is no object that exists only inside a test and
+then needs a second one. Four sections are new: the residue policy, conditioning
+and complementary splits, restorations with §6.9's three refusals and the root's
+structural limit, and `realign` with §6.1's framing — an edge case for a compound
+against a simplex or two lexemes in one concept, never a routine step, and a
+session realigning a large share of its concepts is fitting the evidence rather
+than reading it.
+
+The rule cascade keeps a section of its own, because it stays an accepted commit
+shape through this stage. What changed is which one the manual leads with, and
+that it now says what the cascade cannot do: a rule rewrites one child's own
+segments, so a parent segment no single child preserves is unreachable by any
+cascade. `⟨language_a v : language_b Ø⟩` reconstructs `*w` in one commitment and
+in no rule.
+
+`COMMIT_REQUIREMENT_NOTES` covered only the rule shape and was therefore wrong
+for half the sessions it was shown to. It now covers both, leading with which to
+prefer.
+
+**This changes `instruction_sha256`.** Every checkpoint written before it
+refuses to resume, naming the instructions as the part that moved — which is the
+mechanism working, not a regression: a resumed run must not mix nodes
+reconstructed under two different manuals.
+
+`docs/running_inference.md`'s tool table was missing `test_proto_assembly` and
+`realign` outright; both are there now.
+
+### An oracle for the architecture, not only for the rule writer
+
+`tools/oracle_ceiling.py --oracle assembly` gives every *node* a perfect
+proto-inventory — one proto-phoneme per correspondence set, voted against the
+withheld gold — and runs the real `ProtoInventoryAssembler` bottom-up. Until now
+nothing computed it, so `docs/proto_inventory_design.md` §7 conditions 1 and 2
+could not be evaluated at all: both are stated in terms of a number that did not
+exist.
+
+Polynesian, beam width 5, 46 concepts, 2026-08-24:
+
+| Measure | context-free | context-sensitive | **assembly** |
+| --- | --- | --- | --- |
+| top-1 exact | 27/46 | 33/46 | **39/46** |
+| beam exact | 40/46 | 40/46 | 39/46 |
+| selection gap | 13 concepts | 7 concepts | **0** |
+| mean top NED | 0.147 | 0.097 | **0.031** |
+| `cross_branch_assembly_rate` | — | — | 0.957, non-zero at 7 of 7 nodes |
+
+**The beam-exact column is not comparable by subtraction and the docs say so
+three times.** Under a branch cascade the beam holds one whole string per branch
+and beam-exact measures the selection slack; under assembly one candidate tuple
+assembles into exactly one form, so top-1 and beam-exact converge by
+construction. §7.3 already listed that comparison under "what is *not*
+evidence", and condition 2 has to be read against it.
+
+The oracle is given the two claims an inventory makes about a *language* — a
+value per set, optionally conditioned, and a residue policy chosen per node by
+running each — and is given neither `restorations` nor `residue_dispositions`,
+which are claims about one concept. §7.4 records `1028` YAWN and `778` SMOKE as
+concepts the ceiling cannot promise; they stay unpromised and are still misses.
+
+`test_oracle_ceiling_regression.py` pins the third block beside the two it
+already pinned, including §9.3's gap assertion in the new architecture's terms
+(`MAX_ASSEMBLY_SELECTION_GAP = 2`, currently 0) and the fixture/real-benchmark
+agreement under all three oracles.
+
+### A rule cascade may no longer delete a whole word
+
+Found by the oracle above, and reachable from both commit shapes. `RuleEngine`
+built the next `LexicalForm` from a rule's output without checking it was
+non-empty, so a cascade that consumed a form raised a bare pydantic
+`ValidationError` from inside `traversal/reconstructor.py` naming no rule, no
+form and no node. Under `rules` that needs a cascade of deletions; under
+`inventory` it needs only a *derived* view where enough sets reconstruct
+nothing, which is how it turned up — at Proto-Tongic the oracle's inventory
+derives `l > Ø` for Niuean, and `k i l i` had already lost `k` and both `i`.
+
+The refusal is per (rule, form): the form is carried through unchanged, the rest
+of the cascade still runs, and the report carries the new
+`ApplicationStatus.WOULD_EMPTY_FORM` with no match locations — applicable and
+not applied, so `rule_coverage` sees a rule that could have fired and did not.
+Every other layer already refused an empty form; only this one discovered it by
+crashing.
+
+Suite: **401 passed** (393 before).
+
 ### Pin that the assembly ceiling still bounds the thing it measures
 
 `tools/assembly_ceiling.py` keeps its own `align_rows` and the harness runs

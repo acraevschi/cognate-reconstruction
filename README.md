@@ -73,7 +73,8 @@ the runtime classification tree.
 | Research-grade evaluation | Implemented and graded; still one model, few seeds | Held-out gold evaluation reports edit distance, normalized edit distance, and B-Cubed F1 beside exact match, per concept and per node, with distributions rather than pooled means, and a beam-aware best-NED next to the top candidate's. Every node carrying gold is evaluated, not only the root. `build-benchmark` turns a declarative definition plus local CLDF into a runnable input, and two are checked in (Polynesian, Romance/Ab Antiquo). `run-benchmark` runs N seeds and aggregates with spread. `build-synthetic` generates a family from a known cascade, so the *changes* and their *direction* can be scored, not only the forms. A validated quality objective still does not exist and nothing here gates anything. See [benchmarks and evaluation](docs/benchmarks.md). |
 | Reconstruction quality | Measured, pinned, still bounded by the harness | `tools/` scores the deterministic layer against gold Proto-Polynesian. With context-free oracle rules on every branch the correct form is in the beam 87.0% of the time and is reported 58.7% of the time; graded, mean NED is 0.147 at the top against 0.030 anywhere in the beam. **28 points, and 0.118 NED, are still lost in how a parent is chosen from child evidence, after the model has finished.** A second oracle as strong as the DSL's own environments reports 71.7% at the same 87.0% in the beam, so six of those points belonged to the instrument rather than the architecture — and the gap does not close. Most of the remainder sits at binary nodes, where support cannot separate two children that disagree one-to-one. Both oracles *and the gap between them* are pinned by a regression test, so a beam change cannot quietly make reconstructions worse while every test passes. See [the analysis tools](docs/analysis_tools.md). |
 | Training backend | Not implemented | Trajectory export is the boundary for later work; no TRL/Unsloth training pipeline is included. |
-| Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. There is still no interactive trace browser, and the turn-by-turn timeline lives in the run-triage skill. |
+| Human-facing run report | Implemented, static | `inspect-run` prints a per-node and family report, optionally as one self-contained HTML file, including report-only cross-node observations. |
+| Interactive trajectory browser | Implemented | `visualize-run` writes one self-contained page: the tree the traversal walked, and per node the turn-by-turn session — every tool call, what it asked, what came back, each rejection with its code and the remediation sent back — plus the commit and the gate's reason. `--serve` watches a run in progress. Reports only; gates nothing. |
 
 The harness is ready for controlled local experiments and deterministic
 development. It is not yet a system whose mechanically accepted
@@ -1318,6 +1319,10 @@ or independently reproduce the deterministic step.
 ```bash
 cognate-reconstruct inspect-run --run-dir runs/family
 cognate-reconstruct inspect-run --run-dir runs/family --html runs/family/report.html
+
+# the interactive view: the tree, and each node's session turn by turn
+cognate-reconstruct visualize-run --run-dir runs/family
+cognate-reconstruct visualize-run --run-dir runs/family --serve   # while it runs
 ```
 
 `inspect-run` reads `result.json` and `trajectories.jsonl`, plus `events.jsonl`
@@ -1381,11 +1386,15 @@ identity reconstruction because `INNER` had already completed `f > p`, and the
 observation that `PROTO` never mentions that correspondence is a description of
 a correct run, not a complaint about it.
 
-`inspect-run` is the supported artifact-facing report. The run-triage skill's
-`driver.py triage` is the event-facing one — the turn-by-turn timeline and the
-failure taxonomy read out of `events.jsonl`, which is the only source for runs
-written before failure counters existed — and it shells out to `inspect-run` for
-the artifact sections rather than keeping its own copy of them.
+`inspect-run` is the supported artifact-facing report. `visualize-run` is the
+session-facing one: the same facts, plus the turn-by-turn timeline the report
+has no room for, as one self-contained page that can also be served against a
+run still in progress. It reuses `inspect_run.build_report` rather than
+recomputing anything, so the two cannot disagree, and it gates nothing. The
+run-triage skill's `driver.py triage` remains the event-facing developer tool —
+the failure taxonomy read out of `events.jsonl`, which is the only source for
+runs written before failure counters existed — and it shells out to
+`inspect-run` for the artifact sections rather than keeping its own copy.
 
 Note that `result.json` is written with computed fields included, so it does not
 round-trip through its own `extra="forbid"` model. `inspect-run` therefore reads
@@ -2216,11 +2225,13 @@ future ideas.
   and existing local CLDF.
 - The harness deliberately does not download/build large Lexibank datasets.
 - `inspect-run` covers the static run report, in text and as one self-contained
-  HTML file. There is still no dedicated input-validation report, no result
-  dashboard, no interactive trace browser, and no side-by-side rule/cascade
-  report. The turn-by-turn timeline is not in `inspect-run` either: it is
-  reconstructed from `events.jsonl` by the run-triage skill, which is a
-  developer tool rather than a supported product surface.
+  HTML file, and `visualize-run` covers the interactive one: the traversal tree
+  and the turn-by-turn session behind each node's commit, live or after the
+  fact. There is still no dedicated input-validation report, no result
+  dashboard, and no side-by-side rule/cascade report. The run-triage skill's
+  `driver.py triage` remains a developer tool for the failure taxonomy over
+  `events.jsonl`, which is the only source for runs written before failure
+  counters existed.
 - Historical benchmark *curation* is automated now — `build-benchmark` turns a
   declarative definition plus a local CLDF dataset into a runnable input, and
   `build-synthetic` generates a family outright — but choosing **which** families

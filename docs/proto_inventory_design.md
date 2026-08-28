@@ -2129,7 +2129,10 @@ model could still get them right; the *ceiling* cannot promise it.
 ### 7.5 Every command in this section
 
 ```bash
-# conditions 1 and 4, and the stop thresholds they quote
+# conditions 1, 2 and 4: the assembly oracle itself
+python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle assembly --json
+
+# the stop thresholds those conditions quote, which are branch-cascade figures
 python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle contextual --json
 python tools/oracle_ceiling.py runs/benchmarks/polynesian.json --json
 
@@ -2147,6 +2150,510 @@ python tools/branch_recoverability.py polynesian --method cascade --oracle conte
 Both ceiling tools accept `--gold-node`; on a multi-gold family the root's
 binding is the default and anything else must be named. Read `measuring:` on
 every line of output before quoting a number from it.
+
+### 7.6 Whether condition 6 is evaluable on Polynesian
+
+**This section decides nothing.** Condition 6 is not re-litigated here and no
+threshold moves. What follows is the measurement-design finding that the live
+half of §7 ran into, the arithmetic under it, and a recommendation for the
+research owner. Everything is measured from the four sweep directories of
+2026-08-24 under `runs/sweeps/`, which are gitignored; every figure below can be
+re-derived from the `result.json` of the named seed.
+
+#### The mechanism
+
+`benchmarks/polynesian.json` binds gold at **one** of the tree's seven internal
+nodes, `proto_polynesian`. `benchmarks/synthetic/synthetic_hard.json` binds gold
+at **three** of four — `proto`, `west`, `east`.
+
+A seed contributes a scoreable evaluation at a gold node only if that node
+committed a real reconstruction. `benchmarks/sweep.py:270` excludes any
+evaluation with `failure_fallback` set, and correctly: a fallback node's beam is
+the harness's identity commit, so scoring it measures the fallback. On Polynesian
+that means **one node of seven decides whether a seed produces any number at
+all.**
+
+Observed, per seed and per node:
+
+| condition | seed | node | | top exact |
+| --- | --- | --- | --- | --- |
+| `polynesian-before` | 00 | `proto_polynesian` | committed | 0.500 |
+| `polynesian-before` | 01 | `proto_polynesian` | committed | 0.413 |
+| `polynesian-before` | 02 | `proto_polynesian` | **fallback** | 0.478 |
+| `polynesian-after` | 00 | `proto_polynesian` | **fallback** | 0.543 |
+| `polynesian-after` | 01 | — | stopped mid-flight, no `result.json` | — |
+
+So `polynesian-before` yielded **two** scored seeds of three and
+`polynesian-after` **none** of the two that ran. Six other nodes were
+reconstructed in each of those seeds and none of them is scoreable, because
+nothing is bound to them.
+
+#### 1. The arithmetic
+
+Four Polynesian seeds completed across the two conditions and **two lost the
+root**, so the estimate of the rate at which a seed is scoreable is
+`p = 1 − 2/4 = 0.50`; counting `polynesian-after` seed-01, which ran but was
+stopped rather than failing, gives at best `p = 3/5 = 0.60`. Take the more
+favourable one. Under a binomial with `p = 0.6`, for `N` seeds launched in one
+condition:
+
+| N | E[scored] | P(≥2) | P(≥3) | P(≥5) | P(≥3 in **both** conditions) | P(≥5 in **both**) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 3 | 1.8 | 0.648 | 0.216 | 0.000 | **0.047** | 0.000 |
+| 5 | 3.0 | 0.913 | 0.683 | 0.078 | 0.466 | 0.006 |
+| 8 | 4.8 | 0.991 | 0.950 | 0.594 | 0.903 | 0.353 |
+| 11 | 6.6 | 0.999 | 0.994 | 0.901 | 0.988 | 0.811 |
+| 13 | 7.8 | 1.000 | 0.999 | 0.968 | 0.997 | **0.937** |
+
+Condition 6 says `--seeds 5`. Read the table at the row that matters:
+
+- At the **3 seeds per condition** the sweep actually ran, the probability of
+  getting even three scored seeds on *both* sides was **0.047**. The sweep was
+  about 95% likely to fail to produce a comparison, before the model was
+  consulted at all. It did fail, and that is the expected outcome of the design
+  rather than a result about the architecture.
+- At the **5 seeds per condition** condition 6 asks for, P(five scored on both
+  sides) is **0.006**.
+- To get five scored seeds in both conditions nine times in ten needs **13 seeds
+  per condition, 26 Polynesian runs**. A Polynesian seed took 49, 88, 56 and 49
+  minutes in this sweep (mean 61), so that is about **26 hours** of serial
+  LM Studio time for one line of one falsification table.
+
+**And `p` itself is not known to one significant figure.** The 95%
+Clopper–Pearson interval on a root-failure rate of 2 in 5 is **[0.053, 0.853]**,
+so `p` is plausibly anywhere in [0.147, 0.947], and the seed count that follows
+ranges from **6 to 60 per condition** — 12 to 120 runs, 12 to 122 hours. Five
+seeds cannot pin down the rate that decides how many seeds are needed. Adding
+seeds to learn the rate is the only way out of that circle, and it costs the same
+hours.
+
+#### 2. What is actually being estimated, which is the larger problem
+
+Two findings from the same artifacts say that more seeds would not repair
+condition 6 on this benchmark, only narrow the spread of a quantity that does not
+mean what the condition assumes.
+
+**(a) The excluded seeds are not missing at random, and they are not the bad
+ones.** The two Polynesian roots that fell back scored **0.478** and **0.543**
+top-exact; the two that committed scored **0.500** and **0.413**, mean 0.457. In
+every observation available, the identity fallback scored at or above the model's
+own mean. The same holds on `synthetic_hard`: `east` fell back in **6 of 6 seeds
+in both conditions** and its identity beam scores **0.880** every time, which is
+exactly the assembly oracle's own top-1 on that benchmark (22/25); `west`'s one
+fallback scored 0.880 against a committed before-condition mean of 0.700.
+
+The exclusion rule is right — scoring a fallback measures the fallback, not a
+reconstruction. But its consequence is that condition 6 compares the two
+instruction sets *on the subset of seeds where the model committed*, and drops,
+unreported, both the rate at which each condition commits at all and the fact
+that not committing scored better here. Four observations is far too few to
+call that a bias with a direction, and it is more than enough to say the
+quantity is not "top-1 accuracy of the architecture".
+
+**(b) The pooled ± that condition 6 would be read against is mostly node
+difficulty, not seed variance.** §7's live table quotes `synthetic_hard` as
+0.448 ± 0.246 before against 0.720 ± 0.201 after, spreads overlapping. Split by
+gold node, which is what a multi-gold benchmark makes possible:
+
+| gold node | before | after | overlap? |
+| --- | --- | --- | --- |
+| `proto` | 0.280 ± 0.120, range **0.160–0.400**, n=3 | 0.547 ± 0.023, range **0.520–0.560**, n=3 | **no** |
+| `west` | 0.700 ± 0.028, range **0.680–0.720**, n=2 | 0.893 ± 0.101, range **0.800–1.000**, n=3 | **no** |
+| `east` | never scored — identity fallback in 3/3 | never scored — identity fallback in 3/3 | — |
+| *pooled* | 0.448 ± 0.246 | 0.720 ± 0.201 | yes, heavily |
+
+The pooled standard deviation is dominated by the 0.28-against-0.70 gap between
+two nodes of different difficulty. Separated, both scored nodes showed
+non-overlapping ranges in the direction condition 6 predicts — at n=2 and n=3,
+which is why this was written as too weak to quote as satisfying the condition.
+
+> **Superseded on 2026-08-25, and in the direction the caution predicted.**
+> At 8 before-seeds and 5 after-seeds the ranges **stop being disjoint**:
+> `proto` becomes 0.160–0.400 against 0.400–0.680, touching at a point, and
+> `west` becomes 0.680–0.720 against 0.680–1.000, overlapping outright. The
+> three-seed reading above was an artifact of three seeds, exactly as the
+> paragraph it sits in warned. §7.7 has the re-run and the verdict; what
+> survives from this sub-finding is only its second half.
+
+What survives is the part that does not depend on n: pooling across gold nodes
+destroys the very property the condition asks about, so condition 6 must be read
+**per gold node** whatever else is decided.
+
+#### 3. The options
+
+- **A — more Polynesian seeds.** 26 runs (~26 h) for the point estimate, 12 to
+  120 runs at the interval's edges. Buys a spread. Fixes neither (a) nor (b),
+  because Polynesian has one gold node and cannot be read per-node.
+- **B — define `hillburmish`.** `docs/benchmarks.md` records it as nine
+  varieties plus Old Burmese, giving **two gold nodes in one tree**, which is
+  the property Polynesian lacks. But it is a candidate, not a definition; the
+  same document says which datasets carry a claim is a research-owner question;
+  and a new family needs its own oracle ceiling and its own
+  `unaccounted_column_rate` floor before any threshold applies to it (§7.2). It
+  is the right long-term answer to the gold-binding problem and it delays
+  condition 6 rather than enabling it.
+- **C — read condition 6 on `synthetic_hard`, per gold node, and report
+  Polynesian beside it without a verdict.** Costs one sweep of 10 runs (~3 h),
+  uses the benchmark that degrades gracefully — every one of its six seeds
+  produced at least one scoreable evaluation, against Polynesian's two of five —
+  and is the only option under which the per-node reading in (b) is available at
+  all. Its weakness is real and must be stated wherever the verdict is: it is a
+  synthetic family, and condition 6 as written says "both benchmarks".
+- **D — bind gold at more Polynesian nodes.** Ruled out, not recommended
+  against: `walworthpolynesian` contains one proto variety, so there is no second
+  gold node to bind. The option does not exist on this dataset.
+
+#### The recommendation
+
+**C, with the per-node reading from (b) made mandatory, and B raised separately
+as the fix for the gold-binding problem rather than for this sweep.**
+
+Concretely, for the research owner to accept or reject:
+
+1. Condition 6's verdict is taken from `synthetic_hard`, at 5 seeds per
+   condition, **reported per gold node and never pooled**. The reason is stated
+   in the report: pooling mixes node difficulty into the spread, and on a
+   single-gold benchmark the per-node reading is unavailable.
+2. Polynesian is run at 5 seeds per condition and **reported, not scored**: the
+   scoreable-seed count is published beside every number, and no verdict is
+   taken from a line whose n is not stated. This is the "record the trip, put
+   the argument in prose" treatment §7.3 already applies to condition 2.
+3. Every condition-6 report also publishes, per node, **the rate at which that
+   node committed at all** and **what the identity fallback scored there**.
+   Finding (a) says those two numbers are not incidental to the comparison; on
+   this data they were larger than the difference the condition is measuring.
+4. `hillburmish` is proposed as a definition on its own merits, with its own
+   ceiling and floor measured before anything is claimed from it — not as a
+   substitute for step 1.
+
+What this does **not** claim: that the architecture is better or worse. Nothing
+in this section is a verdict on §7, and the live half of §7 stays unevaluated
+until a sweep is run under a design the research owner has accepted.
+
+#### One thing the re-run has to settle first
+
+The sweeps of 2026-08-24 built their *before* condition as a **separate checkout
+at the pre-stage-3 commit**. Tasks 1–3 of this prompt changed schemas both
+conditions share, and one of them — the `AnomalyReport` descriptions — targets a
+rejection class that is **13 of 20 pre-stage-3**. So re-running *before* in the
+old checkout would compare the flip *and* three schema fixes, and re-running it
+on the current tree with only the instructions reverted would isolate the flip.
+The flip is exactly two surfaces, `agent/system_prompt.md` and
+`COMMIT_REQUIREMENT_NOTES` in `agent/schemas.py` (`991bc16`), so the second
+construction is small and well defined. It is also a measurement-design choice
+and belongs with the decision above rather than under it.
+
+### 7.7 The re-run of 2026-08-25, and what condition 6 does
+
+Run after tasks 1–3 of prompt 10 landed and with the tree frozen: `synthetic_hard`,
+**5 seeds per condition**, `google/gemma-4-26b-a4b`, temperature 1.0,
+`top_k` 64 / `top_p` 0.95 / `repeat_penalty` 1.0, `--provider-seed-base 1000`,
+`--max-tool-calls 48`, `--timeout 600`, uncapped `max_tokens`. Directories
+`runs/sweeps/synthetic_hard-{before,after}-r2`.
+
+**Polynesian was not re-run.** At the measured 61 minutes a seed it needs about
+ten hours for five seeds per condition, against a five-hour budget for the whole
+re-run, and §7.6's arithmetic says two or three seeds would produce nothing
+evaluable. So **condition 6 has no real-data reading**, and this section is not
+one. That is a gap in the evidence, not a result about the architecture.
+
+The *before* condition is the pre-stage-3 checkout **unchanged**, verified rather
+than assumed: its first seed records instruction hash `c4d25af1…` and
+`configuration_sha256` `d93f3596…`, both byte-identical to the 2026-08-24 before
+run. **Tasks 1–3 are therefore on the after side only**, which is stated again
+wherever it matters below.
+
+#### First, why the two before runs are poolable
+
+The 2026-08-24 before run committed 2.67 ± 0.58 nodes a seed; the re-run, at the
+identical `configuration_sha256`, committed **1.40 ± 0.55**. That looks like a
+failed reproduction and is not one.
+
+A fixed provider seed cannot reproduce a multi-turn run here. The provider
+generates the `call_id` on every tool call and the harness echoes it back into
+the next prompt as the tool message's `tool_call_id`, so from turn 1 onward the
+context carries a random nine-digit number that differs between runs. Measured on
+all three shared seeds: **turn 0 is identical** — same tool, same arguments, the
+seed doing its job — and **turn 1 already diverges**, on seed 0 from `polarize`
+to `get_alignments`. Divergence is structural, not drift, and not LM Studio's
+panel.
+
+The consequence is worth stating plainly because it changes how any two sweeps
+are compared: `--provider-seed-base` buys **independent** samples, never
+**reproducible** ones, and an identical `configuration_sha256` never implies an
+identical trajectory. So the two before runs are eight independent draws from one
+configuration and are pooled below; the two after runs are **not** pooled,
+because tasks 1 and 3 edited `system_prompt.md` and their instruction hashes
+differ. The after column is the re-run alone.
+
+#### Condition 6, per gold node
+
+Top-1 exact at each gold node, with the rate at which that node produced a
+scoreable reconstruction at all, and what the identity fallback scored there —
+the three numbers §7.6's recommendation asks to be published together.
+
+| gold node | before, 8 seeds | after, 5 seeds | condition 6 |
+| --- | --- | --- | --- |
+| `proto` | committed **4/8**, 0.290 ± 0.100, range 0.160–0.400 | committed **5/5**, 0.528 ± 0.100, range 0.400–0.680 | up; ranges **touch at 0.400** |
+| `west` | committed **2/8**, 0.700 ± 0.028, range 0.680–0.720 | committed **5/5**, 0.816 ± 0.115, range 0.680–1.000 | up; ranges **overlap** |
+| `east` | committed **1/8**, 0.880 (n=1) | committed **0/5**, never scored | no comparison exists |
+
+Identity fallbacks at the same nodes: `proto` before 0.36, 0.44, 0.48; `west`
+before 0.88; `east` 0.88 in every seed of both conditions.
+
+**Condition 6 trips as written.** Its stop column is "spreads overlap", and at
+`west` they overlap outright, at `proto` they meet at a point, and `east` cannot
+be compared at all. Top-1 is up at both comparable nodes and that is not
+sufficient for the condition as phrased. Recorded, not rewritten — the same
+treatment §7.3 gives condition 2.
+
+**The argument, in prose, and it is not a defence of the threshold.** The
+quantity condition 6 compares is conditioned on the node having committed, and
+the two conditions commit at very different rates: 4/8 and 2/8 against 5/5 and
+5/5. The before column is therefore computed over the subset of runs that went
+well, and the after column over all of them, so the two are not like for like and
+the gap between them is the *smaller* of the two effects. §7.6's finding (a) is
+visible directly here: at `proto`, the before condition's identity fallbacks
+scored **0.36, 0.44 and 0.48 against its own committed mean of 0.290** — under
+the pre-stage-3 instructions, committing at the root was worse than not
+committing.
+
+What is unambiguous is the quantity condition 6 does not measure:
+
+| | before, 8 seeds | after, 5 seeds |
+| --- | --- | --- |
+| nodes committed / 4 | 1.875 ± 0.835, range 1–3 | **3.000 ± 0.000**, range 3–3 |
+| protocol failures / seed | 16.0 (re-run), 9.3 (2026-08-24) | **8.4 ± 1.5** |
+| tool calls / seed | 73.4 (re-run) | **48.0 ± 1.0** |
+
+Every after seed committed three of four nodes with **zero variance**, and the
+one node it never commits, `east`, is the node whose identity beam already scores
+0.880 — the assembly oracle's own top-1 on this benchmark. Whether "reconstructs
+the same three nodes every time" should be what condition 6 measures is a
+research-owner question and is not settled here.
+
+#### What the re-run says about tasks 1–3
+
+Per seed, so the 3-seed and 5-seed runs can be read side by side. The after
+columns differ from each other by tasks 1–3 and by nothing else.
+
+| rejection class | before (8 seeds) | after, 2026-08-24 | after, re-run |
+| --- | --- | --- | --- |
+| `commitments[].confidence=missing` | 0.25 | **3.0** | **0.0** |
+| every `anomalies[].*` class together | 3.1 | **3.3** | **0.0** |
+| `rule-unsupported` | 2.9 | 0.0 | 0.0 |
+| `validation-unresolved` | 1.6 | 0.0 | 0.0 |
+| `validation-ambiguous` | 0.9 | 0.0 | 0.0 |
+| `dsl-parse-error` | 0.25 | 0.0 | 0.0 |
+| `missing-rule-rationale` | 1.25 | 3.3 | 3.0 |
+| `missing-directionality-rationale` | 0.25 | 1.7 | **3.6** |
+
+- **Task 1 is confirmed live.** `confidence=missing` went 3.0 a seed to **zero**
+  across five seeds. Nothing else touches that field.
+- **Task 3 is confirmed live, within the after condition.** Every anomaly class
+  went 3.3 a seed to **zero** while the instruction flip was held constant, and
+  the before condition — which does not carry task 3 — still shows 3.1 a seed.
+- **Task 2 is not verified.** `correspondence[]=string_type` never appears on
+  `synthetic_hard`; it was a Polynesian class, and Polynesian was not re-run.
+- **§6.6's "the loop closes" replicates at five seeds.** The four rejection
+  classes that the flip removes are 5.65 a seed before and **zero** after, in
+  both after runs.
+
+**And one thing got worse, which is the question §6.6 and §4.1 own.**
+`missing-directionality-rationale` went 0.25 a seed before to **3.6** after,
+while committed rules a seed went 2.2 to 32.6. The requirement is per claim and
+the number of claims went up by an order of magnitude, so the counter rising is
+the requirement working, not failing. Whether a per-commitment rationale is the
+right shape when a node commits thirty sets rather than three rules is a research
+question and **must not be answered by relaxing the requirement to make the
+counter fall**.
+
+> **Settled by the research owner, 2026-08-25: the per-set requirement stays.**
+> Two reasons, and the second was not in the framing above. A commit carrying
+> thirty claims cannot have its reasoning attributed by one summary, which is
+> the audit property the requirement exists for. And the rationales are useful
+> to a *user* doing post-hoc analysis, not only to the validator that checks
+> their presence — a per-set justification is the only place a reader can find
+> out why one correspondence was read the way it was, and the inventory shape
+> is what makes that a per-phoneme record rather than a per-cascade one. The
+> cost is real and now quantified — output tokens are essentially the whole of
+> wall-clock time (§7.9) — and it is accepted rather than unmeasured.
+
+Related and still unresolved: the after run made **7 directionality claims with
+no `polarize` call at all**, which `inspect-run` reports and nothing gates.
+
+#### What this section does not establish
+
+- Nothing about real data. Polynesian was not run.
+- Nothing about condition 6 on a benchmark whose gold binding supports it;
+  §7.6's recommendation stands unexecuted.
+- Nothing about task 2, and nothing about the architecture's ceiling, which is
+  oracle work and did not move.
+
+### 7.8 Condition 5, evaluated from the seeds already run
+
+Condition 5 needed no new inference. `score-synthetic` reads a run directory's
+`trajectories.jsonl`, so the 16 `synthetic_hard` seeds banked across 2026-08-24
+and the 2026-08-25 re-run answer it directly. Both halves below are pooled over
+**branch** records rather than over seeds, because a branch is the unit the
+answer key scores and a seed contributes a different number of them under the
+two commit shapes — which turns out to be most of the story.
+
+| run | all scored branches | invertible branches only | non-invertible |
+| --- | --- | --- | --- |
+| before, 2026-08-24 (3 seeds) | 0.273 (n=10) | **0.390** (n=7) | 0.000 (n=3) |
+| before, re-run (5 seeds) | 0.200 (n=7) | **0.233** (n=6) | 0.000 (n=1) |
+| after, 2026-08-24 (3 seeds) | 0.204 (n=9) | **0.306** (n=6) | 0.000 (n=3) |
+| after, re-run (5 seeds) | 0.167 (n=16) | **0.267** (n=10) | 0.000 (n=6) |
+
+`misdirected_rule_count` is **0 in every one of the 16 seeds, under both commit
+shapes.**
+
+#### The verdict
+
+**The `misdirected` half does not trip. The precision half trips as written**,
+and is recorded rather than rewritten, as §7.3 does for condition 2 and §7.7 for
+condition 6.
+
+Condition 5's stop clause is "right forms via worse-attributed changes is a worse
+result, not a better one". The evidence does not show worse attribution, and
+three things explain the number.
+
+**A merger cannot be scored, and a merger is the case this architecture exists
+for.** `rule_precision` matches a committed child-to-parent rule against the
+answer key's *inverse* rules. A non-invertible change — a merger or a deletion —
+has no inverse, so `true_inverse_rules` is empty and a **correct** rule scores
+zero. Measured on `west->d1`, whose true change is `b > p`, b merging into an
+existing p: the model committed `p > b`, which is exactly right, and scored
+**0.000**. Every non-invertible branch scores 0.000 in every run above, thirteen
+of them in total.
+
+The after condition commits at more nodes, so it lands on more of these
+guaranteed zeros — six against one in the re-run pair. It is penalised for
+attempting. §2.1's argument is that **a merger makes a branch cascade strictly
+less expressive**; the metric is blind exactly where the change is supposed to
+pay, which is a defect of the instrument and not a finding about the
+architecture.
+
+**Restricted to branches where precision is earnable at all**, the gap narrows to
+roughly 0.32 before against 0.28 after, at n=13 and n=16 — small, and well inside
+the noise of a statistic whose before-side per-seed spread is ±0.35 to ±0.43,
+because the before condition commits so few rules that a branch scores 0.0 or
+1.0 and little between.
+
+**The scorer already says precision is a lower bound.** Its own note: precision
+"match[es] rule spellings exactly and [is] a lower bound; `functional_recovery_rate`
+per branch is the measurement that survives a different spelling of the same
+change." That spelling-robust measure went **up** in both pairings —
+0.728 → 0.800 and 0.743 → 0.776.
+
+And the dominant residual miss is **shared by both shapes and is a conditioning
+omission, not a misdirection**: both write `e > a` where the answer key has
+`a > e / _ i`. The before condition got the environment right in one seed of
+five, the after condition in none. Where both attempt the chain shift at
+`proto->east`, the after condition matches `t > k` and `s > t` in **5 of 5
+seeds** against the before condition's **1 of 5**.
+
+#### One objection that does not hold, checked rather than assumed
+
+The obvious defence — that scoring *derived* rules against an answer key of
+*claimed* rules compares two different kinds of thing, per §7.3's last bullet —
+is **wrong here**, and `synthesis/scoring.py` says why in `_branch_claims`:
+deriving the cascade from the inventory is what *keeps* rule precision, rule
+recall, functional recovery and `misdirected_rule_count` comparable across the
+migration, which is why §4.3 requires the derivation. The comparison is
+legitimate. What damages the number is the invertibility blindness and the
+number of attempts, not the shape change.
+
+#### What this leaves
+
+The precision half of condition 5 is a **weak instrument across this migration**
+and it trips. The two quantities shipped beside it that survive a change of
+spelling — `misdirected_rule_count` and `functional_recovery_rate` — both point
+the other way. Nothing here is a verdict on the architecture, and no threshold
+moves; whether condition 5 should be read on invertible branches only is a
+research-owner question and is deliberately not answered here.
+
+### 7.9 What a sweep actually spends its time on
+
+Measured from the event and trajectory artifacts of the 2026-08-24 and
+2026-08-25 sweeps, `google/gemma-4-26b-a4b` under LM Studio. This exists because
+"run five seeds on both benchmarks" is a scheduling decision as much as a
+measurement one, and the intuitions about where the hours go were wrong.
+
+**Wall-clock time is model inference, essentially entirely.** SCA alignment, the
+rule engine and the assembler together are **0.1%** of a run; median tool
+execution is 0.01 s. Nothing here is fixable by optimising the harness.
+
+**And inference time is output tokens, not context.** Correlating per-turn
+latency against per-turn usage:
+
+| | corr(latency, input tokens) | corr(latency, output tokens) |
+| --- | --- | --- |
+| `polynesian-after` seed-00, 92 turns | +0.294 | **+0.971** |
+| `synthetic_hard-after-r2` seed-00, 47 turns | +0.270 | **+0.992** |
+
+Decode runs at a steady 33–39 tokens a second. A 31,000-token context costs
+almost nothing per turn, which means **prefix caching is already working** and
+the transcript growing is not the problem. This is the opposite of the natural
+assumption and it inverts the tuning advice: shrinking context buys nothing,
+shrinking generation buys everything.
+
+**Three quarters of what is generated is never seen.** Median output is 813
+tokens a turn on Polynesian; the visible content plus tool arguments is worth
+roughly 55. About **77%** of generated tokens are reasoning that never enters the
+transcript — consistent with the thinking-mode measurement the operator skill
+records. Thinking is therefore about three quarters of the wall clock of every
+run in this document.
+
+**A fifth to two fifths of generation is spent on turns that produce nothing.**
+
+| | tool calls | exact duplicates | rejected | generation on rejected turns |
+| --- | --- | --- | --- | --- |
+| `polynesian-after` (2 seeds) | 127 | 11 (9%) | **47 (37%)** | **40%** |
+| `synthetic_hard-after-r2` (5) | 240 | 26 (11%) | 42 (18%) | 22% |
+| `synthetic_hard-before-r2` (5) | 367 | 49 (13%) | 82 (22%) | 20% |
+
+An "exact duplicate" is the same tool with byte-identical arguments, repeated
+inside one node session — the answer is already in the transcript. A rejected
+turn costs **more** generation than an accepted one, not less: 875 against 730
+median tokens on Polynesian, and 749 against 268 on `synthetic_hard`. The model
+reasons longer on the turns it gets wrong.
+
+Because latency is output tokens, those shares are shares of the clock directly.
+On `polynesian-after` roughly **20 of every 49 minutes a seed** goes to calls the
+harness refuses or has already answered.
+
+**Failure is the expensive outcome, not the cheap one.** A node that commits
+takes 2–9 minutes; a node that fails burns to its turn limit and returns nothing.
+In `polynesian-after` seed-00 the three failed nodes cost 22.3 of 49.2 minutes
+(45%); in `synthetic_hard-after-r2` seed-00 the single failing `east` cost 9.0 of
+16.0 (56%). That is why the *before* condition is the slow one on an identical
+benchmark — 40.8 minutes a seed against the after condition's 14.3 — despite
+committing a third as many nodes.
+
+#### What follows, and what does not
+
+- **A rejection class removed is a speed-up as well as a quality fix.** After
+  tasks 1–3, `synthetic_hard` went 17.6 to **14.3** minutes a seed and 21% to 18%
+  rejected calls. Suggestive only — n=3 against n=5 and the ranges overlap
+  (14.0–20.0 against 11.2–16.0) — but it is the direction the anatomy predicts.
+- **Concurrency helps throughput, never latency.** The harness is strictly
+  sequential inside a seed, so parallel slots speed up nothing unless separate
+  seeds are launched as separate processes. And the headroom is not uniform: the
+  slowest single turns already observed are 845 s, 717 s and 603 s against a
+  600 s `--timeout`, all in the before condition, which already times out and
+  retries. The after condition has 2.7× headroom on Polynesian and the before
+  condition has none, so a concurrency slowdown would convert commits into
+  failures — the expensive outcome, and a corrupted measurement.
+- **KV-cache quantization attacks the wrong term.** The bottleneck is streaming
+  weights per decoded token, not the cache, and prefill is already nearly free.
+  It also changes numerics and is invisible to `configuration_sha256`, so it
+  would make new seeds non-comparable with the sixteen already banked.
+- **What is not established:** whether thinking mode *causes* the duplicate and
+  rejected calls or merely multiplies their cost. That needs a paired run with
+  thinking disabled, which would not be comparable with anything measured here
+  and has not been done.
 
 ---
 
@@ -2259,15 +2766,20 @@ the guard and it is a real artifact.
 
 ### Stage 3 — flip the instructions and measure
 
-- `system_prompt.md` teaches the inventory workflow (§6.6 step list), the
-  edge-case framing for `realign` (§6.1), and when a restoration is warranted
-  (§6.9). The file was renamed from `SKILL.md` at design time, because two
-  unrelated files carried that name — the model's system prompt and the
-  harness's own operator skill under `skills/` — and the collision was a
-  standing source of confusion. Content unchanged, so `instruction_sha256` and
-  every resume check are unaffected.
-  `COMMIT_REQUIREMENT_NOTES` updated, because a requirement living only in code
-  is one the model discovers by being rejected.
+- **Done 2026-08-24.** `system_prompt.md` teaches the inventory workflow (§6.6
+  step list), the edge-case framing for `realign` (§6.1), and when a restoration
+  is warranted (§6.9). The rule cascade keeps a section of its own, because it
+  stays an accepted commit shape through this stage; what changed is which one
+  the manual leads with and why. The file was renamed from `SKILL.md` at design
+  time, because two unrelated files carried that name — the model's system
+  prompt and the harness's own operator skill under `skills/` — and the
+  collision was a standing source of confusion.
+  `COMMIT_REQUIREMENT_NOTES` covers both shapes for the same reason, because a
+  requirement living only in code is one the model discovers by being rejected.
+  **This changes `instruction_sha256`**, so every checkpoint written before it
+  refuses to resume, naming the instructions as the part that moved. That is the
+  mechanism working: a resumed run must not mix nodes reconstructed under two
+  different manuals.
 - `run-benchmark --seeds 5` on Polynesian and `synthetic_hard`, before and
   after, both commit shapes, recorded in `docs/benchmarks.md`.
 - `score-synthetic` gains the inventory comparison (§9.2).
@@ -2359,7 +2871,9 @@ assembler. So:
 - Stage 2–3 — it gains the assembly numbers as a third block, computed by
   `oracle_ceiling.py --oracle assembly`. Three measures, all live, all pinned,
   because during the migration both architectures exist and a reader needs the
-  before and the after in one file.
+  before and the after in one file. **Landed 2026-08-24**: top-1 **39/46**,
+  beam-exact **39/46**, mean top NED **0.031**, `cross_branch_assembly_rate`
+  0.957 and non-zero at all 7 nodes, flat at every beam width from 1 to 10.
 - Stage 4 — the branch-cascade numbers move from `assert` to the module
   docstring, marked with the date they were recorded and the commit at which the
   path they measured was removed. They stay *computable* — the modes remain in
@@ -2370,6 +2884,24 @@ The gap assertion survives in the new architecture's terms: `assembly_beam_exact
 - assembly_top_exact`, which under assembly should be **small**, and the test
 should say why — a large gap would mean the assembler is generating candidates
 it then fails to select among, which is the old defect returning at a new level.
+It is **0** as measured, and `MAX_ASSEMBLY_SELECTION_GAP = 2` is what the test
+asserts.
+
+**What the oracle is given, and the two things it is not.** It commits one value
+per correspondence set, optionally with a `conditioning` found in the same
+bounded environment space `--oracle contextual` searches, and it picks a residue
+policy per node by running each. Those are all claims about a *language*. It is
+given no `restorations` and no `residue_dispositions`, because those are claims
+about one concept: a restoration would hand it the `*w` in `1028` YAWN that no
+daughter attests, and §7.4 records `1028` and `778` as concepts the ceiling
+cannot promise. They stay unpromised — both are still misses under this oracle.
+
+**One consequence to carry into §7.** Under a branch cascade the beam holds one
+whole string per branch, so beam-exact measures the selection slack. Under
+assembly one candidate tuple assembles into exactly one parent form, so top-1
+and beam-exact converge by construction and the slack is gone. The two
+beam-exact numbers are therefore not comparable by subtraction, which is what
+§7.3's last bullet already says and which condition 2 has to be read against.
 
 `tests/workbench/fixtures/polynesian_benchmark_segments.json` is unchanged: the
 oracle reads segments, the tree and the gold binding, and assembly reads the
@@ -3061,12 +3593,13 @@ reason §1.2 already gives — a segment no daughter shows — which is what mak
 six attributable to the boundary and to nothing else. Both of §7 condition 3's
 boundary-bearing witnesses, `1212` and `1439`, are among them.
 
-##### What a session sees under the instructions that still ship
+##### What a session saw under the instructions that shipped before stage 3
 
-Stage 3 flips `agent/system_prompt.md`; until it does, every live node runs the
-branch-cascade workflow — and now sees boundary correspondence sets while being
-taught a DSL that refuses `+` and `-` as rule targets. That combination is
-reachable today, so it was checked rather than left to be discovered.
+Recorded because it was true and measured, and because the branch-cascade
+workflow is still an accepted commit shape: a session that takes it sees
+boundary correspondence sets while being taught a DSL that refuses `+` and `-`
+as rule targets. That combination was reachable before the instructions flipped
+and is reachable now, so it was checked rather than left to be discovered.
 
 A rule about a boundary is refused at the parser: `+ > Ø` and `+ > Ø / #_` give
 *"morphological boundaries may constrain context but not be targets"*, `a > a +
@@ -3076,10 +3609,13 @@ model proposed a rule and the parser refused — so none of them counts toward
 `high_quality` or toward the stall detector's protocol window. The message names
 the problem without a remediation because it is already the whole answer.
 
-That is the right outcome and not a gap to close before stage 3: the evidence is
-visible, acting on it through the wrong mechanism is refused legibly, and the
-refusal is free. A boundary is committable through the inventory shape today and
-will be teachable when the instructions flip.
+That is the right outcome and was not a gap to close before stage 3: the
+evidence is visible, acting on it through the wrong mechanism is refused
+legibly, and the refusal is free. A boundary is committable through the
+inventory shape, and since 2026-08-24 `agent/system_prompt.md` says so — the
+Sound Rule DSL section states that a set may take `+` as its `proto_segment`
+and that only the *derived* per-branch rule for such a set cannot be written,
+which is what `boundary_change_child_ids` reports.
 
 ##### Does the ceiling still bound the implementation? Measured, not argued
 
@@ -3204,6 +3740,7 @@ that produced them.
 | width curve, both oracles | same script, `--widths 1,3,5,10` |
 | 38/46 and 40/46 single-daughter reach | same script, cascade-applied per daughter |
 | 37 / 8 / 1 | `tools/branch_recoverability.py`, map-applied per daughter |
+| 39/46 top-1 and beam-exact, 0.031 NED, 0.957 cross-branch, assembly | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle assembly --json`, 2026-08-24 |
 | 42/46 flat, 39/46 node-local, 46/46 free-choice assembly | this session's `assembly_ceiling.py`; **pre-repair** — now 43/46, 44/46, 46/46 |
 | 15/25 and 16/25 on `synthetic_hard` against `proto` | contextual-oracle script with `--gold-node proto` |
 | 22/25 as published | `tools/oracle_ceiling.py runs/benchmarks/synthetic_hard.json`, scored against `east` |

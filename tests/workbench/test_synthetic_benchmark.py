@@ -19,17 +19,41 @@ from pathlib import Path
 
 import pytest
 
+from datetime import UTC, datetime
+
+from cognate_reconstruction.agent.schemas import (
+    CommitReconstructionArgs,
+    CommittedReconstruction,
+    CommittedSoundRule,
+    LLMMessage,
+    LLMToolDefinition,
+    MessageRole,
+    NodeLexiconSummary,
+    NodePromptPayload,
+)
+from cognate_reconstruction.agent.trajectory import (
+    AgentNodeMetrics,
+    AgentTrajectory,
+)
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.rules.parser import parse_rule
 from cognate_reconstruction.schemas.historical import (
     GoldEvidenceKind,
     HistoricalFormRole,
 )
+from cognate_reconstruction.schemas.inventory import (
+    CommitProtoInventoryArgs,
+    CommittedProtoInventory,
+    CorrespondenceCommitment,
+    ResiduePolicy,
+    derive_set_id,
+)
 from cognate_reconstruction.schemas.synthetic import SyntheticFamilyDefinition
 from cognate_reconstruction.synthesis import generate_family, score_run
 from cognate_reconstruction.synthesis.scoring import (
     BranchScore,
     CommittedBranchRule,
+    committed_branch_rules,
 )
 
 FAMILIES = Path(__file__).resolve().parents[2] / "benchmarks" / "synthetic"
@@ -315,3 +339,230 @@ def test_every_gold_evidence_kind_has_a_readable_note() -> None:
         GoldEvidenceKind.RECONSTRUCTED
     )
     assert "not a language" in gold_kind_note(GoldEvidenceKind.SYNTHETIC)
+
+
+# ---------------------------------------------------------------------------
+# The same claim, committed either way, scores the same
+#
+# §9.2 of `docs/proto_inventory_design.md` says `score-synthetic` keeps rule
+# precision, rule recall, functional recovery and `misdirected_rule_count`
+# comparable across the migration by scoring an inventory's *derived* cascade.
+# `_branch_claims` does that, and until now nothing exercised it: every test
+# above builds `CommittedBranchRule` objects by hand, which is downstream of the
+# branch that reads a commit. A regression there would leave the whole suite
+# green while `score-synthetic` reported zero rules for every inventory session
+# in a sweep — which reads as a model that committed nothing, not as a scorer
+# that could not see it.
+# ---------------------------------------------------------------------------
+
+INNER_B_CHILDREN = ("d3", "d4")
+"""`synthetic_regular`'s second subgroup: d3 innovated `t > θ`, d4 `u > o`.
+
+Child-to-parent, that is `θ > t` on d3 and `o > u` on d4 — one rule each, on
+different segments, so a derived cascade that mixed the two branches up would be
+visible rather than absorbed.
+"""
+
+
+def _inventory_commit() -> CommittedProtoInventory:
+    def commitment(reflexes, proto, support, rationale):
+        return CorrespondenceCommitment(
+            set_id=derive_set_id(
+                reflexes,
+                INNER_B_CHILDREN,
+                segmentation_overlay_id=None,
+                alignment_overlay_id=None,
+            ),
+            reflexes=reflexes,
+            proto_segment=proto,
+            support=support,
+            confidence=1.0,
+            rationale=rationale,
+            directionality_rationale=f"scripted:{proto}",
+        )
+
+    return CommittedProtoInventory(
+        request=CommitProtoInventoryArgs(
+            node_id="inner_b",
+            child_node_ids=INNER_B_CHILDREN,
+            commitments=(
+                commitment(("θ", "t"), "t", 9, "d3 spirantised *t."),
+                commitment(("u", "o"), "u", 7, "d4 lowered *u."),
+            ),
+            residue_policy=ResiduePolicy.RETAIN_FROM_WITNESS,
+            residue_witness_child_id="d4",
+            anomalies=(),
+            summary="Proto-inner_b *t and *u; d3 and d4 each innovated once.",
+        )
+    )
+
+
+def _rules_commit() -> CommittedReconstruction:
+    return CommittedReconstruction(
+        request=CommitReconstructionArgs(
+            node_id="inner_b",
+            rules=(
+                CommittedSoundRule(
+                    dsl="θ > t",
+                    source_child_ids=("d3",),
+                    confidence=1.0,
+                    rationale="d3 spirantised *t.",
+                    directionality_rationale="scripted:t",
+                ),
+                CommittedSoundRule(
+                    dsl="o > u",
+                    source_child_ids=("d4",),
+                    confidence=1.0,
+                    rationale="d4 lowered *u.",
+                    directionality_rationale="scripted:u",
+                ),
+            ),
+            anomalies=(),
+            summary="Proto-inner_b *t and *u; d3 and d4 each innovated once.",
+        ),
+        parsed_rules=(),
+    )
+
+
+def _completed_trajectory(
+    commit, node_id: str = "inner_b", children=INNER_B_CHILDREN
+) -> AgentTrajectory:
+    now = datetime.now(UTC)
+    return AgentTrajectory(
+        trajectory_id="trajectory:scoring",
+        schema_version="3.0",
+        run_id="run:scoring",
+        configuration_sha256="0" * 64,
+        node_id=node_id,
+        provider_adapter="ScriptedProvider",
+        instruction_sha256="1" * 64,
+        tool_schema_sha256="2" * 64,
+        payload_schema_sha256="3" * 64,
+        trajectory_schema_sha256="4" * 64,
+        initial_payload=NodePromptPayload(
+            node_id=node_id,
+            active_children=tuple(
+                NodeLexiconSummary(
+                    node_id=child, name=child, form_count=1, concept_count=1
+                )
+                for child in children
+            ),
+        ),
+        tool_definitions=(
+            LLMToolDefinition(
+                name="commit_reconstruction",
+                description="commit",
+                parameters={"type": "object"},
+            ),
+        ),
+        messages=(LLMMessage(role=MessageRole.SYSTEM, content="system"),),
+        metrics=AgentNodeMetrics(
+            started_at=now,
+            finished_at=now,
+            duration_seconds=1.0,
+            turn_count=4,
+            provider_attempts=4,
+            retry_count=0,
+            tool_call_count=5,
+            failed_tool_call_count=0,
+            protocol_failure_count=0,
+            inspection_tool_calls=2,
+            sound_law_tests=0,
+            cascade_tests=0,
+            assembly_tests=1,
+            committed_rule_count=0,
+            committed_anomaly_count=0,
+            committed_without_inspection=False,
+            identity_without_testing=False,
+        ),
+        committed_reconstruction=commit,
+        completed=True,
+    )
+
+
+def test_an_inventory_commit_scores_as_the_cascade_it_derives() -> None:
+    """The migration invariant, as an equality rather than as prose."""
+    key = generate_family(_definition("synthetic_regular")).answer_key
+
+    inventory = score_run(key, (_completed_trajectory(_inventory_commit()),))
+    rules = score_run(key, (_completed_trajectory(_rules_commit()),))
+
+    assert inventory.as_dict() == rules.as_dict()
+    assert inventory.rule_precision == 1.0
+    assert inventory.misdirected_rule_count == 0
+    for node_id in INNER_B_CHILDREN:
+        branch = next(item for item in inventory.branches if item.node_id == node_id)
+        assert branch.functional_recovery_rate == 1.0
+        assert branch.recall == 1.0
+
+
+def test_a_derived_rule_carries_its_commitments_directionality_rationale() -> None:
+    """Which is what makes `misdirected_rationales` mean anything either way.
+
+    A derived rule has no rationale of its own — it is a view of a commitment —
+    so `DerivedBranchRules` records which set each rule came from and
+    `_branch_claims` reads the rationale back off that set. Without the
+    provenance, an inventory session would score as one that stated no direction
+    at all.
+    """
+    claims = committed_branch_rules((_completed_trajectory(_inventory_commit()),))[0]
+    assert {(rule.child_node_id, rule.dsl) for rule in claims} == {
+        ("d3", "θ > t"),
+        ("d4", "o > u"),
+    }
+    assert {rule.directionality_rationale for rule in claims} == {
+        "scripted:t",
+        "scripted:u",
+    }
+
+
+def test_an_inventory_that_names_a_branch_that_did_not_change_is_caught() -> None:
+    """`misdirected_rule_count` has to survive the change of commit shape.
+
+    It is the one measurement in this file that checks *directionality* rather
+    than accuracy, and it works by noticing a rule scoped to a branch the answer
+    key gave no rule at all. Under an inventory nobody scopes anything: the
+    scope is derived from which child's reflex differs from the committed value.
+    So this asserts the derivation points at the right branch by making it point
+    at the wrong one.
+
+    `inner_a`'s children are `d1`, which innovated nothing, and `d2`, which
+    innovated `k > x`. Reconstructing the set ⟨d1 k : d2 x⟩ as `*x` says `d1`
+    changed and `d2` did not, which is the whole claim reversed — and the
+    derived cascade puts the rule on `d1`, where the answer key has none.
+    """
+    key = generate_family(_definition("synthetic_regular")).answer_key
+    children = ("d1", "d2")
+    backwards = CommittedProtoInventory(
+        request=CommitProtoInventoryArgs(
+            node_id="inner_a",
+            child_node_ids=children,
+            commitments=(
+                CorrespondenceCommitment(
+                    set_id=derive_set_id(
+                        ("k", "x"),
+                        children,
+                        segmentation_overlay_id=None,
+                        alignment_overlay_id=None,
+                    ),
+                    reflexes=("k", "x"),
+                    proto_segment="x",
+                    support=6,
+                    confidence=1.0,
+                    directionality_rationale="scripted, and backwards",
+                ),
+            ),
+            residue_policy=ResiduePolicy.DROP,
+            anomalies=(),
+            summary="Backwards on purpose.",
+        )
+    )
+    score = score_run(
+        key, (_completed_trajectory(backwards, "inner_a", children),)
+    )
+    assert score.misdirected_rule_count == 1
+    assert "d1" in score.as_dict()["misdirected_branches"]
+    wrong = next(item for item in score.branches if item.node_id == "d1")
+    assert wrong.innovated is False
+    assert wrong.committed_rules == ("k > x",)
+    assert wrong.misdirected_rationales == ("scripted, and backwards",)

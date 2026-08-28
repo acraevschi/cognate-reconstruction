@@ -119,7 +119,13 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         "alignment-failed": ToolErrorCategory.PROTOCOL,
         # An anomaly cites a form or concept outside the active evidence.
         "anomaly-unknown-reference": ToolErrorCategory.PROTOCOL,
-        # A multi-rule commit left some rule without its own rationale.
+        # A commit carrying more than one claim left one of them without its
+        # own rationale. One code for both shapes on purpose: it is the same
+        # requirement — a single top-level summary cannot attribute reasoning to
+        # an individual rule or to an individual correspondence set — and one
+        # code keeps the counts comparable across the migration. The message and
+        # the remediation say which shape was rejected and name the exact
+        # rule_ids or set_ids.
         "missing-rule-rationale": ToolErrorCategory.PROTOCOL,
         # A committed rule deletes or merges a contrast without saying which
         # branch innovated. Protocol rather than exploratory for the same reason
@@ -131,6 +137,13 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # contain: a stale or fabricated ID. Stale is the common case — a
         # realignment invalidates every ID derived under the previous overlay.
         "unknown-correspondence-set": ToolErrorCategory.PROTOCOL,
+        # A commitment's `reflexes` differ from the cited set's own. Split
+        # from the support code below on 2026-08-24: they are different
+        # mistakes with different fixes — one is a mis-spelled gap, the
+        # other a mis-copied integer — and one code for both made the tally
+        # useless exactly when a sweep needed reading. The module raising
+        # them already documented them as distinct.
+        "correspondence-reflex-mismatch": ToolErrorCategory.PROTOCOL,
         # A commitment's `support` differs from the re-derived support. A
         # transcription error rather than a hypothesis: support is copied from
         # the harness's own inventory and must never be a model claim.

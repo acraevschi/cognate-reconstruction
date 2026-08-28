@@ -198,11 +198,13 @@ def verify_commitments(
                 f"commitment {commitment.set_id!r} carries reflexes "
                 f"{list(commitment.reflexes)} but that set is "
                 f"{list(known.segments)}",
-                code="correspondence-support-mismatch",
+                code="correspondence-reflex-mismatch",
                 remediation=(
                     "The set_id is derived from the reflex tuple, so the two "
                     "cannot disagree. Copy the row back from "
-                    "summarize_correspondences rather than retyping it."
+                    "summarize_correspondences rather than retyping it. "
+                    "Write a gap as null; '', 'null', 'Ø' and '∅' are all "
+                    "accepted and mean the same."
                 ),
             )
         if commitment.support != known.support:

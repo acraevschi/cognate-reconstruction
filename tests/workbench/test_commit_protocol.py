@@ -15,6 +15,7 @@ from cognate_reconstruction.agent.schemas import (
 from cognate_reconstruction.agent.tools import default_tool_registry
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
+from cognate_reconstruction.schemas.rules import AnomalyType
 
 
 def _lexicon(variety_id: str, initial: str) -> LanguageLexicon:
@@ -443,6 +444,31 @@ def test_every_committed_rule_field_is_described_for_the_model() -> None:
     assert all("description" in schema["properties"][name] for name in schema["properties"])
 
 
+def test_every_anomaly_field_is_described_for_the_model() -> None:
+    """The same property, for the object with the largest schema rejection class.
+
+    20 rejections across the four sweeps of 2026-08-24, and the only one of them
+    not specific to the inventory protocol: `anomalies[].anomaly_type=missing`,
+    `anomalies[].explanation=missing`, and `anomalies[].type=extra_forbidden`
+    and `anomalies[].issue=extra_forbidden` — the field names a model reaches
+    for when the schema hands it four bare titles and no prose.
+    """
+    schema = CommitReconstructionArgs.model_json_schema()
+    anomaly_schema = schema["$defs"]["AnomalyReport"]["properties"]
+    assert all(
+        "description" in anomaly_schema[name] for name in anomaly_schema
+    ), sorted(name for name in anomaly_schema if "description" not in anomaly_schema[name])
+    anomaly_type = anomaly_schema["anomaly_type"]["description"]
+    for permitted in AnomalyType:
+        assert permitted.value in anomaly_type, permitted
+    # The two names the model actually sent, and the requirement `require_subject`
+    # enforces, are stated where the model reads rather than only where it fails.
+    assert "'type'" in anomaly_type
+    assert "'issue'" in anomaly_schema["explanation"]["description"]
+    for name in ("form_id", "concept_id"):
+        assert "refused" in anomaly_schema[name]["description"], name
+
+
 # ---------------------------------------------------------------------------
 # A cascade preview validates the rules it previewed
 #
@@ -758,7 +784,7 @@ def test_a_rule_validated_for_another_scope_is_named_as_such() -> None:
 #
 # Reproduced from the run that died on it: two unconditioned rules collide in
 # the cascade preview, the model refines them into conditioned ones exactly as
-# system_prompt.md step 9 asks, and commits the refined order.
+# the cascade section of system_prompt.md asks, and commits the refined order.
 # ---------------------------------------------------------------------------
 
 

@@ -37,7 +37,31 @@ from cognate_reconstruction.schemas.rules import (
     RuleEnvironment,
 )
 
-def _normalize_gaps(row: object) -> object:
+WRITTEN_GAP_SPELLINGS: frozenset[str] = GAP_SEGMENT_TOKENS | frozenset(
+    {"", "null", "None"}
+)
+"""Every spelling of "there is nothing here" accepted inside `reflexes`.
+
+Wider than `GAP_SEGMENT_TOKENS`, which is the *filter* vocabulary a caller uses
+to ask `summarize_correspondences` for the gap. This is the *writing*
+vocabulary, and a model writing a JSON array of segments reaches for more than
+two things: `Ø` and `∅` because it knows the DSL, and `""` or `"null"` because
+it is writing JSON and the field beside it is a string. Measured on the
+Polynesian sweep of 2026-08-24, where `['+', '']` and `['+', 'null']` against
+the set `['+', None]` were the single largest rejection class and stalled ten
+nodes.
+
+**Not case-folded, deliberately.** `ø` U+00F8 is the close-mid front rounded
+vowel and a perfectly good segment; only `Ø` U+00D8 means the gap. Folding case
+here would silently delete a real reflex, which is a worse failure than the one
+this fixes.
+
+`""` cannot collide with a segment either: `NonEmptyStr` refuses it everywhere a
+segment is accepted, so it has no other meaning to take away.
+"""
+
+
+def normalize_written_gaps(row: object) -> object:
     """Accept the DSL's gap spellings where the model has to write a gap.
 
     An alignment gap is `None` in these models, and `null` is what a JSON tool
@@ -52,16 +76,29 @@ def _normalize_gaps(row: object) -> object:
     was meant. Normalizing here removes a rejection class without loosening a
     check — the reflex tuple is still compared against the harness's own.
 
+    The accepted spellings live in `WRITTEN_GAP_SPELLINGS`, which is wider
+    than the two the first version took: the same failure recurred on the
+    Polynesian sweep of 2026-08-24 with `""` and `"null"`, which is what a
+    model writing JSON reaches for rather than what a model that knows the
+    DSL reaches for.
+
     The list-to-tuple conversion is not incidental. A `mode="before"` validator
     takes the raw input, so the fields it hands on are validated strictly rather
     than in the JSON mode the tool boundary parses in, where a list is a legal
     tuple. `CommittedSoundRule.supply_rule_id` converts its own list fields for
     exactly this reason and this follows it.
+
+    **Public, and shared with `PolarizeArgs.correspondence`**, which takes the
+    same object: the workflow hands the model one row of
+    `summarize_correspondences` and asks it to paste that row into `polarize`
+    and then into a commitment. Two vocabularies for one row is how the
+    interface came to teach that a gap is `null` in one field and refuse it in
+    the next.
     """
     if not isinstance(row, (list, tuple)):
         return row
     return tuple(
-        None if isinstance(item, str) and item in GAP_SEGMENT_TOKENS else item
+        None if isinstance(item, str) and item in WRITTEN_GAP_SPELLINGS else item
         for item in row
     )
 
@@ -126,20 +163,26 @@ class CorrespondenceCommitment(WorkbenchModel):
     reflexes: tuple[str | None, ...] = Field(
         min_length=2,
         description=(
-            "The set's segments, positional against child_node_ids. Use null "
-            "for an alignment gap; 'Ø' and '∅' are accepted and mean the same. "
-            "Required even though set_id determines it: a commit a human "
-            "cannot read without re-running a tool is not an audit record."
+            "The set's segments: exactly one entry per child in "
+            "child_node_ids, in that order, INCLUDING the children that show "
+            "nothing there — write those as null. A set only one child attests "
+            "is still ['ʔ', null] and never ['ʔ']. 'Ø' and '∅' are accepted "
+            "for a gap and mean the same as null. Required even though set_id "
+            "determines it: a commit a human cannot read without re-running a "
+            "tool is not an audit record."
         ),
     )
     proto_segment: NonEmptyStr | None = Field(
         description=(
-            "The proto-phoneme you reconstruct for this set, or null for 'this "
-            "set reconstructs nothing' — every branch showing material here "
-            "innovated it. It is deliberately not restricted to the segments in "
-            "'reflexes': Proto-Polynesian *w survives as v or as nothing in "
-            "every daughter, and a schema that could only emit an observed "
-            "reflex would make it unreconstructable."
+            "Required, with no default: the proto-phoneme you reconstruct for "
+            "this set, or an explicit null for 'this set reconstructs "
+            "nothing' — every branch showing material here innovated it. There "
+            "is no default because those are different claims and omitting the "
+            "field would silently make the stronger one. It is deliberately "
+            "not restricted to the segments in 'reflexes': Proto-Polynesian *w "
+            "survives as v or as nothing in every daughter, and a schema that "
+            "could only emit an observed reflex would make it "
+            "unreconstructable."
         ),
     )
     conditioning: RuleEnvironment | None = Field(
@@ -173,8 +216,16 @@ class CorrespondenceCommitment(WorkbenchModel):
         gt=0.0,
         le=1.0,
         description=(
-            "Your confidence in this reconstruction, in (0, 1]. Your own "
-            "judgement; the deterministic assembler uses it as a score weight."
+            "Required on every commitment, with no default: your confidence "
+            "in this reconstruction, in (0, 1]. An inventory of thirty sets "
+            "carries thirty of these, and a single commitment omitting it "
+            "refuses the whole commit — a set written as {'set_id': …, "
+            "'reflexes': ['p', 'f'], 'proto_segment': 'p', 'support': 11} is "
+            "rejected for exactly that. There is no default because a "
+            "confidence you did not state is not 1.0: the deterministic "
+            "assembler consumes this as a score weight, so a default would "
+            "score an unstated guess above a stated doubt. Your own "
+            "judgement, and nothing checks it against the evidence."
         ),
     )
     rationale: NonEmptyStr | None = Field(
@@ -203,7 +254,7 @@ class CorrespondenceCommitment(WorkbenchModel):
     def accept_gap_spellings(cls, value):
         if not isinstance(value, dict) or "reflexes" not in value:
             return value
-        return {**value, "reflexes": _normalize_gaps(value["reflexes"])}
+        return {**value, "reflexes": normalize_written_gaps(value["reflexes"])}
 
     @model_validator(mode="after")
     def validate_merger_claim(self) -> CorrespondenceCommitment:
@@ -584,7 +635,7 @@ class AlignmentOverride(WorkbenchModel):
         rows = value.get("rows")
         if not isinstance(rows, (list, tuple)):
             return value
-        return {**value, "rows": tuple(_normalize_gaps(row) for row in rows)}
+        return {**value, "rows": tuple(normalize_written_gaps(row) for row in rows)}
 
     @model_validator(mode="after")
     def validate_width(self) -> AlignmentOverride:
@@ -608,5 +659,7 @@ __all__ = [
     "ResidueDisposition",
     "ResiduePolicy",
     "SegmentRestoration",
+    "WRITTEN_GAP_SPELLINGS",
     "derive_set_id",
+    "normalize_written_gaps",
 ]

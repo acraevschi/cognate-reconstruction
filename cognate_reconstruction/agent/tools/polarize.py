@@ -53,7 +53,6 @@ from cognate_reconstruction.agent.schemas import (
 )
 from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.schemas.alignment import (
-    GAP_SEGMENT_TOKENS,
     MAX_CORRESPONDENCE_EXAMPLES,
     AlignmentMember,
     CorrespondenceDetail,
@@ -65,10 +64,6 @@ from cognate_reconstruction.schemas.traversal import (
     EvidenceRelation,
     NodeEvidence,
 )
-
-
-def _wanted(segment: str) -> str | None:
-    return None if segment in GAP_SEGMENT_TOKENS else segment
 
 
 def _edge_ok(
@@ -211,7 +206,10 @@ def polarize(
         for child_id in arguments.child_ids
     )
     outside = _outside_nodes(context, arguments.node_ids)
-    wanted = tuple(_wanted(segment) for segment in arguments.correspondence)
+    # Already normalized: `PolarizeArgs` maps every written spelling of a gap
+    # to None at the boundary, so a gap is None here exactly as it is in an
+    # `AlignmentMember`, which is what `_matching_column` compares against.
+    wanted = arguments.correspondence
     if not outside:
         return PolarizeResult(
             child_ids=arguments.child_ids,
