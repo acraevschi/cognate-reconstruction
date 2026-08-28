@@ -89,6 +89,13 @@ from cognate_reconstruction.traversal import (
 )
 
 DEFAULT_LM_STUDIO_BASE = "http://localhost:1234/v1"
+DEFAULT_GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta"
+DEFAULT_GEMINI_KEY_ENV = "GEMINI_API_KEY"
+# LiteLLM routes the Google AI Studio Gemini API under this prefix. Vertex AI is
+# a different backend with its own credentials, so a model already named for one
+# of them is left exactly as the user wrote it.
+GEMINI_MODEL_PREFIX = "gemini/"
+_EXPLICIT_GEMINI_PREFIXES = (GEMINI_MODEL_PREFIX, "vertex_ai/")
 
 
 def _api_base(value: str) -> str:
@@ -126,6 +133,42 @@ def _lm_studio_models(
         for model in models
         if isinstance(model, dict) and model.get("id")
     )
+
+
+def _gemini_models(api_base: str, api_key: str) -> tuple[str, ...]:
+    """List the Gemini models this key may call with generateContent.
+
+    The key travels in ``x-goog-api-key`` rather than the ``?key=`` query
+    parameter Google's examples show. Both authenticate; only the header keeps
+    the secret out of URLs, which is where proxies and logs read them.
+    """
+    request = Request(
+        f"{_api_base(api_base)}/models?pageSize=1000",
+        headers={"Accept": "application/json", "x-goog-api-key": api_key},
+    )
+    try:
+        with urlopen(request, timeout=30) as response:  # noqa: S310
+            payload = json.load(response)
+    except (OSError, URLError, json.JSONDecodeError) as error:
+        raise RuntimeError(
+            f"could not query the Gemini API at {_api_base(api_base)!r}: {error}"
+        ) from error
+    models = payload.get("models", []) if isinstance(payload, dict) else []
+    return tuple(
+        str(model["name"]).removeprefix("models/")
+        for model in models
+        if isinstance(model, dict)
+        and model.get("name")
+        and "generateContent" in (model.get("supportedGenerationMethods") or ())
+    )
+
+
+def _command_gemini_models(args: argparse.Namespace) -> None:
+    api_key = api_key_from_environment(args.api_key_env)
+    if api_key is None:
+        raise ValueError("--api-key-env is required to query the Gemini API")
+    for model_id in _gemini_models(args.api_base, api_key):
+        print(model_id)
 
 
 def _write_json(path: str | Path, content: str) -> None:
@@ -340,6 +383,12 @@ def _seed_provider_config(
 def _command_run_benchmark(args: argparse.Namespace) -> None:
     if args.seeds < 1:
         raise ValueError("--seeds must be at least 1")
+    if args.preset == "gemini" and args.provider_seed_base is not None:
+        raise ValueError(
+            "--provider-seed-base cannot be honoured by the Gemini API, which "
+            "has no seed; run the sweep without it and read the spread as the "
+            "provider nondeterminism it is"
+        )
     payload_path = resolve_payload(args.benchmark)
     out_dir = Path(args.out_dir).expanduser()
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -387,6 +436,8 @@ def _command_run_benchmark(args: argparse.Namespace) -> None:
         ]
         if args.preset:
             command += ["--preset", args.preset]
+        if args.reasoning_effort:
+            command += ["--reasoning-effort", args.reasoning_effort]
         if args.api_base:
             command += ["--api-base", args.api_base]
         if provider_config:
@@ -524,11 +575,51 @@ def _provider_and_configuration(
     args: argparse.Namespace,
 ) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
     options = load_provider_options(args.provider_config)
-    api_key = api_key_from_environment(args.api_key_env)
     preset = "lm-studio" if args.lm_studio else args.preset
+    api_key_env = args.api_key_env
+    if preset == "gemini" and api_key_env is None:
+        api_key_env = DEFAULT_GEMINI_KEY_ENV
+    api_key = api_key_from_environment(api_key_env)
     model = args.model
     api_base = _api_base(args.api_base) if args.api_base else None
-    if preset == "lm-studio":
+    if args.reasoning_effort is not None:
+        # Gemini 3 thinks at "low" unless told otherwise, and the comparative
+        # method is not a low-thinking task. Passed as the OpenAI-shaped name so
+        # every backend that has a reasoning control gets it; LiteLLM turns it
+        # into thinkingConfig.thinkingLevel for Gemini.
+        options["reasoning_effort"] = args.reasoning_effort
+    if preset == "gemini":
+        assert api_key is not None  # the preset always names a key variable
+        api_base = api_base or DEFAULT_GEMINI_BASE
+        if not model.startswith(_EXPLICIT_GEMINI_PREFIXES):
+            model = f"{GEMINI_MODEL_PREFIX}{model}"
+        raw_model = model.partition("/")[2]
+        if "seed" in options:
+            # The sweep's --provider-seed-base writes this. Gemini has no seed,
+            # so repetitions that look seeded would not be; say so here rather
+            # than let LiteLLM reject every call, or silently drop the option
+            # and record a seed the provider never saw.
+            raise ValueError(
+                "the Gemini API does not support 'seed'; drop the option (and "
+                "--provider-seed-base) and let the sweep report the spread it "
+                "actually measured"
+            )
+        if not args.no_preflight:
+            available = _gemini_models(api_base, api_key)
+            if raw_model not in available:
+                rendered = ", ".join(available) if available else "no models reported"
+                raise ValueError(
+                    f"model {raw_model!r} is not served by the Gemini API; "
+                    f"available: {rendered}"
+                )
+        # LiteLLM addresses google_ai_studio by its own default host, and only
+        # honours an override given as api_base. Passing the default back would
+        # be a no-op that still had to be right, so it is only sent when the
+        # user asked for something else.
+        if api_base != DEFAULT_GEMINI_BASE:
+            options["api_base"] = api_base
+        options["api_key"] = api_key
+    elif preset == "lm-studio":
         api_base = api_base or DEFAULT_LM_STUDIO_BASE
         raw_model = model.removeprefix("openai/")
         if not args.no_preflight:
@@ -561,6 +652,7 @@ def _provider_and_configuration(
         "preset": preset,
         "api_base": api_base,
         "provider_options": load_provider_options(args.provider_config),
+        "reasoning_effort": args.reasoning_effort,
         "temperature": args.temperature,
         "timeout": args.timeout,
         "beam_width": args.beam_width,
@@ -1393,6 +1485,18 @@ def _parser() -> argparse.ArgumentParser:
     )
     models.set_defaults(handler=_command_models)
 
+    gemini_models = subparsers.add_parser(
+        "gemini-models",
+        help="List Gemini model IDs this API key may call with generateContent.",
+    )
+    gemini_models.add_argument("--api-base", default=DEFAULT_GEMINI_BASE)
+    gemini_models.add_argument(
+        "--api-key-env",
+        default=DEFAULT_GEMINI_KEY_ENV,
+        help="Read the Gemini API key from this environment variable.",
+    )
+    gemini_models.set_defaults(handler=_command_gemini_models)
+
     varieties = subparsers.add_parser(
         "list-lexibank-varieties",
         help="List dataset-scoped variety IDs in local Lexibank CLDF.",
@@ -1471,7 +1575,7 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--anchors", help="Strict versioned anchor JSON file.")
     infer.add_argument(
         "--preset",
-        choices=["lm-studio"],
+        choices=["lm-studio", "gemini"],
         help="Optional provider preset; generic LiteLLM identifiers need none.",
     )
     infer.add_argument(
@@ -1495,6 +1599,14 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     infer.add_argument("--no-preflight", action="store_true")
+    infer.add_argument(
+        "--reasoning-effort",
+        choices=["minimal", "low", "medium", "high"],
+        help=(
+            "Reasoning budget for backends that expose one; recorded in the "
+            "configuration digest. Gemini 3 thinks at 'low' when this is unset."
+        ),
+    )
     infer.add_argument("--beam-width", type=int, default=5)
     infer.add_argument(
         "--anchor-policy",
@@ -1634,7 +1746,12 @@ def _parser() -> argparse.ArgumentParser:
     sweep.add_argument("--seeds", type=int, default=3)
     sweep.add_argument("--out-dir", required=True)
     sweep.add_argument("--run-id-prefix", default="sweep")
-    sweep.add_argument("--preset", choices=("lm-studio",))
+    sweep.add_argument("--preset", choices=("lm-studio", "gemini"))
+    sweep.add_argument(
+        "--reasoning-effort",
+        choices=("minimal", "low", "medium", "high"),
+        help="Passed to every repetition; see 'infer --reasoning-effort'.",
+    )
     sweep.add_argument("--api-base")
     sweep.add_argument("--provider-config")
     sweep.add_argument(

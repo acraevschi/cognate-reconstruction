@@ -3014,7 +3014,16 @@ coverage in general.
 Recorded as
 `test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now`, which skips
 cleanly when `runs/sweeps` is absent and asserts the corpus still contains a
-historically rejected call so that it cannot pass vacuously.
+historically gap-refused call so that it cannot pass vacuously.
+
+> **Narrowed 2026-08-29, by new live data.** The test first asserted that every
+> gap-bearing call is *accepted*. §7.14's run added a call the model wrote as
+> two `child_ids` against three `correspondence` entries — an arity mistake,
+> correctly refused then and now, and nothing to do with gap spelling — and the
+> over-broad assertion failed on it. It now asserts the narrower true thing:
+> **no call is refused because of how its gap was spelled.** A replay corpus
+> that grows is a test that gets re-examined, which is the point of checking it
+> in rather than leaving it in a transcript.
 
 #### `correspondence-reflex-mismatch`: the check was right and the reporting lost a node
 
@@ -3243,6 +3252,9 @@ form — refuse to raise while the count of commitments failing the cited check 
 falling — is the change that would matter, and it is **not implemented**. It
 needs a definition of "better" that survives the model changing which check it
 fails, and it loosens a termination guard, which is a research-owner call.
+**§7.14 is the live confirmation**: on the two seeds run after the batching
+landed, both failed nodes died of window saturation and neither of the
+repeated-signature rule.
 
 **A caution about sequencing, which is the practical point.** A Polynesian sweep
 run before this is decided measures the detector as much as the architecture,
@@ -3368,6 +3380,114 @@ confirmed by exhibiting the colliding set and the concepts on each side of the
 vote.** Doing that needs a per-set trace the tool does not currently print, and
 it is the obvious next measurement if anyone wants to act on this rather than
 know it.
+
+### 7.14 The batched rejection, observed live
+
+*Run 2026-08-28/29. Two Polynesian seeds, `google/gemma-4-26b-a4b`, temperature
+1.0, `top_k` 64 / `top_p` 0.95 / `repeat_penalty` 1.0 sent explicitly,
+`--provider-seed-base 1000`, `--max-turns 24`, `--max-tool-calls 48`,
+`--timeout 600`, `max_tokens` uncapped. Directory
+`runs/sweeps/polynesian-after-batched`. 97.6 minutes for the pair.*
+
+#### What this run can and cannot answer, decided before it was launched
+
+**It answers one question: does the batched rejection fire, and does the model
+use it?** That is an observation about the current harness and needs no
+baseline.
+
+**It cannot answer whether stalls fell.** Two reasons, and both were settled
+before the two hours were spent:
+
+- **The seeds are not comparable to the banked ones.** Checked against
+  `polynesian-after/seed-00` rather than assumed:
+
+  | component | banked | this run |
+  | --- | --- | --- |
+  | the agent instructions | `e01d547f31b9` | `8aaa9c3a7218` |
+  | the tool schemas | `9e5d226f2ac4` | `b5ceb9cb7367` |
+  | the provider and limit settings | `a5403ff98746` | `a5403ff98746` |
+  | the give-up thresholds | `68d2f586d4b6` | `68d2f586d4b6` |
+
+  The banked Polynesian after-runs are from 2026-08-24; `system_prompt.md` has
+  since taken tasks 1 and 3, and `PolarizeArgs` has since taken task 2. An
+  outcome comparison would be confounded three ways.
+- **Two seeds could not settle it even if they were comparable.** The measured
+  effect of the signature change is 1 stall in 13, about 0.23 stalls a seed
+  against a per-seed spread of ±1.00. At 80% power that is roughly **300 seeds
+  an arm**. No outcome comparison is made below, and none should be read into
+  the numbers that are reported.
+
+#### The batching fired, and the model cleared thirteen rows in one turn
+
+`nuclear_polynesian` in seed 0 produced the shape the fix was built for:
+
+```
+13 of 30 commitments fail this check, and every one of them is listed:
+  - commitment 'cs-08968e2078cb' carries reflexes ['a', 'a', 'a'] but that set is [None, 'a', 'a']
+  - commitment 'cs-fe2360e1a6c1' carries reflexes ['i', 'i', 'i'] but that set is [None, 'i', 'i']
+  …
+```
+
+Comparing each mismatch rejection against the next one at that node:
+
+| named | next names | cleared | still failing | newly surfaced |
+| --- | --- | --- | --- | --- |
+| **13** | 8 | **13** | **0** | 8 |
+| 8 | 8 | 3 | 5 | 3 |
+
+**All thirteen were repaired in a single turn.** Under the serial reporting
+§7.11 describes, the same repair needed one round trip per row. The model then
+reached an **accepted** `test_proto_assembly` at that node.
+
+The eight that surfaced next are the finding behind the finding. They are a
+*different* defect — trailing gaps, `[None, None, 'a']` written for
+`[None, 'a', None]`, where the first thirteen were leading gaps. Serial
+reporting had never named them, because it never got past the first row. **The
+batched message did not only speed up the repair; it made a whole class of
+defect visible for the first time.**
+
+Elsewhere the single-offender path behaved as designed and unchanged: five
+rejections named exactly one set and read as one sentence, including one at
+`tahitic` that the model repaired before committing.
+
+#### And both failed nodes died on the rule the fix does not touch
+
+| seed | committed | failed node | rule that ended it |
+| --- | --- | --- | --- |
+| 0 | 6 of 7 | `nuclear_polynesian` | **window saturation** |
+| 1 | 6 of 7 | `marquesic` | **window saturation** |
+
+Neither was the repeated-signature rule. `nuclear_polynesian` died as *6 of the
+last 9 tool calls were rejected on protocol grounds*, with the window carrying
+`correspondence-reflex-mismatch`, two schema codes and
+`unknown-correspondence-set` together; `marquesic` died at 7 of 9 with the two
+by-design rationale codes in the mix.
+
+This is §7.12's own prediction landing on the first two seeds that could test
+it: **the window rule is the binding constraint, it counts rejections of any
+kind without seeing repair, and batching one check does not empty it.** The
+model at `nuclear_polynesian` had just cleared thirteen rows in one turn and
+reached an accepted preview, and the window ended it anyway.
+
+#### One thing that is *not* evidence, said because it is tempting
+
+`nuclear_polynesian` **committed** in seed 1, and it failed in four of the five
+banked seeds. That commit is **not attributable to anything in this document**:
+the node took exactly one rejection, `missing-rule-rationale`, and produced no
+mismatch at all. The model simply wrote the reflex rows correctly that time.
+Both seeds committed 6 of 7 nodes, against 4, 5 and 3 in the banked complete
+seeds — and per the hash table above, that difference is not attributable
+either.
+
+#### What this establishes
+
+- **Established.** The batched message is produced, it names every offender,
+  and this model cleared a thirteen-item list in one turn. A defect class that
+  serial reporting hid is now surfaced.
+- **Established.** Window saturation, not the repeated signature, ended both
+  failed nodes — n=2, and consistent with the 6 of 13 in the banked seeds.
+- **Not established.** Any rate, any outcome comparison, and any claim that the
+  fix converts failures into commits.
 
 ---
 

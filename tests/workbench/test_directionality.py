@@ -1007,11 +1007,46 @@ def test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now() -> None:
         try:
             PolarizeArgs.model_validate_json(json.dumps(call["arguments"]))
         except (ValidationError, ValueError) as error:
-            refused.append((call["seed"], call["arguments"], str(error)))
+            if _is_gap_spelling_refusal(error):
+                refused.append((call["seed"], call["arguments"], str(error)))
     assert not refused, refused
 
     # The corpus is only evidence if it still contains the failure it fixes.
-    assert [call for call in calls if call["code"]], (
-        "no historically rejected call in the corpus — the replay would pass "
-        "vacuously"
+    assert [
+        call
+        for call in calls
+        if call["code"] in _GAP_SPELLING_CODES
+    ], (
+        "no historically gap-refused call in the corpus — the replay would "
+        "pass vacuously"
     )
+
+
+_GAP_SPELLING_CODES = frozenset(
+    {
+        "schema:correspondence[]=string_type",
+        "schema:correspondence[]=string_too_short",
+    }
+)
+
+
+def _is_gap_spelling_refusal(error: Exception) -> bool:
+    """Is this refusal about how a gap was *written*, or about something else?
+
+    The distinction matters and a live run of 2026-08-28 is why. The model sent
+    `{"child_ids": [a, b], "correspondence": [null, "t", "k"]}` — two children
+    against three entries. That is an arity mistake, it is correctly refused
+    then and now, and it has nothing to do with gap spelling. Asserting that
+    every gap-bearing call is *accepted* made this test fail on a call it was
+    never about, so it asserts the narrower and true thing: no call is refused
+    because of how its gap was spelled.
+    """
+    errors = getattr(error, "errors", None)
+    if errors is None:
+        return False
+    for detail in errors():
+        location = detail.get("loc") or ()
+        if location and location[0] == "correspondence":
+            if detail.get("type") in {"string_type", "string_too_short"}:
+                return True
+    return False
