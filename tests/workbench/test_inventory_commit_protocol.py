@@ -1064,3 +1064,63 @@ def test_no_commitment_field_faces_the_model_undescribed() -> None:
     assert all("description" in properties[name] for name in properties), sorted(
         name for name in properties if "description" not in properties[name]
     )
+
+
+def test_every_reflex_mismatch_is_named_in_one_rejection() -> None:
+    """The repair recorded in §7.10, as the failure that motivated it.
+
+    On `polynesian-after` seed-00 the model dropped the leading gap from every
+    three-child row it wrote — one mistake, made across eight commitments at
+    once. Reporting the first offender only meant one round trip per row, and
+    the stall detector's signature is `(tool name, error code)`, so eight
+    distinct sets failing the same check are indistinguishable from one set
+    failing eight times. The node hit `ProtocolStallError` on the turn the
+    model finally had every row right.
+
+    Nothing here loosens the check: each of the eight is still refused.
+    """
+    context = _context()
+    registry = default_tool_registry()
+    survey = _survey(registry, context)
+    by_reflexes = _sets_by_reflexes(survey)
+
+    # The two shapes seed-00 actually produced, on sets this fixture has:
+    # a dropped gap with the neighbour repeated (`['ʔ', None]` -> `['ʔ', 'ʔ']`,
+    # six of the seven live cases), and a row citing one set while writing
+    # another's segments (`['o', 'o']` -> `['t', 't']`, the seventh).
+    elided = _commitment(by_reflexes[("ʔ", None)], "ʔ")
+    elided["reflexes"] = ["ʔ", "ʔ"]
+    miscited = _commitment(by_reflexes[("o", "o")], "o")
+    miscited["reflexes"] = ["t", "t"]
+    broken = [elided, miscited]
+
+    result = _call(
+        registry, context, "test_proto_assembly", "preview",
+        commitments=broken, residue_policy="drop",
+    )
+    assert not result.ok
+    assert result.error.code == "correspondence-reflex-mismatch"
+    # Both offenders are named, so both can be fixed in one edit.
+    for commitment in broken:
+        assert commitment["set_id"] in result.error.message, commitment["set_id"]
+    assert f"{len(broken)} of {len(broken)} commitments" in result.error.message
+
+
+def test_a_single_reflex_mismatch_still_reads_as_one_sentence() -> None:
+    """Batching must not turn the common case into a list of one.
+
+    Three of the four live nodes that hit this check had exactly one bad row.
+    """
+    context = _context()
+    registry = default_tool_registry()
+    survey = _survey(registry, context)
+    commitment = _commitment(_sets_by_reflexes(survey)[("ʔ", None)], "ʔ")
+    commitment["reflexes"] = ["ʔ", "ʔ"]
+    result = _call(
+        registry, context, "test_proto_assembly", "preview",
+        commitments=[commitment], residue_policy="drop",
+    )
+    assert not result.ok
+    assert result.error.code == "correspondence-reflex-mismatch"
+    assert "commitments fail this check" not in result.error.message
+    assert result.error.message.startswith("commitment ")
