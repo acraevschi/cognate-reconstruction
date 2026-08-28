@@ -2819,7 +2819,9 @@ IOU.
   §7.2's first abandon-the-design trigger — the rate ~0 everywhere while top-1
   rises, which would say the gain was really a selection fix — is not close to
   firing. Condition 1 is **39/46**,
-  five below its 44/46 expect and six clear of its 33/46 stop. Condition 4 is
+  five below its 44/46 expect and six clear of its 33/46 stop; §7.13 accounts
+  for those five and finds them morphological, and finds the expect itself
+  unreachable by any inventory. Condition 4 is
   **0.031** against a target of 0.080 and a stop of 0.097. `mean_unaccounted_
   column_rate` is **0.0** under the oracle, against §7.2's 0.125 floor.
 - Condition **2** is disposed of, by §7's own pre-registered rule.
@@ -3263,6 +3265,109 @@ independent reason not to spend the ten hours yet.
 #   call the harness rejected.
 # Both iterate runs/sweeps/polynesian-after*/seed-*/trajectories.jsonl.
 ```
+
+### 7.13 The five concepts condition 1 leaves on the table
+
+*Measured 2026-08-28 with the §7.5 commands. Oracle work: no model was run.*
+
+Condition 1 expects assembly top-1 **≥ 44/46**, the node-local assembly ceiling,
+and stops below 33/46. It measures **39/46**. §7.10 records that it holds, being
+six clear of its stop, and does not account for the five concepts between 39 and
+44. This subsection accounts for them, because a gap in a *ceiling* is a bound on
+the architecture that no model can beat and is worth knowing before stage 4.
+
+#### The seven misses, and which five are the gap
+
+`tools/oracle_ceiling.py --oracle assembly` prints its misses as reported against
+gold:
+
+| concept | reported | gold | reachable node-locally? |
+| --- | --- | --- | --- |
+| `1028` | `m a a w a + w a` | `m a w a + w a` | **no** |
+| `778` | `a u ʔ a f i` | `ʔ a h u + a f i` | **no** |
+| `1217` | `t a m a a + n a` | `t a m a + n a` | yes |
+| `1239` | `p e + f e a a` | `p e + f e a` | yes |
+| `670` | `a k a a` | `a k a` | yes |
+| `671` | `ʔ o n o e` | `ʔ o n e` | yes |
+| `1212` | `k m a + t o u` | `k i + m a + t o u` | yes |
+
+`1028` and `778` are the two `tools/assembly_ceiling.py` already reports as
+node-locally unreachable, and §7.4 records them as concepts the ceiling cannot
+promise. Removing them leaves exactly **five**, which is the gap: 39 + 5 = 44.
+
+**Four of the five are one segment too many, and it is always a vowel.**
+
+#### What they have in common: the daughters carry different morphology
+
+Reading the daughter forms for each of the five:
+
+| concept | gold | segment-length spread across daughters | what differs |
+| --- | --- | --- | --- |
+| `670` | `a k a` (3) | 3, 8 | Māori and Rarotongan carry the compound `p a k i + a k a`; everyone else the simplex |
+| `671` | `ʔ o n e` (4) | 3, 4, 7, 9 | Tongan and Samoan carry the **reduplicated** `ʔ o n e + ʔ o n e` |
+| `1217` | `t a m a + n a` (7) | 4, 5, 6, 10 | different compounds entirely — `m a k u a + k aː n e` against `t a m a + i` |
+| `1239` | `p e + f e a` (6) | 5, 6, 9, 10, 11 | every daughter has a boundary and they carry two or three morphemes, not the same two |
+| `1212` | `k i + m a + t o u` (9) | 2, 3, 5, 6, 8, 11 | 30 daughter forms, 26 with boundaries — the multi-etymon case |
+
+Every one of them is a **morphological** length mismatch: reduplication,
+compounding, or extra derivational material in a subset of daughters. The
+aligner aligns whole strings, so that extra material becomes its own column, and
+a column is a correspondence set the inventory has to commit a value for.
+
+#### Why the architecture cannot drop those columns, which is the real finding
+
+The obvious repair is for the offending column to reconstruct nothing.
+`CorrespondenceCommitment.proto_segment` allows exactly that — an explicit null
+meaning "every branch showing material here innovated it" — and the oracle's own
+`column_targets` prices a column emitting nothing at **0**, the same as a column
+emitting an attested segment. So per concept, the right answer is available and
+the oracle finds it.
+
+**It cannot keep it.** `column_targets` is solved per concept; the committed
+object is an inventory, and an inventory is *one value per correspondence set for
+the whole node*. Where the morphologically-extra column's set also occurs in
+concepts that legitimately reconstruct a vowel, the two demands collide and the
+single committed value has to serve both. The vote goes to the segment, and the
+concepts that wanted nothing emit a spurious vowel.
+
+So the gap is **not** an aligner defect that better alignment would remove, and
+it is not a defect of the oracle's search. It is the **price of generality**, and
+it is the same property §4.1 makes the case for: an inventory is a claim about
+the node rather than about a word. The conditioning that would resolve it is
+morphological — *this set reconstructs nothing inside a reduplicant* — and
+`RuleEnvironment` is evaluated in proto **phonological** terms, neighbouring
+proto-phonemes and word edges, by design.
+
+`mean_unaccounted_column_rate` is **0.000** under this oracle, which rules out
+the competing explanation: nothing here is falling to a residue policy. Every
+one of these columns *is* explained by a correspondence set. The set is simply
+made to say one thing in a word where it should say another.
+
+#### What this does and does not change
+
+- **Condition 1's expect was never reachable by this architecture.** 44/46 is
+  what free per-column choice reaches; 39/46 is what one value per set reaches.
+  The two instruments are answering different questions, and §7.10's separation
+  of absolute from comparative conditions does not catch this one, because both
+  numbers are absolute. This is a third kind of mis-posing and it is recorded,
+  not repaired: **no threshold moves here.**
+- **It is a bound on the model too.** A live model committing an inventory cannot
+  beat 39/46 on this family either, for the same reason. Any live top-1 above
+  39/46 on Polynesian would mean the run was not committing a pure inventory.
+- **It does not touch the case for the change.** The comparison that matters is
+  against what assembly replaces, and the branch cascades reach 33/46 and 27/46
+  top-1 on the same benchmark. Assembly's 39 is six and twelve concepts better
+  while leaving five to morphology.
+
+#### What is not established
+
+The vote-collision mechanism follows from how the instrument is built — per
+concept targets, one value per set — and from the fact that the residue rate is
+zero, which leaves no other route for the segment to appear. **It was not
+confirmed by exhibiting the colliding set and the concepts on each side of the
+vote.** Doing that needs a per-set trace the tool does not currently print, and
+it is the obvious next measurement if anyone wants to act on this rather than
+know it.
 
 ---
 
@@ -4381,4 +4486,8 @@ that produced them.
 | §7.10's commit rate: 1.875 ± 0.835 → 3.000 ± 0.000 (`synthetic_hard`), 4.33 ± 0.58 → 4.00 ± 1.00 (`polynesian`, complete seeds) | counts over `runs/sweeps/*/seed-*/trajectories.jsonl`; committed = `committed_reconstruction` non-null and `completed` true; §7.5 states the exclusion rule |
 | §7.10's failure-mode inversion: Polynesian 6/2 before against 0/13 after | `failure` field of the same trajectories, 2026-08-28 |
 | §7.11's replay: 112 polarize calls, 41 gap-bearing, 8 refused then, 41/41 accepted now | `test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now`, 2026-08-28 |
-| suite at 436 | `pytest -q -k "not local_run_artifacts"`, 2026-08-28 |
+| §7.12's repair rate: 12 of 14 named sets fixed | consecutive `commitment 'cs-…'` names in the rejections of one node, `runs/sweeps/polynesian-after*`, 2026-08-28 |
+| §7.12's stall replay: 13 of 13 old rule, 12 of 13 new rule | each stalled node's signature sequence rebuilt from its recorded payloads and run through both rules, 2026-08-28 |
+| §7.13's seven misses and the five-concept gap | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle assembly` (its own "first 12 misses" block) against `tools/assembly_ceiling.py … --json`, 2026-08-28 |
+| §7.13's daughter length spreads | segment counts per concept over `runs/benchmarks/polynesian.json`, 2026-08-28 |
+| suite at 439 | `pytest -q -k "not local_run_artifacts"`, 2026-08-28 |
