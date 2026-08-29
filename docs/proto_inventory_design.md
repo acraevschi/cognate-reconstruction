@@ -4342,6 +4342,40 @@ reconstruction.
   that its *argument*, "top-1 is up at both comparable nodes", is measuring
   copies at one node and mostly copies at the other.
 
+#### How a copy is produced, which is not what it looks like
+
+The obvious mechanism is the residue policy: a node that explains nothing and
+falls back on `retain_from_witness` reproduces the witness. That mechanism is
+real and it is **not** the common one.
+
+Measured over every banked inventory commit, the copies have a *lower*
+unaccounted-column rate than the nodes that are not copies — mean 0.176 against
+0.286, median **0.000** against 0.242. A copy is usually not a node that
+explained nothing. It is a node that explained everything, trivially.
+
+**64.8% of all committed correspondence sets — 776 of 1198 — are identity
+correspondences**, meaning every reflex in the set is the same segment and the
+committed proto segment is that segment. `polynesian-after-toolstep/seed-00`
+at `tongic` is the clean case: 15 sets committed, 13 of them `a : a > *a` in
+form, unaccounted rate 0.299, and a lexicon byte-identical to Tongan. On
+Polynesian the copying nodes commit 83.9% identity sets against 63.1% for the
+rest.
+
+So there are two routes to the same artifact, and they are opposites:
+
+- **A complete inventory of identity correspondences.** The hypothesis *is* the
+  copy. This is the common route, and the one no residue check would catch.
+- **A near-empty inventory plus `retain_from_witness`.** `burmish-after/seed-01`
+  at `burmic` committed **one** set, support 2, left 338 of 341 columns
+  unaccounted, and returned Rangoon verbatim. Rare, and the one the
+  `unaccounted_column_rate` threshold does catch.
+
+**None of this makes an identity correspondence wrong.** Sister languages share
+most of their phonology, and `a : a > *a` is usually the right answer. What it
+means is that `unaccounted_column_rate` cannot serve as the copy detector — it
+points the wrong way — and that the check has to be on the assembled lexicon,
+which is what the probe does.
+
 #### Two proposals, and one thing that must not be done
 
 **Proposal 9, beside the originals.** *Publish the copy baseline and the
