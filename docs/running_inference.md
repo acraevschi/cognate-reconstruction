@@ -231,7 +231,14 @@ cognate-reconstruct infer \
 
 The provider options file contains only non-secret JSON options. `model`,
 `messages`, `tools`, `tool_choice`, `api_key`, and secret-like nested keys are
-rejected. API keys are read at runtime and never put in result, trajectory,
+rejected, as is any option that would give the model a source outside the
+harness — `web_search_options`, `search_parameters`, `google_search`,
+`url_context` and their kin, on every provider rather than only the one that
+prompted the rule. The design rests on the model reaching the evidence solely
+through the typed tools, so that a trajectory shows what the reconstruction
+rested on; a grounded model can retrieve a published proto-form instead of
+deriving one, and the trajectory would read as ordinary inspection either way.
+A source the model genuinely needs belongs behind a tool. API keys are read at runtime and never put in result, trajectory,
 event, or checkpoint data.
 
 The adapter constructs the OpenAI-shaped LiteLLM chat/tool contract and
@@ -276,7 +283,14 @@ harness handles each rather than leaving it to the run:
   unless told otherwise. `--reasoning-effort {minimal,low,medium,high}` sets it,
   and is recorded in the configuration digest, because a run at `low` and a run
   at `high` are not the same experiment. It is passed under the OpenAI-shaped
-  name, so any backend with a reasoning control accepts it.
+  name, so any backend with a reasoning control accepts it, and
+  `reasoning_output_tokens` reports what it actually spent.
+- **The harness default temperature is wrong here.** Google documents, and
+  LiteLLM warns on every call, that a Gemini 3 model sampled below 1.0 can loop,
+  reason worse, and fail outright on hard tasks. An unset `--temperature`
+  resolves to 1.0 under this preset and 0.1 everywhere else; an explicit value
+  still wins, and the digest records the resolved number, so spelling a default
+  out loud does not change the hash.
 - **There is no seed.** `--provider-seed-base` and a `seed` in
   `--provider-config` are refused up front rather than dropped, so a sweep never
   reports spread across repetitions it only appeared to seed. Run the sweep
@@ -312,6 +326,16 @@ cached token as prompt input and discounts its price. `null` means the provider
 reported nothing, which is not zero — a backend without caching and a cold run
 both read as `null`, and only the cost separates them. In the run above the
 first two calls were cold and the rest hit 74-91%.
+
+`reasoning_output_tokens` is the same relationship on the other side: thinking
+is billed at the output rate and counted there, so it is reported as a share of
+the output rather than added to it. One spelling covers every backend that
+reports it — Gemini, the Anthropic thinking models, the OpenAI reasoning models,
+xAI — because they all land in `completion_tokens_details.reasoning_tokens`.
+
+```
+tokens   in 129474 (69225 cached, 53%) / out 528 (400 reasoning, 76%) / ...
+```
 
 Two consequences worth acting on. A sweep's budget is set by turns and nodes
 rather than by corpus size, so bound it with `--max-total-cost-usd` rather than

@@ -372,6 +372,72 @@ def test_a_response_reporting_only_a_cache_hit_still_carries_usage() -> None:
     assert usage.cached_input_tokens == 7
 
 
+@pytest.mark.parametrize(
+    "model",
+    ["gemini/gemini-3.7-flash", "anthropic/claude", "openai/o-series"],
+)
+def test_reasoning_tokens_are_recorded_whatever_the_backend(model: str) -> None:
+    """One spelling covers every provider that reports thinking.
+
+    Gemini, the Anthropic thinking models, the OpenAI reasoning models and xAI
+    all land in completion_tokens_details.reasoning_tokens, so this needs no
+    per-provider branch — unlike the cached count, which has two spellings.
+    """
+    provider = LiteLLMProvider(
+        model,
+        completion_fn=_usage_response(
+            {
+                "prompt_tokens": 20880,
+                "completion_tokens": 528,
+                "total_tokens": 21408,
+                "completion_tokens_details": {"reasoning_tokens": 400},
+            }
+        ),
+    )
+    usage = _complete(provider).metadata.usage
+    assert usage is not None
+    assert usage.output_tokens == 528
+    # A subset of the completion, not an addition: providers bill thinking at
+    # the output rate and count it there.
+    assert usage.reasoning_output_tokens == 400
+
+
+def test_a_backend_that_reports_no_thinking_records_none_not_zero() -> None:
+    """LM Studio reports no details block; that is silence, not zero thinking."""
+    provider = LiteLLMProvider(
+        "openai/local-model",
+        completion_fn=_usage_response(
+            {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150}
+        ),
+    )
+    usage = _complete(provider).metadata.usage
+    assert usage is not None
+    assert usage.output_tokens == 50
+    assert usage.reasoning_output_tokens is None
+    assert usage.cached_input_tokens is None
+
+
+def test_the_reasoning_share_is_summed_across_a_session() -> None:
+    from cognate_reconstruction.agent.orchestrator import AgentOrchestrator
+    from cognate_reconstruction.agent.schemas import (
+        ProviderResponseMetadata,
+        ProviderUsage,
+    )
+
+    responses = [
+        ProviderResponseMetadata(
+            usage=ProviderUsage(output_tokens=182, reasoning_output_tokens=120)
+        ),
+        ProviderResponseMetadata(
+            usage=ProviderUsage(output_tokens=346, reasoning_output_tokens=280)
+        ),
+        ProviderResponseMetadata(usage=ProviderUsage(output_tokens=60)),
+    ]
+    assert (
+        AgentOrchestrator._usage_total(responses, "reasoning_output_tokens") == 400
+    )
+
+
 def test_the_cached_share_is_summed_across_a_session() -> None:
     """The node metric is the session total, the way the other counters are."""
     from cognate_reconstruction.agent.orchestrator import AgentOrchestrator
@@ -393,25 +459,25 @@ def test_the_cached_share_is_summed_across_a_session() -> None:
     assert total == 20004
 
 
-def test_inspect_run_reads_the_cache_as_a_share_not_a_count() -> None:
-    from cognate_reconstruction.inspect_run import _cached_share
+def test_inspect_run_reads_a_subset_as_a_share_not_a_count() -> None:
+    from cognate_reconstruction.inspect_run import _share
 
-    class _Metrics:
-        input_tokens = 130778
-        cached_input_tokens = 117000
-
-    assert _cached_share(_Metrics()) == " (117000 cached, 89%)"
+    assert _share(117000, 130778, "cached") == " (117000 cached, 89%)"
+    assert _share(400, 528, "reasoning") == " (400 reasoning, 76%)"
 
 
-def test_inspect_run_stays_silent_when_no_cache_was_reported() -> None:
-    """A backend without caching must not grow a column of misleading zeroes."""
-    from cognate_reconstruction.inspect_run import _cached_share
+@pytest.mark.parametrize(
+    ("part", "whole"), [(None, 130778), (117000, None), (117000, 0)]
+)
+def test_inspect_run_stays_silent_when_nothing_was_reported(part, whole) -> None:
+    """A backend that does not report must not grow misleading zeroes.
 
-    class _Metrics:
-        input_tokens = 130778
-        cached_input_tokens = None
+    Nor may a zero denominator divide: a node that recorded no tokens at all is
+    a real state, not an arithmetic error.
+    """
+    from cognate_reconstruction.inspect_run import _share
 
-    assert _cached_share(_Metrics()) == ""
+    assert _share(part, whole, "cached") == ""
 
 
 def _infer_args(*extra: str, preflight: bool = False) -> argparse.Namespace:
@@ -460,6 +526,56 @@ def test_the_reasoning_budget_reaches_the_provider_and_the_digest(
     assert public["reasoning_effort"] == "high"
     _, other, _, _ = cli._provider_and_configuration(_infer_args())
     assert digest != other
+
+
+def test_gemini_defaults_to_the_temperature_google_documents(monkeypatch) -> None:
+    """0.1 is right for a local server and documented as harmful here.
+
+    Google's guidance, echoed by a LiteLLM warning on every call: a Gemini 3
+    model sampled below 1.0 can loop, reason worse, and fail on hard tasks.
+    """
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    provider, _, public, _ = cli._provider_and_configuration(_infer_args())
+    assert provider.completion_kwargs["temperature"] == 1.0
+    assert public["temperature"] == 1.0
+
+
+def test_an_explicit_temperature_still_wins(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    provider, _, public, _ = cli._provider_and_configuration(
+        _infer_args("--temperature", "0.0")
+    )
+    assert provider.completion_kwargs["temperature"] == 0.0
+    assert public["temperature"] == 0.0
+
+
+def test_the_local_default_temperature_is_unchanged() -> None:
+    """The preset must not move the number every banked local run was made at."""
+    args = cli._parser().parse_args(
+        [
+            "infer",
+            "--input",
+            "unused.json",
+            "--preset",
+            "lm-studio",
+            "--model",
+            "local",
+            "--no-preflight",
+        ]
+    )
+    provider, _, public, _ = cli._provider_and_configuration(args)
+    assert provider.completion_kwargs["temperature"] == 0.1
+    assert public["temperature"] == 0.1
+
+
+def test_the_digest_records_the_temperature_that_was_sent(monkeypatch) -> None:
+    """Spelling a default out loud must not change the hash."""
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    _, implicit, _, _ = cli._provider_and_configuration(_infer_args())
+    _, explicit, _, _ = cli._provider_and_configuration(
+        _infer_args("--temperature", "1.0")
+    )
+    assert implicit == explicit
 
 
 def test_a_seeded_run_against_gemini_is_refused(tmp_path, monkeypatch) -> None:

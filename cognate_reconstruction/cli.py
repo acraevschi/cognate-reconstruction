@@ -425,8 +425,6 @@ def _command_run_benchmark(args: argparse.Namespace) -> None:
             run_id,
             "--beam-width",
             str(args.beam_width),
-            "--temperature",
-            str(args.temperature),
             "--max-turns",
             str(args.max_turns),
             "--max-tool-calls",
@@ -438,6 +436,8 @@ def _command_run_benchmark(args: argparse.Namespace) -> None:
             command += ["--preset", args.preset]
         if args.reasoning_effort:
             command += ["--reasoning-effort", args.reasoning_effort]
+        if args.temperature is not None:
+            command += ["--temperature", str(args.temperature)]
         if args.api_base:
             command += ["--api-base", args.api_base]
         if provider_config:
@@ -571,6 +571,25 @@ def _give_up_thresholds(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+DEFAULT_TEMPERATURE = 0.1
+# Google's own guidance, and LiteLLM warns on every call below it: a Gemini 3
+# model sampled under 1.0 can loop, reason worse, and fail outright on hard
+# tasks. The harness default of 0.1 is right for a local server and wrong here,
+# so the preset carries its own. An explicit --temperature still wins; this only
+# decides what "unset" means.
+GEMINI_DEFAULT_TEMPERATURE = 1.0
+
+
+def _resolved_temperature(requested: float | None, preset: str | None) -> float:
+    if requested is not None:
+        return requested
+    return (
+        GEMINI_DEFAULT_TEMPERATURE
+        if preset == "gemini"
+        else DEFAULT_TEMPERATURE
+    )
+
+
 def _provider_and_configuration(
     args: argparse.Namespace,
 ) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
@@ -644,7 +663,8 @@ def _provider_and_configuration(
             options["api_base"] = api_base
         if api_key:
             options["api_key"] = api_key
-    options["temperature"] = args.temperature
+    temperature = _resolved_temperature(args.temperature, preset)
+    options["temperature"] = temperature
     options["timeout"] = args.timeout
     provider = LiteLLMProvider(model, completion_kwargs=options)
     settings = {
@@ -653,7 +673,10 @@ def _provider_and_configuration(
         "api_base": api_base,
         "provider_options": load_provider_options(args.provider_config),
         "reasoning_effort": args.reasoning_effort,
-        "temperature": args.temperature,
+        # The resolved value, not the flag: the digest must record what was
+        # sent, so two runs that sent the same temperature hash the same
+        # however each of them spelled it.
+        "temperature": temperature,
         "timeout": args.timeout,
         "beam_width": args.beam_width,
         "anchor_policy": args.anchor_policy,
@@ -1614,7 +1637,15 @@ def _parser() -> argparse.ArgumentParser:
         default=AnchorPolicy.ADVISORY.value,
     )
     infer.add_argument("--anchor-match-factor", type=float, default=100.0)
-    infer.add_argument("--temperature", type=float, default=0.1)
+    infer.add_argument(
+        "--temperature",
+        type=float,
+        help=(
+            "Sampling temperature. Unset means 0.1, except under --preset "
+            "gemini, where Gemini 3 is documented to loop and reason worse "
+            "below 1.0 and the default is 1.0."
+        ),
+    )
     infer.add_argument("--timeout", type=float, default=300.0)
     infer.add_argument("--max-turns", type=int, default=24)
     infer.add_argument("--max-tool-calls", type=int, default=64)
@@ -1764,7 +1795,11 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     sweep.add_argument("--beam-width", type=int, default=5)
-    sweep.add_argument("--temperature", type=float, default=0.1)
+    sweep.add_argument(
+        "--temperature",
+        type=float,
+        help="Passed to every repetition; see 'infer --temperature'.",
+    )
     sweep.add_argument("--max-turns", type=int, default=24)
     sweep.add_argument("--max-tool-calls", type=int, default=64)
     sweep.add_argument(

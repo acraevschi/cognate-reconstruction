@@ -2,6 +2,52 @@
 
 ## Unreleased
 
+### Close the side channel, price the thinking, and stop sampling Gemini too cold
+
+Three provider-facing gaps, each found by running the thing rather than reading
+it, and each written to hold for the providers this harness cannot reach yet.
+
+**A provider config could ground the model.** `--provider-config` takes any
+non-secret option, and `web_search_options` is one LiteLLM accepts and turns
+into Gemini's `googleSearch`. The whole design rests on the model reaching the
+evidence only through the typed tools, so that a trajectory shows what the
+reconstruction rested on. A grounded model can retrieve a published proto-form
+instead of deriving one, and nothing in the trajectory would differ: the tool
+calls would read as ordinary inspection and the commit as ordinary work. This
+repo exists to measure models on exactly that task. `load_provider_options` now
+refuses those options wherever they are nested, named per provider rather than
+per API — OpenAI and Anthropic spell it `web_search_options`, xAI uses
+`search_parameters` — so the guard already covers providers not yet wired up.
+The refusal says what to do instead, because a refusal that only forbids invites
+a workaround. All twenty-nine checked-in and banked local configs still load
+unchanged; the guard costs the LM Studio path nothing.
+
+**Reasoning was unpriced.** `--reasoning-effort` is a hashed setting the
+operator chooses, and its cost was visible only in the bill.
+`reasoning_output_tokens` records it, as a subset of `output_tokens` rather than
+an addition, since providers bill thinking at the output rate and count it
+there. One spelling covers every backend that reports it — Gemini, the Anthropic
+thinking models, the OpenAI reasoning models, xAI all land in
+`completion_tokens_details.reasoning_tokens` — so unlike the cached count this
+needed no per-provider branch. `inspect-run` grew one `_share` renderer for both
+subset counters instead of a helper per counter.
+
+**The default temperature was wrong for Gemini.** Google documents, and LiteLLM
+warns on every call, that a Gemini 3 model sampled below 1.0 can loop, reason
+worse, and fail outright on hard tasks — and the harness was sending 0.1, which
+is the right default for a local server. `--temperature` now has no fixed
+default: unset resolves to 1.0 under the Gemini preset and 0.1 everywhere else,
+an explicit value still wins, and the digest records the resolved number so
+spelling a default out loud does not change the hash. The sweep and the skill
+driver both stopped passing a temperature they had not been asked for; the
+driver's unconditional `0.0` would otherwise have reinstated the exact value the
+warning is about.
+
+Null stays distinct from zero in both new counters. LM Studio reports neither a
+cache hit nor a reasoning count, and that silence is not a claim that the model
+cached nothing or thought nothing.
+
+
 ### Cached prompt tokens, because the preamble is most of the bill
 
 A two-form fixture cost 130,778 input tokens. Neither the lexicon nor the tool

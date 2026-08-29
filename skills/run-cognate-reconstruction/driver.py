@@ -275,7 +275,6 @@ def cmd_run(args: argparse.Namespace) -> int:
         "--trajectories", str(run_dir / "trajectories.jsonl"),
         "--events", str(run_dir / "events.jsonl"),
         "--checkpoint", str(run_dir / "checkpoint.json"),
-        "--temperature", str(args.temperature),
         "--max-turns", str(args.max_turns),
         "--max-tool-calls", str(args.max_tool_calls),
     )
@@ -287,6 +286,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         command += ["--api-key-env", args.api_key_env]
     if args.reasoning_effort:
         command += ["--reasoning-effort", args.reasoning_effort]
+    if args.temperature is not None:
+        command += ["--temperature", str(args.temperature)]
     if args.quiet:
         command += ["--quiet"]
 
@@ -522,7 +523,10 @@ def main() -> int:
     run.add_argument(
         "--reasoning-effort", choices=["minimal", "low", "medium", "high"]
     )
-    run.add_argument("--temperature", type=float, default=0.0)
+    # No default: sending 0.0 unconditionally would override the preset's own
+    # choice, and Gemini 3 is documented to loop and reason worse below 1.0.
+    # The CLI decides what unset means for the provider in play.
+    run.add_argument("--temperature", type=float)
     run.add_argument("--max-turns", type=int, default=16)
     run.add_argument("--max-tool-calls", type=int, default=32)
     run.add_argument("--no-autostart", action="store_true")

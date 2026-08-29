@@ -484,6 +484,7 @@ def _node_from_trajectory(
             "tokens in": metrics.input_tokens,
             "tokens cached": metrics.cached_input_tokens,
             "tokens out": metrics.output_tokens,
+            "tokens reasoning": metrics.reasoning_output_tokens,
         },
         "flags": [],
     }

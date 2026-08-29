@@ -185,6 +185,14 @@ class LiteLLMProvider:
         )
         if cached_tokens is None:
             cached_tokens = _value(raw_usage, "cache_read_input_tokens")
+        # One spelling covers every backend that reports it — Gemini, the
+        # Anthropic thinking models, the OpenAI reasoning models, xAI. Like the
+        # cached count it is a subset of a total already recorded, here of the
+        # completion tokens, so it is kept beside output_tokens and never added.
+        reasoning_tokens = _value(
+            _value(raw_usage, "completion_tokens_details") or {},
+            "reasoning_tokens",
+        )
         hidden = _value(response, "_hidden_params", {}) or {}
         response_cost = _value(hidden, "response_cost")
         usage = None
@@ -195,6 +203,7 @@ class LiteLLMProvider:
                 completion_tokens,
                 total_tokens,
                 cached_tokens,
+                reasoning_tokens,
                 response_cost,
             )
         ):
@@ -212,6 +221,9 @@ class LiteLLMProvider:
                 ),
                 cached_input_tokens=(
                     int(cached_tokens) if cached_tokens is not None else None
+                ),
+                reasoning_output_tokens=(
+                    int(reasoning_tokens) if reasoning_tokens is not None else None
                 ),
                 cost_usd=(
                     float(response_cost) if response_cost is not None else None

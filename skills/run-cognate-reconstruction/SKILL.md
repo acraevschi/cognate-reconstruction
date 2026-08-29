@@ -215,7 +215,11 @@ Two flags matter more here than locally:
   unless told otherwise**, which is not a defensible default for the comparative
   method. It is hashed into the configuration digest, so it must be chosen before
   the first node and cannot be changed on a `--resume`.
-- `--temperature`. The driver sends `0` by default, which Gemini accepts.
+- `--temperature`. **Leave it unset here.** Google documents, and LiteLLM warns
+  on every call, that a Gemini 3 model sampled below 1.0 can loop, reason worse,
+  and fail outright on hard tasks. Unset resolves to 1.0 under this preset and
+  to 0.1 everywhere else, and the digest records the resolved value, so a
+  `--temperature 1.0` typed out by hand hashes the same as leaving it off.
 
 Measured on `gemini-3.7-flash` against the 2-language, 1-concept smoke fixture:
 ~64s and ~$0.05 at the default thinking level, ~275s at `--reasoning-effort
@@ -241,6 +245,16 @@ tokens   in 129474 (69225 cached, 53%) / out 528 / total 130002 / $0.0524
 Measured: the first two calls of a session are cold, then 74–91% per call. Read
 it as a subset of the input, not an addition. `not reported` is not zero — LM
 Studio reports nothing, and a cold Gemini run reports nothing either.
+
+Thinking is metered the same way, as a share of the output rather than an
+addition to it, so `--reasoning-effort` can be priced instead of guessed:
+
+```
+tokens   in 129474 (69225 cached, 53%) / out 528 (400 reasoning, 76%) / ...
+```
+
+LM Studio reports neither, so both stay `not reported` on a local run — which is
+silence about the counter, not a claim that the model did no thinking.
 
 ### The key is a free-tier key
 
@@ -417,7 +431,8 @@ errors.
 - **`--provider-seed-base` does nothing at `--temperature 0`.** Greedy decoding
   never consults a seed, so five "seeds" become five identical configurations
   differing only by whatever MoE-routing and batching nondeterminism the server
-  has. `run-benchmark` defaults to `--temperature 0.1` for exactly this reason.
+  has. An unset `--temperature` resolves to 0.1 for exactly this reason (1.0
+  under `--preset gemini`, where the floor is higher).
   A multi-seed sweep wanting real spread needs a temperature above zero, and at
   that point the `top_k`/`top_p` row above stops being a no-op.
 
@@ -659,6 +674,7 @@ errors.
 | `API-key environment variable 'GEMINI_API_KEY' is unset or empty` | The key file was not sourced. Prefix the command with `. ~/.config/cognate-reconstruction/env &&` — `~/.zshrc` sources it, but a non-interactive tool call does not read `~/.zshrc`. |
 | `model 'X' is not served by the Gemini API` | Preflight rejected the id before any spend. The message lists what the key may call; re-pick from `gemini-models`. Not the same failure as the LM Studio row above. |
 | Gemini run dies in repeated `provider_retry` (`429`, or `503 UNAVAILABLE`) | Free-tier quota, not a model fault. A stray 503 is retried and recovers on its own; a run that keeps hitting them has exhausted the daily allowance. See <https://aistudio.google.com/rate-limit>. |
+| `provider config must not give the model a source outside the harness` | A `--provider-config` asked for web search or grounding (`web_search_options`, `search_parameters`, `google_search`, …). Refused on every provider, not just Gemini: a grounded model can retrieve a published reconstruction instead of deriving one, and the trajectory would look identical. If the model genuinely needs a source, it belongs behind a typed tool. |
 | `the Gemini API does not support 'seed'` | Refused up front, by design: Gemini has no seed, so `--provider-seed-base` (or a `seed` in `--provider-config`) would have produced repetitions that only looked seeded. Drop it and read the sweep's spread as provider nondeterminism. |
 | Gemini run points at `localhost` and cannot connect | An `--api-base` was passed with `--preset gemini`. The preset needs none; omit it unless you are deliberately routing through a proxy. |
 | `litellm MISSING` in preflight | Install the agent extra into the env (`pip install -e '.[agent]'` with the env's python; `make install` will not work here). |

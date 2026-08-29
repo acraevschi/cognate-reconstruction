@@ -157,6 +157,16 @@ class AgentNodeMetrics(WorkbenchModel):
             "null, and only the run's cost tells them apart."
         ),
     )
+    reasoning_output_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Completion tokens spent thinking, summed over the session's "
+            "calls. A subset of output_tokens, not an addition. Null means the "
+            "provider reported nothing, which is not the same as a model that "
+            "did no reasoning."
+        ),
+    )
     cost_usd: float | None = Field(default=None, ge=0.0)
     committed_rule_count: int = Field(
         ge=0,

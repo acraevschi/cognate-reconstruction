@@ -559,21 +559,20 @@ def _reported(value: object | None) -> str:
     return "not reported" if value is None else str(value)
 
 
-def _cached_share(metrics: object) -> str:
-    """How much of the input the provider did not re-read at full price.
+def _share(part: int | None, whole: int | None, label: str) -> str:
+    """Render a sub-count as a share of the total it belongs to.
 
-    Every call in a session repeats the agent instructions and the tool
-    schemas, which is most of the prompt. Read as a share rather than a count:
-    "130778" says nothing about whether that preamble was cached, and the
-    difference between 0% and 90% is the difference between two sweep budgets.
-    Silent when the provider reported nothing, so backends without caching do
-    not grow a column of zeroes that would read as a cold cache.
+    Two of the token counters are subsets rather than additions: cached tokens
+    of the input, reasoning tokens of the output. A share is what carries the
+    meaning — "130778" says nothing about whether the preamble was cached, and
+    the difference between 0% and 90% is the difference between two sweep
+    budgets. Silent when the provider reported nothing, so a backend that does
+    not report does not grow a column of zeroes claiming a cold cache or a
+    model that never reasoned.
     """
-    cached = getattr(metrics, "cached_input_tokens", None)
-    total = getattr(metrics, "input_tokens", None)
-    if cached is None or not total:
+    if part is None or not whole:
         return ""
-    return f" ({cached} cached, {cached / total:.0%})"
+    return f" ({part} {label}, {part / whole:.0%})"
 
 
 def _session_rows(
@@ -639,9 +638,10 @@ def _session_rows(
         (
             "tokens",
             f"in {_reported(metrics.input_tokens)}"
-            f"{_cached_share(metrics)} / "
-            f"out {_reported(metrics.output_tokens)} / "
-            f"total {_reported(metrics.total_tokens)}"
+            f"{_share(metrics.cached_input_tokens, metrics.input_tokens, 'cached')}"
+            f" / out {_reported(metrics.output_tokens)}"
+            f"{_share(metrics.reasoning_output_tokens, metrics.output_tokens, 'reasoning')}"
+            f" / total {_reported(metrics.total_tokens)}"
             + (f" / ${metrics.cost_usd:.4f}" if metrics.cost_usd else ""),
         )
     )
