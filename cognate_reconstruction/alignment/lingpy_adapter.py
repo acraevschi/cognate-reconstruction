@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from itertools import combinations, product
 from typing import Literal
 
+from cognate_reconstruction.alignment.protocol import AlignmentFailure
 from cognate_reconstruction.schemas.alignment import (
     MAX_CORRESPONDENCE_EXAMPLES,
     AlignmentMember,
@@ -373,8 +374,19 @@ class LingPyAligner:
             ]
             material = form_inputs + compatible_anchors
             encoded = tuple(_encode_row(item.segments) for item in material)
-            multiple = Multiple([list(row) for row in encoded])
-            multiple.prog_align(model="sca", mode=self.mode)
+            try:
+                multiple = Multiple([list(row) for row in encoded])
+                multiple.prog_align(model="sca", mode=self.mode)
+            except ArithmeticError as error:
+                # LingPy divides by the summed self-similarity of a row pair and
+                # does not guard the zero. `AlignmentFailure` names the group it
+                # refused, so a caller can report it; the bare
+                # `ZeroDivisionError` named nothing and ended the process.
+                group = cognate_set_id or "unassigned"
+                raise AlignmentFailure(
+                    f"the aligner refused concept {concept_id!r} in cognate "
+                    f"set {group!r}: {type(error).__name__}: {error}"
+                ) from error
             members = tuple(
                 AlignmentMember(
                     form_id=item.form.form_id,

@@ -129,6 +129,20 @@ class ReconstructionDiagnostics(WorkbenchModel):
     `None` means the step predates the counter, not that no rule reduced a
     contrast.
     """
+    correspondence_map_failure: NonEmptyStr | None = None
+    """Why `correspondence_maps` is empty, when the aligner refused the node.
+
+    `None` means nothing was refused. It does *not* mean maps were built: an
+    empty tuple is also what a node with fewer than two child lexicons, or with
+    no evidence context, has always produced.
+
+    The field exists so a degraded step is visibly different from a clean one.
+    `correspondence_maps` is a report and nothing scores it, so a node whose
+    alignment failed keeps running with an empty report — but a reader must be
+    able to tell that the report is empty *because the aligner refused*, not
+    because there was nothing to align. Defaulted to `None` so steps written
+    before the field stay loadable.
+    """
     identity_reconstruction: bool
     # Defaulted false so every step written before node-failure fallback
     # existed reads as what it was: a node that actually ran.

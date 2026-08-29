@@ -3583,6 +3583,128 @@ reading of it changes.
 - **The remaining stall modes are untouched**, and the by-design rationale
   requirement is one of the codes that filled `marquesic`'s window.
 
+
+### 7.16 A third-party division by zero ended a whole seed
+
+*Found live on 2026-08-29. Made survivable the same day. The trigger was then
+reproduced from the banked run, so nothing in this section is a hypothesis.*
+
+#### What happened
+
+A sweep seed had committed 5 of 7 nodes. LingPy raised `ZeroDivisionError`, the
+exception left a C module, crossed the identity fallback the harness was
+building for a node that had already failed, and ended the process. The
+trajectories were on disk and survived. `result.json` was never written, so the
+aggregate was lost with five good commits in it.
+
+The arithmetic is LingPy's own, at `lingpy/algorithm/cython/_calign.py:1879`
+inside `align_pairwise`:
+
+```python
+dist = 1 - ( 2 * sim / ( simA + simB ) )
+```
+
+`simA` and `simB` are the self-similarity of the two rows. Material with no
+phonological content scores zero on both, and the sum is not guarded. The path
+is `prog_align` → `_get_pairwise_alignments` → `align_pairwise`, reached from
+`alignment/lingpy_adapter.py::align_multiple`.
+
+#### The exact input, reproduced
+
+The trigger is **within one node's own beam, not across two nodes**. That is
+why an earlier probe that aligned each shared concept first-candidate against
+first-candidate reproduced nothing.
+
+`traversal/beam.py::beam_to_lexicon` exposes *every* retained candidate as its
+own `LexicalForm`. A reconstructed child carries no cognate set, so all of one
+concept's candidates land in a single alignment group. In
+`runs/sweeps/polynesian-after-window/seed-00`, `nuclear_polynesian` retained
+five candidates for concept `1920`, and three of them were nothing but a
+morphological boundary, at lengths 1, 2 and 3:
+
+| candidate segments | probability |
+| --- | --- |
+| `['+']` | 0.0 |
+| `['+', '+']` | 0.0 |
+| `['+', '+', '+']` | 0.0 |
+
+Replaying that banked beam through the aligner refuses concept `1920` against
+**every** sibling — `central_eastern`, `futunic`, `marquesic` and `tongic`
+alike — because the failing pair is inside `nuclear_polynesian` and the sibling
+is only along for the ride.
+
+The minimal reproduction is two boundary-only rows of unequal length. Two rows
+of *equal* length align without complaint, and an empty sequence raises
+`ValueError` rather than `ZeroDivisionError`, so neither is the case being
+guarded. `tests/workbench/test_degenerate_alignment.py` pins all of it.
+
+#### The fix, in two layers
+
+- **`AlignmentFailure`** (`alignment/protocol.py`) is raised where the harness
+  calls LingPy, naming the concept and the cognate set that was refused. It
+  subclasses `ValueError` on purpose: `registry.execute` and
+  `agent/tools/polarize.py` already code a refused alignment as a tool error on
+  `ValueError`, so every model-facing caller keeps the handling it has and
+  `polarize` is repaired without touching it.
+- **`_correspondence_maps` degrades instead of dying.**
+  `ReconstructionStep.correspondence_maps` is a report, nothing scores it, and
+  the method already returns `()` when it has fewer than two lexicons.
+  Returning `()` on a refusal matches the branch beside it.
+
+The node then behaves the way every other node failure already behaves: it is
+recorded in `result.json:node_failures`, the parent becomes an identity
+fallback, and the run continues.
+
+**It is not a silent swallow.** The step records
+`diagnostics.correspondence_map_failure` with the reason, and the agent layer
+turns that into a `correspondence_map_degraded` event naming the node. An empty
+`correspondence_maps` on its own has always been ambiguous — a node with one
+child lexicon produces one too — so the field says *why* the report is empty.
+
+#### Why a beam candidate is a bare `+`, measured
+
+The crash is a symptom. Over every banked sweep in `runs/sweeps` — 28 seed
+files, 4940 beam candidates:
+
+| measurement | value |
+| --- | --- |
+| boundary-only candidates | **20** (0.40%) |
+| seeds carrying one | 3 of 28 |
+| node sessions carrying one | 3 |
+| commit shape | **inventory on all 20**; none from a branch cascade |
+| `residue_policy` at those three nodes | **`drop` on all three** |
+| candidates that were their concept's **only** candidate | **12 of 20** |
+
+Those 12 are the serious number. A sole candidate at probability 1.0 means the
+assembled parent form for that concept *is* a bare `+`.
+
+The node that crashed the run says why. Its diagnostics, beside its siblings in
+the same seed:
+
+| node | committed sets | assembled columns | unaccounted | rate | concepts out |
+| --- | --- | --- | --- | --- | --- |
+| `tongic` | 30 | 231 | 27 | 0.117 | 46 |
+| `futunic` | 15 | 213 | 51 | 0.239 | 46 |
+| `marquesic` | 15 | 203 | 36 | 0.177 | 45 |
+| `central_eastern` | 26 | 191 | 5 | 0.026 | 45 |
+| **`nuclear_polynesian`** | 15 | 165 | **135** | **0.818** | **23** |
+
+`nuclear_polynesian` committed sets that explained 30 of its 165 columns and
+chose `residue_policy: drop`, which asserts that the other 135 are branch-
+specific innovation. `drop` then deleted them. For 12 concepts the only column
+the inventory explained was the boundary column, so the boundary is the whole
+parent form. Half the concepts did not survive at all: 23 out of 46.
+
+So a boundary-only candidate is **not a boundary bug**. It is `drop` applied to
+an inventory that explained 18% of its columns — the failure mode
+`ResiduePolicy.DROP`'s own docstring predicts, at the scale §7.2's
+`unaccounted_column_rate` floor exists to catch.
+
+**Nothing was changed on the strength of this.** The measurement is reported
+first, as the prompt asked, and the decision sits beside the morpheme reading:
+if a morpheme reading changes what a boundary is, it changes this too, and the
+two should be decided together.
+
 ---
 
 ## 8. Staged implementation plan

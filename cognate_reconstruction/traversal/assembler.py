@@ -1215,13 +1215,18 @@ class ProtoInventoryAssembler:
             override_singleton_sets_created=override_singleton_sets_created,
             held_out_unaccounted_column_rate=held_out_unaccounted_column_rate,
         )
+        maps, map_failure = self._identity._correspondence_maps(
+            child_ids, evidence_context
+        )
+        if map_failure is not None:
+            diagnostics = diagnostics.model_copy(
+                update={"correspondence_map_failure": map_failure}
+            )
         return ReconstructionStep(
             parent_node_id=parent_node_id,
             child_node_ids=child_ids,
             input_beams=child_beams,
-            correspondence_maps=self._identity._correspondence_maps(
-                child_ids, evidence_context
-            ),
+            correspondence_maps=maps,
             output_beam=output_beam,
             assembly_reports=tuple(reports),
             anomaly_reports=tuple(anomalies),
