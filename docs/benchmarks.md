@@ -392,6 +392,11 @@ session's cost, and neither is needed for a node this benchmark scores.
 
 `hillburmish` is also the first benchmark whose cognacy is coded one morpheme at
 a time — see `Partial_Cognacy` in [running inference](running_inference.md).
+That makes the morpheme reading its evidence view by default, and §7.18 of
+[the design document](proto_inventory_design.md) measures what that costs, the
+family's `unaccounted_column_rate` floor included. **Read that floor before
+quoting any rate from this family**: it is 0.280 and 0.338 at the two
+leaf-child nodes, which is at or above §7.2's own warning threshold.
 
 ### One defect this family found, which was not this family's
 

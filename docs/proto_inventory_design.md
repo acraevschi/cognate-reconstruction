@@ -3776,6 +3776,121 @@ the same benchmark, and none has been run. If usage stays at zero that is a
 finding about the interface rather than about the prompt, and it changes what
 the morpheme reading is worth.
 
+
+### 7.18 The morpheme reading: what it already is, and what it actually costs
+
+*Measured 2026-08-29, after `Partial_Cognacy` landed. Prose before code, as the
+brief asked, and the prose turned out to be shorter than expected in one place
+and longer in another.*
+
+#### It is already the reading, in the evidence view
+
+No new code was needed for it. `alignment/lingpy_adapter.py::_alignment_inputs`
+already fans a form out into one alignment input per `cognate_membership` and
+groups by `cognate_set_id`, so a form with three morpheme memberships enters
+three different alignment groups. On `hillburmish` that is in force today.
+
+**Position does not decide the pairing; the shared cognate ID does.** Aligning
+Rangoon against Atsi, morpheme 2 of one lands against morpheme 2 of the other
+because they carry the same ID, and
+`test_a_morpheme_aligns_against_the_morpheme_that_shares_its_id` proves the
+point on a crossed pair — two forms with the same two morphemes in opposite
+orders align morpheme 1 against morpheme 2.
+
+#### Scoring: there is nothing to join
+
+The brief asks what joins separately reconstructed morphemes back into one word
+before anything can be scored, and calls that new work with its own failure
+modes. **Measured: the question does not arise.**
+
+The assembler never splits a form. `traversal/assembler.py::align_candidate_tuple`
+builds a synthetic `LexicalForm` from `segments=` alone, with no cognate
+memberships, so `respect_cognate_sets` finds nothing to respect and the aligner
+sees whole candidate strings, boundaries included. One parent form per concept
+comes out. The gold is a whole word and it is scored against a whole word,
+exactly as before.
+
+#### The real cost is a reading gap
+
+What the morpheme reading actually buys is a *different evidence view from the
+assembler's*, and that is the thing to price. Measured at `burmic` — three
+daughters, 54 concepts, 40.6% of whose forms carry a boundary:
+
+| view | alignment groups | columns | boundary columns |
+| --- | --- | --- | --- |
+| evidence — what the model surveys | 57 | 223 | **0** |
+| assembly — what the assembler resolves | 54 | 344 | **28** (8.1%) |
+
+The model is shown 223 columns and not one of them is a boundary: a
+`segment_slice` membership covers a morpheme, and `_morpheme_groups` excludes
+the boundary tokens between them. The assembler then resolves 344 columns, of
+which 28 are boundary columns no committed set can possibly name, because the
+survey never returned one. Those 28 go to the residue policy at every node.
+
+**What keeps this from failing outright is also what makes it silent.** A
+commitment matches a column by its *reflex tuple*, through `plan.by_reflexes`,
+not by column index or `set_id`. So a set derived in the morpheme view can still
+match a whole-string column — and can also match one that is not the same
+object.
+
+#### Why the assembler cannot simply be given the same reading
+
+It aligns **beam candidates**, and a beam candidate is a reconstructed string
+with no cognate memberships at all. This is the same fact §12.4 identifies as
+the source of Polynesian's floor. Giving the assembler the morpheme reading
+means giving a reconstructed candidate a morpheme analysis — a linguistic claim
+about a form nobody attests, made by the harness. That is a design problem, and
+it is emphatically not a reader.
+
+#### Every number resets, and here are the ones that exist now
+
+Assembly ceilings on `burmish`, `--oracle assembly` at width 5: **42/54 (77.8%)**
+at `proto_burmish` and **25/37 (67.6%)** at `burmic`. The second is a floor on
+the ceiling rather than the ceiling: 142 of Old Burmese's 219 forms carry a
+`pylexibank` grapheme/phoneme segment such as `ṅ/ŋ` that no daughter can
+produce.
+
+The `unaccounted_column_rate` floor, by §7.2's own recipe — commit a proto
+phoneme for every set the survey returns, then read the rate — with Polynesian
+run through the same probe as a control:
+
+| node | children | sets committed | assembled columns | unaccounted | **floor** |
+| --- | --- | --- | --- | --- | --- |
+| `proto_polynesian` (control) | 10 leaves | 237 | 335 | 57 | **0.170** |
+| `burmish:maruic` | 4 leaves | 152 | 346 | 97 | **0.280** |
+| `burmish:burmic` | 3 leaves | 129 | 343 | 116 | **0.338** |
+
+**These are not §7.2's numbers and must not be quoted as if they were.** §7.2
+records 0.125 for Polynesian over 246 sets; this probe gets 0.170 over 237,
+because §7.2 measured under the `reported` reading — one form per node per
+(concept, set) — and this probe under `all`. The instrument differs, not the
+family. The three rows above are comparable to each other and to nothing else.
+
+Read that way the finding is blunt: **§7.2's "above ~0.3 at most nodes" threshold
+is at or below `burmish`'s own floor at both nodes.** On this family that
+threshold is not a warning sign, it is the starting position, and it has to be
+re-derived under one instrument before any live rate can be read against it.
+
+#### What the reading is worth, and the bound
+
+**On Polynesian, nothing, because it cannot be expressed there.** All 520 forms
+are `scope: whole_form` with zero `segment_indices`.
+
+On §7.13's five concepts the bound is **2 of 5** — `670`, a compound against a
+simplex, and `671`, reduplication. The other three use genuinely different words
+for the concept and share no piece to line up. That figure is a ceiling on the
+gain, not an estimate of it, and nothing here moves it upward.
+
+#### What is not established
+
+- **No live run under this reading.** Nothing here says a model does better with
+  it, only what the harness now does.
+- **The reading gap is measured at one node of one family.** Whether 8.1%
+  boundary columns is typical is unknown.
+- **The 344-against-223 column gap is not only boundaries.** A whole-string
+  alignment of a three-morpheme form against a one-morpheme form makes columns
+  the morpheme view never creates. How the remainder divides was not measured.
+
 ---
 
 ## 8. Staged implementation plan
