@@ -3705,6 +3705,77 @@ first, as the prompt asked, and the decision sits beside the morpheme reading:
 if a morpheme reading changes what a boundary is, it changes this too, and the
 two should be decided together.
 
+
+### 7.17 Three tools built for §7.13, used once in a thousand calls
+
+*Prompt edited 2026-08-29. The "before" counts are banked. The "after" counts
+need a live sweep and are not in this document yet.*
+
+#### The before measurement
+
+Across the 12 Polynesian seed files in `runs/sweeps`, 1079 tool calls:
+
+| tool | calls |
+| --- | --- |
+| `test_proto_assembly` | 246 |
+| `commit_reconstruction` | 230 |
+| `get_alignments` | 170 |
+| `polarize` | 161 |
+| `test_sound_law` | 110 |
+| `summarize_correspondences` | 95 |
+| `search_forms` | 34 |
+| `test_rule_cascade` | 26 |
+| `get_node_reconstruction` | 3 |
+| `list_available_nodes` | 2 |
+| **`realign`** | **1** |
+| `list_concepts` | 1 |
+| **`segment_morphemes`** | **0** |
+
+The single `realign` call is in `polynesian-after-window`. Both tools exist for
+the cases §7.13 names, and between them they account for 1 call in 1079.
+
+**One correction to the prompt that raised this.** It counted a third tool,
+`restore_segment`, at zero calls. There is no such tool. The registry holds 13
+and it is not among them: restoration is `restorations`, a field on the
+committed inventory, verified by `test_proto_assembly`. Zero calls to a tool
+that was never callable says nothing about the interface, so the finding is two
+tools, not three.
+
+#### What changed in the prompt
+
+`agent/system_prompt.md` gained a workflow step, numbered 7, directly after the
+step that pulls alignments and before the step that assigns values. The other
+steps shifted by one.
+
+It says three things and no more:
+
+- `+` inside a form is a morphological boundary the source data recorded, not a
+  phonetic segment. The aligner treats it as material, so it takes a column of
+  its own, and a child carrying a boundary the others lack contributes extra
+  columns — each of which is a correspondence set the model will be asked for a
+  value for.
+- Three situations have three different answers: columns laid wrongly
+  (`realign`), boundaries cut in the wrong place (`segment_morphemes`), and a
+  segment every active child lost (`restorations`).
+- The default is to accept the aligner's output, and reaching for these on a
+  large share of concepts is fitting rather than reading.
+
+**It does not say what to conclude.** "Split compounds at the boundary" would be
+an instruction to reach a linguistic conclusion, which is the constraint this
+architecture exists to keep. The step names the observation and the
+affordances; the model decides whether either applies.
+
+The old step 11, which mentioned `segment_morphemes` once and late — after the
+inventory was already drafted — now points back at step 7 instead of repeating
+the guidance in two places.
+
+#### What this does not yet establish
+
+**Nothing about whether it works.** The after condition needs a paired sweep on
+the same benchmark, and none has been run. If usage stays at zero that is a
+finding about the interface rather than about the prompt, and it changes what
+the morpheme reading is worth.
+
 ---
 
 ## 8. Staged implementation plan

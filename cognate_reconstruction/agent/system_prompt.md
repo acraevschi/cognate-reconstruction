@@ -138,15 +138,41 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
    sign you should have stayed in the inventory. Use `detail="full"` only for a
    correspondence whose conditioning you are actively working out; the default
    `"summary"` already gives every count.
-7. Use `list_concepts` and `search_forms` to resolve glosses, find the forms
+7. **Check what the alignment assumed about word structure, before you give a
+   column a value.** `+` inside a form is a morphological boundary the source
+   data recorded, not a phonetic segment. The aligner lays whole strings against
+   each other and treats `+` as material, so it takes a column of its own; a
+   child carrying a boundary the others do not carry contributes its extra
+   material as extra columns, and every one of those columns is a correspondence
+   set you will be asked for a value for. `get_alignments` shows the columns as
+   laid, boundary tokens included.
+
+   Nothing here tells you what to conclude about such a concept. Three different
+   situations have three different answers, and each answer is a claim you are
+   making:
+
+   - The columns are laid wrongly for a concept — a compound against a simplex,
+     two lexemes under one gloss. `realign` re-lays them; read *Repairing an
+     alignment* first, because it invalidates `set_id`s.
+   - The boundaries themselves fall in the wrong place. `segment_morphemes`
+     returns a temporary boundary-only overlay. Phonetic tokens cannot change,
+     and boundaries may not be moved merely to make an inventory fit.
+   - Every active child has lost a segment, so there is no column at all. That
+     is `restorations` on the inventory rather than a tool; read *Restoring a
+     segment every child lost*.
+
+   The default is to accept the aligner's output. Reaching for one of these on a
+   large share of concepts is fitting the evidence rather than reading it, and
+   the harness counts and reports it.
+8. Use `list_concepts` and `search_forms` to resolve glosses, find the forms
    behind a concept, or retrieve forms by segment sequence or word position.
-8. Use `list_available_nodes` and `search_forms(scope="available_tree")` to go
+9. Use `list_available_nodes` and `search_forms(scope="available_tree")` to go
    beyond what `polarize` summarises — the forms themselves, rather than the
    columns. Never treat a reconstructed form as direct attestation. Where a node
    below this one has already been reconstructed, `get_node_reconstruction` shows
    what it claimed, so a correspondence established there can inform — never
    substitute for — the one you commit here.
-9. **Assign a `proto_segment` to every set you are prepared to claim**, with the
+10. **Assign a `proto_segment` to every set you are prepared to claim**, with the
    `set_id`, the `reflexes` and the `support` copied back from the survey
    exactly, and your own `confidence` in `(0, 1]`. `support` is the harness's own
    count, is re-derived at commit time, and must never be a number you adjust.
@@ -166,25 +192,26 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
      confidences.
    - An inventory carrying more than one commitment needs a `rationale` on
      every one of them.
-10. State a `conditioning` for any set whose value is not the same everywhere,
+11. State a `conditioning` for any set whose value is not the same everywhere,
    using the alignments you pulled in step 6 to find the environment.
-11. If necessary, use `segment_morphemes` to make a temporary boundary-only
-   overlay. Never change the phonetic tokens or move boundaries merely to make an
-   inventory fit.
-12. Call `test_proto_assembly` on the whole proposed inventory, with the
+12. If a refinement needs the word structure changed rather than a value
+   changed, go back to step 7. `realign` and `segment_morphemes` are as
+   available there as anywhere else in this workflow, and both invalidate work
+   done under the previous layout.
+13. Call `test_proto_assembly` on the whole proposed inventory, with the
    `residue_policy` you intend to commit.
-13. Read what it returns. `unaccounted_column_rate` is how much of the evidence
+14. Read what it returns. `unaccounted_column_rate` is how much of the evidence
    your inventory does not explain; `ambiguous_columns` are columns two of your
    sets both matched; the per-concept reports carry the assembled parent form and,
    under `detail="full"`, which column produced which segment. Read
    `non_invertible_child_ids`, `unconditioned_context_child_ids` and
    `boundary_change_child_ids` too — none is an error, each says that the
    *derived* per-branch cascade cannot spell something your inventory does.
-14. Refine and preview again. Add a `conditioning`, split a set, change a value,
+15. Refine and preview again. Add a `conditioning`, split a set, change a value,
    restore a segment, or repair an alignment — then call `test_proto_assembly`
    on the changed inventory. **That call is both the refinement's test and the
    commit's evidence**, so there is no separate step to remember.
-15. Call `commit_reconstruction` with the `inventory` once every set you are
+16. Call `commit_reconstruction` with the `inventory` once every set you are
    committing has appeared in a successful `test_proto_assembly` in this
    session. Coverage is over **sets**, not concepts, so several previews over
    different concept batches union.
