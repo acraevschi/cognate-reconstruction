@@ -3769,12 +3769,56 @@ The old step 11, which mentioned `segment_morphemes` once and late — after the
 inventory was already drafted — now points back at step 7 instead of repeating
 the guidance in two places.
 
-#### What this does not yet establish
+#### The after measurement: usage stayed at zero
 
-**Nothing about whether it works.** The after condition needs a paired sweep on
-the same benchmark, and none has been run. If usage stays at zero that is a
-finding about the interface rather than about the prompt, and it changes what
-the morpheme reading is worth.
+*Run 2026-08-29 on LM Studio, `google/gemma-4-26b-a4b`, three seeds, at the
+banked configuration — beam width 5, 24 turns, 48 tool calls, 3 failed nodes,
+temperature 1.0. `runs/sweeps/polynesian-after-toolstep`.*
+
+The comparison set is the four banked sweeps that already ran under the
+inventory protocol. `polynesian-before` is the pre-flip branch-cascade condition
+and is excluded, because it is the only sweep with any `test_sound_law` calls at
+all and mixing it in would credit stage 3's flip to this prompt edit.
+
+| condition | seeds | tool calls | `realign` | `segment_morphemes` |
+| --- | --- | --- | --- | --- |
+| banked, post-flip | 9 | 678 | 1 | 0 |
+| after the prompt edit | 3 | 264 | **0** | **0** |
+
+**Nothing moved.** The prompt names both tools in the workflow, at the step
+where the model is looking at columns, and neither was called once.
+
+**The sample excludes a large effect and not a small one.** At the banked rate of
+1 in 678, 264 calls predict 0.4 calls, so observing zero is exactly what no
+change looks like. A true rate of 2% would give a 0.5% chance of seeing none, so
+2% or more is excluded. A rate near 1% is not.
+
+Accuracy did not move either: top-1 exact averaged 0.446 over the two scored
+node evaluations, against the 0.457 recorded for the same model in
+`docs/benchmarks.md`, and the seed-to-seed spread is 0.138.
+
+#### What this changes
+
+**It is a finding about the interface, not about the prompt.** The tools were
+described before this edit and are named in the workflow after it, and the call
+count is the same either way. Whatever keeps a model from reaching for `realign`
+is not that it had not been told the tool exists.
+
+**It strengthens the case for reading morphology out of the data rather than
+repairing it with a tool.** §7.18's morpheme reading needs no tool call at all:
+on `hillburmish` the per-morpheme memberships make it the evidence view by
+default. A repair path that a model does not take twice in 942 calls is a worse
+bet than a reading the data already carries.
+
+#### What this does not establish
+
+- **Nothing about §7.16.** The crash path was never exercised:
+  `correspondence_map_degraded` fired 0 times, and all five node failures across
+  the three seeds were `ProtocolStallError`.
+- **Nothing about abandonment.** Three of three seeds wrote a `result.json`,
+  against six of nine in the banked post-flip sweeps. Three seeds is too few,
+  and too much changed between the two, to read that as an effect.
+- **Nothing about a larger model.** One model on one benchmark.
 
 
 ### 7.18 The morpheme reading: what it already is, and what it actually costs
