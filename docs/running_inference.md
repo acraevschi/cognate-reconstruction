@@ -87,6 +87,27 @@ never splits `Form`. Variety, cognate-set, and fallback parameter IDs are
 dataset scoped. Source Glottocode and tree Glottocode are separate provenance
 fields.
 
+#### Grapheme/phoneme tokens
+
+`pylexibank` writes one segment as `grapheme/phoneme` when an orthography
+profile mapped a written character to a different sound. `ṅ/ŋ` is one token,
+not two. The adapter reduces it to the phoneme, keeps the original tuple in
+`provenance.source_segments`, and records
+`lexibank-grapheme-phoneme-split` in `provenance.compatibility_rule_ids`.
+
+A token with two separators, or with nothing after the separator, stops the
+load and names the form. Neither shape occurs in the 174 local datasets. A
+token with an empty *grapheme*, such as `/h`, reads as its phoneme, and 16 of
+those occur across four datasets.
+
+The reduction is not a choice between two readings. The right side is the value
+the profile mapped to, and it is what the daughter says. On `hillburmish` the
+left side is not a phoneme at all: over all 4032 rows, `ṅ`, `ḥ`, `ñ`, `ch`,
+`o₁`, `o₂`, `ṅh` and `ñh` never occur as a segment of their own, while `ŋ`
+occurs 930 times. `meloniromance` is the other shape, writing `ɪ/j`, `u/w` and
+`w/u` — both sides sounds, both directions attested — and there the right side
+is the realized form, which is the observation being compared.
+
 ### Cognate memberships
 
 `cognate_memberships` preserves every FormTable or CognateTable judgement.

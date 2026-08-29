@@ -114,6 +114,51 @@ morphemes appear. `Rangoon-962_alleverything-1` has segments
 """
 
 
+GRAPHEME_PHONEME_RULE_ID = "lexibank-grapheme-phoneme-split"
+"""Recorded on every form whose tokens carried a `pylexibank` slash.
+
+`pylexibank` writes one segment as `grapheme/phoneme` when an orthography
+profile mapped a written character to a different sound. `ṅ/ŋ` is one token,
+not two, and the harness used to carry it whole.
+
+That is wrong twice over. The contract is a phonemicized lexicon, and on
+`hillburmish` the left side is not a phoneme at all: measured over all 4032
+rows, `ṅ`, `ḥ`, `ñ`, `ch`, `o₁` and `o₂` never occur as a segment of their own,
+while `ŋ` occurs 930 times and `ɔ` 542. The left side is a letter of a script.
+Carried whole, the token also corresponds with nothing, so 24 of the 37
+`burmic` gold concepts and 182 of the 900 `romance` gold concepts had no
+alternative any daughter could reach.
+
+Taking the right side is not a choice between two readings. It is the value the
+profile mapped to, and it is what the daughter says. Where both sides happen to
+be sounds of the language — `meloniromance` writes `ɪ/j`, `u/w` and `w/u`, and
+both directions occur — the right side is still the realized form, which is the
+observation the comparative method compares. Whether a model reconstructing the
+underlying value instead deserves a gold alternative is a separate question,
+and `docs/benchmarks.md` records that it is unmeasured rather than settled.
+"""
+
+
+def _phoneme_side(token: str, *, raw_form_id: str) -> str:
+    """The phoneme of a `grapheme/phoneme` token, or the token unchanged.
+
+    Refuses rather than guesses. A token with two separators, or with nothing
+    after the separator, is a data problem with no safe reading, and there is
+    none in the local corpus: measured over the 174 checked-in CLDF datasets,
+    zero segments carry either shape. Sixteen carry an *empty* grapheme, such
+    as `/h`, which this reads as `h` because the phoneme is intact.
+    """
+    if "/" not in token:
+        return token
+    parts = token.split("/")
+    if len(parts) != 2 or not parts[1]:
+        raise CLDFIngestionError(
+            f"form {raw_form_id!r} has segment {token!r}, which is neither a "
+            "plain token nor a grapheme/phoneme pair"
+        )
+    return parts[1]
+
+
 def _morpheme_groups(segments: tuple[str, ...]) -> tuple[tuple[int, ...], ...]:
     """Zero-based segment positions per morpheme, boundaries excluded.
 
@@ -473,6 +518,15 @@ def load_cldf_dataset(dataset_path: str | Path) -> CLDFLoadResult:
             segment_source = "Phonemic_Segments"
         if not segments:
             continue
+        # Before anything reads them. The reduction is one token in, one token
+        # out, so every later index into `segments` means the same position
+        # either way — but the boundary scan and the aligner both have to see
+        # the phoneme rather than the spelling.
+        source_segments = segments
+        segments = tuple(
+            _phoneme_side(token, raw_form_id=raw_form_id) for token in segments
+        )
+        rewrote_segments = segments != source_segments
 
         membership_rows = list(cognate_rows_by_form.get(raw_form_id, ()))
         if has_inline_cognates:
@@ -614,10 +668,13 @@ def load_cldf_dataset(dataset_path: str | Path) -> CLDFLoadResult:
                     tree_glottocode=language["tree_glottocode"],
                     source_row=row_number,
                     segment_source=segment_source,
+                    source_segments=source_segments if rewrote_segments else (),
                     source_reference=str(metadata_path),
-                    compatibility_rule_ids=language[
-                        "compatibility_rule_ids"
-                    ],
+                    compatibility_rule_ids=(
+                        (*language["compatibility_rule_ids"], GRAPHEME_PHONEME_RULE_ID)
+                        if rewrote_segments
+                        else language["compatibility_rule_ids"]
+                    ),
                 ),
             )
         )

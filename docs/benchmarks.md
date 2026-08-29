@@ -419,12 +419,54 @@ Nothing linguistic is decided, and the parent form is unaffected because it is
 assembled from columns rather than from these rules. Romance now has its first
 assembly ceiling: **90/900 — 10.0%**, mean top NED 0.228.
 
-**What this does not fix.** Old Burmese still *carries* those segments — 142 of
-its 219 forms, 64.8% — so its gold strings contain tokens like `ṅ/ŋ` that no
-daughter can produce. The `burmic` ceiling of 25/37 is therefore a floor on the
-ceiling and not the ceiling. Reading the phoneme side of `x/y` at ingestion
-would change what a segment is for 104 of 174 datasets and invalidate every
-banked figure, so it is not done here.
+### Reading the phoneme, and what it did and did not move
+
+The advisory kept the harness alive. It did not make the gold reachable. Old
+Burmese wrote 142 of its 219 forms with tokens like `ṅ/ŋ`, and **24 of the 37
+`burmic` gold concepts had no alternative any daughter could produce**. On
+`romance` the same was true of **182 of 900**. The adapter now reduces such a
+token to its phoneme — see `Grapheme/phoneme tokens` in
+[running inference](running_inference.md) for the rule and for why it is a
+reading rather than a choice.
+
+| gold node | concepts with gold | unmatchable before | unmatchable after |
+| --- | --- | --- | --- |
+| `burmish:proto_burmish` | 54 | 0 | 0 |
+| `burmish:burmic` | 37 | **24** | **0** |
+| `romance:latin` | 900 | **182** | **0** |
+
+**The oracle ceilings barely moved, and that is the expected result rather than
+a disappointment.** The assembly oracle writes its rules against the withheld
+gold, so it could already spell `ṅ/ŋ`. A live model never can: it does not see
+the gold, and no daughter carries the token.
+
+| ceiling | before | after |
+| --- | --- | --- |
+| `burmish:proto_burmish` top-1 | 42/54 | 42/54 |
+| `burmish:burmic` top-1 | 25/37 | 25/37 |
+| `romance:latin` top-1 | 90/900 | **88/900** |
+
+Romance lost two forms and 22 correspondence sets. Reducing `ɪ/j` to `j` merges
+it with the `j` already there, so the oracle loses a distinction only an oracle
+could have used. **The ceiling did not rise. The gold became reachable by
+something other than an oracle**, which is what these benchmarks are for.
+
+`unaccounted_column_rate` did not move at all — 0.280 at `maruic` and 0.338 at
+`burmic`, unchanged. That floor is the survey/assembler grouping mismatch of
+§7.18 and has nothing to do with tokens.
+
+**Polynesian is untouched**, which is checked rather than assumed:
+`walworthpolynesian` carries no such token, so every recorded baseline in this
+document and every number pinned by
+`tests/workbench/test_oracle_ceiling_regression.py` stands under the same
+reading it always did.
+
+**What is still unmeasured.** On the `meloniromance` shape both sides are
+sounds, so a model that reconstructs `*ɪ` where the gold realizes `j` is now
+scored as wrong. Whether that is unfair, and whether a gold alternative should
+carry both sides, is not measured. The question is how many Latin gold forms
+differ between the two readings, and whether a live model ever produces the
+left side. Nothing here settles it.
 
 ## Recorded baselines
 
