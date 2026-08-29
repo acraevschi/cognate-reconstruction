@@ -1124,3 +1124,50 @@ def test_a_single_reflex_mismatch_still_reads_as_one_sentence() -> None:
     assert result.error.code == "correspondence-reflex-mismatch"
     assert "commitments fail this check" not in result.error.message
     assert result.error.message.startswith("commitment ")
+
+
+def test_a_rationale_rejection_counts_the_sets_it_is_waiting_on() -> None:
+    """§7.15 needs a count here, and this is the code that produces most of them.
+
+    The per-set rationale requirement stays — the research owner settled that —
+    but it is 22% of the protocol rejections in the stalled nodes of the
+    Polynesian after seeds, and it appears in 8 of the 15. Without a count the
+    window rule cannot tell a model working through thirty rationales from one
+    that is stuck, so the rejection reports how many sets it is still waiting
+    on. Nothing about the requirement is relaxed.
+    """
+    context = _context()
+    registry = default_tool_registry()
+    survey = _survey(registry, context)
+    by_reflexes = _sets_by_reflexes(survey)
+    commitments = [
+        _commitment(by_reflexes[("ʔ", None)], "ʔ"),
+        _commitment(by_reflexes[("o", "o")], "o"),
+        _commitment(by_reflexes[("a", "a")], "a"),
+    ]
+    # One carries its rationale; two do not.
+    commitments[0]["rationale"] = "Tongan keeps the glottal stop."
+    result = _call(
+        registry, context, "test_proto_assembly", "preview",
+        commitments=commitments, residue_policy="drop",
+    )
+    assert result.ok, result.error
+
+    commit = _call(
+        registry, context, "commit_reconstruction", "commit",
+        node_id=context.node_id,
+        inventory={
+            "child_node_ids": list(context.child_ids),
+            "commitments": commitments,
+            "residue_policy": "drop",
+        },
+        summary="Three sets.",
+        anomalies=[],
+    )
+    assert not commit.ok
+    assert commit.error.code == "missing-rule-rationale"
+    assert commit.error.offender_count == 2, commit.error.message
+    assert commit.error.subject
+    # And it never reaches the model.
+    assert "offender_count" not in commit.model_dump_json()
+    assert commit.error.subject not in commit.model_dump_json()

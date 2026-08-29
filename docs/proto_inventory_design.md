@@ -3554,6 +3554,23 @@ loosening a termination guard is defensible.
 Four cases are pinned as tests: a falling count is forgiven, a flat count
 stalls, a sawtooth stalls, and an uncounted rejection stalls.
 
+#### The rationale requirement reports its offenders too
+
+The per-set rationale requirement **stays** — the research owner settled that on
+2026-08-25 and §7.7 records why. But it is **22% of the protocol rejections in
+the stalled nodes** of the Polynesian after seeds, and it appears in **8 of the
+15**. It is the single largest contributor to window saturation.
+
+Without a count the window rule cannot tell a model working steadily through
+thirty rationales from one that is stuck, so all four rationale rejections now
+report `subject` and `offender_count` the same way `verify_commitments` does.
+`offender_digest` moved to `agent/tools/errors.py` and is shared rather than
+restated.
+
+**Nothing about the requirement is relaxed.** A commit still needs a rationale
+on every claim, the rejection still refuses the commit, and only the detector's
+reading of it changes.
+
 #### What is not established
 
 - **Nothing live.** This is a replay of recorded sequences through the new rule.

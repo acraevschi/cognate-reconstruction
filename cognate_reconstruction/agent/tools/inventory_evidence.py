@@ -21,12 +21,13 @@ is refused. Neither is a judgement about the linguistics.
 
 from __future__ import annotations
 
-import hashlib
-
 from collections.abc import Sequence
 
 from cognate_reconstruction.agent.context import AgentContext
-from cognate_reconstruction.agent.tools.errors import ToolInputError
+from cognate_reconstruction.agent.tools.errors import (
+    ToolInputError,
+    offender_digest,
+)
 from cognate_reconstruction.alignment.correspondence_sets import (
     build_correspondence_sets,
     one_reading_per_node,
@@ -234,7 +235,7 @@ def verify_commitments(
             ),
             code="unknown-correspondence-set",
             remediation=_describe_unknown_set(unknown[0], inventory),
-            subject=_offenders(item.set_id for item in unknown),
+            subject=offender_digest(item.set_id for item in unknown),
             offender_count=len(unknown),
         )
     if reflex_misses:
@@ -249,7 +250,7 @@ def verify_commitments(
                 len(commitments),
             ),
             code="correspondence-reflex-mismatch",
-            subject=_offenders(item.set_id for item, _ in reflex_misses),
+            subject=offender_digest(item.set_id for item, _ in reflex_misses),
             offender_count=len(reflex_misses),
             remediation=(
                 "The set_id is derived from the reflex tuple, so the two "
@@ -277,7 +278,7 @@ def verify_commitments(
                 len(commitments),
             ),
             code="correspondence-support-mismatch",
-            subject=_offenders(item.set_id for item, _ in support_misses),
+            subject=offender_digest(item.set_id for item, _ in support_misses),
             offender_count=len(support_misses),
             remediation=(
                 (
@@ -292,18 +293,6 @@ def verify_commitments(
                 "worth estimating."
             ),
         )
-
-
-def _offenders(set_ids) -> str:
-    """A stable name for *which* commitments failed a check.
-
-    Sorted, so the order the model happened to write them in cannot make two
-    identical failures look different. Hashed, so the value stays short when a
-    node commits thirty sets. The stall detector compares these for equality
-    and never parses one, and it never reaches the model.
-    """
-    material = ",".join(sorted(set_ids))
-    return hashlib.sha256(material.encode()).hexdigest()[:16]
 
 
 def _plural_reject(problems: Sequence[str], commitment_count: int) -> str:
