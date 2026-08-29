@@ -1984,6 +1984,13 @@ numbers measure a model, and they are never interchangeable.
 > gold nodes, never pooled — and says in advance what a sweep of the size
 > that fits cannot settle. §7.20 is the sweep. Neither changes §7.10's
 > verdict; they replace "unmeasurable" with a measurement and a stated cost.
+>
+> **And §7.20 is the finding that outranks both.** No live figure in this
+> document was ever published beside what *copying a daughter* scores. Measured:
+> every live Polynesian number here is below that baseline, and the after
+> condition's whole condition-6 column on `synthetic_hard` consists of nodes
+> byte-identical to a daughter. Read §7.20 before quoting any live number in
+> this section.
 
 > **Every figure below was re-derived 2026-08-23** against
 > `tools/oracle_ceiling.py` and `tools/assembly_ceiling.py` as prompt 07
@@ -2442,6 +2449,17 @@ before 0.88; `east` 0.88 in every seed of both conditions.
 be compared at all. Top-1 is up at both comparable nodes and that is not
 sufficient for the condition as phrased. Recorded, not rewritten — the same
 treatment §7.3 gives condition 2.
+
+> **The argument below is superseded by §7.20, measured 2026-08-29. The verdict
+> is not.** Condition 6 tripped here and still trips. But "top-1 is up at both
+> comparable nodes" does not survive: **every scored `proto` evaluation in the
+> after condition is a node whose lexicon is byte-identical to a daughter**, and
+> so are seven of the eight at `west`, while the before column at `proto`
+> contains none. Removing identity commits leaves the after column at `proto`
+> with n=0. And 0.535 is exactly the copy baseline of `d1` and `d2`. So what
+> changed between the instruction sets at this node is not that the model
+> reconstructed better; it is that it stopped reconstructing badly and started
+> copying. §7.20 has the tables and the cross-check.
 
 **The argument, in prose, and it is not a defence of the threshold.** The
 quantity condition 6 compares is conditioned on the node having committed, and
@@ -4185,6 +4203,165 @@ which is the cheapest that number has ever been in this repository and still not
 cheap. The honest statement is that condition 6 is *now measurable on real data*
 where §7.10 recorded it as unmeasurable in verdict-bearing form, and that
 measuring it and closing it are different budgets.
+
+### 7.20 The identity baseline, and what it does to every live number here
+
+*Measured 2026-08-29 while the Burmish sweep of §7.21 was running. **No new
+inference was run for this subsection.** Every figure is a re-reading of
+artifacts already banked, through two computations that did not exist before:
+`tools/identity_commit_probe.py` and its `--baseline` mode. The subsection is
+separate from §7.21 because it is not about Burmish; it is about every live
+number in this document.*
+
+It began as a check on one Burmish node and did not stay there.
+
+#### The question nothing asked
+
+`benchmarks/sweep.py:270` excludes an evaluation whose node fell back, and its
+comment states the principle exactly: *a fallback node's beam is the harness's
+identity commit, so scoring it measures the fallback.* Nothing asks the same
+question of the nodes the exclusion lets through. A node that **commits
+successfully** can hand back a lexicon byte-identical to one of its children,
+and it is then scored as a reconstruction.
+
+Measured over every banked sweep in this checkout, at verbatim agreement — a
+concept agrees when the node's form set and the other lexicon's form set share
+a form, and the fraction is over the concepts both carry:
+
+| arm | committed nodes | verbatim copies |
+| --- | --- | --- |
+| `polynesian-before` (rule cascade) | 13 | **0** |
+| `polynesian-after` ×5 (inventory) | 43 | **12** |
+| `synthetic_hard-before` + `-before-r2` | 15 | 9 |
+| `synthetic_hard-after` + `-after-r2` | 24 | **23** |
+
+**All fifteen committed nodes in `synthetic_hard-after-r2` are copies**, and
+that is the sweep §7.7 read condition 6 from. Verified by hand on `seed-01`:
+`west` and `proto` are each 25 of 25 forms byte-identical to the daughter `d1`,
+both scored — while `east` fell back at 0.880 and was correctly excluded. **The
+exclusion rule dropped the honest fallback and admitted two copies.**
+
+On Polynesian the copies concentrate at the shallow nodes — `tongic` 4 of 8,
+`tahitic` 4 of 8, `central_eastern` and `nuclear_polynesian` 0 — and the
+pre-flip arm produced none at all in thirteen commits.
+
+#### The bar nothing published: what copying scores
+
+The probe asks whether a node copied. `--baseline` asks the question one step
+earlier and needs no run: **what does copying a daughter score against the
+gold?** Read exactly as `HistoricalTargetEvaluation` reads a reconstruction —
+any form the daughter carries against any gold alternative.
+
+| Proto-Polynesian, daughter copied unchanged | top-1 exact |
+| --- | --- |
+| East Futuna | **0.587** |
+| East Uvea | 0.565 |
+| Tongan | 0.543 |
+| Niuean | 0.500 |
+| Maori | 0.326 |
+| Samoan | 0.304 |
+| Rarotongan | 0.239 |
+| Hawaiian, North Marquesan | 0.174 |
+| Tahitian | 0.130 |
+
+**Every live Polynesian figure in this repository is below 0.587.**
+`docs/benchmarks.md` records 0.457; the banked sweeps give 0.457 before and
+0.446 after; the best single seed reached 0.543 — and *that seed's
+`proto_polynesian` is byte-identical to Tongan, whose own copy baseline is
+0.543 exactly.*
+
+#### The two computations agree where they must, which is the check
+
+The baseline is computed from the payload alone and never looks at a run. The
+probe is computed from a run and never looks at the baseline. On
+`synthetic_hard` every identity commit's score equals the copy baseline of the
+daughter it reproduced, to three decimals:
+
+| observed identity commit | scored | that daughter's copy baseline |
+| --- | --- | --- |
+| `proto` == `d1`, 4 seeds | 0.520 | **0.520** |
+| `proto` == `d2`, 2 seeds | 0.560 | **0.560** |
+| `west` == `d1`, 4 seeds | 0.800 | **0.800** |
+| `west` == `d2`, 1 seed | 0.880 | **0.880** |
+| `east` == `d3`, 1 seed | 0.880 | **0.880** |
+| `proto_polynesian` == Tongan, 1 seed | 0.543 | **0.543** |
+
+Four further scored copies are node copies rather than leaf copies — `proto` ==
+`west` twice and `west` == `proto` twice — which have no daughter baseline to
+check against and are counted in the arm totals above.
+
+Two independent readings landing on the same six numbers is what makes this a
+measurement rather than an inference.
+
+#### What this does to §7.7's condition 6
+
+§7.7 reported condition 6 per gold node and concluded that top-1 was up at both
+comparable nodes while the spreads overlapped. Re-read with identity commits
+removed from the scored set, and with nothing else changed:
+
+| gold node | before, as published | before, copies removed | after, as published | after, copies removed |
+| --- | --- | --- | --- | --- |
+| `proto` | 0.290 ± 0.100, n=4 | 0.290 ± 0.100, n=4 | 0.535 ± 0.077, n=8 | **n=0** |
+| `west` | 0.700 ± 0.028, n=2 | 0.700 ± 0.028, n=2 | 0.845 ± 0.110, n=8 | 1.000, n=1 |
+| `east` | 0.880, n=1 | n=0 | n=0 | n=0 |
+
+**Every scored `proto` evaluation in the after condition is an identity
+commit.** The before column at that node contains none. So the comparison §7.7
+made is between reconstructions on one side and copies on the other, and the
+copies are the side that scored higher.
+
+The sharpest form of it, and the reason this is not a quibble about an
+instrument: at `proto` the after condition scores **0.535**, which is the copy
+baseline of `d1` and `d2` (0.520 and 0.560). The before condition scores
+**0.290**, which is *below* the copy baseline of three of the five daughters
+(`d2` 0.560, `d1` 0.520, `d3` 0.320). Read
+together, the honest description of what changed between the two instruction
+sets at this node is **not** "top-1 went up". It is that the model stopped
+reconstructing badly and started copying — and copying scores better than a bad
+reconstruction.
+
+#### What this does and does not establish
+
+- **It does not establish that an identity commit is wrong.** A proto-language
+  can be identical to a conservative daughter, and Proto-Polynesian is close to
+  Tongan for real reasons. Copying is a *degenerate strategy*, not an incorrect
+  answer, and on a family where the conservative daughter is close to the proto
+  the two are hard to tell apart by any measure.
+- **It does not establish a direction for the instruction flip.** Part of the
+  after condition's copy rate is arithmetic: on Polynesian the pre-flip arm
+  committed 13 nodes and the post-flip arms 43, and the copies sit at the
+  shallow nodes the pre-flip arm mostly failed. Converting a failure into a copy
+  is not the same as converting a reconstruction into a copy, and these data
+  cannot separate the two.
+- **It does establish that no live figure in this document is interpretable
+  without its copy baseline beside it**, and that none of them has ever been
+  published that way. That is a defect in how results were reported here, and it
+  is repaired by two numbers that cost no inference.
+- **It establishes that §7.7's condition-6 reading cannot stand as written.**
+  Not that the verdict flips — condition 6 tripped there and still trips — but
+  that its *argument*, "top-1 is up at both comparable nodes", is measuring
+  copies at one node and mostly copies at the other.
+
+#### Two proposals, and one thing that must not be done
+
+**Proposal 9, beside the originals.** *Publish the copy baseline and the
+identity-commit count beside every live accuracy figure, per gold node.* Report,
+never a gate. This is the same treatment §7.6's recommendation already asks for
+the commit rate and the fallback score, and it is the minimum that makes a live
+number readable.
+
+**Proposal 10, for the research owner and deliberately not implemented here.**
+*Should `commit_reconstruction` refuse a hypothesis whose assembled lexicon
+reproduces a child verbatim?* There is a real argument on both sides: it is the
+signature of a degenerate commit, and it is also a legitimate answer on a family
+with a very conservative daughter. **Nothing here should be resolved by adding a
+gate that makes the number look better**, which is exactly the failure mode
+§7.7's rationale note warns about.
+
+**And the thing that must not be done:** no trajectory may be filtered on the
+identity check. Dropping copies from a scored set turns a reporting instrument
+into a selection rule, and §7.6(a) already measured what selection does to this
+comparison — the excluded seeds were not the bad ones.
 
 ---
 

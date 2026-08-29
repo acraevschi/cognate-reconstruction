@@ -474,6 +474,22 @@ left side. Nothing here settles it.
 
 ## Recorded baselines
 
+**Read every live figure on this page against the copy baseline first.**
+`tools/identity_commit_probe.py --baseline` reports what a single daughter
+scores against the gold, copied unchanged, and on Polynesian the answer is
+**0.587** for East Futuna — *above every live figure recorded here, including
+the 0.457 in the table below and the best single seed's 0.543.* That seed's
+`proto_polynesian` is byte-identical to Tongan, whose copy baseline is 0.543
+exactly. So the live rows below are not wrong, and they are not interpretable
+alone: at this benchmark a score near 0.5 does not distinguish reconstruction
+from copying a conservative daughter. §7.20 of
+[the design document](proto_inventory_design.md) has the measurement and what it
+does to §7.7's reading of condition 6.
+
+Burmish is the opposite case and it is why that family is worth keeping: every
+one of its seven daughters scores **0.000** at both gold nodes, so a non-zero
+figure there is reconstruction rather than resemblance.
+
 Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the
 live figures measure one model on one seed.
 
