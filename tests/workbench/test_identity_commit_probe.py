@@ -151,3 +151,61 @@ def test_the_threshold_is_a_knob_and_verbatim_is_the_default(
         for row in _run(payload_path, run_dir, "--threshold", "0.5")["rows"]
     }
     assert loose["copier"]["leaf_copy"] is True
+
+
+def _run_baseline(payload_path: Path) -> dict:
+    completed = subprocess.run(
+        [sys.executable, str(PROBE), str(payload_path), "--baseline", "--json"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return json.loads(completed.stdout)
+
+
+def test_the_copy_baseline_needs_no_run_directory(tmp_path: Path) -> None:
+    """It is a property of the benchmark, so it can be read before any run."""
+    payload_path, _ = _write_case(tmp_path)
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    # Give the gold node d1's own forms, so copying d1 scores 1.0 by
+    # construction and copying d2 scores 0.0.
+    payload["historical_form_bindings"][0]["forms"] = [
+        _form("a", ["p", "a"]),
+        _form("b", ["t", "u"]),
+    ]
+    payload["historical_form_bindings"][1]["forms"] = []
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    entries = {
+        entry["node_id"]: entry
+        for entry in _run_baseline(payload_path)["copy_baseline"]
+    }
+    rates = {
+        row["variety_id"]: row["top_exact_rate"]
+        for row in entries["copier"]["daughters"]
+    }
+    assert rates == {"d1": 1.0, "d2": 0.0}
+
+
+def test_the_baseline_is_sorted_so_the_bar_is_the_first_row(
+    tmp_path: Path,
+) -> None:
+    """The number that matters is the best daughter, not the mean of them."""
+    payload_path, _ = _write_case(tmp_path)
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    payload["historical_form_bindings"][0]["forms"] = [
+        _form("a", ["p", "a"]),
+        _form("b", ["d", "u"]),
+    ]
+    payload["historical_form_bindings"][1]["forms"] = []
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    entries = {
+        entry["node_id"]: entry
+        for entry in _run_baseline(payload_path)["copy_baseline"]
+    }
+    daughters = entries["copier"]["daughters"]
+    assert [row["top_exact_rate"] for row in daughters] == sorted(
+        [row["top_exact_rate"] for row in daughters], reverse=True
+    )
+    assert daughters[0]["top_exact_rate"] == 0.5

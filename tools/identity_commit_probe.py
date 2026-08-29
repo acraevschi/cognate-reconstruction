@@ -26,10 +26,18 @@ Agreement is per concept: a concept counts as agreeing when the node's form set
 and the other lexicon's form set share a form. The reported fraction is over the
 concepts both lexicons carry.
 
+`--baseline` answers the question one step earlier, and needs no run at all:
+**what does copying a daughter score against the gold?** That number is the bar
+every live figure has to clear before it is evidence of reconstruction, and it
+is not currently published anywhere. On Polynesian it is 0.587, which is above
+every live figure this repository has recorded. On Burmish it is 0.000 at both
+gold nodes, so any non-zero score there is reconstruction rather than copying.
+
 Usage:
     python tools/identity_commit_probe.py burmish runs/sweeps/burmish-after
     python tools/identity_commit_probe.py polynesian runs/sweeps/poly-* --json
     python tools/identity_commit_probe.py burmish <run-dir> --threshold 0.9
+    python tools/identity_commit_probe.py polynesian --baseline
 """
 
 from __future__ import annotations
@@ -144,6 +152,60 @@ def probe(payload_path, run_dirs, threshold):
     return rows
 
 
+def copy_baseline(payload_path):
+    """What each daughter scores against each gold node, copied verbatim.
+
+    Read the same way `HistoricalTargetEvaluation` reads a reconstruction: a
+    concept counts when any form the daughter carries matches any gold
+    alternative. Quoted without that reading the number means nothing.
+    """
+    payload = json.loads(open(payload_path, encoding="utf-8").read())
+    leaves = {
+        lexicon["variety_id"]: _concept_forms(lexicon["forms"])
+        for lexicon in payload["lexicons"]
+    }
+    out = []
+    for binding in payload.get("historical_form_bindings", ()):
+        if binding.get("role") != "target":
+            continue
+        gold = _concept_forms(binding.get("forms", ()))
+        scores = []
+        for name, forms in leaves.items():
+            rate, shared = _agreement(gold, forms)
+            scores.append(
+                {"variety_id": name, "top_exact_rate": rate, "concepts": shared}
+            )
+        scores.sort(key=lambda item: item["top_exact_rate"], reverse=True)
+        out.append({"node_id": binding["node_id"], "daughters": scores})
+    return out
+
+
+def render_baseline(baselines):
+    lines = [f"measuring: {_bootstrap.loaded_package_path()}"]
+    lines.append(
+        "copy baseline: what one daughter scores against the gold, unchanged."
+    )
+    lines.append(
+        "Read as HistoricalTargetEvaluation reads it -- any form of the "
+        "daughter against any gold alternative."
+    )
+    for entry in baselines:
+        lines.append("")
+        lines.append(f"  gold node {entry['node_id']}")
+        for row in entry["daughters"]:
+            lines.append(
+                f"    {row['variety_id']:38s} {row['top_exact_rate']:.3f} "
+                f"over {row['concepts']} concepts"
+            )
+        best = entry["daughters"][0] if entry["daughters"] else None
+        if best:
+            lines.append(
+                f"    -> a live figure at this node is evidence of "
+                f"reconstruction only above {best['top_exact_rate']:.3f}"
+            )
+    return "\n".join(lines)
+
+
 def render(rows, threshold):
     lines = [f"measuring: {_bootstrap.loaded_package_path()}"]
     lines.append(
@@ -206,8 +268,9 @@ def main() -> None:
     parser.add_argument("benchmark", help="A benchmark name or a payload path.")
     parser.add_argument(
         "run_dirs",
-        nargs="+",
-        help="Run directories, or sweep directories holding seed-NN/.",
+        nargs="*",
+        help="Run directories, or sweep directories holding seed-NN/. "
+        "Not needed with --baseline.",
     )
     parser.add_argument(
         "--threshold",
@@ -216,10 +279,31 @@ def main() -> None:
         help="Agreement at or above this counts as a copy. Default 1.0, "
         "which is verbatim.",
     )
+    parser.add_argument(
+        "--baseline",
+        action="store_true",
+        help="Report what each daughter scores against the gold, copied "
+        "verbatim, and exit. Needs no run directory.",
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     payload_path = _bootstrap.resolve_benchmark(args.benchmark)
+    if args.baseline:
+        baselines = copy_baseline(payload_path)
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "measuring": _bootstrap.loaded_package_path(),
+                        "copy_baseline": baselines,
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            print(render_baseline(baselines))
+        return
     run_dirs = _seed_dirs(args.run_dirs)
     if not run_dirs:
         parser.error("no run directory holding a result.json was found")
