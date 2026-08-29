@@ -1373,3 +1373,84 @@ def test_a_different_offender_each_turn_does_not_stall() -> None:
 def test_a_rejection_with_no_subject_keeps_the_old_behaviour() -> None:
     """Schema rejections and rationale checks name no set, and are unchanged."""
     assert _stall_after((None, None, None, None, None)) is not None
+
+
+def _window_stall_after(
+    entries: tuple[tuple[str, int | None], ...],
+) -> int | None:
+    """Drive the window rule alone and report where it raises.
+
+    Each entry is one protocol rejection as `(subject, offender_count)`. The
+    subject varies on every call, so the repeated-signature rule never fires and
+    what is under test is the window rule by itself.
+    """
+    from datetime import UTC, datetime
+
+    from cognate_reconstruction.agent.orchestrator import _RunState
+
+    orchestrator = AgentOrchestrator(
+        AlwaysMalformedCommitProvider(),
+        instructions="x",
+        max_repeated_tool_failures=3,
+    )
+    state = _RunState(started_at=datetime.now(UTC), started_monotonic=0.0)
+    context = _context()
+    for index, (subject, count) in enumerate(entries, 1):
+        result = ToolExecutionResult(
+            ok=False,
+            error=ToolError(
+                error_type="ToolInputError",
+                message="rejected",
+                code="correspondence-reflex-mismatch",
+                subject=subject,
+                offender_count=count,
+            ),
+        )
+        call = LLMToolCall(
+            call_id=f"w{index}", name="test_proto_assembly", arguments={}
+        )
+        _correction, stall = orchestrator._record_tool_failure(
+            context, state, call, result
+        )
+        if stall is not None:
+            return index
+    return None
+
+
+def test_a_model_repairing_its_rows_is_not_ended_by_the_window() -> None:
+    """§7.14's node, as a test.
+
+    The model was told about 13 bad rows, repaired all 13 in one turn, reached
+    an accepted preview, and the window ended it anyway. A rejection naming
+    fewer offenders than the last one is repair and no longer counts.
+    """
+    falling = tuple((f"s{i}", n) for i, n in enumerate([13, 11, 9, 7, 5, 3, 1]))
+    assert _window_stall_after(falling) is None
+
+
+def test_a_model_that_never_improves_still_hits_the_window() -> None:
+    """The guard keeps its whole strength where it was earning it.
+
+    `after-batched/seed-01/marquesic` named one offender every time and never
+    reduced it. Nothing about that reads as repair, and it still stalls.
+    """
+    flat = tuple((f"s{i}", 1) for i in range(9))
+    assert _window_stall_after(flat) is not None
+
+
+def test_oscillating_offender_counts_still_hit_the_window() -> None:
+    """A decrease is forgiven; the increase that follows it is not.
+
+    This is why the rule is a strict decrease rather than a reset. Shedding one
+    row and re-breaking it cannot buy turns forever.
+    """
+    sawtooth = tuple(
+        (f"s{i}", n) for i, n in enumerate([9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9])
+    )
+    assert _window_stall_after(sawtooth) is not None
+
+
+def test_a_rejection_that_counts_nothing_is_never_a_repair() -> None:
+    """Schema rejections report no count, so their behaviour is unchanged."""
+    uncounted = tuple((f"s{i}", None) for i in range(9))
+    assert _window_stall_after(uncounted) is not None

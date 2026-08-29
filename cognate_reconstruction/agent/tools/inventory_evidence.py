@@ -235,6 +235,7 @@ def verify_commitments(
             code="unknown-correspondence-set",
             remediation=_describe_unknown_set(unknown[0], inventory),
             subject=_offenders(item.set_id for item in unknown),
+            offender_count=len(unknown),
         )
     if reflex_misses:
         raise ToolInputError(
@@ -249,6 +250,7 @@ def verify_commitments(
             ),
             code="correspondence-reflex-mismatch",
             subject=_offenders(item.set_id for item, _ in reflex_misses),
+            offender_count=len(reflex_misses),
             remediation=(
                 "The set_id is derived from the reflex tuple, so the two "
                 "cannot disagree. Copy the row back from "
@@ -276,6 +278,7 @@ def verify_commitments(
             ),
             code="correspondence-support-mismatch",
             subject=_offenders(item.set_id for item, _ in support_misses),
+            offender_count=len(support_misses),
             remediation=(
                 (
                     f"Set 'support' to {support_misses[0][1].support}."

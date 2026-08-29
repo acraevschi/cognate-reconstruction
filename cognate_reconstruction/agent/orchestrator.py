@@ -298,6 +298,13 @@ class _RunState:
     # provider option is in effect untouched.
     effective_max_tokens: int | None = None
     tool_names: list[str] = field(default_factory=list)
+    # Parallel to `recent_call_signatures`, one flag per slot: True when that
+    # call was a protocol rejection that showed measurable repair. §7.14 is why.
+    recent_repairs: deque[bool] = field(default_factory=deque)
+    # Fewest offenders any rejection of each (tool, code) has yet named. The
+    # next one is repair only if it goes below this, which is what stops a
+    # sawtooth from buying turns forever.
+    best_offender_count: dict[tuple[str, str], int] = field(default_factory=dict)
     successful_tool_names: list[str] = field(default_factory=list)
     provider_responses: list[ProviderResponseMetadata] = field(default_factory=list)
     # The trailing window of (tool, error code) signatures, successes included so
@@ -705,10 +712,60 @@ class AgentOrchestrator:
             )
         return f"{reason}; {remedy}"
 
+    def _is_repair(
+        self,
+        state: _RunState,
+        tool_name: str,
+        code: str,
+        error: ToolError | None,
+    ) -> bool:
+        """Did this rejection name fewer offenders than the last one like it?
+
+        The window rule counts protocol rejections and cannot see that the model
+        is fixing them. §7.14 measured what that costs: at one node the model
+        was told about 13 bad rows, repaired all 13 in a single turn, reached an
+        accepted preview, and was ended anyway because the window was full.
+
+        So a rejection that shows measurable repair no longer counts toward
+        saturation. Repair is a **strict decrease below the fewest offenders
+        this `(tool, code)` has ever named** — the best so far, not the last.
+
+        **Best-so-far rather than last is what makes the rule safe, and a test
+        found it.** Compared against the last count, a model alternating 9, 8,
+        9, 8 marks every second rejection a repair, and half a window of
+        repairs never saturates: the model buys turns forever by re-breaking a
+        row it just fixed. Against the best so far, the second 8 is not below
+        8, so only genuine new ground counts.
+
+        **It cannot be exploited to run forever.** The best-so-far count is a
+        non-negative integer that only ever decreases, so a node has at most as
+        many repairs as its first rejection had offenders, and then it either
+        commits or saturates. A model that never improves is refused exactly as
+        it is today, and nothing here touches the repeated-signature rule.
+
+        Checks that cannot count their offenders report `None` and are
+        unchanged: a schema rejection is never a repair.
+        """
+        count = getattr(error, "offender_count", None) if error is not None else None
+        key = (tool_name, code)
+        if count is None:
+            # No signal. Leave any earlier count in place: a schema slip between
+            # two mismatch rejections must not erase the progress between them.
+            return False
+        best = state.best_offender_count.get(key)
+        if best is None:
+            state.best_offender_count[key] = count
+            return False
+        if count < best:
+            state.best_offender_count[key] = count
+            return True
+        return False
+
     def _record_call_signature(
         self,
         state: _RunState,
         signature: _FailureSignature,
+        repair: bool = False,
     ) -> int:
         """Append one call to the trailing window and count that signature in it.
 
@@ -722,8 +779,11 @@ class AgentOrchestrator:
         """
         window = state.recent_call_signatures
         window.append(signature)
+        state.recent_repairs.append(repair)
         while len(window) > self.stall_window_calls:
             window.popleft()
+        while len(state.recent_repairs) > self.stall_window_calls:
+            state.recent_repairs.popleft()
         return sum(entry == signature for entry in window)
 
     def _record_tool_failure(
@@ -760,7 +820,8 @@ class AgentOrchestrator:
         )
         subject = getattr(error, "subject", None) if error is not None else None
         signature = (call.name, code, subject or "")
-        occurrences = self._record_call_signature(state, signature)
+        repair = self._is_repair(state, call.name, code, error)
+        occurrences = self._record_call_signature(state, signature, repair)
         if occurrences < self.max_repeated_tool_failures:
             return self._window_intervention(context, state, error)
         if signature in state.corrected_failure_signatures:
@@ -819,7 +880,10 @@ class AgentOrchestrator:
         failures = sum(
             entry != _SUCCESS_SIGNATURE
             and classify_tool_error_code(entry[1]) is ToolErrorCategory.PROTOCOL
-            for entry in state.recent_call_signatures
+            and not repaired
+            for entry, repaired in zip(
+                state.recent_call_signatures, state.recent_repairs
+            )
         )
         if failures < self.max_window_protocol_failures:
             return None, None
@@ -1017,6 +1081,9 @@ class AgentOrchestrator:
             cached_input_tokens=self._usage_total(
                 state.provider_responses, "cached_input_tokens"
             ),
+            reasoning_output_tokens=self._usage_total(
+                state.provider_responses, "reasoning_output_tokens"
+            ),
             cost_usd=sum(cost_values) if cost_values else None,
             committed_rule_count=rule_count,
             committed_anomaly_count=anomaly_count,
@@ -1161,8 +1228,10 @@ class AgentOrchestrator:
                 "input": metrics.input_tokens,
                 "output": metrics.output_tokens,
                 "total": metrics.total_tokens,
-                # Part of "input", not additional to it.
+                # Each is part of a total above, not additional to it:
+                # cached_input of "input", reasoning_output of "output".
                 "cached_input": metrics.cached_input_tokens,
+                "reasoning_output": metrics.reasoning_output_tokens,
             },
             cost_usd=metrics.cost_usd,
         )

@@ -256,9 +256,11 @@ class ToolInputError(ValueError):
         remediation: str | None = None,
         error_type: str | None = None,
         subject: str | None = None,
+        offender_count: int | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
         self.remediation = remediation
         self.error_type = error_type or type(self).__name__
         self.subject = subject
+        self.offender_count = offender_count

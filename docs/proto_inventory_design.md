@@ -3246,12 +3246,11 @@ So the honest verdict on the narrow fix: it is correct, it costs nothing, it
 removes a demonstrated false positive, and **it is not the lever on the failure
 rate that this subsection's first draft suggested.**
 
-**The lever is window saturation, and it is still open.** Six of thirteen deaths
-come from a rule that counts rejections and cannot see repair. A progress-aware
-form — refuse to raise while the count of commitments failing the cited check is
-falling — is the change that would matter, and it is **not implemented**. It
-needs a definition of "better" that survives the model changing which check it
-fails, and it loosens a termination guard, which is a research-owner call.
+**The lever is window saturation.** Six of thirteen deaths come from a rule that
+counts rejections and cannot see repair. **§7.15 implements the progress-aware
+form**: a rejection naming fewer offenders than the fewest yet seen no longer
+counts toward saturation. Replayed against the live run's two stalls it saves
+the node that was repairing and still stops the one that was not.
 **§7.14 is the live confirmation**: on the two seeds run after the batching
 landed, both failed nodes died of window saturation and neither of the
 repeated-signature rule.
@@ -3488,6 +3487,84 @@ either.
   failed nodes — n=2, and consistent with the 6 of 13 in the banked seeds.
 - **Not established.** Any rate, any outcome comparison, and any claim that the
   fix converts failures into commits.
+
+### 7.15 The window rule, made able to see repair
+
+*Implemented 2026-08-29, after §7.14 measured that window saturation ended both
+failed nodes of the live run and 6 of the 13 stalls in the banked seeds.*
+
+#### The defect
+
+The window rule counts protocol rejections in the trailing window and raises
+when they saturate it. It counts them without regard to which they were and
+without regard to whether the model is fixing them.
+
+§7.14 measured the cost at `nuclear_polynesian`. The model was told about 13 bad
+rows, repaired **all 13 in one turn**, reached an **accepted**
+`test_proto_assembly`, and the window ended the node anyway. Its message says
+the model is cycling through malformed calls rather than adapting. The
+transcript says the opposite.
+
+#### The rule
+
+**A protocol rejection that shows measurable repair no longer counts toward
+window saturation.** Repair is a strict decrease in the number of offenders
+named, against the **fewest that `(tool, code)` has ever named** at this node.
+
+`ToolInputError` and `ToolError` gained an `offender_count` beside `subject`,
+set by `verify_commitments` and carried with `exclude=True`, so neither the
+model's tool result nor a trajectory byte changes. A check that cannot count its
+offenders reports `None`, and a schema rejection is therefore never a repair —
+those paths behave exactly as before.
+
+Nothing else moves. The repeated-signature rule is untouched, no threshold
+changes, and a rejection that shows no repair is refused exactly as it is today.
+
+#### Best-so-far rather than last, which a test found
+
+The first version compared against the *previous* count. **A model alternating
+9, 8, 9, 8 then marks every second rejection a repair**, half the window never
+counts, and it buys turns forever by re-breaking a row it has just fixed —
+which is precisely the "burn the budget and return nothing" outcome §7.9 calls
+the expensive one. `test_oscillating_offender_counts_still_hit_the_window`
+failed on exactly that sequence.
+
+Against the best so far, the second 8 is not below 8 and only new ground counts.
+
+**The rule cannot be exploited to run forever.** The best-so-far count is a
+non-negative integer that only decreases, so a node has at most as many repairs
+as its first rejection had offenders. Then it either commits or saturates.
+
+#### Replayed against the two real stalls
+
+Each failed node's call sequence was rebuilt from its recorded rejections, with
+the offender counts the messages state, and run through both rules:
+
+| node | offender counts | old rule | new rule |
+| --- | --- | --- | --- |
+| `after-batched/seed-00/nuclear_polynesian` | 13, 8, 8 | stall | **no stall** |
+| `after-batched/seed-01/marquesic` | 1, 1, 1 | stall | **stall** |
+
+**It saves the node that was provably repairing and stops the one that was
+not.** `marquesic` named one offender every time and never reduced it; nothing
+in that reads as repair and it is still refused. This is a discriminating
+change rather than a loosened threshold, which is the only form in which
+loosening a termination guard is defensible.
+
+Four cases are pinned as tests: a falling count is forgiven, a flat count
+stalls, a sawtooth stalls, and an uncounted rejection stalls.
+
+#### What is not established
+
+- **Nothing live.** This is a replay of recorded sequences through the new rule.
+  Whether `nuclear_polynesian` then *commits* is a different question, and the
+  model would take a different path from the turn the reprieve is granted.
+- **Nothing about rates.** Two nodes. The banked 13 stalls cannot be replayed
+  the same way, because under serial reporting every rejection named exactly one
+  offender, so no decrease was observable even where the model was repairing.
+  That is the defect, not a property of those runs.
+- **The remaining stall modes are untouched**, and the by-design rationale
+  requirement is one of the codes that filled `marquesic`'s window.
 
 ---
 
