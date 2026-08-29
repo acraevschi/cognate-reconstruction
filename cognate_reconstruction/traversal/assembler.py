@@ -182,6 +182,27 @@ class DerivedBranchRules:
     the commit because the *cascade* cannot spell it would be the derived view
     vetoing the committed one.
     """
+    unspellable_reflex_child_ids: tuple[str, ...] = ()
+    """Children a committed set gives a segment the DSL cannot name.
+
+    A Lexibank segment is an arbitrary token, and the rule DSL reserves `>`,
+    `/`, `_`, `#` and whitespace. Where they collide the rule cannot be written
+    down at all — `pylexibank`'s grapheme/phoneme spelling puts a literal `/`
+    inside a segment, as in `ṅ/ŋ`, and `parse_rule` then reads the segment as an
+    environment separator.
+
+    This is not a rare corner. Measured over the 174 local CLDF datasets, 104
+    carry at least one such segment, `meloniromance` among them at 2146
+    occurrences — so `benchmarks/romance.json` hit this before `hillburmish`
+    existed. It went unnoticed because the only families ever run under the
+    assembler, `walworthpolynesian` and the synthetic ones, carry none.
+
+    Recorded rather than raised, exactly as the three fields around it are: the
+    parent form is assembled from columns, so it assembles either way, and only
+    the derived per-branch view loses a rule. A bare `ValueError` out of
+    `parse_rule` ended the node instead, and through `_fallback_step` it ended
+    the run.
+    """
     unconditioned_context_child_ids: tuple[str, ...] = ()
     """Children whose derived rule lost its conditioning environment.
 
@@ -203,6 +224,30 @@ def _render_environment(environment: RuleEnvironment) -> str:
     if environment.word_final:
         right = f"{right} #".strip()
     return f"{left}_{right}".strip()
+
+
+DSL_RESERVED_CHARACTERS: frozenset[str] = frozenset(">/_#")
+"""What `rules/parser.py` reads as syntax rather than as a segment.
+
+`>` separates target from replacement, `/` introduces the environment, `_` is
+the focus marker, `#` is a word boundary. Whitespace splits one segment
+expression into several and is checked beside them.
+"""
+
+
+def _is_spellable(token: str | None) -> bool:
+    """Can this segment appear verbatim in a DSL rule?
+
+    Checked before rendering rather than by catching the parser's complaint,
+    so a genuine defect in `_render_rule` still surfaces as an error instead of
+    being filed away as an unspellable segment.
+    """
+    if token is None:
+        return True
+    return not (
+        DSL_RESERVED_CHARACTERS & set(token)
+        or any(character.isspace() for character in token)
+    )
 
 
 def _render_rule(target: str, replacement: str | None, environment: RuleEnvironment | None) -> str:
@@ -248,7 +293,7 @@ def derive_branch_rules(
 ) -> DerivedBranchRules:
     """Derive the per-branch reflex cascade implied by an inventory.
 
-    Child-to-parent, so each rule is written *reflex > proto*. Five cases, and
+    Child-to-parent, so each rule is written *reflex > proto*. Six cases, and
     they are exhaustive:
 
     - the child shows a gap against a non-null proto — no rule, and the child is
@@ -256,6 +301,9 @@ def derive_branch_rules(
     - either side is a morphological boundary — no rule, and the child is
       recorded in `boundary_change_child_ids`; the DSL refuses `+` and `-` as
       targets and as insertions, deliberately;
+    - either side carries a character the DSL reserves — no rule, and the child
+      is recorded in `unspellable_reflex_child_ids`; a Lexibank segment is an
+      arbitrary token and `ṅ/ŋ` is a real one;
     - the child shows material against a null proto — `reflex > Ø`;
     - both present and different — `reflex > proto`;
     - both present and equal — no rule; that is an ordinary identity
@@ -272,6 +320,7 @@ def derive_branch_rules(
     non_invertible: list[str] = []
     unconditioned: list[str] = []
     boundary_changes: list[str] = []
+    unspellable: list[str] = []
     for child_index, child_id in enumerate(child_node_ids):
         for item in commitments:
             reflex = item.reflexes[child_index]
@@ -289,11 +338,25 @@ def derive_branch_rules(
                 if child_id not in boundary_changes:
                     boundary_changes.append(child_id)
                 continue
+            if not (_is_spellable(reflex) and _is_spellable(proto)):
+                if child_id not in unspellable:
+                    unspellable.append(child_id)
+                continue
             environment = item.conditioning
             if environment is not None:
                 environment = _child_environment(
                     environment, commitments, child_index
                 )
+                if environment is not None and not all(
+                    _is_spellable(token)
+                    for expression in (environment.left, environment.right)
+                    if expression is not None
+                    for token in expression.tokens
+                ):
+                    # Same outcome as an environment that could not be derived:
+                    # the rule falls back to its unconditioned form rather than
+                    # being dropped, because the target is still spellable.
+                    environment = None
                 if environment is None and child_id not in unconditioned:
                     unconditioned.append(child_id)
             dsl = _render_rule(reflex, proto, environment)
@@ -310,6 +373,7 @@ def derive_branch_rules(
         rule_set_ids=tuple(rule_set_ids),
         non_invertible_child_ids=tuple(non_invertible),
         boundary_change_child_ids=tuple(boundary_changes),
+        unspellable_reflex_child_ids=tuple(unspellable),
         unconditioned_context_child_ids=tuple(unconditioned),
     )
 
