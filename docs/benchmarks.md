@@ -34,23 +34,27 @@ definition is the thing that lives in the repository.
 `--definition <path>` builds a definition that is not checked in, in which case
 `--output` is required.
 
-Two definitions ship:
+Three definitions ship:
 
 | Definition | Dataset | Gold | Daughters | Concepts selected |
 | --- | --- | --- | --- | --- |
 | `polynesian` | `data/lexibank/walworthpolynesian` | Proto-Polynesian (**a published reconstruction**) | 10 | 46 |
 | `romance` | `data/lexibank/meloniromance` | Latin (**attested**) | 5 | 900 |
+| `burmish` | `data/lexibank/hillburmish` | Proto-Burmish (**reconstructed**) *and* Old Burmese (**attested**) — two gold nodes | 7 | 54 |
 
 The Romance definition is the Ab Antiquo dataset (Meloni, Ravfogel & Goldberg
 2021), so published neural baselines exist to compare against. Its 5,419 Latin
 forms shrink to 900 concepts under the fully-cognate selection, because Romanian
 attests only 1,506 forms and the selection requires every daughter.
 
-Further candidates, not yet defined, all present in the local corpus:
+The Burmish definition is the one with two gold nodes; see *Burmish: the family
+with two gold nodes* below for what it is, and §7.19 of
+[the design document](proto_inventory_design.md) for the argument that the live
+before/after comparison should be read there rather than on `polynesian` or
+`romance`.
 
-- `hillburmish` — 9 varieties including `ProtoBurmish`, plus Old Burmese, so it
-  would give **two gold nodes in one tree** and exercise the per-node accuracy
-  curve on real data rather than only on a synthetic family;
+Further candidates, not yet defined, both present in the local corpus:
+
 - `mcd` — 60 varieties, several proto nodes at different depths
   (`protochuukic`, `protooceanic`, `protomalayopolynesian`);
 - `acd` — 1,064 varieties, Proto-Austronesian, by far the largest and the one

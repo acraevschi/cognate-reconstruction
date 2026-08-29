@@ -1978,6 +1978,12 @@ numbers measure a model, and they are never interchangeable.
 > the set that runs a live model on a real family and is the only one with no
 > reading. §7.10 also proposes three conditions to the research owner beside the
 > originals, one of which the change does not currently pass.
+>
+> **Condition 6 has a real-data reading designed for it as of 2026-08-29.**
+> §7.19 decides what that reading is taken on and why — `burmish`, at both
+> gold nodes, never pooled — and says in advance what a sweep of the size
+> that fits cannot settle. §7.20 is the sweep. Neither changes §7.10's
+> verdict; they replace "unmeasurable" with a measurement and a stated cost.
 
 > **Every figure below was re-derived 2026-08-23** against
 > `tools/oracle_ceiling.py` and `tools/assembly_ceiling.py` as prompt 07
@@ -2317,6 +2323,11 @@ destroys the very property the condition asks about, so condition 6 must be read
   `unaccounted_column_rate` floor before any threshold applies to it (§7.2). It
   is the right long-term answer to the gold-binding problem and it delays
   condition 6 rather than enabling it.
+
+  > **Executed 2026-08-29.** Option B is `benchmarks/burmish.json`, with its
+  > own ceilings and its own `unaccounted_column_rate` floor measured first,
+  > as this bullet required. §7.19 is the recommendation that follows from
+  > it and §7.20 is the sweep.
 - **C — read condition 6 on `synthetic_hard`, per gold node, and report
   Polynesian beside it without a verdict.** Costs one sweep of 10 runs (~3 h),
   uses the benchmark that degrades gracefully — every one of its six seeds
@@ -2949,6 +2960,14 @@ change passes it — the third one it does not.
   `synthetic_hard` per-gold-node verdict at 5 seeds, is §7.7 and it tripped;
   step 2, Polynesian run at 5 seeds and reported rather than scored, has not
   been run. Discharging step 2 is worth doing and will not close the condition.
+
+  > **Superseded in part on 2026-08-29.** "Unmeasurable in verdict-bearing
+  > form" was true of the datasets this repository had *defined*, not of the
+  > datasets it has. §7.6's option B is now `benchmarks/burmish.json` — two
+  > gold nodes at two depths on a real family — and **§7.19 decides that the
+  > live comparison is read there**, states what that reading cannot settle,
+  > and prices what closing the condition would cost. The judgement that a
+  > *Polynesian* sweep cannot produce a verdict is unaffected and stands.
 
 ### 7.11 The two protocol items, closed 2026-08-28
 
@@ -3934,6 +3953,238 @@ gain, not an estimate of it, and nothing here moves it upward.
 - **The 344-against-223 column gap is not only boundaries.** A whole-string
   alignment of a three-morpheme form against a one-morpheme form makes columns
   the morpheme view never creates. How the remainder divides was not measured.
+
+### 7.19 What the live comparison is read on, and what it will not settle
+
+*Written 2026-08-29. The after arm of §7.20 was already running when this was
+typed — the choice of family, of nodes, of seed count and of before-arm
+construction was fixed before it was launched, and the prose was written while
+the machine was busy — but **no seed had produced a result**, so nothing below
+can have been chosen by looking at an outcome. Every rate quoted as a **prior**
+comes from another family and is labelled as such; nothing here is a
+measurement of `burmish` behaviour, because none existed yet. §7.6 is the
+previous section of this shape and this one answers the option it left open.*
+
+§7.10 leaves condition 6 as the single reason §7 does not close, and says two
+things about it that constrain what can be done next. A Polynesian sweep cannot
+produce a verdict, because a single-gold family cannot be read per gold node and
+§7.6(b) shows that pooling across nodes destroys the property the condition asks
+about. And option B — a real family carrying two gold nodes in one tree — was at
+that point a candidate rather than a definition.
+
+Option B now exists. `benchmarks/burmish.json` is defined, built, leakage-checked
+and characterised: two gold nodes, ceilings at both, and an
+`unaccounted_column_rate` floor measured under a stated instrument (§7.18). So
+the question this subsection answers is the narrow one that remains: **what
+should the live before/after comparison be read on?**
+
+#### The recommendation
+
+**Read it on `burmish`, at both gold nodes, never pooled — with the before arm
+built on *this* tree with only the two instruction surfaces reverted, and with
+`synthetic_hard` kept beside it as the control it already is rather than
+replaced.**
+
+The case is not that `burmish` makes the comparison statistically easy. It does
+not, and the arithmetic below says so plainly. The case is that `burmish` is the
+only real family on which the comparison measures the quantity condition 6 names
+at all, and that it is roughly half the cost of the family that cannot.
+
+#### What each candidate gives, before any argument
+
+| benchmark | internal nodes | gold nodes | gold at two depths | daughters | concepts | assembly ceiling, top-1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `polynesian` | 7 | **1** (root) | no | 10 | 46 | 39/46 — **84.8%** |
+| `romance` | 4 | **1** (root) | no | 5 | 900 | 88/900 — **9.8%** |
+| `synthetic_hard` | 4 | 3 | yes | 5 | 25 | 25/25 (`proto`, `west`) · 22/25 (`east`) |
+| **`burmish`** | **3** | **2** | **yes** | 7 | 54 | 42/54 — **77.8%** (`proto_burmish`) · 25/37 — **67.6%** (`burmic`) |
+
+Every ceiling in that column is `tools/oracle_ceiling.py --oracle assembly` at
+beam width 5, default boundaries and default reading. Quoted without those flags
+none of them means anything (§7.3), and they bound the architecture rather than
+the model. The `polynesian`, `burmish` and `synthetic_hard` rows were
+re-measured in this checkout while this was written; the `romance` row is
+quoted from the same-day measurement recorded in
+[benchmarks](benchmarks.md), because re-running a 900-concept oracle would have
+competed for CPU with the live timing measurement §7.20 was taking at the time.
+
+#### Why not each of the others
+
+**`romance` is refused on a measurement, not on taste.** Its assembly ceiling is
+**88 of 900 — 9.8%**. That is not a hard benchmark; it is a benchmark on which
+the architecture cannot express the answer, and a before/after difference read
+inside a ten-percent ceiling is a difference between two ways of being wrong. It
+is also the family with the worst leakage in the repository by the argument
+`docs/benchmarks.md` already makes — Latin is attested *and* textbook — and its
+900 concepts make every node session the largest in the corpus. Three
+independent reasons, of which the first alone is sufficient.
+
+**`polynesian` is refused for the reason §7.6 and §7.10 already gave**, and one
+new measurement does not rescue it. §7.6 estimated the root's commit rate at
+0.50–0.60 from four seeds. Pooled over the eight post-flip seeds now banked it
+is **6/8 = 0.75**, so the seed arithmetic is less brutal than §7.6 computed. It
+changes nothing, because the defect was never the rate: with one gold node there
+is no per-node reading, and §7.6(b) is the finding that the pooled number is not
+the quantity the condition asks about. A better rate on the wrong quantity is
+still the wrong quantity.
+
+**`synthetic_hard` is not refused and is not sufficient.** §7.7 read condition 6
+there, per gold node, at five seeds a side, and it tripped. It stays as the
+control — it is the one evaluation nothing can have memorised — but condition 6
+says "both benchmarks", and a synthetic family cannot discharge the real-data
+half. This subsection is about that half only.
+
+**`mcd` is refused on a prior measurement and is not re-opened here.** `acd`, at
+1,064 varieties, was never a live-sweep candidate.
+
+**Binding more gold nodes in Polynesian does not exist as an option.**
+`walworthpolynesian` contains one proto variety. §7.6(D) already ruled this out
+and nothing has changed.
+
+#### The arithmetic, and where the gain is not
+
+The number that decides whether a seed yields anything is the rate at which a
+gold node commits rather than falling back. Measured per node over the banked
+Polynesian seeds — pooled across the five post-flip sweep directories, which
+carry **different instruction hashes** and are therefore post-flip draws rather
+than one configuration:
+
+| node | children | post-flip, 8 seeds | pre-flip, 3 seeds |
+| --- | --- | --- | --- |
+| `tongic` | 2 leaves | 8/8 | 0/3 |
+| `tahitic` | 3 leaves | 8/8 | 2/3 |
+| `futunic` | 2 leaves | 6/8 | 2/3 |
+| `marquesic` | 2 leaves | 6/8 | 3/3 |
+| `central_eastern` | 2 reconstructions | 7/8 | 3/3 |
+| `nuclear_polynesian` | 1 leaf + 2 reconstructions | **2/8** | 1/3 |
+| `proto_polynesian` | 2 reconstructions | 6/8 | 2/3 |
+| *leaf-child nodes* | | 28/32 = **0.875** | 7/12 = 0.583 |
+
+Taking the leaf-child pooled rate as the prior for `burmic` (three leaves) and
+`proto_polynesian`'s own rate as the prior for `proto_burmish` (two
+reconstructions, at the root), for N seeds launched in one arm:
+
+| N | P(≥3 scored at `burmic`) | P(≥3 at `proto_burmish`) | P(≥3 in **both arms**, `burmic`) | P(≥3 in **both arms**, `proto_burmish`) |
+| --- | --- | --- | --- | --- |
+| 3 | 0.670 | 0.422 | 0.133 | 0.125 |
+| **5** | **0.984** | **0.896** | **0.642** | **0.709** |
+| 6 | 0.997 | 0.962 | 0.794 | 0.866 |
+| 8 | 1.000 | 0.996 | 0.939 | 0.976 |
+
+**Read the honest comparison off that table.** At five seeds a side, the
+probability of getting three scored seeds in both arms at `proto_burmish` is
+0.709 — which is *exactly* what the same calculation gives for Polynesian's
+single root, because the prior is the same number. **Per node, `burmish` buys no
+statistical power at all.** Anyone recommending it on the grounds that it
+"solves the sample-size problem" has not done this arithmetic.
+
+What it buys is three things the arithmetic does not show:
+
+1. **Two nodes instead of one, so the per-node reading §7.6(b) requires
+   exists.** On Polynesian it does not exist at any seed count.
+2. **The two nodes are at different depths, which is condition 6's actual
+   question.** `burmic` is reconstructed from three attested daughters;
+   `proto_burmish` is reconstructed from `maruic` and `burmic`, both of which
+   are themselves reconstructions. *Does a reconstructed child make a usable
+   parent?* is the difference between those two rows, inside one seed. Polynesian
+   has no second row to difference against; `synthetic_hard` has one and is
+   synthetic.
+3. **A seed is about half the cost.** Three internal nodes against seven, and
+   seven daughters against ten. §7.9 measured wall-clock as output tokens almost
+   entirely, and output scales with nodes and turns rather than with prompt size,
+   so the estimate is roughly 26 minutes a seed against Polynesian's measured
+   mean of 61. **That estimate was unverified when this was written** and is the
+   first thing the sweep measures.
+
+And one property that is a genuine asset and is easy to overstate: the seed-level
+scoreability. A `burmish` seed produces at least one scoreable evaluation unless
+*both* gold nodes fall back — under the priors above, 0.97 post-flip against
+Polynesian's 0.75. That is real, and it is why a small sweep on this family
+returns something rather than nothing. It is not power at a node.
+
+#### The two gold nodes are not two independent observations
+
+`proto_burmish` is assembled from `burmic`'s own beam. A seed that loses `burmic`
+hands the root an identity child, so the root's score in that seed is measuring
+something different from the root's score in a seed where `burmic` committed.
+The rows in any report must therefore carry, per seed, the **joint** outcome —
+which of the two nodes committed — and not only the two marginals.
+
+This is the one place where the dependence is an advantage rather than a
+nuisance: comparing the root's accuracy in seeds where `burmic` committed
+against seeds where it did not is the direct form of the condition-6 question,
+and it is unavailable on every other real family in the repository. At five
+seeds a side it will be badly underpowered. It should still be reported, as a
+count with its n stated, because a quantity that has never been observed at all
+is worth observing once.
+
+#### The before arm cannot be a checkout, and what it is instead
+
+The 2026-08-24 and 2026-08-25 sweeps built their before condition as a separate
+checkout at the pre-stage-3 commit. **That construction is unavailable here, and
+not by choice.** `hillburmish` cannot be ingested by the pre-stage-3 tree at all:
+its cognacy is coded per morpheme and `Partial_Cognacy` was not read until
+`90414ad`, the grapheme/phoneme reduction that makes its gold reachable landed at
+`53ad7c9`, and the benchmark definition did not exist. An old checkout cannot run
+this family, so the before arm has to be the other construction §7.6's closing
+paragraph named: **this tree, with only the instruction surfaces reverted.**
+
+The flip is exactly two surfaces, `agent/system_prompt.md` and
+`COMMIT_REQUIREMENT_NOTES` in `agent/schemas.py`, both changed at `991bc16`.
+Reverting both in a worktree at `HEAD` gives an instruction hash of
+`c4d25af18c87e2e2…` — **byte-identical to the `the agent instructions` digest
+recorded by the 2026-08-24 and 2026-08-25 before runs.** That is a verification
+rather than an assertion, and it is the one part of the before arm that is
+exactly the historical one.
+
+Everything else about the before arm is not. `the tool schemas` digest differs,
+because `schemas.py` has changed nine times since the flip for reasons unrelated
+to it — the stall-signature repair, the polarize row, the Gemini preamble, the
+window rule. Those are on **both** arms. The instruction edits since the flip —
+tasks 1 and 3 of prompt 10, the anomaly description, the confidence note, the
+word-structure workflow step — are on the **after** arm only, because they live
+in the two surfaces being reverted. That is the same confound §7.7 carried and
+it is **not repaired here**; it is stated so that the sweep is read as *the flip
+plus its subsequent instruction fixes* against *the pre-flip manual*, which is
+what it is.
+
+#### Five things this sweep cannot settle, written down before it ran
+
+- **It cannot close condition 6 as phrased.** The condition's stop column is
+  "spreads overlap", and at five seeds a side on a real family the spreads will
+  very likely overlap, as they did on `synthetic_hard` at the same n. A sweep
+  that trips the condition is the expected outcome and must not be reported as a
+  verdict on the architecture.
+- **It cannot be read against §7.2's `unaccounted_column_rate` threshold.** That
+  threshold is "above ~0.3 at most nodes" and this family's floor is **0.280** at
+  `maruic` and **0.338** at `burmic` (§7.18). The threshold sits at or below the
+  floor, so it fires on a complete inventory. Re-derive it per family or do not
+  quote it here.
+- **It cannot separate leakage from difficulty between the two gold nodes.**
+  `proto_burmish` is a published reconstruction and `burmic`'s gold is attested
+  Old Burmese, so the two rows differ in leakage — and also in depth, in concept
+  count (54 against 37) and in ceiling (77.8% against 67.6%). A difference
+  between the rows is attributable to none of these individually. It is a
+  diagnostic worth reading and it is not a control.
+- **It cannot say anything about `burmic` as a historical node.** The Old
+  Burmese binding is a convenience and is recorded as temporary in
+  `benchmarks/burmish.json`; Old Burmese is the ancestor of Burmese and not of
+  Achang or Xiandao. What is measured at that node is whether the harness
+  reconstructs something close to attested Old Burmese from three Burmic
+  daughters, which is a question about the harness.
+- **It cannot be pooled with anything.** Different family, different concept
+  count, different ceiling, and a `configuration_sha256` that differs from every
+  banked sweep. It is a new baseline, not an addition to an old one.
+
+#### What would actually close condition 6
+
+Nothing in the budget of this prompt. On the priors above, five scored seeds in
+both arms at both nodes needs roughly **8 seeds a side** — sixteen runs, and at
+the unverified 26-minute estimate about seven hours of serial local inference,
+which is the cheapest that number has ever been in this repository and still not
+cheap. The honest statement is that condition 6 is *now measurable on real data*
+where §7.10 recorded it as unmeasurable in verdict-bearing form, and that
+measuring it and closing it are different budgets.
 
 ---
 
