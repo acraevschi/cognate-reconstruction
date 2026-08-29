@@ -105,6 +105,40 @@ non-ontology custom column whose builders index boundary-delimited morphemes;
 that convention is normalized to exact segment positions and tagged with the
 `lexibank-custom-morpheme-slice` compatibility rule. Malformed, overlapping,
 or out-of-range slices are rejected.
+#### `Partial_Cognacy`, where a whole family keeps its cognacy
+
+Some Lexibank datasets code cognacy one morpheme at a time in a FormTable
+column named `Partial_Cognacy`. It is not a CLDF term and carries no
+`propertyUrl`, so a loader that looks for `Cognateset_ID` or a `CognateTable`
+sees no cognate evidence at all. On `hillburmish` that is the whole signal:
+across all 4032 rows, `Cognacy` is empty in 4032 and `Partial_Cognacy` is
+populated in 4032. 1679 rows (42%) carry more than one ID, and exactly those
+1679 carry a `+` boundary.
+
+The value is whitespace-separated set IDs, one per morpheme, in the order the
+morphemes appear. The adapter matches them to the boundary-delimited morphemes
+position by position and writes one `segment_slice` membership per morpheme,
+with the same `lexibank-custom-morpheme-slice` tag and the same one-based
+inclusive slice in provenance that a `CognateTable` slice gets.
+
+Two rules govern it:
+
+- **A row whose ID count and morpheme count disagree stops the load, naming the
+  form.** Zipping the shorter of the two would attach a set ID to a morpheme
+  nobody said it belonged to. Measured on `hillburmish`, all 4032 rows agree.
+- **The column is read only when the dataset publishes neither a
+  `CognateTable` nor a FormTable `Cognateset_ID`.** One dataset, one reading.
+  The columns number different things: of the twelve local datasets carrying
+  `Partial_Cognacy`, four also populate `Cognacy`, and on `crossandean` the two
+  disagree on 7511 of 7518 rows. `Cognacy` itself stays unread, as it always
+  has been.
+
+A form read this way has no `cognate_set_id` shorthand, because a per-morpheme
+analysis is not one unambiguous whole-form set. Alignment is unaffected:
+`_alignment_inputs` already fans a form out into one input per membership, so
+each morpheme aligns against the morpheme that shares its cognate ID, whatever
+position either sits in.
+
 When more than one unsliced cognate set is supplied, all are alternatives; the
 adapter does not select or weight one. `get_alignments` exposes membership IDs,
 scope, interpretation, and segment positions and aligns only the selected
