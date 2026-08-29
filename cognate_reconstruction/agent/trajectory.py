@@ -145,6 +145,28 @@ class AgentNodeMetrics(WorkbenchModel):
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Prompt tokens the provider served from its cache, summed over the "
+            "session's calls. A subset of input_tokens, not an addition: the "
+            "share of the preamble that was not re-read at full price. Null "
+            "means the provider reported nothing, which is not the same as "
+            "zero — a provider without caching and a cold run both read as "
+            "null, and only the run's cost tells them apart."
+        ),
+    )
+    reasoning_output_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Completion tokens spent thinking, summed over the session's "
+            "calls. A subset of output_tokens, not an addition. Null means the "
+            "provider reported nothing, which is not the same as a model that "
+            "did no reasoning."
+        ),
+    )
     cost_usd: float | None = Field(default=None, ge=0.0)
     committed_rule_count: int = Field(
         ge=0,

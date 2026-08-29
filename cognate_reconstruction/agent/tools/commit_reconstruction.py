@@ -21,6 +21,7 @@ from cognate_reconstruction.agent.tools.contrast import (
 from cognate_reconstruction.agent.tools.convergence import commit_convergence
 from cognate_reconstruction.agent.tools.errors import (
     ToolInputError,
+    offender_digest,
     parse_rule_or_reject,
 )
 from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
@@ -505,6 +506,8 @@ def _require_rationales_on_multi_rule_commits(
         "because the single top-level 'summary' cannot attribute reasoning to "
         "an individual rule",
         code="missing-rule-rationale",
+        subject=offender_digest(missing),
+        offender_count=len(missing),
         remediation=(
             "Add a 'rationale' to each of these rules: "
             + ", ".join(f"{rule_id!r}" for rule_id in missing)
@@ -550,6 +553,8 @@ def _require_directionality_rationales(
         "two segments into one has to say which branch innovated, because the "
         "harness cannot invert it later and nothing else records the claim",
         code="missing-directionality-rationale",
+        subject=offender_digest(missing),
+        offender_count=len(missing),
         remediation=(
             "What the harness found:\n"
             + "\n".join(f"  - {rule_id!r}: {notes[rule_id]}" for rule_id in missing)
@@ -585,6 +590,8 @@ def _require_rationales_on_multi_set_commits(
         "that carries more than one, because the single top-level 'summary' "
         "cannot attribute reasoning to an individual set",
         code="missing-rule-rationale",
+        subject=offender_digest(missing),
+        offender_count=len(missing),
         remediation=(
             "Add a 'rationale' to each of these sets: "
             + ", ".join(f"{set_id!r}" for set_id in missing)
@@ -622,6 +629,8 @@ def _require_directionality_on_reducing_sets(
         "set unconditioned, has to say which branch innovated: the harness "
         "cannot invert a merger later and nothing else records the claim",
         code="missing-directionality-rationale",
+        subject=offender_digest(missing),
+        offender_count=len(missing),
         remediation=(
             "What the harness found:\n"
             + "\n".join(f"  - {set_id!r}: {notes[set_id]}" for set_id in missing)

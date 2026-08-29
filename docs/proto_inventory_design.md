@@ -1971,6 +1971,14 @@ Stated before any code, as the prompt requires. Every number is the **oracle**
 figure unless it says "live"; oracle numbers bound the architecture and live
 numbers measure a model, and they are never interchangeable.
 
+> **The verdict is §7.10.** Conditions 1, 3, 4 and 7 hold; 2, 5 and 6 trip.
+> §7.10 separates the two trips that are instrument defects from the one that is
+> an absent measurement, and concludes that **§7 does not close** and stage 4
+> should not yet be put — on condition 6 alone, which is the only condition in
+> the set that runs a live model on a real family and is the only one with no
+> reading. §7.10 also proposes three conditions to the research owner beside the
+> originals, one of which the change does not currently pass.
+
 > **Every figure below was re-derived 2026-08-23** against
 > `tools/oracle_ceiling.py` and `tools/assembly_ceiling.py` as prompt 07
 > repaired them and as §12.5's boundary fix left them. The *questions* are the
@@ -2145,6 +2153,23 @@ python tools/branch_recoverability.py polynesian --method cascade --oracle conte
 
 # §7.2's floor: commit a value for every set the survey returns and read the rate
 #   (no script; the recipe is in §12.5 and the figure is 0.125 on Polynesian)
+
+# condition 5 and §7.10's d1 branch record: re-score a banked run
+python -m cognate_reconstruction.cli score-synthetic \
+  --answer-key runs/benchmarks/synthetic_hard.answer-key.json \
+  --run-dir runs/sweeps/synthetic_hard-after-r2/seed-00
+#   note the answer key is the *generated* artifact under runs/benchmarks/,
+#   not benchmarks/synthetic/synthetic_hard.json, which is the definition and
+#   fails validation with 42 errors if passed here.
+
+# §7.10's commit rate and failure-mode split, and §7.11's replay corpus: no
+# script — both are counts over runs/sweeps/*/seed-*/trajectories.jsonl. A node
+# counts as committed when `committed_reconstruction` is non-null AND
+# `completed` is true; a seed that did not attempt every internal node is
+# excluded rather than averaged, which drops two of the five Polynesian after
+# seeds. The replay itself is checked in as
+# tests/workbench/test_directionality.py::
+#   test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now
 ```
 
 Both ceiling tools accept `--gold-node`; on a multi-gold family the root's
@@ -2453,8 +2478,13 @@ columns differ from each other by tasks 1–3 and by nothing else.
 - **Task 3 is confirmed live, within the after condition.** Every anomaly class
   went 3.3 a seed to **zero** while the instruction flip was held constant, and
   the before condition — which does not carry task 3 — still shows 3.1 a seed.
-- **Task 2 is not verified.** `correspondence[]=string_type` never appears on
-  `synthetic_hard`; it was a Polynesian class, and Polynesian was not re-run.
+- **Task 2 is verified, by replay rather than by re-run** — see §7.11, added
+  2026-08-28. `correspondence[]=string_type` never appears on `synthetic_hard`;
+  it was a Polynesian class and Polynesian was not re-run, so all 41 gap-bearing
+  `polarize` calls across the eight banked Polynesian seeds were re-validated
+  through the boundary the registry uses. All 8 that were refused at the time are
+  accepted now. §7.11 argues why a replay is the better instrument here and what
+  it does not cover.
 - **§6.6's "the loop closes" replicates at five seeds.** The four rejection
   classes that the flip removes are 5.65 a seed before and **zero** after, in
   both after runs.
@@ -2487,8 +2517,8 @@ no `polarize` call at all**, which `inspect-run` reports and nothing gates.
 - Nothing about real data. Polynesian was not run.
 - Nothing about condition 6 on a benchmark whose gold binding supports it;
   §7.6's recommendation stands unexecuted.
-- Nothing about task 2, and nothing about the architecture's ceiling, which is
-  oracle work and did not move.
+- Nothing about the architecture's ceiling, which is oracle work and did not
+  move. (Task 2 was still open when this section was written; §7.11 closes it.)
 
 ### 7.8 Condition 5, evaluated from the seeds already run
 
@@ -2654,6 +2684,904 @@ committing a third as many nodes.
   rejected calls or merely multiplies their cost. That needs a paired run with
   thinking disabled, which would not be comparable with anything measured here
   and has not been done.
+
+### 7.10 What §7 amounts to, and whether it closes
+
+*Written 2026-08-28. Every oracle figure in this subsection was re-measured in
+this checkout with the §7.5 commands rather than quoted from §7.6–§7.9; where a
+re-measurement disagrees with an earlier reading, the re-measurement is the one
+recorded and the disagreement is named.*
+
+Three of seven conditions trip — 2, 5 and 6 — and §7.6–§7.9 argue all three in
+prose. **That pattern is exactly what a falsification section looks like when it
+is being read by someone who has decided the answer**, and it should be treated
+as suspicious until it survives being taken apart. This subsection takes it
+apart, and the answer is not uniform: two of the three arguments hold and the
+third is not an argument at all.
+
+#### The conditions sort by what they measure, and the sort is perfect
+
+Ignore which conditions passed and group §7.1's table by what kind of quantity
+each one reads:
+
+| | conditions | outcome |
+| --- | --- | --- |
+| **absolute** — a property of the new architecture, read without reference to the old commit shape | 1, 3, 4, 7 | all four hold |
+| **comparative** — the new architecture scored on a measure whose definition comes from the thing it replaces | 2, 5, 6 | all three trip |
+
+Not one absolute condition trips. Not one comparative condition holds. That is a
+property of §7.1 as drafted and is visible before any number is quoted.
+
+Two readings fit it. Either **(a)** the architecture is worse and only comparison
+reveals it, or **(b)** the comparisons are made with instruments defined by the
+thing being replaced. These are distinguishable: under (a) the absolute measures
+would also be poor. Re-measured today they are not — condition 4 beats its
+target by a factor of two and a half, condition 3 fires at seven nodes, and
+condition 1 clears its stop by six concepts. So (b).
+
+**(b) is not a blanket excuse, and using it as one is the failure this section
+exists to catch.** The three trips are not the same kind of thing, and filing
+them together is what makes the pattern look like motivated reasoning. Taken one
+at a time:
+
+#### Condition 2 is badly posed, and §7 said so before any code was written
+
+Re-measured 2026-08-28, all three oracles, Polynesian, width 5:
+
+| oracle | beam-exact | top-1 | selection gap | mean top NED |
+| --- | --- | --- | --- | --- |
+| context-free cascade | **40/46** | 27/46 | 0.283 | 0.147 |
+| context-sensitive cascade | **40/46** | 33/46 | 0.152 | 0.097 |
+| **assembly** | **39/46** | **39/46** | **0.000** | **0.031** |
+
+Condition 2 stops if `assembly_beam_exact < 40/46`. It is 39. **It trips by one
+concept.**
+
+For the assembly oracle, beam-exact and top-1 are *the same number*, and not by
+coincidence: there is no selection step between them to fail at. Removing that
+step is what §1.3 says the change is for. Both branch cascades reach 40 in a beam
+and then lose seven or thirteen concepts choosing from it; assembly reaches 39
+and loses none. So condition 2 stops the work for **not carrying four wrong
+answers beside the right one**, while the quantity a user actually receives goes
+33 → 39 against the better cascade and 27 → 39 against the other.
+
+This is not hindsight. §7.3's last bullet — written before stage 0, in the list
+of things that are *not evidence* — says: beam-exact under the new architecture
+compared against beam-exact under the old one, without saying that the two beams
+contain different kinds of thing, is not evidence. §7.1 asks for precisely that
+comparison. **§7 contradicts itself, and §7.3 is the half that was right.**
+
+The honest residue: 39 < 40 means there is one concept a cascade beam reaches
+and assembly does not, so condition 2's underlying question — *can the new
+architecture produce fewer correct answers?* — is answered "yes, by one" if
+"produce" means "have somewhere among five candidates", and "no, by six" if it
+means "return". Only the second is a thing anyone receives.
+
+#### Condition 5's precision half is a blind instrument, and the scorer's own code proves it
+
+Verified rather than accepted. Re-scoring `synthetic_hard-after-r2/seed-00`
+against its answer key returns this branch record:
+
+```
+d1  invertible=False  true_inverse_rules=[]  committed_rules=['p > b']
+    rule_precision=0.0   rule_recall=None   functional_recovery_rate=0.8
+```
+
+The true change on `d1` is `b > p`, `b` merging into an existing `p`. `p > b` is
+the correct child-to-parent rule, and it recovers 80% of the branch
+functionally. `rule_precision` scores it **0.0**.
+
+§7.8 states this as "a merger cannot be scored". The sharper form, and the one
+that settles it, is four lines of `synthesis/scoring.py`: `recall` returns
+`None` when `true_inverse_rules` is empty; `precision` returns `0.0`. **The
+scorer already knows how to abstain on a non-invertible branch. `precision` is
+the one metric that does not.** That is a defect in the instrument, visible in
+the code, not an interpretation of a number.
+
+A selection effect sits on top of it. `precision` is `None` when a branch commits
+nothing, so branches with no commitment drop out of the mean entirely, while a
+condition that commits more lands on more of the guaranteed zeros. The after
+condition is penalised for attempting.
+
+And condition 5's stop clause is about **worse attribution** — "right forms via
+worse-attributed changes". Nothing in the evidence shows worse attribution: the
+two quantities shipped beside precision that survive a change of spelling both
+point the other way, `misdirected_rule_count` at 0 in all sixteen seeds and
+`functional_recovery_rate` up in both pairings. The half that trips is blind
+exactly where §2.1 says the architecture pays.
+
+#### Condition 6 is not disposed of, and it is not the same kind of thing
+
+Conditions 2 and 5 are **demonstrations that an instrument is invalid**. Both are
+checkable in this checkout, and one of them was pre-registered in §7.3. Condition
+6 is different in kind and filing it alongside them is what makes §7 look like
+special pleading.
+
+- It has **no real-data reading at all.** Polynesian was never re-run. §7.7 says
+  this itself, in its own words: a gap in the evidence, not a result about the
+  architecture.
+- Its `synthetic_hard` reading is confounded, because the before column is a mean
+  over the runs that committed — 4/8 and 2/8 — and the after column a mean over
+  5/5 and 5/5.
+- That confound was **not predicted**. It was found after the numbers came in.
+
+So condition 6 is not a trip that has been explained. It is a measurement that
+was not made, plus a reason the substitute for it does not read. §7.7 already
+labelled it honestly; what this subsection adds is that it must not be counted as
+the third member of a set of three disposals. There are two disposals and one
+IOU.
+
+#### Does §7 close? No — and on exactly one thing
+
+- Conditions **1, 3, 4 and 7 hold** on re-measurement. Condition 3, the mechanism
+  check and the one §7.1 says cannot be satisfied by accident, fires at **all
+  seven internal nodes** with a mean `cross_branch_assembly_rate` of **0.957**;
+  §7.2's first abandon-the-design trigger — the rate ~0 everywhere while top-1
+  rises, which would say the gain was really a selection fix — is not close to
+  firing. Condition 1 is **39/46**,
+  five below its 44/46 expect and six clear of its 33/46 stop; §7.13 accounts
+  for those five and finds them morphological, and finds the expect itself
+  unreachable by any inventory. Condition 4 is
+  **0.031** against a target of 0.080 and a stop of 0.097. `mean_unaccounted_
+  column_rate` is **0.0** under the oracle, against §7.2's 0.125 floor.
+- Condition **2** is disposed of, by §7's own pre-registered rule.
+- Condition **5**'s precision half is disposed of, by a defect provable in the
+  scorer.
+- Condition **6 is open.**
+
+And condition 6 being the open one is worse than it sounds, because of what the
+rest of the set is made of. Conditions 1, 2, 3 and 4 are **oracle** measures and
+bound the architecture without a model in the loop; condition 7 is the suite.
+Only 5 and 6 run a live model, and **only condition 6 runs one on real data.**
+
+> **§7 therefore has no evidence from a live model on a real family.** The
+> architecture is not falsified — nothing that trips survives inspection as a
+> falsification — but the one condition that asks the live question where it
+> matters has never been evaluated.
+
+**Recommendation: stage 4 should not be put to the research owner on this
+evidence.** Not because a condition trips; the trips are handled. Because
+condition 6 has no real-data reading and stage 4 deletes the path that reading
+would be compared against — deleting the branch-cascade commit path is the act
+that makes the comparison unrepeatable, so it is the wrong thing to do while the
+comparison is outstanding.
+
+**And a Polynesian sweep will not close condition 6.** This has to be said
+plainly, because "run Polynesian and close it" is the natural next move and
+§7.6 already ruled it out. §7.6's option A — more Polynesian seeds — buys a
+spread and "fixes neither (a) nor (b), because Polynesian has one gold node and
+cannot be read per-node". §7.6's recommendation is that condition 6's **verdict**
+is taken from `synthetic_hard`, per gold node, at 5 seeds per condition — which
+**§7.7 did**, and condition 6 tripped there — while **Polynesian is run at 5
+seeds per condition and *reported, not scored***, with the scoreable-seed count
+published beside every number. So a Polynesian sweep discharges step 2 of that
+recommendation and produces a report; it cannot produce a verdict on a
+single-gold family, and no number of seeds changes that.
+
+What would make condition 6 answerable on real data is §7.6's **option B**, a
+family with two gold nodes in one tree — and §7.6 says option B "delays
+condition 6 rather than enabling it", because a new family needs its own oracle
+ceiling and its own `unaccounted_column_rate` floor (§7.2) before any threshold
+applies to it. **Condition 6 is therefore not merely unmeasured; on the datasets
+this repository has, it is unmeasurable in verdict-bearing form.** That is a
+finding about §7's design, not about the architecture, and it is the strongest
+reason to treat "§7 does not close" as a statement about the falsification set
+rather than a hesitation about the change.
+
+#### The condition §7 never asked, and what it actually says
+
+§7 measures accuracy **conditioned on committing**, and never the commit rate
+itself. Whether a node gets reconstructed at all is the quantity every other
+condition is conditioned on — and it is what broke condition 6.
+
+Measured in this checkout, 2026-08-28, over the banked seeds:
+
+| | before | after |
+| --- | --- | --- |
+| `synthetic_hard`, nodes committed of 4 | 1.875 ± 0.835 (8 seeds), range 1–3 | **3.000 ± 0.000** (8 seeds), range 3–3 |
+| `polynesian`, nodes committed of 7, complete seeds only | 4.33 ± 0.58 (n=3), range 4–5 | **4.00 ± 1.00** (n=3), range 3–5 |
+
+On `synthetic_hard` the effect is large and has **zero variance in both after
+runs independently**. That matters for attribution in a way §7.7 could not manage
+for its other figures: the two after runs differ by tasks 1–3 and by nothing
+else, and both give exactly 3.000 ± 0.000, so **tasks 1–3 did not move this
+number.** What moved it is what else changed, which is the instruction flip.
+
+**On real data it does not replicate.** Polynesian is flat, and the variance
+roughly doubles. Two of the five after seeds did not attempt all seven nodes and
+are excluded as incomparable — `polynesian-after/seed-01` attempted three and
+`polynesian-after-gapbug/seed-02` attempted six. At n=3 a side this is not a
+measurement, and the correction is worth stating plainly: **the commit-rate gain
+is a `synthetic_hard` result and there is currently no evidence for it on a real
+family.**
+
+What *does* change on real data is the **failure mode**, and it inverts:
+
+| polynesian | `AgentLoopLimitError` | `ProtocolStallError` |
+| --- | --- | --- |
+| before (3 seeds) | 6 | 2 |
+| after (5 seeds) | **0** | **13** |
+
+Under the inventory commit shape on real data, nodes stop running out of turns
+and start being killed by the stall detector. Six of the thirteen are the
+repeated-signature rule and seven the rejected-window rule. **A check that
+`verify_commitments` now batches appears in nine of the thirteen** (§7.11), and
+§7.12 measures how far that accounts for them. Whether batching converts any of
+these into commits cannot be established without a sweep.
+
+#### Three conditions proposed to the research owner, beside the originals
+
+**Proposals, not amendments.** None of these replaces anything in §7.1, no
+threshold in §7.1 moves, and nothing below was chosen by looking at whether the
+change passes it — the third one it does not.
+
+- **2′, beside 2.** *Assembly top-1 ≥ the better branch-cascade oracle's top-1.*
+  Stop if assembly top-1 **< 33/46**. It asks condition 2's own question — can
+  the new architecture produce fewer correct answers? — of the quantity that
+  ships, rather than of a beam the new architecture deliberately does not build.
+  Currently **39 against 33**. Condition 2 stays as written and stays tripped.
+- **5′, beside 5.** *Read rule precision over invertible branches only, and
+  publish the non-invertible branch count beside it* — or, better, repair
+  `precision` to abstain on an empty `true_inverse_rules` the way `recall`
+  already does. This is a change to an instrument, not to a threshold, and §7.8
+  had already flagged it as a research-owner question rather than answering it.
+- **8, new.** *Commit rate on both benchmarks, with the failure-mode split
+  published beside it.* Stop if the after condition commits at a lower rate than
+  the before condition on a real family. Report, never a gate — nothing may
+  filter a trajectory on it.
+
+  **As measured today this proposed condition sits at or just under its own stop
+  on Polynesian: 4.00 ± 1.00 after against 4.33 ± 0.58 before.** That is the
+  reason to add it. A falsification section whose newly proposed conditions all
+  pass is the failure this section was written to prevent, and condition 8 is the
+  only one of the three that the change does not currently clear.
+
+#### What this subsection does not establish
+
+- **Nothing live.** No inference was run. Every figure here is either an oracle
+  measurement, a re-scoring of banked trajectories, or a count over banked
+  artifacts.
+- **Nothing about whether §7.11's batching converts a stalled node into a
+  committed one.** It addresses three of thirteen observed stalls by
+  construction; the effect on a run is unmeasured.
+- **Nothing about condition 6.** It remains the open item and the reason §7 does
+  not close. §7.6's recommendation is *half* executed: step 1, the
+  `synthetic_hard` per-gold-node verdict at 5 seeds, is §7.7 and it tripped;
+  step 2, Polynesian run at 5 seeds and reported rather than scored, has not
+  been run. Discharging step 2 is worth doing and will not close the condition.
+
+### 7.11 The two protocol items, closed 2026-08-28
+
+Both are rejection-class work, both were measured against the banked seeds, and
+neither needed inference. Read them with §7.9's cost anatomy: a rejection class
+removed is a speed-up as well as a quality fix, and a *failed node* is the
+expensive outcome.
+
+#### Task 2, verified — and what a replay is and is not evidence for
+
+Task 2 widened `PolarizeArgs.correspondence` to the writing vocabulary
+`CorrespondenceCommitment.reflexes` already accepted. It shipped with unit tests
+and was never confirmed against real model output, because the class it removes
+(`schema:correspondence[]=string_type`) occurs on Polynesian and effectively
+never on `synthetic_hard`.
+
+**Replayed rather than re-run.** Every gap-bearing `polarize` call the model made
+across the eight banked Polynesian seeds was re-validated through the boundary
+`registry.execute` uses — `model_validate_json`, since `WorkbenchModel` is
+`strict=True` and a JSON list does not coerce to a `tuple[...]` field in strict
+python mode. Measured 2026-08-28:
+
+| | polarize calls | gap-bearing | refused then | accepted now |
+| --- | --- | --- | --- | --- |
+| `polynesian-after` (2 seeds) | 23 | 12 | 5 `=string_type` | 12/12 |
+| `polynesian-after-gapbug` (3) | 38 | 11 | 2 `=string_type` | 11/11 |
+| `polynesian-before` (3) | 51 | 18 | 1 `=string_too_short` | 18/18 |
+| **total** | **112** | **41** | **8** | **41/41** |
+| `synthetic_hard` (16 seeds) | 83 | 7 (8.4%) | 0 | 7/7 |
+
+The gap-bearing share is **37% on Polynesian against 8.4% on `synthetic_hard`**,
+which is why the class is invisible on the synthetic benchmark. The five
+`=string_type` refusals in `polynesian-after` are the same five the
+`PolarizeArgs` docstring cites.
+
+**A replay is adequate evidence for this class, and a live run is not better.**
+Three distinct questions have to be kept apart:
+
+1. *Does the harness accept and correctly answer each gap spelling?* Answered by
+   `test_a_survey_row_carrying_a_gap_can_be_pasted_straight_into_polarize`,
+   deterministically, over all six spellings, asserting `columns_matched` and not
+   merely acceptance. Already covered before this session.
+2. *Do the spellings a model actually emits fall inside that accepted set?*
+   Answered only by the replay. This is the residual risk task 2 carried, and no
+   unit test can ask it because the input has to come from a model.
+3. *Does the class disappear from a live run's counts?* Answered only by a sweep.
+
+For (2) the replay is **strictly better evidence than a live run**, because §7.7
+established that a fixed `--provider-seed-base` cannot reproduce a multi-turn
+run: the provider mints a fresh `call_id` on every tool call and the harness
+echoes it into the next prompt, so turn 1 already diverges. A live re-run would
+never re-present these 41 calls. It would draw different ones and answer (3),
+weakly, at roughly ten hours for five seeds.
+
+**What the replay does not establish**, stated because a closed corpus always
+flatters itself: it says nothing about a spelling the model has not yet written.
+Of the six accepted spellings the model exercised **four** — JSON `null`,
+`"null"`, `"Ø"` and `""` — and `"∅"` and `"None"` are accepted on the strength of
+the unit test alone, never observed. That is the point of widening rather than a
+hole in it, but it means the corpus is evidence of coverage so far and not of
+coverage in general.
+
+Recorded as
+`test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now`, which skips
+cleanly when `runs/sweeps` is absent and asserts the corpus still contains a
+historically gap-refused call so that it cannot pass vacuously.
+
+> **Narrowed 2026-08-29, by new live data.** The test first asserted that every
+> gap-bearing call is *accepted*. §7.14's run added a call the model wrote as
+> two `child_ids` against three `correspondence` entries — an arity mistake,
+> correctly refused then and now, and nothing to do with gap spelling — and the
+> over-broad assertion failed on it. It now asserts the narrower true thing:
+> **no call is refused because of how its gap was spelled.** A replay corpus
+> that grows is a test that gets re-examined, which is the point of checking it
+> in rather than leaving it in a transcript.
+
+#### `correspondence-reflex-mismatch`: the check was right and the reporting lost a node
+
+Seven occurrences, and the shape of them was not what the class name suggests.
+**All seven are one seed** (`polynesian-after/seed-00`) and **all seven are
+`test_proto_assembly`**, never `commit_reconstruction` — the model was testing,
+which is the workflow §6.6 asks for, and the gate caught it at the cheap point.
+
+Six of the seven are a single systematic error: the model drops a leading or
+trailing gap from the reflex row and repeats a neighbouring segment to keep the
+length.
+
+| written | the set |
+| --- | --- |
+| `['a', 'a', 'a']` | `[None, 'a', 'a']` |
+| `['t', 'k', 'k']` | `[None, 't', 'k']` |
+| `['f', 'h', 'h']` | `[None, 'f', 'h']` |
+| `['ʔ', None, None]` | `[None, 'ʔ', None]` |
+| `['+', '+']` (×2) | `['+', None]` |
+| `['t', 't']` | `['o', 'o']` |
+
+The last row is the only genuine mis-citation — a row written for a set the model
+had not read. The other six are positional, and the fourth of them shows the
+model writing gaps perfectly well while still losing which *position* they belong
+in, so "the model will not write a gap" is the wrong diagnosis.
+
+**Neither sharpening the instruction nor softening the gate is the fix, and the
+transcript rules both out.** `reflexes`' own field description already says to
+include the children that show nothing and that a one-child set is
+`['ʔ', null]` and never `['ʔ']`. The rejection message already prints the correct
+tuple verbatim — *that set is `[None, 'a', 'a']`*. There was no missing
+information at either end.
+
+What was missing was the **rest of the list**. On `nuclear_polynesian` the model
+sent 19 commitments and `verify_commitments` raised on the first offender only:
+
+| turn | rows wrong, of 19 | harness said |
+| --- | --- | --- |
+| 1 | 15 | `cs-08968e2078cb` is wrong |
+| 2 | 9 | `cs-824774173e28` is wrong |
+| 3 | 8 | `cs-88cb018807c3` is wrong |
+| 4 | 8 | `cs-27d0ffaa5822` is wrong, and `ProtocolStallError` — *the model is not adapting to the tool contract* |
+
+> **Correction, 2026-08-28.** An earlier version of this subsection said the
+> model "fixed six of eight rows, then seven, then eight, and was killed on the
+> turn it finally had every row right". That was read off the first 8 of 19
+> commitments and is wrong. The model never converged: at the fatal turn 10
+> rows were right, 8 were still wrong, and 1 cited a set no survey in the
+> transcript returned. What is true, and is the actual argument, is in §7.12:
+> **every set the harness named and gave the model a turn to fix, the model
+> fixed — 21 of 21 across the whole after condition.** The 7 rows still wrong
+> at the end were rows the harness had never named.
+
+The stall signature is `(tool name, error code)`, which cannot tell *the same
+mistake on a new set* from *the same mistake again*. The model was adapting,
+visibly and monotonically, and the run was killed on the turn it finally had
+every row right. Per §7.9 that is the expensive outcome: a failed node burns to
+its limit and returns nothing.
+
+The control is inside the same session. Pydantic reports **all** of its errors at
+once on the same call, and on this node the model cleared all nineteen
+`commitments[].confidence=missing` errors **in a single turn**. Serial reporting
+took four turns and lost the node; batch reporting took one.
+
+So `verify_commitments` now scans every commitment and reports every failure of a
+class together. **No threshold moves and no check loosens** — each of the eight
+rows is still refused, and the blind-citation case the gate exists for is still
+caught. The single-failure message is unchanged, which matters because three of
+the four live nodes that hit this check had exactly one bad row and recovered on
+the next call.
+
+**Not verified live.** Whether this converts `nuclear_polynesian` into a commit
+needs a Polynesian sweep, which was not run. What can be said from the artifacts
+is the bound §7.12 measures: a check this now batches appears in **9 of the 13**
+`ProtocolStallError`s in the after condition's Polynesian seeds. In the three
+killed by a repeated reflex-or-support signature it is the whole cause. In the
+six window-saturation stalls it is one code among several, so batching reduces
+the window's count without necessarily emptying it.
+
+### 7.12 Is the stall detector killing models that are adapting?
+
+*Measured 2026-08-28 over the 13 `ProtocolStallError`s in the five Polynesian
+after-condition seeds. Banked artifacts only; no inference was run.*
+
+§7.10 records that the failure mode inverts on real data: the before condition
+runs out of turns, the after condition is killed by the stall detector, 13 times
+against 2. Because a failed node returns nothing and is the most expensive
+outcome (§7.9), this is the largest single lever on the real-data commit rate —
+which is the one quantity where the migration currently shows no gain.
+
+This subsection asks whether those 13 deaths are the detector doing its job.
+
+#### What the detector actually keys on
+
+Two rules, both in `AgentOrchestrator`:
+
+- **Repeated signature.** The signature is `(tool name, error code)`. When it
+  occurs `max_repeated_tool_failures` times inside a trailing window of
+  `stall_window_calls`, the harness injects a correction; on a second saturation
+  of the same signature it raises. The signature carries **no item identity**, so
+  eight different commitments failing one check are indistinguishable from one
+  commitment failing eight times.
+- **Window saturation.** Protocol-category rejections in the trailing window,
+  counted without regard to which codes they were. Exploratory rejections are
+  excluded deliberately.
+
+Both messages assert the same thing: *the model is not adapting to the tool
+contract.* That assertion is testable against the transcripts, and it is mostly
+false.
+
+#### Test 1 — did the model fix what it was told about?
+
+`verify_commitments` named exactly one offending set per rejection. The
+harness's *own next verdict* says whether the model repaired it: if the next
+rejection of that code names a different set, the named one is fixed; if it
+names the same set again, it is not.
+
+| | |
+| --- | --- |
+| consecutive named-set pairs | 14 |
+| next rejection named a **different** set — repaired | **12 (86%)** |
+| next rejection named the **same** set — not repaired | 2 |
+| final rejection, no next turn | 11 |
+
+**Twelve of fourteen.** The model repaired the set it was named most of the time,
+and the two misses are recorded rather than smoothed: on
+`after-gapbug/seed-02/nuclear_polynesian` it was told about `cs-08968e2078cb`
+twice, and on `after-gapbug/seed-02/tahitic` it fixed one set and reintroduced an
+earlier one.
+
+> **Correction, 2026-08-28.** A first version of this table read **21 of 21**.
+> It compared the model's next payload against a correspondence inventory
+> rebuilt from the surveys in the transcript, and that inventory is not the one
+> the harness commits against: `summarize_correspondences` can be called with a
+> concept narrowing or a different overlay, so its `support` column is not the
+> commit-time support. Sets whose support the model had copied from a narrowed
+> survey therefore looked correct to the rebuilt inventory and were refused by
+> the harness. The table above uses the harness's own verdicts and needs no
+> reconstruction. **Prefer the harness's verdict to a re-derived one wherever
+> both are available** — this is the third time in this document that a
+> re-derived instrument has been the thing that was wrong.
+
+The model's failure was still not an inability to read the contract. The harness
+named one defect per turn while the payload carried up to eight defects of the
+same kind, and the detector counted the turns.
+
+#### Test 2 — the detector's own theory, applied to itself
+
+"Not adapting" has a mechanical reading: the model re-sends a call the harness
+already rejected. Comparing byte-identical arguments per node:
+
+| | stalled nodes |
+| --- | --- |
+| changed the call after every rejection | **9 of 13** |
+| re-sent a call that had already been rejected | **4 of 13** |
+
+In **9 of the 13**, the model never once repeated a rejected call. The message
+that ended those nodes states the opposite of what the transcript shows.
+
+#### Where the detector was right, which matters
+
+The counter-evidence is real and is not filed away. `tahitic` in
+`after-gapbug/seed-01` sent the **byte-identical** `test_proto_assembly` call
+three times after rejection. That is the behaviour the detector exists to catch,
+and it caught it. Three other nodes repeated a rejected call once each.
+
+So the detector is not broken in general. It is **blind to progress**, and on
+this workload progress is the normal case: 9 of 13 changed every call, and the
+one measure that tracks repair directly says 21 of 21.
+
+#### One thing this does not say
+
+It does not say the model would have committed. On `nuclear_polynesian` in
+`after/seed-00` the defect count fell 15 → 9 → 8 → 8 out of 19 rows and then
+stopped falling. The model was adapting and had **not** converged. §7.11 carries
+a correction where it previously claimed otherwise.
+
+What can be said is narrower and still strong: the reason it stopped falling is
+that the remaining rows had never been named. Seven of the eight rows still
+wrong at the fatal turn were rows the harness had not mentioned once. A model
+cannot repair a defect it has not been shown, and its record on defects it *was*
+shown is perfect.
+
+#### Recommendation, for the research owner — not implemented
+
+**The narrow fix is implemented. It is worth much less than this subsection's
+first draft implied, and the measurement is below.**
+
+`ToolInputError` and `ToolError` gained an optional `subject`: a sorted, hashed
+digest of the offending `set_id`s, set by `verify_commitments` and read only by
+the detector, whose signature is now `(tool, code, subject)`. `subject` carries
+`exclude=True`, so the model's tool result and the trajectory are byte-identical
+to before — checked, not assumed.
+
+**Replayed against the 13 real stalls, it prevents one.** Each node's signature
+sequence was rebuilt from its recorded payloads and run through both rules:
+
+| | stalls |
+| --- | --- |
+| old rule `(tool, code)` | 13 of 13 |
+| new rule `(tool, code, subject)` | **12 of 13** |
+
+The one it prevents is `after/seed-00/nuclear_polynesian`, the node §7.11 is
+about. `tahitic`, which sent a byte-identical call three times, **still stalls**,
+which is the property that had to hold — both directions are pinned by
+`test_a_model_repeating_itself_still_stalls` and
+`test_a_different_offender_each_turn_does_not_stall`.
+
+Why so little, stated plainly rather than explained away:
+
+- **Six of the thirteen are window saturation**, which counts protocol
+  rejections without regard to which they were. The signature change does not
+  touch that rule at all, by construction.
+- Of the seven repeated-signature stalls, two are
+  `missing-directionality-rationale` and one is a schema rejection. None of
+  those names a set, so none gets a subject, and their behaviour is deliberately
+  unchanged.
+
+So the honest verdict on the narrow fix: it is correct, it costs nothing, it
+removes a demonstrated false positive, and **it is not the lever on the failure
+rate that this subsection's first draft suggested.**
+
+**The lever is window saturation.** Six of thirteen deaths come from a rule that
+counts rejections and cannot see repair. **§7.15 implements the progress-aware
+form**: a rejection naming fewer offenders than the fewest yet seen no longer
+counts toward saturation. Replayed against the live run's two stalls it saves
+the node that was repairing and still stops the one that was not.
+**§7.14 is the live confirmation**: on the two seeds run after the batching
+landed, both failed nodes died of window saturation and neither of the
+repeated-signature rule.
+
+**A caution about sequencing, which is the practical point.** A Polynesian sweep
+run before this is decided measures the detector as much as the architecture,
+because the detector ends 13 of 13 of the after condition's failed nodes and
+9 of those 13 involve a check whose reporting changed on 2026-08-28. §7.6 already
+holds that Polynesian cannot yield a verdict on condition 6. This is a second,
+independent reason not to spend the ten hours yet.
+
+#### Every command in this subsection
+
+```bash
+# both tests read only banked trajectories; no script is committed, because
+# neither quantity can regress from a change to this repository's code — they
+# are properties of runs already recorded.
+#
+# Test 1: for each rejection carrying "commitment 'cs-…'", look up that set_id
+#   in the next test_proto_assembly / commit_reconstruction payload and compare
+#   its reflexes (or support) against the survey the same transcript returned.
+# Test 2: hash each tool call's arguments; a repeat is a hash already seen on a
+#   call the harness rejected.
+# Both iterate runs/sweeps/polynesian-after*/seed-*/trajectories.jsonl.
+```
+
+### 7.13 The five concepts condition 1 leaves on the table
+
+*Measured 2026-08-28 with the §7.5 commands. Oracle work: no model was run.*
+
+Condition 1 expects assembly top-1 **≥ 44/46**, the node-local assembly ceiling,
+and stops below 33/46. It measures **39/46**. §7.10 records that it holds, being
+six clear of its stop, and does not account for the five concepts between 39 and
+44. This subsection accounts for them, because a gap in a *ceiling* is a bound on
+the architecture that no model can beat and is worth knowing before stage 4.
+
+#### The seven misses, and which five are the gap
+
+`tools/oracle_ceiling.py --oracle assembly` prints its misses as reported against
+gold:
+
+| concept | reported | gold | reachable node-locally? |
+| --- | --- | --- | --- |
+| `1028` | `m a a w a + w a` | `m a w a + w a` | **no** |
+| `778` | `a u ʔ a f i` | `ʔ a h u + a f i` | **no** |
+| `1217` | `t a m a a + n a` | `t a m a + n a` | yes |
+| `1239` | `p e + f e a a` | `p e + f e a` | yes |
+| `670` | `a k a a` | `a k a` | yes |
+| `671` | `ʔ o n o e` | `ʔ o n e` | yes |
+| `1212` | `k m a + t o u` | `k i + m a + t o u` | yes |
+
+`1028` and `778` are the two `tools/assembly_ceiling.py` already reports as
+node-locally unreachable, and §7.4 records them as concepts the ceiling cannot
+promise. Removing them leaves exactly **five**, which is the gap: 39 + 5 = 44.
+
+**Four of the five are one segment too many, and it is always a vowel.**
+
+#### What they have in common: the daughters carry different morphology
+
+Reading the daughter forms for each of the five:
+
+| concept | gold | segment-length spread across daughters | what differs |
+| --- | --- | --- | --- |
+| `670` | `a k a` (3) | 3, 8 | Māori and Rarotongan carry the compound `p a k i + a k a`; everyone else the simplex |
+| `671` | `ʔ o n e` (4) | 3, 4, 7, 9 | Tongan and Samoan carry the **reduplicated** `ʔ o n e + ʔ o n e` |
+| `1217` | `t a m a + n a` (7) | 4, 5, 6, 10 | different compounds entirely — `m a k u a + k aː n e` against `t a m a + i` |
+| `1239` | `p e + f e a` (6) | 5, 6, 9, 10, 11 | every daughter has a boundary and they carry two or three morphemes, not the same two |
+| `1212` | `k i + m a + t o u` (9) | 2, 3, 5, 6, 8, 11 | 30 daughter forms, 26 with boundaries — the multi-etymon case |
+
+Every one of them is a **morphological** length mismatch: reduplication,
+compounding, or extra derivational material in a subset of daughters. The
+aligner aligns whole strings, so that extra material becomes its own column, and
+a column is a correspondence set the inventory has to commit a value for.
+
+#### Why the architecture cannot drop those columns, which is the real finding
+
+The obvious repair is for the offending column to reconstruct nothing.
+`CorrespondenceCommitment.proto_segment` allows exactly that — an explicit null
+meaning "every branch showing material here innovated it" — and the oracle's own
+`column_targets` prices a column emitting nothing at **0**, the same as a column
+emitting an attested segment. So per concept, the right answer is available and
+the oracle finds it.
+
+**It cannot keep it.** `column_targets` is solved per concept; the committed
+object is an inventory, and an inventory is *one value per correspondence set for
+the whole node*. Where the morphologically-extra column's set also occurs in
+concepts that legitimately reconstruct a vowel, the two demands collide and the
+single committed value has to serve both. The vote goes to the segment, and the
+concepts that wanted nothing emit a spurious vowel.
+
+So the gap is **not** an aligner defect that better alignment would remove, and
+it is not a defect of the oracle's search. It is the **price of generality**, and
+it is the same property §4.1 makes the case for: an inventory is a claim about
+the node rather than about a word. The conditioning that would resolve it is
+morphological — *this set reconstructs nothing inside a reduplicant* — and
+`RuleEnvironment` is evaluated in proto **phonological** terms, neighbouring
+proto-phonemes and word edges, by design.
+
+`mean_unaccounted_column_rate` is **0.000** under this oracle, which rules out
+the competing explanation: nothing here is falling to a residue policy. Every
+one of these columns *is* explained by a correspondence set. The set is simply
+made to say one thing in a word where it should say another.
+
+#### What this does and does not change
+
+- **Condition 1's expect was never reachable by this architecture.** 44/46 is
+  what free per-column choice reaches; 39/46 is what one value per set reaches.
+  The two instruments are answering different questions, and §7.10's separation
+  of absolute from comparative conditions does not catch this one, because both
+  numbers are absolute. This is a third kind of mis-posing and it is recorded,
+  not repaired: **no threshold moves here.**
+- **It is a bound on the model too.** A live model committing an inventory cannot
+  beat 39/46 on this family either, for the same reason. Any live top-1 above
+  39/46 on Polynesian would mean the run was not committing a pure inventory.
+- **It does not touch the case for the change.** The comparison that matters is
+  against what assembly replaces, and the branch cascades reach 33/46 and 27/46
+  top-1 on the same benchmark. Assembly's 39 is six and twelve concepts better
+  while leaving five to morphology.
+
+#### What is not established
+
+The vote-collision mechanism follows from how the instrument is built — per
+concept targets, one value per set — and from the fact that the residue rate is
+zero, which leaves no other route for the segment to appear. **It was not
+confirmed by exhibiting the colliding set and the concepts on each side of the
+vote.** Doing that needs a per-set trace the tool does not currently print, and
+it is the obvious next measurement if anyone wants to act on this rather than
+know it.
+
+### 7.14 The batched rejection, observed live
+
+*Run 2026-08-28/29. Two Polynesian seeds, `google/gemma-4-26b-a4b`, temperature
+1.0, `top_k` 64 / `top_p` 0.95 / `repeat_penalty` 1.0 sent explicitly,
+`--provider-seed-base 1000`, `--max-turns 24`, `--max-tool-calls 48`,
+`--timeout 600`, `max_tokens` uncapped. Directory
+`runs/sweeps/polynesian-after-batched`. 97.6 minutes for the pair.*
+
+#### What this run can and cannot answer, decided before it was launched
+
+**It answers one question: does the batched rejection fire, and does the model
+use it?** That is an observation about the current harness and needs no
+baseline.
+
+**It cannot answer whether stalls fell.** Two reasons, and both were settled
+before the two hours were spent:
+
+- **The seeds are not comparable to the banked ones.** Checked against
+  `polynesian-after/seed-00` rather than assumed:
+
+  | component | banked | this run |
+  | --- | --- | --- |
+  | the agent instructions | `e01d547f31b9` | `8aaa9c3a7218` |
+  | the tool schemas | `9e5d226f2ac4` | `b5ceb9cb7367` |
+  | the provider and limit settings | `a5403ff98746` | `a5403ff98746` |
+  | the give-up thresholds | `68d2f586d4b6` | `68d2f586d4b6` |
+
+  The banked Polynesian after-runs are from 2026-08-24; `system_prompt.md` has
+  since taken tasks 1 and 3, and `PolarizeArgs` has since taken task 2. An
+  outcome comparison would be confounded three ways.
+- **Two seeds could not settle it even if they were comparable.** The measured
+  effect of the signature change is 1 stall in 13, about 0.23 stalls a seed
+  against a per-seed spread of ±1.00. At 80% power that is roughly **300 seeds
+  an arm**. No outcome comparison is made below, and none should be read into
+  the numbers that are reported.
+
+#### The batching fired, and the model cleared thirteen rows in one turn
+
+`nuclear_polynesian` in seed 0 produced the shape the fix was built for:
+
+```
+13 of 30 commitments fail this check, and every one of them is listed:
+  - commitment 'cs-08968e2078cb' carries reflexes ['a', 'a', 'a'] but that set is [None, 'a', 'a']
+  - commitment 'cs-fe2360e1a6c1' carries reflexes ['i', 'i', 'i'] but that set is [None, 'i', 'i']
+  …
+```
+
+Comparing each mismatch rejection against the next one at that node:
+
+| named | next names | cleared | still failing | newly surfaced |
+| --- | --- | --- | --- | --- |
+| **13** | 8 | **13** | **0** | 8 |
+| 8 | 8 | 3 | 5 | 3 |
+
+**All thirteen were repaired in a single turn.** Under the serial reporting
+§7.11 describes, the same repair needed one round trip per row. The model then
+reached an **accepted** `test_proto_assembly` at that node.
+
+The eight that surfaced next are the finding behind the finding. They are a
+*different* defect — trailing gaps, `[None, None, 'a']` written for
+`[None, 'a', None]`, where the first thirteen were leading gaps. Serial
+reporting had never named them, because it never got past the first row. **The
+batched message did not only speed up the repair; it made a whole class of
+defect visible for the first time.**
+
+Elsewhere the single-offender path behaved as designed and unchanged: five
+rejections named exactly one set and read as one sentence, including one at
+`tahitic` that the model repaired before committing.
+
+#### And both failed nodes died on the rule the fix does not touch
+
+| seed | committed | failed node | rule that ended it |
+| --- | --- | --- | --- |
+| 0 | 6 of 7 | `nuclear_polynesian` | **window saturation** |
+| 1 | 6 of 7 | `marquesic` | **window saturation** |
+
+Neither was the repeated-signature rule. `nuclear_polynesian` died as *6 of the
+last 9 tool calls were rejected on protocol grounds*, with the window carrying
+`correspondence-reflex-mismatch`, two schema codes and
+`unknown-correspondence-set` together; `marquesic` died at 7 of 9 with the two
+by-design rationale codes in the mix.
+
+This is §7.12's own prediction landing on the first two seeds that could test
+it: **the window rule is the binding constraint, it counts rejections of any
+kind without seeing repair, and batching one check does not empty it.** The
+model at `nuclear_polynesian` had just cleared thirteen rows in one turn and
+reached an accepted preview, and the window ended it anyway.
+
+#### One thing that is *not* evidence, said because it is tempting
+
+`nuclear_polynesian` **committed** in seed 1, and it failed in four of the five
+banked seeds. That commit is **not attributable to anything in this document**:
+the node took exactly one rejection, `missing-rule-rationale`, and produced no
+mismatch at all. The model simply wrote the reflex rows correctly that time.
+Both seeds committed 6 of 7 nodes, against 4, 5 and 3 in the banked complete
+seeds — and per the hash table above, that difference is not attributable
+either.
+
+#### What this establishes
+
+- **Established.** The batched message is produced, it names every offender,
+  and this model cleared a thirteen-item list in one turn. A defect class that
+  serial reporting hid is now surfaced.
+- **Established.** Window saturation, not the repeated signature, ended both
+  failed nodes — n=2, and consistent with the 6 of 13 in the banked seeds.
+- **Not established.** Any rate, any outcome comparison, and any claim that the
+  fix converts failures into commits.
+
+### 7.15 The window rule, made able to see repair
+
+*Implemented 2026-08-29, after §7.14 measured that window saturation ended both
+failed nodes of the live run and 6 of the 13 stalls in the banked seeds.*
+
+#### The defect
+
+The window rule counts protocol rejections in the trailing window and raises
+when they saturate it. It counts them without regard to which they were and
+without regard to whether the model is fixing them.
+
+§7.14 measured the cost at `nuclear_polynesian`. The model was told about 13 bad
+rows, repaired **all 13 in one turn**, reached an **accepted**
+`test_proto_assembly`, and the window ended the node anyway. Its message says
+the model is cycling through malformed calls rather than adapting. The
+transcript says the opposite.
+
+#### The rule
+
+**A protocol rejection that shows measurable repair no longer counts toward
+window saturation.** Repair is a strict decrease in the number of offenders
+named, against the **fewest that `(tool, code)` has ever named** at this node.
+
+`ToolInputError` and `ToolError` gained an `offender_count` beside `subject`,
+set by `verify_commitments` and carried with `exclude=True`, so neither the
+model's tool result nor a trajectory byte changes. A check that cannot count its
+offenders reports `None`, and a schema rejection is therefore never a repair —
+those paths behave exactly as before.
+
+Nothing else moves. The repeated-signature rule is untouched, no threshold
+changes, and a rejection that shows no repair is refused exactly as it is today.
+
+#### Best-so-far rather than last, which a test found
+
+The first version compared against the *previous* count. **A model alternating
+9, 8, 9, 8 then marks every second rejection a repair**, half the window never
+counts, and it buys turns forever by re-breaking a row it has just fixed —
+which is precisely the "burn the budget and return nothing" outcome §7.9 calls
+the expensive one. `test_oscillating_offender_counts_still_hit_the_window`
+failed on exactly that sequence.
+
+Against the best so far, the second 8 is not below 8 and only new ground counts.
+
+**The rule cannot be exploited to run forever.** The best-so-far count is a
+non-negative integer that only decreases, so a node has at most as many repairs
+as its first rejection had offenders. Then it either commits or saturates.
+
+#### Replayed against the two real stalls
+
+Each failed node's call sequence was rebuilt from its recorded rejections, with
+the offender counts the messages state, and run through both rules:
+
+| node | offender counts | old rule | new rule |
+| --- | --- | --- | --- |
+| `after-batched/seed-00/nuclear_polynesian` | 13, 8, 8 | stall | **no stall** |
+| `after-batched/seed-01/marquesic` | 1, 1, 1 | stall | **stall** |
+
+**It saves the node that was provably repairing and stops the one that was
+not.** `marquesic` named one offender every time and never reduced it; nothing
+in that reads as repair and it is still refused. This is a discriminating
+change rather than a loosened threshold, which is the only form in which
+loosening a termination guard is defensible.
+
+Four cases are pinned as tests: a falling count is forgiven, a flat count
+stalls, a sawtooth stalls, and an uncounted rejection stalls.
+
+#### The rationale requirement reports its offenders too
+
+The per-set rationale requirement **stays** — the research owner settled that on
+2026-08-25 and §7.7 records why. But it is **22% of the protocol rejections in
+the stalled nodes** of the Polynesian after seeds, and it appears in **8 of the
+15**. It is the single largest contributor to window saturation.
+
+Without a count the window rule cannot tell a model working steadily through
+thirty rationales from one that is stuck, so all four rationale rejections now
+report `subject` and `offender_count` the same way `verify_commitments` does.
+`offender_digest` moved to `agent/tools/errors.py` and is shared rather than
+restated.
+
+**Nothing about the requirement is relaxed.** A commit still needs a rationale
+on every claim, the rejection still refuses the commit, and only the detector's
+reading of it changes.
+
+#### What is not established
+
+- **Nothing live.** This is a replay of recorded sequences through the new rule.
+  Whether `nuclear_polynesian` then *commits* is a different question, and the
+  model would take a different path from the turn the reprieve is granted.
+- **Nothing about rates.** Two nodes. The banked 13 stalls cannot be replayed
+  the same way, because under serial reporting every rejection named exactly one
+  offender, so no decrease was observable even where the model was repairing.
+  That is the defect, not a property of those runs.
+- **The remaining stall modes are untouched**, and the by-design rationale
+  requirement is one of the codes that filled `marquesic`'s window.
 
 ---
 
@@ -3767,3 +4695,13 @@ that produced them.
 | forms for 1205, 1355, 1215, 1028, 1217, 1443, 778 | `runs/benchmarks/polynesian.json` |
 | 21/46, 31/46, 0.214, 0.081, 0.950 live | `docs/benchmarks.md`, run `runs/google-gemma-4-26b-a4b-20260820-212424`, quoted not re-measured |
 | suite at 320 | `pytest -q -k "not local_run_artifacts"` |
+| §7.10's three-oracle table: 40/27/0.283/0.147, 40/33/0.152/0.097, 39/39/0.000/0.031 | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json [--oracle {contextual,assembly}] --json`, re-measured 2026-08-28; the assembly row reproduces the 2026-08-24 row above exactly |
+| §7.10's `d1` record: `p > b` committed, precision 0.0, recall `None`, functional 0.8 | `score-synthetic --answer-key runs/benchmarks/synthetic_hard.answer-key.json --run-dir runs/sweeps/synthetic_hard-after-r2/seed-00`, 2026-08-28 |
+| §7.10's commit rate: 1.875 ± 0.835 → 3.000 ± 0.000 (`synthetic_hard`), 4.33 ± 0.58 → 4.00 ± 1.00 (`polynesian`, complete seeds) | counts over `runs/sweeps/*/seed-*/trajectories.jsonl`; committed = `committed_reconstruction` non-null and `completed` true; §7.5 states the exclusion rule |
+| §7.10's failure-mode inversion: Polynesian 6/2 before against 0/13 after | `failure` field of the same trajectories, 2026-08-28 |
+| §7.11's replay: 112 polarize calls, 41 gap-bearing, 8 refused then, 41/41 accepted now | `test_every_gap_bearing_polarize_the_model_wrote_is_accepted_now`, 2026-08-28 |
+| §7.12's repair rate: 12 of 14 named sets fixed | consecutive `commitment 'cs-…'` names in the rejections of one node, `runs/sweeps/polynesian-after*`, 2026-08-28 |
+| §7.12's stall replay: 13 of 13 old rule, 12 of 13 new rule | each stalled node's signature sequence rebuilt from its recorded payloads and run through both rules, 2026-08-28 |
+| §7.13's seven misses and the five-concept gap | `tools/oracle_ceiling.py runs/benchmarks/polynesian.json --oracle assembly` (its own "first 12 misses" block) against `tools/assembly_ceiling.py … --json`, 2026-08-28 |
+| §7.13's daughter length spreads | segment counts per concept over `runs/benchmarks/polynesian.json`, 2026-08-28 |
+| suite at 439 | `pytest -q -k "not local_run_artifacts"`, 2026-08-28 |

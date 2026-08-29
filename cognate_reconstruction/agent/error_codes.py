@@ -237,6 +237,15 @@ class ToolInputError(ValueError):
     The class lives here rather than in ``agent/tools/errors.py`` — which
     re-exports it — because ``agent/context.py`` raises it too, and importing
     anything from the ``agent.tools`` package there would close an import cycle.
+
+    ``subject`` names *what* the call got wrong, when the check knows. The stall
+    detector keys on ``(tool name, code)``, which cannot tell "the same mistake
+    on a new item" from "the same mistake again"; §7.12 measured that the model
+    repaired the item it was named 21 times out of 21 and was still ended for
+    not adapting. A check that can identify its offenders passes a stable
+    digest of them here, and the detector counts a repeat only when the same
+    offenders come back. It is deterministic text derived from harness state,
+    like ``remediation``, and it is never shown to the model.
     """
 
     def __init__(
@@ -246,8 +255,12 @@ class ToolInputError(ValueError):
         code: str,
         remediation: str | None = None,
         error_type: str | None = None,
+        subject: str | None = None,
+        offender_count: int | None = None,
     ) -> None:
         super().__init__(message)
         self.code = code
         self.remediation = remediation
         self.error_type = error_type or type(self).__name__
+        self.subject = subject
+        self.offender_count = offender_count

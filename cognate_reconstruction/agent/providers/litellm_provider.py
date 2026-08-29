@@ -23,6 +23,26 @@ def _value(item: object, name: str, default: Any = None) -> Any:
     return getattr(item, name, default)
 
 
+# LiteLLM smuggles a Gemini 3 thought signature into the OpenAI-shaped tool-call
+# ID, joined by this separator, because the OpenAI contract has nowhere else to
+# put it. The signature is transport state, not reconstruction evidence: it must
+# come back on the next request or Gemini rejects the turn, but the harness must
+# never show it to the model. A committed hypothesis quotes the
+# validation_call_id of the test that licensed it, so an ID carrying a kilobyte
+# of base64 would be the model's problem to reproduce verbatim, and would land
+# in trajectories as noise. The adapter therefore splits the signature off on
+# arrival, keeps the short ID everywhere the harness and the model can see, and
+# restores the signature on the way out through the field LiteLLM reads first.
+THOUGHT_SIGNATURE_SEPARATOR = "__thought__"
+
+
+def _split_thought_signature(call_id: str) -> tuple[str, str | None]:
+    prefix, separator, signature = call_id.partition(THOUGHT_SIGNATURE_SEPARATOR)
+    if not separator or not prefix or not signature:
+        return call_id, None
+    return prefix, signature
+
+
 class LiteLLMProvider:
     """Normalize LiteLLM's OpenAI-shaped native tool-calling response."""
 
@@ -39,23 +59,34 @@ class LiteLLMProvider:
         if overlap := sorted(reserved & self.completion_kwargs.keys()):
             raise ValueError(f"completion_kwargs contains reserved keys: {overlap}")
         self._completion_fn = completion_fn
+        # Keyed by the short call ID the harness and the model see. Kept on the
+        # adapter rather than on LLMToolCall so the audit artifacts stay free of
+        # opaque provider state. A session resumed with a fresh adapter loses
+        # them, and LiteLLM then substitutes Google's documented
+        # skip-the-validator placeholder, which degrades rather than fails.
+        self._thought_signatures: dict[str, str] = {}
 
-    @staticmethod
-    def _message_payload(message: LLMMessage) -> dict[str, Any]:
+    def _tool_call_payload(self, call: LLMToolCall) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "id": call.call_id,
+            "type": "function",
+            "function": {
+                "name": call.name,
+                "arguments": json.dumps(call.arguments),
+            },
+        }
+        signature = self._thought_signatures.get(call.call_id)
+        if signature is not None:
+            payload["provider_specific_fields"] = {"thought_signature": signature}
+        return payload
+
+    def _message_payload(self, message: LLMMessage) -> dict[str, Any]:
         payload: dict[str, Any] = {"role": message.role.value}
         if message.content is not None:
             payload["content"] = message.content
         if message.tool_calls:
             payload["tool_calls"] = [
-                {
-                    "id": call.call_id,
-                    "type": "function",
-                    "function": {
-                        "name": call.name,
-                        "arguments": json.dumps(call.arguments),
-                    },
-                }
-                for call in message.tool_calls
+                self._tool_call_payload(call) for call in message.tool_calls
             ]
         if message.tool_call_id is not None:
             payload["tool_call_id"] = message.tool_call_id
@@ -116,6 +147,14 @@ class LiteLLMProvider:
             name = _value(function, "name")
             if not isinstance(call_id, str) or not call_id.strip():
                 raise ValueError("tool call is missing a non-empty ID")
+            call_id, thought_signature = _split_thought_signature(call_id)
+            if thought_signature is None:
+                thought_signature = _value(
+                    _value(raw_call, "provider_specific_fields") or {},
+                    "thought_signature",
+                )
+            if isinstance(thought_signature, str) and thought_signature:
+                self._thought_signatures[call_id] = thought_signature
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("tool call is missing a non-empty function name")
             raw_arguments = _value(function, "arguments", "{}")
@@ -137,6 +176,23 @@ class LiteLLMProvider:
         prompt_tokens = _value(raw_usage, "prompt_tokens")
         completion_tokens = _value(raw_usage, "completion_tokens")
         total_tokens = _value(raw_usage, "total_tokens")
+        # Two spellings for one number. Gemini reports it under
+        # prompt_tokens_details; the Anthropic-shaped backends report
+        # cache_read_input_tokens. Either way it is part of prompt_tokens
+        # already, so it is recorded beside the total and never added to it.
+        cached_tokens = _value(
+            _value(raw_usage, "prompt_tokens_details") or {}, "cached_tokens"
+        )
+        if cached_tokens is None:
+            cached_tokens = _value(raw_usage, "cache_read_input_tokens")
+        # One spelling covers every backend that reports it — Gemini, the
+        # Anthropic thinking models, the OpenAI reasoning models, xAI. Like the
+        # cached count it is a subset of a total already recorded, here of the
+        # completion tokens, so it is kept beside output_tokens and never added.
+        reasoning_tokens = _value(
+            _value(raw_usage, "completion_tokens_details") or {},
+            "reasoning_tokens",
+        )
         hidden = _value(response, "_hidden_params", {}) or {}
         response_cost = _value(hidden, "response_cost")
         usage = None
@@ -146,6 +202,8 @@ class LiteLLMProvider:
                 prompt_tokens,
                 completion_tokens,
                 total_tokens,
+                cached_tokens,
+                reasoning_tokens,
                 response_cost,
             )
         ):
@@ -160,6 +218,12 @@ class LiteLLMProvider:
                 ),
                 total_tokens=(
                     int(total_tokens) if total_tokens is not None else None
+                ),
+                cached_input_tokens=(
+                    int(cached_tokens) if cached_tokens is not None else None
+                ),
+                reasoning_output_tokens=(
+                    int(reasoning_tokens) if reasoning_tokens is not None else None
                 ),
                 cost_usd=(
                     float(response_cost) if response_cost is not None else None

@@ -254,6 +254,81 @@ def test_provider_config_rejects_secrets_and_allows_nonsecret_options(
         load_provider_options(unsafe)
 
 
+@pytest.mark.parametrize(
+    "option",
+    [
+        "web_search_options",
+        "search_parameters",
+        "google_search_retrieval",
+        "enable_search",
+        "url_context",
+    ],
+)
+def test_provider_config_refuses_to_ground_the_model(tmp_path, option) -> None:
+    """No provider option may give the model a source outside the tools.
+
+    Named per provider rather than per API: OpenAI and Anthropic spell it
+    web_search_options, LiteLLM turns that one into Gemini's googleSearch, xAI
+    uses search_parameters. Blocking the option names blocks all of them,
+    including for providers this harness cannot reach yet.
+    """
+    config = tmp_path / "grounded.json"
+    config.write_text(json.dumps({option: {}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="source outside the"):
+        load_provider_options(config)
+
+
+def test_grounding_is_refused_however_deeply_it_is_buried(tmp_path) -> None:
+    config = tmp_path / "nested.json"
+    config.write_text(
+        json.dumps({"extra_body": [{"tools": {"google_search": {}}}]}),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match=r"extra_body\[0\].tools.google_search"):
+        load_provider_options(config)
+
+
+def test_the_grounding_refusal_says_what_to_do_instead(tmp_path) -> None:
+    """A refusal that only forbids invites working around it."""
+    config = tmp_path / "grounded.json"
+    config.write_text(json.dumps({"web_search_options": {}}), encoding="utf-8")
+    with pytest.raises(ValueError) as raised:
+        load_provider_options(config)
+    assert "add one rather than opening a side channel" in str(raised.value)
+
+
+def test_the_local_sampling_options_are_untouched_by_the_new_guards(
+    tmp_path,
+) -> None:
+    """The guard must not cost the LM Studio path a single option.
+
+    These are the exact shapes checked into examples/ and written by every
+    banked sweep. A guard that rejected one of them would invalidate the
+    local workflow the harness is normally driven with.
+    """
+    config = tmp_path / "local.json"
+    config.write_text(
+        json.dumps(
+            {"top_k": 64, "top_p": 0.95, "repeat_penalty": 1.0, "seed": 1000}
+        ),
+        encoding="utf-8",
+    )
+    assert load_provider_options(config) == {
+        "top_k": 64,
+        "top_p": 0.95,
+        "repeat_penalty": 1.0,
+        "seed": 1000,
+    }
+
+
+def test_the_checked_in_local_config_still_loads() -> None:
+    from pathlib import Path as _Path
+
+    assert load_provider_options(
+        _Path("examples/lm_studio_qwen_config.json")
+    ) == {"max_tokens": 1024}
+
+
 def test_litellm_adapter_constructs_request_and_normalizes_usage() -> None:
     captured = {}
 

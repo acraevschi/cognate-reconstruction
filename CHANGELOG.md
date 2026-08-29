@@ -2,6 +2,135 @@
 
 ## Unreleased
 
+### Close the side channel, price the thinking, and stop sampling Gemini too cold
+
+Three provider-facing gaps, each found by running the thing rather than reading
+it, and each written to hold for the providers this harness cannot reach yet.
+
+**A provider config could ground the model.** `--provider-config` takes any
+non-secret option, and `web_search_options` is one LiteLLM accepts and turns
+into Gemini's `googleSearch`. The whole design rests on the model reaching the
+evidence only through the typed tools, so that a trajectory shows what the
+reconstruction rested on. A grounded model can retrieve a published proto-form
+instead of deriving one, and nothing in the trajectory would differ: the tool
+calls would read as ordinary inspection and the commit as ordinary work. This
+repo exists to measure models on exactly that task. `load_provider_options` now
+refuses those options wherever they are nested, named per provider rather than
+per API — OpenAI and Anthropic spell it `web_search_options`, xAI uses
+`search_parameters` — so the guard already covers providers not yet wired up.
+The refusal says what to do instead, because a refusal that only forbids invites
+a workaround. All twenty-nine checked-in and banked local configs still load
+unchanged; the guard costs the LM Studio path nothing.
+
+**Reasoning was unpriced.** `--reasoning-effort` is a hashed setting the
+operator chooses, and its cost was visible only in the bill.
+`reasoning_output_tokens` records it, as a subset of `output_tokens` rather than
+an addition, since providers bill thinking at the output rate and count it
+there. One spelling covers every backend that reports it — Gemini, the Anthropic
+thinking models, the OpenAI reasoning models, xAI all land in
+`completion_tokens_details.reasoning_tokens` — so unlike the cached count this
+needed no per-provider branch. `inspect-run` grew one `_share` renderer for both
+subset counters instead of a helper per counter.
+
+**The default temperature was wrong for Gemini.** Google documents, and LiteLLM
+warns on every call, that a Gemini 3 model sampled below 1.0 can loop, reason
+worse, and fail outright on hard tasks — and the harness was sending 0.1, which
+is the right default for a local server. `--temperature` now has no fixed
+default: unset resolves to 1.0 under the Gemini preset and 0.1 everywhere else,
+an explicit value still wins, and the digest records the resolved number so
+spelling a default out loud does not change the hash. The sweep and the skill
+driver both stopped passing a temperature they had not been asked for; the
+driver's unconditional `0.0` would otherwise have reinstated the exact value the
+warning is about.
+
+Null stays distinct from zero in both new counters. LM Studio reports neither a
+cache hit nor a reasoning count, and that silence is not a claim that the model
+cached nothing or thought nothing.
+
+
+### Cached prompt tokens, because the preamble is most of the bill
+
+A two-form fixture cost 130,778 input tokens. Neither the lexicon nor the tool
+results explain that: the first call was 20,880 tokens, of which 11,660 were the
+thirteen tool schemas and 8,344 the agent instructions, against 876 for the node
+payload. The API is stateless, so that 20,004-token preamble was re-sent on all
+six calls. Cost scales as `(instructions + tool schemas) x turns x nodes`, very
+nearly independent of corpus size — which is not what anyone would guess from
+the outside, and is the number that decides a sweep budget.
+
+The preamble is byte-identical across every call and every node, so providers
+cache it. The harness was throwing that evidence away: `ProviderUsage` kept
+input, output, total, and cost, and nothing read the cached-token count, so a
+run could be hitting cache and the trajectory would not say. Since `cost_usd`
+comes from LiteLLM's own arithmetic rather than from the provider, nothing else
+would have shown it either.
+
+`ProviderUsage.cached_input_tokens` and `NodeMetrics.cached_input_tokens` now
+record it, read from both spellings — Gemini's `prompt_tokens_details`, and the
+`cache_read_input_tokens` the Anthropic-shaped backends use. It is a **subset**
+of `input_tokens`, never an addition: the provider counts a cached token as
+prompt input and discounts its price, so summing them would double-count.
+`inspect-run` prints it as a share, and `visualize-run` carries it per node.
+
+`null` is kept distinct from zero throughout. A backend without caching and a
+cold run both report nothing, and only the cost tells them apart; a column of
+zeroes would have claimed a cold cache the provider never reported. Trajectories
+written before the field existed read as `null` and still validate.
+
+Measured on `gemini-3.7-flash`: the first two calls of a session are cold, then
+74-91% of each prompt is served from cache, 53% across the session. The
+practical consequence is that editing the agent instructions mid-sweep, or a
+tool schema that varies per node, discards the prefix and roughly doubles the
+bill without changing a single result.
+
+### A Gemini preset, and the three things Gemini does not share with a local server
+
+The harness already spoke to Gemini in principle: every backend is reached
+through LiteLLM, and `--model gemini/gemini-3.7-flash` was always a legal
+identifier. In practice three things stood between that and a run.
+
+The first is silent and would have corrupted the audit trail. Gemini 3 returns
+an encrypted thought signature with every tool call and rejects a replayed
+tool-call turn that arrives without it. LiteLLM has nowhere in the OpenAI
+contract to put one, so it appends it to the tool-call ID. The harness echoes
+IDs verbatim, so the signature would have round-tripped — and would also have
+become the ID the model reads back. A committed hypothesis quotes the
+`validation_call_id` of the `test_sound_law` call that licensed it, so every
+commit would have required the model to reproduce a kilobyte of base64 exactly,
+and every trajectory would have recorded it as evidence. `LiteLLMProvider` now
+splits the signature off on arrival, keeps the short ID everywhere the model,
+the tools, and the trajectories can see, and restores it on the way out through
+the field LiteLLM reads first. Backends that send no signature send no extra
+field, so the local path is unchanged byte for byte.
+
+The second is loud but late. `--provider-seed-base` writes a `seed` into each
+repetition's provider config, and the Gemini API has no seed: LiteLLM rejects
+every call unless the option is dropped, and dropping it would leave a sweep
+reporting spread across repetitions it only appeared to seed. Both `infer` and
+`run-benchmark` now refuse the combination before spending a run on it, and say
+that the honest reading is provider nondeterminism.
+
+The third is quiet and would have gone unnoticed. Gemini 3 thinks at `low`
+unless told otherwise, which is not a defensible default for the comparative
+method. `--reasoning-effort {minimal,low,medium,high}` sets it, `run-benchmark`
+passes it to every repetition, and it enters the configuration digest, because
+a run at `low` and a run at `high` are not the same experiment.
+
+`--preset gemini` supplies the rest: it routes the model under `gemini/` unless
+it is already routed, reads `GEMINI_API_KEY` unless `--api-key-env` names
+another variable, and checks the model against `models.list` before the run
+starts. `gemini-models` prints that list. Both send the key in the
+`x-goog-api-key` header rather than the `?key=` query parameter Google's
+examples show, because query strings are what proxies and access logs retain.
+
+The thirteen tool schemas needed no change. They are Pydantic JSON Schema —
+`$defs`, `$ref`, `additionalProperties` — and Gemini accepts only an OpenAPI
+subset, but LiteLLM's rewrite is total. `tests/workbench/test_gemini_provider.py`
+asserts that, and assembles a complete Gemini request body offline from the real
+tools and a signed tool-call turn, so a LiteLLM upgrade that moves the signature
+or the schema dialect fails in the suite rather than on the first call of a run.
+
+
 ### `visualize-run`: the session, not just its conclusion
 
 `inspect-run` answers what a run concluded. Nothing answered how the agent got

@@ -100,6 +100,36 @@ class ProviderUsage(WorkbenchModel):
     input_tokens: int | None = Field(default=None, ge=0)
     output_tokens: int | None = Field(default=None, ge=0)
     total_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Prompt tokens the provider served from its cache. A SUBSET of "
+            "input_tokens, never an addition to them: the provider counts a "
+            "cached token as prompt input and discounts its price. Every call "
+            "in a node session repeats one prefix — the agent instructions and "
+            "the tool schemas — so a run where this stays null or zero is "
+            "paying full price for the same preamble on every turn, which is "
+            "worth knowing before a sweep rather than after one. Defaulted, so "
+            "records written before it existed read as 'not recorded' rather "
+            "than as a run that cached nothing."
+        ),
+    )
+    reasoning_output_tokens: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "Completion tokens the model spent thinking before it answered. A "
+            "SUBSET of output_tokens, never an addition: providers bill "
+            "reasoning at the output rate and count it there. Recorded because "
+            "reasoning effort is a hashed setting the operator chooses — a run "
+            "at 'low' and a run at 'high' are different experiments, and "
+            "without this the difference is visible only in the bill. Null "
+            "means the provider reported nothing, which is not zero: a model "
+            "that does not reason and a backend that does not report both read "
+            "as null."
+        ),
+    )
     cost_usd: float | None = Field(default=None, ge=0.0)
 
 
@@ -153,6 +183,32 @@ class ToolError(WorkbenchModel):
         description=(
             "Deterministic guidance derived from recorded session state, "
             "explaining how to construct an accepted call."
+        ),
+    )
+    subject: NonEmptyStr | None = Field(
+        default=None,
+        exclude=True,
+        description=(
+            "Which items this rejection is about, as a stable digest, when the "
+            "check could identify them. Read only by the stall detector, which "
+            "counts a repeat only when the same offenders come back. "
+            "exclude=True on purpose: it is harness bookkeeping, so it must not "
+            "reach the model in the tool result and must not change a "
+            "trajectory byte. It is recoverable from 'message', which names the "
+            "offenders in full."
+        ),
+    )
+    offender_count: int | None = Field(
+        default=None,
+        exclude=True,
+        ge=0,
+        description=(
+            "How many items this rejection is about, when the check could "
+            "count them. The stall detector compares it against the previous "
+            "rejection of the same (tool, code): a strict decrease is repair, "
+            "and a repair does not count toward window saturation. Excluded "
+            "from serialization for the same reason as 'subject' — harness "
+            "bookkeeping that must not reach the model or change a trajectory."
         ),
     )
 

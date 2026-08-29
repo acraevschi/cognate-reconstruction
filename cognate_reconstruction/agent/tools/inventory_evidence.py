@@ -24,7 +24,10 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from cognate_reconstruction.agent.context import AgentContext
-from cognate_reconstruction.agent.tools.errors import ToolInputError
+from cognate_reconstruction.agent.tools.errors import (
+    ToolInputError,
+    offender_digest,
+)
 from cognate_reconstruction.alignment.correspondence_sets import (
     build_correspondence_sets,
     one_reading_per_node,
@@ -174,51 +177,137 @@ def verify_commitments(
 ) -> None:
     """Re-derive every cited set from the node's own forms, and refuse a miss.
 
-    Two refusals, both arithmetic. `unknown-correspondence-set` means the cited
+    Three refusals, all arithmetic. `unknown-correspondence-set` means the cited
     ID is not in this node's data at all — most often stale, because a realign
     invalidates every ID derived under the previous overlay.
-    `correspondence-support-mismatch` means the reflexes are right and the count
-    is not, which is a transcription error: support is copied from the harness's
-    own inventory and is the one number that separates a correspondence from
-    residue, so it must never be a model claim.
+    `correspondence-reflex-mismatch` means the cited ID and the written reflex
+    row disagree, which cannot happen if the row was copied rather than retyped:
+    the ID is derived from the row. `correspondence-support-mismatch` means the
+    reflexes are right and the count is not, which is a transcription error:
+    support is copied from the harness's own inventory and is the one number
+    that separates a correspondence from residue, so it must never be a model
+    claim.
+
+    **Every failure of a class is reported at once, not just the first.** This
+    is the whole of the fix recorded in §7.10, and it changes no threshold: each
+    check keeps exactly the strictness it had. Reporting serially was losing
+    nodes. A commit carries tens of commitments, so one mistake repeated across
+    the row — a leading gap dropped from every three-child set, say — used to
+    take one round trip per commitment to clear, and the stall detector's
+    signature is `(tool name, error code)`, which cannot tell "the same mistake
+    on a new set" from "the same mistake again". On `polynesian-after` seed-00
+    the model fixed six of eight rows, then seven, then eight, and was killed by
+    `ProtocolStallError` on the turn it finally had them all right.
+
+    The harness already holds the whole inventory when it checks the first
+    commitment, so nothing is bought by withholding the rest. Pydantic reports
+    all of its errors at once on the same call, and on that same node the model
+    cleared all nineteen `confidence=missing` errors in a single turn — the
+    contrast is inside one session and is why this is batched rather than
+    softened.
     """
     by_id = {item.set_id: item for item in inventory.sets}
+
+    unknown: list[CorrespondenceCommitment] = []
+    reflex_misses: list[tuple[CorrespondenceCommitment, CorrespondenceDetail]] = []
+    support_misses: list[tuple[CorrespondenceCommitment, CorrespondenceDetail]] = []
     for commitment in commitments:
         known = by_id.get(commitment.set_id)
         if known is None:
-            raise ToolInputError(
-                f"commitment cites correspondence set {commitment.set_id!r}, "
-                "which this node's forms do not produce under the committed "
-                "overlays",
-                code="unknown-correspondence-set",
-                remediation=_describe_unknown_set(commitment, inventory),
-            )
-        if tuple(commitment.reflexes) != tuple(known.segments):
-            raise ToolInputError(
-                f"commitment {commitment.set_id!r} carries reflexes "
-                f"{list(commitment.reflexes)} but that set is "
-                f"{list(known.segments)}",
-                code="correspondence-reflex-mismatch",
-                remediation=(
-                    "The set_id is derived from the reflex tuple, so the two "
-                    "cannot disagree. Copy the row back from "
-                    "summarize_correspondences rather than retyping it. "
-                    "Write a gap as null; '', 'null', 'Ø' and '∅' are all "
-                    "accepted and mean the same."
-                ),
-            )
-        if commitment.support != known.support:
-            raise ToolInputError(
-                f"commitment {commitment.set_id!r} claims support "
-                f"{commitment.support}; this node's forms show "
-                f"{known.support}",
-                code="correspondence-support-mismatch",
-                remediation=(
-                    f"Set 'support' to {known.support}. It is the harness's own "
-                    "count of aligned columns showing this set and is re-derived "
-                    "on every commit, so it is never worth estimating."
-                ),
-            )
+            unknown.append(commitment)
+        elif tuple(commitment.reflexes) != tuple(known.segments):
+            reflex_misses.append((commitment, known))
+        elif commitment.support != known.support:
+            support_misses.append((commitment, known))
+
+    # Ordered by how fundamental the repair is: a stale ID makes the reflex row
+    # and the support meaningless, so it is answered first and alone.
+    if unknown:
+        raise ToolInputError(
+            _plural_reject(
+                [
+                    f"commitment cites correspondence set {item.set_id!r}, "
+                    "which this node's forms do not produce under the committed "
+                    "overlays"
+                    for item in unknown
+                ],
+                len(commitments),
+            ),
+            code="unknown-correspondence-set",
+            remediation=_describe_unknown_set(unknown[0], inventory),
+            subject=offender_digest(item.set_id for item in unknown),
+            offender_count=len(unknown),
+        )
+    if reflex_misses:
+        raise ToolInputError(
+            _plural_reject(
+                [
+                    f"commitment {item.set_id!r} carries reflexes "
+                    f"{list(item.reflexes)} but that set is "
+                    f"{list(known.segments)}"
+                    for item, known in reflex_misses
+                ],
+                len(commitments),
+            ),
+            code="correspondence-reflex-mismatch",
+            subject=offender_digest(item.set_id for item, _ in reflex_misses),
+            offender_count=len(reflex_misses),
+            remediation=(
+                "The set_id is derived from the reflex tuple, so the two "
+                "cannot disagree. Copy the row back from "
+                "summarize_correspondences rather than retyping it — including "
+                "every child that shows nothing, which is a null in its own "
+                "position and never an omitted entry. Write a gap as null; "
+                "'', 'null', 'Ø' and '∅' are all accepted and mean the same."
+                + (
+                    ""
+                    if len(reflex_misses) == 1
+                    else " Fix every row listed above in one edit; they are "
+                    "all of them."
+                )
+            ),
+        )
+    if support_misses:
+        raise ToolInputError(
+            _plural_reject(
+                [
+                    f"commitment {item.set_id!r} claims support "
+                    f"{item.support}; this node's forms show {known.support}"
+                    for item, known in support_misses
+                ],
+                len(commitments),
+            ),
+            code="correspondence-support-mismatch",
+            subject=offender_digest(item.set_id for item, _ in support_misses),
+            offender_count=len(support_misses),
+            remediation=(
+                (
+                    f"Set 'support' to {support_misses[0][1].support}."
+                    if len(support_misses) == 1
+                    else "Set each 'support' to the number named beside it "
+                    "above, and fix every row listed in one edit; they are all "
+                    "of them."
+                )
+                + " It is the harness's own count of aligned columns showing "
+                "this set and is re-derived on every commit, so it is never "
+                "worth estimating."
+            ),
+        )
+
+
+def _plural_reject(problems: Sequence[str], commitment_count: int) -> str:
+    """One rejection naming every commitment that failed the same check.
+
+    The count is stated so the model can tell a row it must fix from a row it
+    must leave alone, which a bare list of failures does not say.
+    """
+    if len(problems) == 1:
+        return problems[0]
+    head = (
+        f"{len(problems)} of {commitment_count} commitments fail this check, "
+        "and every one of them is listed:"
+    )
+    return "\n".join([head, *(f"  - {problem}" for problem in problems)])
 
 
 def _describe_unknown_set(
