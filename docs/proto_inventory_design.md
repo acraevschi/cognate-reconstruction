@@ -1991,6 +1991,12 @@ numbers measure a model, and they are never interchangeable.
 > condition's whole condition-6 column on `synthetic_hard` consists of nodes
 > byte-identical to a daughter. Read §7.20 before quoting any live number in
 > this section.
+>
+> **§7.21 is the sweep §7.19 designed**, and condition 6 has its first real-data
+> reading: **0.000 ± 0.000 at both gold nodes in both arms**. The condition
+> trips because the measure is pinned at its floor, which is a different failure
+> from §7.7's overlapping spreads and is not a verdict on either instruction
+> set.
 
 > **Every figure below was re-derived 2026-08-23** against
 > `tools/oracle_ceiling.py` and `tools/assembly_ceiling.py` as prompt 07
@@ -4114,6 +4120,22 @@ What it buys is three things the arithmetic does not show:
    mean of 61. **That estimate was unverified when this was written** and is the
    first thing the sweep measures.
 
+   > **Measured, and wrong — see §7.21.** A Burmish seed costs **43.8 ± 18.4**
+   > minutes in the after arm and **67.1 ± 62.7** in the before arm, which is
+   > about the same as a Polynesian seed rather than half. Fewer nodes are
+   > cancelled out by more expensive ones: the median turn is 95 s against
+   > Polynesian's 36 s, because prompts reach 115,887 tokens against about
+   > 31,000. This bullet is the one part of §7.19's argument the sweep
+   > falsified, and it is left standing above so the correction has something to
+   > correct.
+
+> **One argument for this family that §7.19 did not know to make**, added
+> 2026-08-30 after §7.20: **Burmish's copy baseline is 0.000 at both gold
+> nodes**, where Polynesian's is 0.587. On Polynesian a live figure near 0.5
+> does not distinguish reconstruction from copying a conservative daughter. Here
+> nothing is hidden. That turned out to be the strongest reason to read the
+> comparison on this family, and it is a better reason than any given below.
+
 And one property that is a genuine asset and is easy to overstate: the seed-level
 scoreability. A `burmish` seed produces at least one scoreable evaluation unless
 *both* gold nodes fall back — under the priors above, 0.97 post-flip against
@@ -4396,6 +4418,157 @@ gate that makes the number look better**, which is exactly the failure mode
 identity check. Dropping copies from a scored set turns a reporting instrument
 into a selection rule, and §7.6(a) already measured what selection does to this
 comparison — the excluded seeds were not the bad ones.
+
+### 7.21 The Burmish paired sweep: the first real-data reading of condition 6
+
+*Run 2026-08-29/30 under the design §7.19 fixed before any seed produced a
+result. `google/gemma-4-26b-a4b` on LM Studio, temperature 1.0, `top_k` 64 /
+`top_p` 0.95 / `repeat_penalty` 1.0, `--provider-seed-base 1000`, beam width 5,
+`--max-turns 24`, `--max-tool-calls 48`, `--max-failed-nodes 3`,
+`--timeout 600`. **Three seeds per arm, not the five §7.19 costed**, on the
+research owner's instruction to spend the remaining budget on the problems the
+sweep exposed rather than on confirming them. Directories
+`runs/sweeps/burmish-{after,before}`, gitignored.*
+
+#### The pairing, verified rather than asserted
+
+The before arm is this tree with `agent/system_prompt.md` and
+`COMMIT_REQUIREMENT_NOTES` reverted to `991bc16^`, run from a worktree — the
+construction §7.19 argued for, because the pre-stage-3 checkout cannot ingest
+`hillburmish` at all. Live check on the artifacts rather than on the plan:
+
+| | before arm | after arm |
+| --- | --- | --- |
+| `instruction_sha256` | **`c4d25af18c87…`** | `b75f7f1e1d04…` |
+| matches the 2026-08-24/25 before runs | **yes, byte-identical** | — |
+| commit shape actually used | `rules`, 0 inventories | `commitments`, 0 rule cascades |
+| payload | the same file, by absolute path | the same file |
+
+Both arms attempted all three nodes in all three seeds, and none was abandoned:
+on a three-node tree `--max-failed-nodes 3` cannot trigger, because the check is
+`>` rather than `>=`. So this family has no "abandoned, no result" failure mode.
+
+#### Condition 6, per gold node, never pooled
+
+| gold node | before, 3 seeds | after, 3 seeds | condition 6 |
+| --- | --- | --- | --- |
+| `burmic` | committed **2/3**, top-1 **0.000 ± 0.000** | committed **2/3**, top-1 **0.000 ± 0.000** | not up; spreads identical |
+| `proto_burmish` | committed **2/3**, top-1 **0.000 ± 0.000** | committed **2/3**, top-1 **0.000 ± 0.000** | not up; spreads identical |
+
+Identity fallbacks scored 0.000 at both nodes in both arms. Four evaluations
+were scored per arm and two excluded per arm.
+
+**Condition 6 trips, and for a reason no previous run could produce: the
+measure is pinned at its floor in both arms.** "Top-1 up with non-overlapping
+spread" cannot be satisfied by two zeros, and it also cannot be *falsified* in
+any informative way. This is not the same failure as §7.7's, where the
+condition tripped on overlapping spreads around different means.
+
+#### Zero is the floor here, and that is a property of the family
+
+`tools/identity_commit_probe.py --baseline` says every one of the seven
+daughters scores **0.000** at both gold nodes. So on this benchmark zero is what
+copying earns, and the live arms earned exactly that. Three measured reasons,
+largest first, and only the third is a defect:
+
+- **The reconstructions are simply wrong.** At `proto_burmish` in
+  `after/seed-00` the residue rate was 0.156, the forms ran full length, and the
+  mean top NED was 0.707 — about seventy percent of each string differs.
+- **The gold is a root and the daughters are compounds.** All 92 Proto-Burmish
+  gold forms carry no `+`; 151 of 392 daughter forms do. The model reconstructed
+  `ŋ j i ⁵⁵ + kʰ j ui ⁵⁵` where the gold reads `ŋ j i ³`.
+- **The proto tone marks are categories the daughters do not carry.** Gold
+  writes `¹ ² ³ ⁴`; daughters write Chao contours, and `¹` and `²` appear in no
+  daughter at all.
+
+Relaxing the reading on the last two moves almost nothing, and moves both arms
+by the same amount — which is why neither was repaired:
+
+| reading, per seed over 54 concepts at `proto_burmish` | before | after |
+| --- | --- | --- |
+| whole form, exact | 0.0 | 0.0 |
+| tone marks removed from both sides | 2.0 | 2.0 |
+| any one morpheme of the candidate, tone removed | 4.0 | 4.5 |
+
+**A benchmark whose copy baseline is zero is worth keeping even when the live
+score is zero**, which is the §7.19 argument surviving contact with the result.
+On Polynesian a live 0.5 does not distinguish reconstruction from copying East
+Futuna. Here nothing is hidden: 0.000 means 0.000.
+
+#### What the sweep did establish, which is not condition 6
+
+§7.20's identity finding replicates on this family, in the same direction, in a
+paired design:
+
+| arm | committed nodes | verbatim copies |
+| --- | --- | --- |
+| `burmish-before` (rule cascade) | 5 | **0** |
+| `burmish-after` (inventory) | 7 | **4** |
+
+Pooled with the banked Polynesian sweeps — the two **real** families only, and
+committed nodes only:
+
+| commit shape | committed nodes | verbatim copies |
+| --- | --- | --- |
+| rule cascade (before) | 18 | **0** |
+| inventory (after) | 50 | **16** |
+
+Fisher's exact, one-sided, gives **p = 0.0034**. Read that as indicative rather
+than as a clean test: the after column pools five sweep directories carrying
+different instruction hashes, and nodes inside a seed are not independent draws.
+**And the commit-rate confound of §7.7 applies here too and is not removed by
+pooling** — the after condition commits more nodes (50 against 18) and the
+copies sit at the shallow nodes the before condition mostly failed, so
+converting a failure into a copy is not the same as converting a reconstruction
+into one. What the number does support is that the two commit shapes differ in
+whether they produce copies at all, on real data, at a size that is unlikely to
+be chance.
+
+The residue side, which the rule shape has no equivalent of:
+
+| seed | `maruic` | `burmic` | `proto_burmish` |
+| --- | --- | --- | --- |
+| after/00 | 30 sets, 0.545, `retain_from_witness` | 10 sets, **0.684**, `drop` | 30 sets, 0.156, `retain_from_witness` |
+| after/01 | 7 sets, **0.786** | **1 set, 0.991**, `retain_from_witness` | 25 sets, 0.447, `drop` |
+| after/02 | 30 sets, 0.525, `drop` | fallback | fallback |
+
+Mean 0.591 over seven inventory commits, against this family's floor of 0.280
+and 0.338 (§7.18). **`after/seed-01` at `burmic` committed one correspondence
+set of support 2, left 338 of 341 columns unaccounted, and returned Rangoon
+verbatim — and the harness accepted it as a completed node and scored it.**
+
+#### Cost, measured, and §7.19's estimate was wrong
+
+| arm | minutes a seed | `maruic` | `burmic` | `proto_burmish` |
+| --- | --- | --- | --- | --- |
+| after | **43.8 ± 18.4**, range 23.5–59.2 | 19.4 | 13.3 | 11.6 |
+| before | **67.1 ± 62.7**, range 25.7–139.3 | — | — | — |
+
+§7.19 predicted "roughly 26 minutes a seed" and "about half the cost" of
+Polynesian's measured 61. **Both halves are wrong.** A Burmish seed costs about
+the same as a Polynesian one, and the reason is that fewer nodes are cancelled
+out by more expensive ones: the median turn here is 95 s against Polynesian's
+36 s, because prompts reach 115,887 tokens against Polynesian's ~31,000. §7.9's
+"a bigger family costs mainly through more nodes" needs the qualifier that a
+family with larger per-node evidence costs through longer turns instead. The
+before arm is again the slow one, as §7.9 predicts for the arm that fails more.
+
+#### What this does not establish
+
+- **Nothing about which instruction set reconstructs better.** Both arms scored
+  zero at both gold nodes. This sweep cannot rank them on accuracy and does not.
+- **Nothing at five seeds.** Three seeds a side was a budget decision, recorded
+  as one. §7.19's table says five a side gives P(≥3 scored in both arms) of 0.64
+  and 0.71 per node; at three it is 0.13 each, and the observed 2/3 commit rate
+  at both nodes in both arms is better than that arithmetic predicted.
+- **Nothing clean about the before arm's instructions.** The manual was reverted
+  and the *tool schemas* were not, so the before arm still saw an inventory
+  argument its manual never describes — and reached for it: its error codes
+  include `commitments[].correspondence=extra_forbidden` five times. That is the
+  §7.19 confound, observed live rather than predicted.
+- **Nothing about the `unaccounted_column_rate` threshold**, which §7.19 already
+  ruled unusable on this family, and which §7.20 shows points the wrong way for
+  detecting a copy in any case.
 
 ---
 
