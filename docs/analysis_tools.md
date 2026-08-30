@@ -654,14 +654,32 @@ carries against any gold alternative. It is a property of the benchmark, so it
 can be read the moment a definition is built, and it belongs beside the oracle
 ceiling in every characterisation.
 
-| gold node | best daughter, copied | its score |
-| --- | --- | --- |
-| `proto_polynesian` | East Futuna | **0.587** |
-| `synthetic_hard:proto` | `d2` | 0.560 |
-| `synthetic_hard:west` | `d2` | 0.880 |
-| `synthetic_hard:east` | `d3` | 0.880 |
-| `burmish:proto_burmish` | every daughter | **0.000** |
-| `burmish:burmic` | every daughter | **0.000** |
+Two bars are reported, and the second is the one that binds. **Copy one whole
+daughter** is the soft bar. **Best attested form per concept, chosen against the
+gold** is the hard bar: for each concept separately, take whichever daughter form
+sits closest to the gold. It is an oracle over the daughters, in the same sense
+`oracle_ceiling.py` is an oracle, and it reconstructs nothing at all.
+
+| gold node | copy one daughter | **best form per concept** | its mean NED |
+| --- | --- | --- | --- |
+| `proto_polynesian` | 0.587 (East Futuna) | **0.826** | 0.045 |
+| `synthetic_hard:proto` | 0.560 | **0.840** | 0.038 |
+| `synthetic_hard:west` | 0.880 | **1.000** | 0.000 |
+| `synthetic_hard:east` | 0.880 | **1.000** | 0.000 |
+| `burmish:proto_burmish` | 0.000 | **0.000** | 0.604 |
+| `burmish:burmic` | 0.000 | **0.000** | 0.559 |
+
+**Read the second column against the ceilings on this page.** On Polynesian,
+selecting among attested words reaches **0.826** while the assembly oracle
+reaches 0.848 and the two branch-cascade oracles reach 0.587 and 0.717. So
+picking the closest existing word beats both branch-cascade ceilings outright
+and comes within 0.022 of the assembly one. **On `synthetic_hard` two of the
+three gold nodes are solved perfectly by selection**, at 1.000 against an
+assembly ceiling of 0.880 — the benchmark can be beaten without reconstructing
+anything, and `east`, which no live seed ever committed, is one of them.
+
+Burmish is the only family here where the hard bar is zero, and its mean NED of
+0.6 says why: no daughter form is ever the gold, or close to it.
 
 **Read the first row against the live table in [benchmarks](benchmarks.md).**
 Every live Polynesian figure recorded in this repository is below 0.587. The

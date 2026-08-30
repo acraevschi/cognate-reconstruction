@@ -4364,6 +4364,40 @@ reconstruction.
   that its *argument*, "top-1 is up at both comparable nodes", is measuring
   copies at one node and mostly copies at the other.
 
+#### The decisions, taken 2026-08-30
+
+**Proposal 9 — accepted, and strengthened by the research owner.** Every live
+figure carries its baseline. And the baseline is not "copy one whole daughter":
+it is **the best attested form per concept, chosen against the gold**, which is
+an oracle over the daughters that reconstructs nothing. `--baseline` reports
+both.
+
+| gold node | copy one daughter | **best form per concept** | mean NED |
+| --- | --- | --- | --- |
+| `proto_polynesian` | 0.587 | **0.826** | 0.045 |
+| `synthetic_hard:proto` | 0.560 | **0.840** | 0.038 |
+| `synthetic_hard:west` | 0.880 | **1.000** | 0.000 |
+| `synthetic_hard:east` | 0.880 | **1.000** | 0.000 |
+| `burmish:proto_burmish` | 0.000 | **0.000** | 0.604 |
+| `burmish:burmic` | 0.000 | **0.000** | 0.559 |
+
+**The stronger bar is worse news than the soft one, and it lands on §1.2 rather
+than on any live figure.** On Polynesian, selection among attested words reaches
+**0.826** against the assembly oracle's 0.848 and the two branch-cascade
+oracles' 0.587 and 0.717. **Picking the closest existing word beats both
+branch-cascade ceilings and comes within 0.022 of the assembly ceiling.** So the
+architecture's entire measured headroom over "choose an attested form" is two
+percentage points, and conditions 1 and 2 are both stated against oracles that
+selection already outruns.
+
+**And `synthetic_hard` is solved by selection at two of its three gold nodes**,
+1.000 against an assembly ceiling of 0.880. One of them is `east`, the node no
+live seed ever committed and whose identity fallback scored 0.880. A synthetic
+family whose answer key is reachable by choosing an existing word is not testing
+reconstruction there, which is a defect in §9.2's generator and not in any run.
+
+Burmish is the only family whose hard bar is zero, at a mean NED near 0.6.
+
 #### How a copy is produced, which is not what it looks like
 
 The obvious mechanism is the residue policy: a node that explains nothing and

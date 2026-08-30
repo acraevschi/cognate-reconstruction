@@ -152,6 +152,75 @@ def probe(payload_path, run_dirs, threshold):
     return rows
 
 
+def _ned(left, right):
+    """Normalized edit distance. Own implementation, per the `tools/` convention."""
+    if not left and not right:
+        return 0.0
+    rows, cols = len(left), len(right)
+    row = list(range(cols + 1))
+    for i in range(1, rows + 1):
+        previous, row[0] = row[0], i
+        for j in range(1, cols + 1):
+            current = row[j]
+            row[j] = min(row[j] + 1, row[j - 1] + 1, previous + (left[i - 1] != right[j - 1]))
+            previous = current
+    return row[cols] / max(rows, cols, 1)
+
+
+def best_form_baseline(payload_path):
+    """The hard bar: the best attested form per concept, chosen against the gold.
+
+    `copy_baseline` asks what one daughter scores if you copy all of it. This
+    asks the stronger question the research owner posed: for each concept
+    separately, take whichever daughter form sits closest to the gold, and score
+    that composite. It is an **oracle over the daughters** — it reads the answer
+    to make its choice, exactly as `oracle_ceiling.py` does — so it bounds what
+    *selection among attested forms* can reach, with no reconstruction at all.
+
+    A live figure below this line was beaten by picking an existing word.
+    """
+    payload = json.loads(open(payload_path, encoding="utf-8").read())
+    leaves = {
+        lexicon["variety_id"]: _concept_forms(lexicon["forms"])
+        for lexicon in payload["lexicons"]
+    }
+    out = []
+    for binding in payload.get("historical_form_bindings", ()):
+        if binding.get("role") != "target":
+            continue
+        gold = _concept_forms(binding.get("forms", ()))
+        exact = 0
+        scored = 0
+        distances = []
+        winners: dict[str, int] = {}
+        for concept, targets in gold.items():
+            best = None
+            for name, forms in leaves.items():
+                for form in forms.get(concept, ()):
+                    distance = min(_ned(list(form), list(target)) for target in targets)
+                    if best is None or distance < best[0]:
+                        best = (distance, name)
+            if best is None:
+                continue
+            scored += 1
+            distances.append(best[0])
+            winners[best[1]] = winners.get(best[1], 0) + 1
+            if best[0] == 0.0:
+                exact += 1
+        out.append(
+            {
+                "node_id": binding["node_id"],
+                "concepts": scored,
+                "top_exact_rate": exact / scored if scored else 0.0,
+                "mean_ned": sum(distances) / len(distances) if distances else 0.0,
+                "chosen_from": dict(
+                    sorted(winners.items(), key=lambda item: -item[1])
+                ),
+            }
+        )
+    return out
+
+
 def copy_baseline(payload_path):
     """What each daughter scores against each gold node, copied verbatim.
 
@@ -180,7 +249,7 @@ def copy_baseline(payload_path):
     return out
 
 
-def render_baseline(baselines):
+def render_baseline(baselines, best_forms):
     lines = [f"measuring: {_bootstrap.loaded_package_path()}"]
     lines.append(
         "copy baseline: what one daughter scores against the gold, unchanged."
@@ -200,8 +269,24 @@ def render_baseline(baselines):
         best = entry["daughters"][0] if entry["daughters"] else None
         if best:
             lines.append(
-                f"    -> a live figure at this node is evidence of "
-                f"reconstruction only above {best['top_exact_rate']:.3f}"
+                f"    -> copying one whole daughter reaches "
+                f"{best['top_exact_rate']:.3f}"
+            )
+        for hard in best_forms:
+            if hard["node_id"] != entry["node_id"]:
+                continue
+            lines.append(
+                f"    -> BEST ATTESTED FORM PER CONCEPT, chosen against the "
+                f"gold: {hard['top_exact_rate']:.3f} exact, "
+                f"mean NED {hard['mean_ned']:.3f}, over {hard['concepts']} concepts"
+            )
+            picks = ", ".join(
+                f"{name} {count}" for name, count in list(hard["chosen_from"].items())[:4]
+            )
+            lines.append(f"       chosen from: {picks}")
+            lines.append(
+                "       This is the bar to beat. It is an oracle over the "
+                "daughters and it reconstructs nothing."
             )
     return "\n".join(lines)
 
@@ -291,18 +376,20 @@ def main() -> None:
     payload_path = _bootstrap.resolve_benchmark(args.benchmark)
     if args.baseline:
         baselines = copy_baseline(payload_path)
+        best_forms = best_form_baseline(payload_path)
         if args.json:
             print(
                 json.dumps(
                     {
                         "measuring": _bootstrap.loaded_package_path(),
                         "copy_baseline": baselines,
+                        "best_form_baseline": best_forms,
                     },
                     indent=2,
                 )
             )
         else:
-            print(render_baseline(baselines))
+            print(render_baseline(baselines, best_forms))
         return
     run_dirs = _seed_dirs(args.run_dirs)
     if not run_dirs:

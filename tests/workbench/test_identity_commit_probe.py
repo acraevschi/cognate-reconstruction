@@ -209,3 +209,58 @@ def test_the_baseline_is_sorted_so_the_bar_is_the_first_row(
         [row["top_exact_rate"] for row in daughters], reverse=True
     )
     assert daughters[0]["top_exact_rate"] == 0.5
+
+
+def test_the_best_form_bar_beats_any_single_daughter(tmp_path: Path) -> None:
+    """The bar the research owner asked for: choose per concept, not per daughter.
+
+    d1 has concept `a` right and `b` wrong; d2 the reverse. Copying either whole
+    daughter scores 0.5. Choosing the closest form per concept scores 1.0, with
+    no reconstruction at all.
+    """
+    payload_path, _ = _write_case(tmp_path)
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    payload["historical_form_bindings"][0]["forms"] = [
+        _form("a", ["p", "a"]),
+        _form("b", ["d", "u"]),
+    ]
+    payload["historical_form_bindings"][1]["forms"] = []
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = _run_baseline(payload_path)
+    copy = {
+        row["variety_id"]: row["top_exact_rate"]
+        for entry in result["copy_baseline"]
+        if entry["node_id"] == "copier"
+        for row in entry["daughters"]
+    }
+    assert copy == {"d1": 0.5, "d2": 0.5}
+
+    hard = {
+        entry["node_id"]: entry for entry in result["best_form_baseline"]
+    }["copier"]
+    assert hard["top_exact_rate"] == 1.0
+    assert hard["mean_ned"] == 0.0
+    assert hard["chosen_from"] == {"d1": 1, "d2": 1}
+
+
+def test_the_best_form_bar_reports_distance_when_nothing_matches(
+    tmp_path: Path,
+) -> None:
+    """Burmish is this case: no daughter form is ever the gold, so the bar is 0."""
+    payload_path, _ = _write_case(tmp_path)
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    payload["historical_form_bindings"][0]["forms"] = [
+        _form("a", ["ᵐb", "a"]),
+        _form("b", ["ⁿd", "u"]),
+    ]
+    payload["historical_form_bindings"][1]["forms"] = []
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    hard = {
+        entry["node_id"]: entry
+        for entry in _run_baseline(payload_path)["best_form_baseline"]
+    }["copier"]
+    assert hard["top_exact_rate"] == 0.0
+    # One segment of two differs in the closest daughter form, so NED is 0.5.
+    assert hard["mean_ned"] == 0.5
