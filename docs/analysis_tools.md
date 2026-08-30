@@ -69,6 +69,22 @@ The graded row exists because the exact counts move in steps of 1/46. A change t
 every concept in the same match/miss bucket while making the misses worse would not move
 them at all, and normalized edit distance would.
 
+**`--selection-overlap` adds the block condition 11 reads**, and no ceiling on this page
+should be quoted without it:
+
+```
+against the selection bar (§7.20; nothing here is a gate):
+  selection bar   38/46   82.6%   concepts some daughter already attests exactly
+  inside it       26/27          of this oracle's hits, a daughter had the form already
+  outside it       1/27          reached with no daughter attesting it: 2098
+```
+
+The bar is recomputed here from the payload rather than imported from
+`identity_commit_probe.py`, per the `tools/` convention: the bar an oracle is checked against
+must not come from the script that publishes the bar. **The last row is the only part of a
+ceiling that is evidence of reconstruction rather than of selection**, and it is small on this
+family — see the table under "the bar beside every ceiling" below.
+
 **The selection gap is the headline.** The deterministic layer holds the correct proto-form
 far more often than it reports one, which means accuracy is being lost after the model has
 finished, in how a parent is chosen from the child evidence. Watch this number across
@@ -680,6 +696,43 @@ anything, and `east`, which no live seed ever committed, is one of them.
 
 Burmish is the only family here where the hard bar is zero, and its mean NED of
 0.6 says why: no daughter form is ever the gold, or close to it.
+
+### The bar beside every ceiling
+
+Condition 11 (`docs/proto_inventory_design.md` §7.1) reads a ceiling and the bar
+together, over sets rather than totals, because on Polynesian they are within one
+concept of each other and a comparison of the totals says nothing. Measured
+2026-08-30 with `oracle_ceiling.py --selection-overlap`:
+
+| gold node | selection bar | assembly ceiling | of the ceiling's hits, outside the bar |
+| --- | --- | --- | --- |
+| `proto_polynesian` | 38/46 (0.826) | 39/46 (0.848) | **3** — `646`, `1439`, `2098` |
+| `synthetic_hard:proto` | 21/25 (0.840) | 25/25 (1.000) | 4 |
+| `synthetic_hard:east` | **25/25 (1.000)** | 22/25 (0.880) | **0** |
+| `synthetic_hard:west` | **25/25 (1.000)** | 25/25 (1.000) | **0** |
+| `burmish:proto_burmish` | **0/54 (0.000)** | 42/54 (0.778) | **42** — all of them |
+| `burmish:burmic` | **0/37 (0.000)** | 25/37 (0.676) | **25** — all of them |
+
+The two branch-cascade oracles on Polynesian read the same way: `context_free`
+reaches 27/46 with **1** outside the bar, `contextual` 33/46 with **2**.
+
+Three readings, in the order they matter:
+
+- **`synthetic_hard` at `east` and `west` cannot pose the question.** Every gold
+  form is attested verbatim by some daughter, so the bar is 25/25 and no figure
+  at those nodes — oracle or live — separates reconstruction from selection.
+  Stronger than "solved by selection": there is nothing there to solve.
+- **Polynesian's assembly ceiling is 36 parts selection and 3 parts
+  reconstruction.** The headline 0.848 is real and it is almost entirely made of
+  forms that were already in the data.
+- **Burmish is the only family whose headline and whose evidence are the same
+  number.** Nothing is reachable by copying, so every hit is a form no daughter
+  attests. That is why it is kept despite scoring 0.000 live.
+
+The bar in this table and the `best form per concept` column above are computed by
+two independent implementations — `selection_reachable` in `oracle_ceiling.py`
+and `best_form_baseline` in `identity_commit_probe.py` — and agree on all six
+rows. That agreement is the check, not a redundancy to remove.
 
 **Read the first row against the live table in [benchmarks](benchmarks.md).**
 Every live Polynesian figure recorded in this repository is below 0.587. The

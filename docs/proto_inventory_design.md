@@ -2020,6 +2020,7 @@ measurement of the unbuilt thing. The "stop" column is the part that binds.
 | 5 | `score-synthetic` on `synthetic_hard`, 5 seeds | rule precision not lower and `misdirected_rule_count` not higher than the same seeds under the rule commit shape | either worsens — **right forms via worse-attributed changes is a worse result, not a better one** |
 | 6 | `run-benchmark --seeds 5`, live, both benchmarks | top-1 up with non-overlapping spread | spreads overlap — one seed is not evidence and neither is five that disagree |
 | 7 | suite | green at every stage | any stage leaves it red |
+| 11 | `oracle_ceiling.py --selection-overlap`, and the same reading applied to any live figure | **at least one** concept reached that no daughter attests, and the count of them reported beside the headline | **zero concepts outside the selection bar** — every form the system got right was already sitting in a daughter's lexicon, so the figure is evidence of selection and says nothing about reconstruction |
 
 Condition 3 is the mechanism check and is the one that cannot be satisfied by
 accident. Conditions 1 and 2 together are the shape check: **top-1 up and
@@ -2033,6 +2034,58 @@ fewer correct answers than the old one?* — is unchanged, and the honest form o
 it is "not below 40", with expect and stop adjacent because "reachability not
 down" is exactly a floor. It is not a demanding condition and was never meant to
 be; condition 1 is where the demand lives.
+
+**Condition 11 is adopted, and not in the form §7.22 item 7 proposed it.** The
+proposal was a threshold: *a figure is evidence of reconstruction only above the
+selection bar, which is 38/46 on Polynesian*. Measuring it showed that a
+threshold on the total does not do the job it was written for. The assembly
+oracle scores **39/46 on Polynesian and clears 38/46** — and 36 of those 39
+concepts are ones a daughter attests verbatim. A count-based condition would
+have called that figure evidence of reconstruction, when it is three concepts of
+reconstruction carried on thirty-six of selection.
+
+So the condition is stated over **sets, not counts**: intersect the concepts the
+system got exactly right with the concepts some daughter already attests
+exactly, and report what is left. On the three families this repository ships:
+
+| gold node | selection bar | assembly oracle | of its hits, outside the bar |
+| --- | --- | --- | --- |
+| `polynesian` / `proto_polynesian` | 38/46 (0.826) | 39/46 (0.848) | **3** — `646`, `1439`, `2098` |
+| `burmish` / `proto_burmish` | **0/54 (0.000)** | 42/54 (0.778) | **42**, all of them |
+| `burmish` / `burmic` | **0/37 (0.000)** | 25/37 (0.676) | **25**, all of them |
+| `synthetic_hard` / `proto` | 21/25 (0.840) | 25/25 (1.000) | 4 |
+| `synthetic_hard` / `east` | **25/25 (1.000)** | 22/25 (0.880) | **0** |
+| `synthetic_hard` / `west` | **25/25 (1.000)** | 25/25 (1.000) | **0** |
+
+Read the bottom two rows first, because they are what the condition is for.
+At `east` and `west` on `synthetic_hard` **every gold form is attested verbatim
+by some daughter**, so the bar is 25/25 and no score at those nodes — oracle or
+live, now or ever — can be evidence of reconstruction. §7.20 said `synthetic_hard`
+"is solved by selection at two of its three gold nodes"; the set reading says
+something stronger, that those two nodes cannot pose the question at all.
+
+Burmish is the opposite pole and the reason the condition is worth having rather
+than merely true. Its bar is **zero at both gold nodes** — not one of the 54 and
+37 gold forms is attested by any daughter — so every one of the assembly
+oracle's 42 and 25 hits is a form no copy could produce. Burmish is the only
+family here where the headline and the evidence-of-reconstruction number are the
+same number.
+
+**Conditions 1 and 2 are not raised.** Their thresholds stay where they are, and
+that is deliberate: moving them would be choosing a number to pass, which is the
+failure §7.22 item 7 named. What changes is that the bar is now printed beside
+them. Condition 1's stop is top-1 below 33/46 on Polynesian and the selection bar
+is 38/46, so **a system that only picks the closest existing word still passes
+condition 1** — that remains true and is now stated rather than implied.
+Condition 11 is what a figure has to answer to on top of them, and it is
+answerable at any threshold, including zero.
+
+**Where condition 11 cannot be evaluated, it says so rather than passing.** It
+needs the gold binding and the daughter lexicons, so it is computable for every
+oracle figure and every live figure this repository records. It is not a
+mechanism check and cannot be satisfied by accident in the direction that
+matters: a change that adds only concepts a daughter already had moves the
+headline and leaves this number flat.
 
 **Condition 4's 0.080 is kept deliberately.** It was never derived from the
 stale instrument: it was set as a target *below* the context-sensitive oracle's
@@ -2096,6 +2149,17 @@ patch:
 - The `synthetic_hard` oracle figure as currently published (§0.5).
 - Beam-exact under the new architecture compared against beam-exact under the
   old one without saying that the two beams contain different kinds of thing.
+- **Any accuracy on `synthetic_hard` at `east` or `west`.** The selection bar is
+  25/25 at both — every gold form is attested verbatim by some daughter — so a
+  figure there cannot separate reconstruction from selection at any value,
+  including 1.000. Measured 2026-08-30; §7.1 condition 11.
+- **Any figure quoted without the count of concepts it reached outside the
+  selection bar.** On Polynesian the assembly ceiling of 39/46 is 36 concepts a
+  daughter already attests and 3 it does not, and the totals do not show that.
+  The context-free oracle's 27/46 is 26 and 1 — so it is not, as its equality
+  with East Futuna's 27/46 suggested, measuring selection and *nothing* else;
+  it is measuring selection and one concept. Neither reading is available from
+  the headline.
 
 ### 7.4 Which concepts condition 3 names, and why those five
 
@@ -4719,11 +4783,47 @@ clears, which means neither can distinguish reconstruction from selection.
 the same number. Whether they are the same 27 concepts was not measured, and the
 claim here rests only on the totals.*
 
-The repair is not to raise the thresholds, which would be choosing a number to
-pass. It is to state a condition against **the selection bar** — a live or
-oracle figure is evidence of reconstruction only above 38/46 on this family —
-and to publish that bar with every ceiling on the page. Proposed as **condition
-11**, beside the originals, and not adopted here.
+**Measured 2026-08-30. They are not the same 27.** The two sets share 20
+concepts and differ by 7 in each direction, so the equality of the totals was a
+coincidence and carried no information. `tools/oracle_ceiling.py
+--selection-overlap` computes this now, and
+`tests/workbench/test_oracle_ceiling_regression.py` pins both sets.
+
+**And the answer to the question underneath it is worse than the question.**
+The context-free oracle is not measuring East Futuna — but **26 of its 27 hits
+are concepts that some daughter attests exactly.** It reaches exactly one form
+(`2098`) that no copy could reach. The same reading applied to the other two
+oracles:
+
+| oracle | top-1 | of those, inside the selection bar | outside it |
+| --- | --- | --- | --- |
+| `context_free` | 27/46 | 26 | 1 — `2098` |
+| `contextual` | 33/46 | 31 | 2 — `2098`, `646` |
+| `assembly` | 39/46 | 36 | **3** — `646`, `1439`, `2098` |
+
+The selection bar on this family is 38/46. So the architecture that is now
+permanent, handed a flawless hypothesis manager reading the answer key, reaches
+**three** Polynesian concepts that no daughter attests. Everything else in the
+0.848 ceiling is a form that was already in the data.
+
+That result changes the shape of the repair rather than confirming it. The
+proposal was a threshold — *evidence of reconstruction only above 38/46* — and
+the assembly oracle's 39/46 clears it while being 36 parts selection. **A
+threshold on the total cannot separate the two, because the bar and the ceiling
+are within one concept of each other on this family.** The condition has to be
+stated over sets: intersect the hits with the bar and report what is left.
+
+**Adopted in that form as condition 11**, in §7.1, where the table and the
+per-family numbers now live. Conditions 1 and 2 keep their thresholds — raising
+them would be choosing a number to pass — and the bar is printed beside them
+instead. `docs/analysis_tools.md` carries the bar with every ceiling.
+
+This also resolves what §7.3 should say about the context-free oracle, and it is
+not that the oracle "measures selection and nothing else": it measures selection
+and one concept. The distinction matters because the same reading applied to
+Burmish returns 42 of 42 and 25 of 25 outside the bar — the instrument does
+separate the two things, and it is Polynesian that has almost nothing to
+separate.
 
 ---
 
