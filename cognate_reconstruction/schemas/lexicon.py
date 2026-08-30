@@ -38,6 +38,15 @@ class FormProvenance(WorkbenchModel):
     tree_glottocode: NonEmptyStr | None = None
     source_row: int | None = Field(default=None, ge=1)
     segment_source: NonEmptyStr | None = None
+    source_segments: tuple[NonEmptyStr, ...] = ()
+    """The tokens as the source wrote them, when the adapter rewrote any.
+
+    Empty on every form the adapter passed through unchanged, which is most of
+    them. It is populated only where a `pylexibank` grapheme/phoneme token such
+    as `ṅ/ŋ` was reduced to its phoneme, so the original spelling stays
+    recoverable and the rewrite stays auditable. Defaulted, so payloads written
+    before the reduction still load.
+    """
     source_reference: NonEmptyStr | None = None
     compatibility_rule_ids: tuple[NonEmptyStr, ...] = ()
 

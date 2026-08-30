@@ -620,6 +620,83 @@ and only the boundary between the first two moves.
 `docs/proto_inventory_design.md` §7.4 reads this table together with the assembly ceiling,
 which is what turns it into the design's mechanism check.
 
+## `identity_commit_probe.py` — how much of a live number is copying?
+
+The one instrument on this page that reads a **run** rather than a payload, and
+the one that says whether a live figure means anything.
+
+`benchmarks/sweep.py` drops an evaluation whose node fell back, because "a
+fallback node's beam is the harness's identity commit, so scoring it measures
+the fallback". Nothing asked the same of a node that committed **successfully**
+and still handed back a lexicon byte-identical to one of its children. That
+happens, and the scored set carries it.
+
+```bash
+python tools/identity_commit_probe.py burmish runs/sweeps/burmish-after
+python tools/identity_commit_probe.py polynesian runs/sweeps/polynesian-after-toolstep
+```
+
+Leaf copies and node copies are counted apart. A **leaf copy** says the
+comparative step bought nothing a copy would not have. A **node copy** is a
+parent reproducing its own reconstructed child, which is `docs/proto_inventory_design.md`
+condition 6's question answered in the least interesting way. `--threshold`
+lowers the bar from verbatim; `--json` gives the rows.
+
+### `--baseline` — the bar, without running anything
+
+```bash
+python tools/identity_commit_probe.py polynesian --baseline
+```
+
+What each daughter scores against each gold node, copied unchanged, read the
+way `HistoricalTargetEvaluation` reads a reconstruction: any form the daughter
+carries against any gold alternative. It is a property of the benchmark, so it
+can be read the moment a definition is built, and it belongs beside the oracle
+ceiling in every characterisation.
+
+Two bars are reported, and the second is the one that binds. **Copy one whole
+daughter** is the soft bar. **Best attested form per concept, chosen against the
+gold** is the hard bar: for each concept separately, take whichever daughter form
+sits closest to the gold. It is an oracle over the daughters, in the same sense
+`oracle_ceiling.py` is an oracle, and it reconstructs nothing at all.
+
+| gold node | copy one daughter | **best form per concept** | its mean NED |
+| --- | --- | --- | --- |
+| `proto_polynesian` | 0.587 (East Futuna) | **0.826** | 0.045 |
+| `synthetic_hard:proto` | 0.560 | **0.840** | 0.038 |
+| `synthetic_hard:west` | 0.880 | **1.000** | 0.000 |
+| `synthetic_hard:east` | 0.880 | **1.000** | 0.000 |
+| `burmish:proto_burmish` | 0.000 | **0.000** | 0.604 |
+| `burmish:burmic` | 0.000 | **0.000** | 0.559 |
+
+**Read the second column against the ceilings on this page.** On Polynesian,
+selecting among attested words reaches **0.826** while the assembly oracle
+reaches 0.848 and the two branch-cascade oracles reach 0.587 and 0.717. So
+picking the closest existing word beats both branch-cascade ceilings outright
+and comes within 0.022 of the assembly one. **On `synthetic_hard` two of the
+three gold nodes are solved perfectly by selection**, at 1.000 against an
+assembly ceiling of 0.880 — the benchmark can be beaten without reconstructing
+anything, and `east`, which no live seed ever committed, is one of them.
+
+Burmish is the only family here where the hard bar is zero, and its mean NED of
+0.6 says why: no daughter form is ever the gold, or close to it.
+
+**Read the first row against the live table in [benchmarks](benchmarks.md).**
+Every live Polynesian figure recorded in this repository is below 0.587. The
+last two rows are why Burmish is worth keeping despite scoring zero live: a copy
+earns nothing there, so a non-zero figure is reconstruction rather than
+resemblance.
+
+The two modes are independent computations — the baseline never reads a run, the
+probe never reads the baseline — and on the banked sweeps every identity commit
+scored exactly its daughter's baseline, to three decimals. That agreement is the
+check that both are reading the same thing. §7.20 of the design document has the
+table and what it does to §7.7's condition-6 reading.
+
+**It reports and must never filter.** Dropping copies from a scored set turns a
+reporting instrument into a selection rule, and §7.6(a) already measured what
+selection does to this comparison.
+
 ## When to re-run
 
 - **Any change to the beam, the scorer, or rule application** → `oracle_ceiling.py`, both
@@ -647,6 +724,11 @@ which is what turns it into the design's mechanism check.
 - **Any change to the DSL** → `branch_recoverability.py` and `assembly_ceiling.py`, since
   expressiveness changes move the reachability split directly. State `--method` and
   `--oracle` beside the number; the same benchmark gives 37, 39 or 40 depending on them.
+- **Any new benchmark definition, or any change to one** → `identity_commit_probe.py
+  --baseline`, before any live number is quoted from it. A benchmark whose copy baseline is
+  unknown cannot say whether a live figure is reconstruction or resemblance.
+- **Any live sweep** → `identity_commit_probe.py` over its seed directories, and publish the
+  copy count beside the accuracy. Never filter on it.
 - **Any change to benchmark selection or preparation** → rebuild both definitions with
   `build-benchmark` and check the concept counts here still hold (46 for Polynesian, 900 for
   Romance). A silent change in selection would move every baseline on this page at once.

@@ -8,7 +8,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
-from cognate_reconstruction.alignment.protocol import AlignmentProvider
+from cognate_reconstruction.alignment.protocol import (
+    AlignmentFailure,
+    AlignmentProvider,
+)
 from cognate_reconstruction.rules.contrast import cascade_contrast_reductions
 from cognate_reconstruction.rules.engine import RuleEngine
 from cognate_reconstruction.schemas.alignment import (
@@ -313,8 +316,12 @@ class RuleBasedReconstructor:
         self,
         child_ids: tuple[str, ...],
         evidence_context: NodeReconstructionContext | None,
-    ) -> tuple[CorrespondenceMap, ...]:
+    ) -> tuple[tuple[CorrespondenceMap, ...], str | None]:
         """Record what this node's children corresponded in, pair by pair.
+
+        Returns the maps and, when the aligner refused, the reason it gave. The
+        reason is `None` on every clean path, including the two that return no
+        maps because there was nothing to align.
 
         Diagnostics, not scoring: no count here reaches a rule, a candidate, or
         the beam. `ReconstructionStep.correspondence_maps` was declared and
@@ -337,7 +344,7 @@ class RuleBasedReconstructor:
         evidence the node was reasoning about.
         """
         if evidence_context is None:
-            return ()
+            return (), None
         lexicons_by_id = {
             item.node_id: item.lexicon for item in evidence_context.available_nodes
         }
@@ -347,11 +354,19 @@ class RuleBasedReconstructor:
             if child_id in lexicons_by_id
         ]
         if len(lexicons) < 2:
-            return ()
-        return self.aligner.align_multiple(
-            lexicons,
-            correspondence_detail=CorrespondenceDetail.SUMMARY,
-        ).pairwise_correspondences
+            return (), None
+        try:
+            maps = self.aligner.align_multiple(
+                lexicons,
+                correspondence_detail=CorrespondenceDetail.SUMMARY,
+            ).pairwise_correspondences
+        except AlignmentFailure as error:
+            # A report, not a gate. Returning `()` is what the branch above
+            # already does when there is nothing to align, and it is what keeps
+            # a refused alignment from ending the process. The reason travels
+            # into the step's diagnostics so the degradation stays visible.
+            return (), str(error)
+        return maps, None
 
     def reconstruct(
         self,
@@ -656,13 +671,16 @@ class RuleBasedReconstructor:
             concepts_available=len(concept_ids),
             tie_broken_concept_count=tie_broken_concepts,
         )
+        maps, map_failure = self._correspondence_maps(child_ids, evidence_context)
+        if map_failure is not None:
+            diagnostics = diagnostics.model_copy(
+                update={"correspondence_map_failure": map_failure}
+            )
         return ReconstructionStep(
             parent_node_id=parent_node_id,
             child_node_ids=child_ids,
             input_beams=child_beams,
-            correspondence_maps=self._correspondence_maps(
-                child_ids, evidence_context
-            ),
+            correspondence_maps=maps,
             output_beam=output_beam,
             rule_reports=tuple(all_reports),
             anomaly_reports=tuple(anomalies),

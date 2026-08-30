@@ -1182,6 +1182,26 @@ class AgentOrchestrator:
             max_failed_nodes=max_failed_nodes,
         )
 
+    def emit_correspondence_map_degraded(
+        self,
+        node_id: str,
+        *,
+        reason: str,
+    ) -> None:
+        """Record that a node kept its beam but lost its correspondence report.
+
+        `correspondence_maps` is a report and nothing scores it, so the node is
+        not a failure and does not appear in `node_failures`. Without this event
+        a degraded run would be indistinguishable from a clean one in the
+        timeline, which is the swallow this guard was written to avoid.
+        """
+        self._emit(
+            AgentEventKind.CORRESPONDENCE_MAP_DEGRADED,
+            node_id,
+            "the aligner refused a group; this node has no correspondence maps",
+            reason=reason,
+        )
+
     def finalize(
         self,
         run_result: AgentRunResult,

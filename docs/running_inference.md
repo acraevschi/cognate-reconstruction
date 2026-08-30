@@ -87,6 +87,27 @@ never splits `Form`. Variety, cognate-set, and fallback parameter IDs are
 dataset scoped. Source Glottocode and tree Glottocode are separate provenance
 fields.
 
+#### Grapheme/phoneme tokens
+
+`pylexibank` writes one segment as `grapheme/phoneme` when an orthography
+profile mapped a written character to a different sound. `ṅ/ŋ` is one token,
+not two. The adapter reduces it to the phoneme, keeps the original tuple in
+`provenance.source_segments`, and records
+`lexibank-grapheme-phoneme-split` in `provenance.compatibility_rule_ids`.
+
+A token with two separators, or with nothing after the separator, stops the
+load and names the form. Neither shape occurs in the 174 local datasets. A
+token with an empty *grapheme*, such as `/h`, reads as its phoneme, and 16 of
+those occur across four datasets.
+
+The reduction is not a choice between two readings. The right side is the value
+the profile mapped to, and it is what the daughter says. On `hillburmish` the
+left side is not a phoneme at all: over all 4032 rows, `ṅ`, `ḥ`, `ñ`, `ch`,
+`o₁`, `o₂`, `ṅh` and `ñh` never occur as a segment of their own, while `ŋ`
+occurs 930 times. `meloniromance` is the other shape, writing `ɪ/j`, `u/w` and
+`w/u` — both sides sounds, both directions attested — and there the right side
+is the realized form, which is the observation being compared.
+
 ### Cognate memberships
 
 `cognate_memberships` preserves every FormTable or CognateTable judgement.
@@ -105,6 +126,40 @@ non-ontology custom column whose builders index boundary-delimited morphemes;
 that convention is normalized to exact segment positions and tagged with the
 `lexibank-custom-morpheme-slice` compatibility rule. Malformed, overlapping,
 or out-of-range slices are rejected.
+#### `Partial_Cognacy`, where a whole family keeps its cognacy
+
+Some Lexibank datasets code cognacy one morpheme at a time in a FormTable
+column named `Partial_Cognacy`. It is not a CLDF term and carries no
+`propertyUrl`, so a loader that looks for `Cognateset_ID` or a `CognateTable`
+sees no cognate evidence at all. On `hillburmish` that is the whole signal:
+across all 4032 rows, `Cognacy` is empty in 4032 and `Partial_Cognacy` is
+populated in 4032. 1679 rows (42%) carry more than one ID, and exactly those
+1679 carry a `+` boundary.
+
+The value is whitespace-separated set IDs, one per morpheme, in the order the
+morphemes appear. The adapter matches them to the boundary-delimited morphemes
+position by position and writes one `segment_slice` membership per morpheme,
+with the same `lexibank-custom-morpheme-slice` tag and the same one-based
+inclusive slice in provenance that a `CognateTable` slice gets.
+
+Two rules govern it:
+
+- **A row whose ID count and morpheme count disagree stops the load, naming the
+  form.** Zipping the shorter of the two would attach a set ID to a morpheme
+  nobody said it belonged to. Measured on `hillburmish`, all 4032 rows agree.
+- **The column is read only when the dataset publishes neither a
+  `CognateTable` nor a FormTable `Cognateset_ID`.** One dataset, one reading.
+  The columns number different things: of the twelve local datasets carrying
+  `Partial_Cognacy`, four also populate `Cognacy`, and on `crossandean` the two
+  disagree on 7511 of 7518 rows. `Cognacy` itself stays unread, as it always
+  has been.
+
+A form read this way has no `cognate_set_id` shorthand, because a per-morpheme
+analysis is not one unambiguous whole-form set. Alignment is unaffected:
+`_alignment_inputs` already fans a form out into one input per membership, so
+each morpheme aligns against the morpheme that shares its cognate ID, whatever
+position either sits in.
+
 When more than one unsliced cognate set is supplied, all are alternatives; the
 adapter does not select or weight one. `get_alignments` exposes membership IDs,
 scope, interpretation, and segment positions and aligns only the selected

@@ -34,23 +34,27 @@ definition is the thing that lives in the repository.
 `--definition <path>` builds a definition that is not checked in, in which case
 `--output` is required.
 
-Two definitions ship:
+Three definitions ship:
 
 | Definition | Dataset | Gold | Daughters | Concepts selected |
 | --- | --- | --- | --- | --- |
 | `polynesian` | `data/lexibank/walworthpolynesian` | Proto-Polynesian (**a published reconstruction**) | 10 | 46 |
 | `romance` | `data/lexibank/meloniromance` | Latin (**attested**) | 5 | 900 |
+| `burmish` | `data/lexibank/hillburmish` | Proto-Burmish (**reconstructed**) *and* Old Burmese (**attested**) — two gold nodes | 7 | 54 |
 
 The Romance definition is the Ab Antiquo dataset (Meloni, Ravfogel & Goldberg
 2021), so published neural baselines exist to compare against. Its 5,419 Latin
 forms shrink to 900 concepts under the fully-cognate selection, because Romanian
 attests only 1,506 forms and the selection requires every daughter.
 
-Further candidates, not yet defined, all present in the local corpus:
+The Burmish definition is the one with two gold nodes; see *Burmish: the family
+with two gold nodes* below for what it is, and §7.19 of
+[the design document](proto_inventory_design.md) for the argument that the live
+before/after comparison should be read there rather than on `polynesian` or
+`romance`.
 
-- `hillburmish` — 9 varieties including `ProtoBurmish`, plus Old Burmese, so it
-  would give **two gold nodes in one tree** and exercise the per-node accuracy
-  curve on real data rather than only on a synthetic family;
+Further candidates, not yet defined, both present in the local corpus:
+
 - `mcd` — 60 varieties, several proto nodes at different depths
   (`protochuukic`, `protooceanic`, `protomalayopolynesian`);
 - `acd` — 1,064 varieties, Proto-Austronesian, by far the largest and the one
@@ -339,7 +343,170 @@ without its sampling configuration is a number whose reading is not stated —
 the same objection §7.3 of `docs/proto_inventory_design.md` makes to a
 correspondence count quoted without its flags.
 
+## Burmish: the family with two gold nodes
+
+`benchmarks/burmish.json` is the second published family, and its point is
+condition 6 — *does a reconstructed child make a usable parent?* Answering that
+needs two gold nodes, one above the other, and Polynesian has one. Of the nine
+`hillburmish` varieties, only `ProtoBurmish` is a reconstruction; Old Burmese is
+an *attested* older stage, and it is the only other candidate.
+
+Seven daughters, 54 concepts, two gold nodes:
+
+| gold node | source variety | evidence | gold forms | assembly ceiling, top-1 | mean top NED |
+| --- | --- | --- | --- | --- | --- |
+| `proto_burmish` | `hillburmish:ProtoBurmish` | reconstructed | 92 | **42/54 — 77.8%** | 0.070 |
+| `burmic` | `hillburmish:OldBurmese` | attested | 38 | **25/37 — 67.6%** | 0.090 |
+
+Both measured with `tools/oracle_ceiling.py --oracle assembly --gold-node …` at
+beam width 5. They bound the architecture, not the model, and they are not
+comparable to a branch-cascade oracle by subtraction — §7.3 of the design
+document says why. `burmic` scores over 37 concepts rather than 54 because Old
+Burmese does not attest all of them.
+
+**The Old Burmese binding is temporary and approved as such.** Old Burmese is
+the ancestor of Burmese; `burmic` under Nishi (1999) also contains Achang and
+Xiandao, of which it is not the ancestor. Scoring it there is a convenience, in
+the same way `benchmarks/romance.json` scores classical Latin against daughters
+descended from Vulgar Latin. `provenance.note` records it in that shape.
+
+**Removing it is one deletion**, and that is a property of the file rather than
+a hope. Delete the second entry of `targets`; the concept selection does not
+move, because `concept_selection_source_variety_id` names ProtoBurmish
+explicitly instead of following `targets[0]`, and `burmic` stays a traversed
+node either way. `test_dropping_the_temporary_binding_changes_nothing_else`
+pins it.
+
+**Two alternatives were rejected and are recorded so they are not
+re-discovered.** Old Burmese as a sister of Rangoon is historically false. Old
+Burmese as an anchor costs no linguistic claim and is genuinely supported, but
+an anchor is never scored, so it gives no second gold node and no answer to
+condition 6.
+
+**Why the node is `burmic` and not `SouthernBurmish`.** Rangoon is the only
+Burmese variety in the dataset, so any node written above Rangoon alone has one
+child: `normalize_tree` removes it silently and `postorder_groups` refuses it if
+it survives. Lama's (2012) Northern/Southern split puts Rangoon alone under
+Southern Burmish and is therefore unusable here. Nishi's (1999) Burmic/Maruic
+split, on the treatment of Proto-Burmish pre-glottalized initials, is the
+division the Burmish reconstruction literature works in and puts Achang and
+Xiandao with Burmese, giving a node with three children. Both subgroups are left
+as polytomies; each refinement added would be another traversal node and another
+session's cost, and neither is needed for a node this benchmark scores.
+
+**Live figures, three seeds per arm, `google/gemma-4-26b-a4b`** — the paired
+sweep of §7.21, and the first real-data reading condition 6 has ever had:
+
+| gold node | before (rule cascade) | after (inventory) | copy baseline |
+| --- | --- | --- | --- |
+| `proto_burmish` | committed 2/3, top-1 **0.000 ± 0.000** | committed 2/3, top-1 **0.000 ± 0.000** | **0.000** |
+| `burmic` | committed 2/3, top-1 **0.000 ± 0.000** | committed 2/3, top-1 **0.000 ± 0.000** | **0.000** |
+
+Zero is the floor of this benchmark, not a collapse: every daughter copied
+unchanged also scores 0.000, because the gold writes tone as a category and
+writes pre-glottalized initials no daughter preserves. **That is the reason to
+keep the family despite the result.** A live 0.5 on Polynesian does not
+distinguish reconstruction from copying East Futuna; here nothing is hidden.
+Relaxing the reading — tone marks dropped from both sides, or any single
+morpheme of the candidate accepted — moves both arms by the same two to four
+concepts of 54, which is why neither relaxation was adopted. A seed costs
+43.8 ± 18.4 minutes in the after arm and 67.1 ± 62.7 in the before arm.
+
+`hillburmish` is also the first benchmark whose cognacy is coded one morpheme at
+a time — see `Partial_Cognacy` in [running inference](running_inference.md).
+That makes the morpheme reading its evidence view by default, and §7.18 of
+[the design document](proto_inventory_design.md) measures what that costs, the
+family's `unaccounted_column_rate` floor included. **Read that floor before
+quoting any rate from this family**: it is 0.280 and 0.338 at the two
+leaf-child nodes, which is at or above §7.2's own warning threshold.
+
+### One defect this family found, which was not this family's
+
+Building the ceiling crashed, and not because of `hillburmish`. `pylexibank`
+spells a grapheme/phoneme pair with a literal slash inside a single segment, as
+in `ṅ/ŋ`, and the rule DSL reads `/` as its environment separator. So
+`derive_branch_rules` raised a bare `ValueError` while rendering a derived rule,
+which ended the node and, through `_fallback_step`, the run.
+
+Measured over the 174 local CLDF datasets, **104 carry at least one segment
+holding a DSL-reserved character**. `meloniromance` is one of them, at 2146
+occurrences — so `benchmarks/romance.json` could not be assembled either, and
+had not been able to since the assembler existed. It went unnoticed because the
+only families ever run under it, `walworthpolynesian` and the synthetic ones,
+carry none.
+
+The fix is the same shape as the three advisories beside it: the child is
+recorded in `unspellable_reflex_child_ids` and the derived rule is dropped.
+Nothing linguistic is decided, and the parent form is unaffected because it is
+assembled from columns rather than from these rules. Romance now has its first
+assembly ceiling: **90/900 — 10.0%**, mean top NED 0.228.
+
+### Reading the phoneme, and what it did and did not move
+
+The advisory kept the harness alive. It did not make the gold reachable. Old
+Burmese wrote 142 of its 219 forms with tokens like `ṅ/ŋ`, and **24 of the 37
+`burmic` gold concepts had no alternative any daughter could produce**. On
+`romance` the same was true of **182 of 900**. The adapter now reduces such a
+token to its phoneme — see `Grapheme/phoneme tokens` in
+[running inference](running_inference.md) for the rule and for why it is a
+reading rather than a choice.
+
+| gold node | concepts with gold | unmatchable before | unmatchable after |
+| --- | --- | --- | --- |
+| `burmish:proto_burmish` | 54 | 0 | 0 |
+| `burmish:burmic` | 37 | **24** | **0** |
+| `romance:latin` | 900 | **182** | **0** |
+
+**The oracle ceilings barely moved, and that is the expected result rather than
+a disappointment.** The assembly oracle writes its rules against the withheld
+gold, so it could already spell `ṅ/ŋ`. A live model never can: it does not see
+the gold, and no daughter carries the token.
+
+| ceiling | before | after |
+| --- | --- | --- |
+| `burmish:proto_burmish` top-1 | 42/54 | 42/54 |
+| `burmish:burmic` top-1 | 25/37 | 25/37 |
+| `romance:latin` top-1 | 90/900 | **88/900** |
+
+Romance lost two forms and 22 correspondence sets. Reducing `ɪ/j` to `j` merges
+it with the `j` already there, so the oracle loses a distinction only an oracle
+could have used. **The ceiling did not rise. The gold became reachable by
+something other than an oracle**, which is what these benchmarks are for.
+
+`unaccounted_column_rate` did not move at all — 0.280 at `maruic` and 0.338 at
+`burmic`, unchanged. That floor is the survey/assembler grouping mismatch of
+§7.18 and has nothing to do with tokens.
+
+**Polynesian is untouched**, which is checked rather than assumed:
+`walworthpolynesian` carries no such token, so every recorded baseline in this
+document and every number pinned by
+`tests/workbench/test_oracle_ceiling_regression.py` stands under the same
+reading it always did.
+
+**What is still unmeasured.** On the `meloniromance` shape both sides are
+sounds, so a model that reconstructs `*ɪ` where the gold realizes `j` is now
+scored as wrong. Whether that is unfair, and whether a gold alternative should
+carry both sides, is not measured. The question is how many Latin gold forms
+differ between the two readings, and whether a live model ever produces the
+left side. Nothing here settles it.
+
 ## Recorded baselines
+
+**Read every live figure on this page against the copy baseline first.**
+`tools/identity_commit_probe.py --baseline` reports what a single daughter
+scores against the gold, copied unchanged, and on Polynesian the answer is
+**0.587** for East Futuna — *above every live figure recorded here, including
+the 0.457 in the table below and the best single seed's 0.543.* That seed's
+`proto_polynesian` is byte-identical to Tongan, whose copy baseline is 0.543
+exactly. So the live rows below are not wrong, and they are not interpretable
+alone: at this benchmark a score near 0.5 does not distinguish reconstruction
+from copying a conservative daughter. §7.20 of
+[the design document](proto_inventory_design.md) has the measurement and what it
+does to §7.7's reading of condition 6.
+
+Burmish is the opposite case and it is why that family is worth keeping: every
+one of its seven daughters scores **0.000** at both gold nodes, so a non-zero
+figure there is reconstruction rather than resemblance.
 
 Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the
 live figures measure one model on one seed.

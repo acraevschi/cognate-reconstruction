@@ -326,6 +326,7 @@ class AgenticNodeReconstructor:
                 # where a reader goes looking for it.
                 inspected_concept_ids=run_result.inspected_concept_ids,
             )
+        self._report_degraded_correspondence_maps(step)
         finalized = self.orchestrator.finalize(run_result, step)
         self.run_results.append(finalized)
         self.trajectories.append(finalized.trajectory)
@@ -333,6 +334,24 @@ class AgenticNodeReconstructor:
             parent_node_id, committed
         )
         return step
+
+    def _report_degraded_correspondence_maps(
+        self,
+        step: ReconstructionStep,
+    ) -> None:
+        """Surface a node that kept its beam but lost its alignment report.
+
+        The deterministic core has no event sink by design, so it records the
+        refusal in the step's diagnostics and this layer turns that into an
+        event. Nothing here changes the step.
+        """
+        reason = step.diagnostics.correspondence_map_failure
+        if reason is None:
+            return
+        self.orchestrator.emit_correspondence_map_degraded(
+            step.parent_node_id,
+            reason=reason,
+        )
 
     def _fallback_step(
         self,
@@ -392,6 +411,7 @@ class AgenticNodeReconstructor:
             evidence_context=evidence_context,
             anchors=anchors,
         )
+        self._report_degraded_correspondence_maps(step)
         return step.model_copy(
             update={
                 "diagnostics": step.diagnostics.model_copy(

@@ -10,7 +10,11 @@ from typing import Any
 
 from pycldf import Dataset
 
-from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.common import (
+    MORPHOLOGICAL_BOUNDARY_TOKENS,
+    NonEmptyStr,
+    WorkbenchModel,
+)
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 from cognate_reconstruction.schemas.lexicon import (
     CognateMembership,
@@ -96,6 +100,80 @@ def _values(value: Any, *, split_whitespace: bool = False) -> tuple[str, ...]:
 
 _SEGMENT_SLICE = re.compile(r"^(\d+)(?::(\d+))?$")
 
+PARTIAL_COGNACY_COLUMN = "Partial_Cognacy"
+"""The Lexibank column that codes cognacy one morpheme at a time.
+
+It is not a CLDF term and carries no `propertyUrl`, which is why a loader that
+looks for `Cognateset_ID` or a `CognateTable` sees a dataset with no cognate
+evidence at all. On `hillburmish` that is the whole signal: `Cognacy` is empty
+in 4032 of 4032 rows and `Partial_Cognacy` is populated in 4032 of 4032.
+
+The value is whitespace-separated set IDs, one per morpheme, in the order the
+morphemes appear. `Rangoon-962_alleverything-1` has segments
+`m̥ ɑ̃ ²² + tθ ɑ ⁵³ + m̥ j ɑ ⁵³` and `Partial_Cognacy = 3078 536 3079`.
+"""
+
+
+GRAPHEME_PHONEME_RULE_ID = "lexibank-grapheme-phoneme-split"
+"""Recorded on every form whose tokens carried a `pylexibank` slash.
+
+`pylexibank` writes one segment as `grapheme/phoneme` when an orthography
+profile mapped a written character to a different sound. `ṅ/ŋ` is one token,
+not two, and the harness used to carry it whole.
+
+That is wrong twice over. The contract is a phonemicized lexicon, and on
+`hillburmish` the left side is not a phoneme at all: measured over all 4032
+rows, `ṅ`, `ḥ`, `ñ`, `ch`, `o₁` and `o₂` never occur as a segment of their own,
+while `ŋ` occurs 930 times and `ɔ` 542. The left side is a letter of a script.
+Carried whole, the token also corresponds with nothing, so 24 of the 37
+`burmic` gold concepts and 182 of the 900 `romance` gold concepts had no
+alternative any daughter could reach.
+
+Taking the right side is not a choice between two readings. It is the value the
+profile mapped to, and it is what the daughter says. Where both sides happen to
+be sounds of the language — `meloniromance` writes `ɪ/j`, `u/w` and `w/u`, and
+both directions occur — the right side is still the realized form, which is the
+observation the comparative method compares. Whether a model reconstructing the
+underlying value instead deserves a gold alternative is a separate question,
+and `docs/benchmarks.md` records that it is unmeasured rather than settled.
+"""
+
+
+def _phoneme_side(token: str, *, raw_form_id: str) -> str:
+    """The phoneme of a `grapheme/phoneme` token, or the token unchanged.
+
+    Refuses rather than guesses. A token with two separators, or with nothing
+    after the separator, is a data problem with no safe reading, and there is
+    none in the local corpus: measured over the 174 checked-in CLDF datasets,
+    zero segments carry either shape. Sixteen carry an *empty* grapheme, such
+    as `/h`, which this reads as `h` because the phoneme is intact.
+    """
+    if "/" not in token:
+        return token
+    parts = token.split("/")
+    if len(parts) != 2 or not parts[1]:
+        raise CLDFIngestionError(
+            f"form {raw_form_id!r} has segment {token!r}, which is neither a "
+            "plain token nor a grapheme/phoneme pair"
+        )
+    return parts[1]
+
+
+def _morpheme_groups(segments: tuple[str, ...]) -> tuple[tuple[int, ...], ...]:
+    """Zero-based segment positions per morpheme, boundaries excluded.
+
+    Cutting at a boundary the data records is mechanical. Deciding *which*
+    morpheme answers which is not, and this function never does it.
+    """
+    groups: list[list[int]] = [[]]
+    for index, segment in enumerate(segments):
+        if segment in MORPHOLOGICAL_BOUNDARY_TOKENS:
+            if groups[-1]:
+                groups.append([])
+            continue
+        groups[-1].append(index)
+    return tuple(tuple(group) for group in groups if group)
+
 
 def _segment_indices(
     specifications: tuple[str, ...],
@@ -108,14 +186,7 @@ def _segment_indices(
     if slice_unit == "segment":
         units = tuple((index,) for index in range(len(segments)))
     elif slice_unit == "morpheme":
-        groups: list[list[int]] = [[]]
-        for index, segment in enumerate(segments):
-            if segment in {"+", "-"}:
-                if groups[-1]:
-                    groups.append([])
-                continue
-            groups[-1].append(index)
-        units = tuple(tuple(group) for group in groups if group)
+        units = _morpheme_groups(segments)
     else:
         raise ValueError(f"unknown cognate slice unit {slice_unit!r}")
     indices: list[int] = []
@@ -141,6 +212,60 @@ def _segment_indices(
             "Segment_Slice ranges"
         )
     return tuple(indices)
+
+
+def _partial_cognacy_rows(
+    value: Any,
+    *,
+    segments: tuple[str, ...],
+    dataset_id: str,
+    raw_form_id: str,
+    row_number: int,
+    sources: tuple[str, ...],
+    comment: str | None,
+) -> list[dict[str, Any]]:
+    """One membership row per morpheme, in the order the morphemes appear.
+
+    The IDs and the morphemes are matched position by position, which is the
+    only reading the column defines. A row whose counts disagree is a data
+    problem and stops the load, naming the form: zipping the shorter of the two
+    would silently attach a set ID to a morpheme nobody said it belonged to,
+    and that is how a corpus acquires a fiction. Measured on `hillburmish`, all
+    4032 rows agree.
+    """
+    cognate_ids = _values(value, split_whitespace=True)
+    if not cognate_ids:
+        return []
+    groups = _morpheme_groups(segments)
+    if len(cognate_ids) != len(groups):
+        raise CLDFIngestionError(
+            f"form {raw_form_id!r} has {len(cognate_ids)} "
+            f"{PARTIAL_COGNACY_COLUMN} IDs but {len(groups)} morphemes: "
+            f"{' '.join(cognate_ids)} against {' '.join(segments)}"
+        )
+    return [
+        {
+            "membership_id": (
+                f"{dataset_id}:partial-cognacy:{raw_form_id}:{position}"
+            ),
+            "source_membership_id": raw_form_id,
+            "raw_cognate_id": cognate_id,
+            # One-based inclusive, the same spelling a CognateTable
+            # `Segment_Slice` uses, so both sources reach `_segment_indices`
+            # through one path and cannot drift apart.
+            "segment_slice": (str(position),),
+            "alignment": (),
+            "sources": sources,
+            "cognate_detection_method": None,
+            "alignment_method": None,
+            "alignment_source": None,
+            "doubt": None,
+            "comment": comment,
+            "source_table": "FormTable",
+            "source_row": row_number,
+        }
+        for position, cognate_id in enumerate(cognate_ids, start=1)
+    ]
 
 
 def _find_metadata(dataset_path: Path) -> Path:
@@ -240,10 +365,30 @@ def load_cldf_dataset(dataset_path: str | Path) -> CLDFLoadResult:
         == "http://cldf.clld.org/v1.0/terms.rdf#segmentSlice"
         else "morpheme"
     )
-    if not has_inline_cognates and not has_cognate_table:
+    has_partial_cognacy = (
+        not has_inline_cognates
+        and not has_cognate_table
+        and _table_has_column(dataset, "FormTable", PARTIAL_COGNACY_COLUMN)
+    )
+    """Whether this dataset's cognacy is read one morpheme at a time.
+
+    Deliberately last, and deliberately exclusive. `Partial_Cognacy` is a
+    Lexibank custom column; a `CognateTable` and a FormTable `Cognateset_ID`
+    are CLDF terms, and a dataset that publishes one of those has said where
+    its cognacy lives. Reading both would put two ID namespaces into one
+    `cognate_set_id` space: measured over the twelve local datasets that carry
+    `Partial_Cognacy`, four also populate `Cognacy`, and on `crossandean` the
+    two columns disagree on 7511 of 7518 rows because they number different
+    things. One dataset, one reading.
+
+    `Cognacy` itself stays unread here, as it always has been. It is not a CLDF
+    term either, and no form in `hillburmish` carries a value in it.
+    """
+    if not has_inline_cognates and not has_cognate_table and not has_partial_cognacy:
         raise CLDFIngestionError(
-            f"{dataset_id!r} has neither FormTable Cognateset_ID values nor "
-            "a CognateTable; the reconstruction harness requires cognate evidence"
+            f"{dataset_id!r} has neither FormTable Cognateset_ID values, a "
+            f"CognateTable, nor FormTable {PARTIAL_COGNACY_COLUMN} values; "
+            "the reconstruction harness requires cognate evidence"
         )
 
     languages: dict[str, dict[str, Any]] = {}
@@ -373,6 +518,15 @@ def load_cldf_dataset(dataset_path: str | Path) -> CLDFLoadResult:
             segment_source = "Phonemic_Segments"
         if not segments:
             continue
+        # Before anything reads them. The reduction is one token in, one token
+        # out, so every later index into `segments` means the same position
+        # either way — but the boundary scan and the aligner both have to see
+        # the phoneme rather than the spelling.
+        source_segments = segments
+        segments = tuple(
+            _phoneme_side(token, raw_form_id=raw_form_id) for token in segments
+        )
+        rewrote_segments = segments != source_segments
 
         membership_rows = list(cognate_rows_by_form.get(raw_form_id, ()))
         if has_inline_cognates:
@@ -397,6 +551,18 @@ def load_cldf_dataset(dataset_path: str | Path) -> CLDFLoadResult:
                         "source_row": row_number,
                     }
                 )
+        if has_partial_cognacy:
+            membership_rows.extend(
+                _partial_cognacy_rows(
+                    row.get(PARTIAL_COGNACY_COLUMN),
+                    segments=segments,
+                    dataset_id=dataset_id,
+                    raw_form_id=raw_form_id,
+                    row_number=row_number,
+                    sources=_values(row.get("Source")),
+                    comment=_safe_str(row.get("Comment")).strip() or None,
+                )
+            )
         if not membership_rows:
             continue
 
@@ -502,10 +668,13 @@ def load_cldf_dataset(dataset_path: str | Path) -> CLDFLoadResult:
                     tree_glottocode=language["tree_glottocode"],
                     source_row=row_number,
                     segment_source=segment_source,
+                    source_segments=source_segments if rewrote_segments else (),
                     source_reference=str(metadata_path),
-                    compatibility_rule_ids=language[
-                        "compatibility_rule_ids"
-                    ],
+                    compatibility_rule_ids=(
+                        (*language["compatibility_rule_ids"], GRAPHEME_PHONEME_RULE_ID)
+                        if rewrote_segments
+                        else language["compatibility_rule_ids"]
+                    ),
                 ),
             )
         )

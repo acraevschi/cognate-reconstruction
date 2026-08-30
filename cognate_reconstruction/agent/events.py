@@ -30,6 +30,7 @@ class AgentEventKind(StrEnum):
     PROTOCOL_CORRECTION = "protocol_correction"
     NODE_FAILED = "node_failed"
     NODE_FALLBACK = "node_fallback"
+    CORRESPONDENCE_MAP_DEGRADED = "correspondence_map_degraded"
 
 
 class AgentEvent(WorkbenchModel):

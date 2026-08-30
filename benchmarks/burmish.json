@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "name": "burmish",
+  "description": "Seven Burmish daughters against Hill and Gong's Proto-Burmish, with attested Old Burmese as a second gold node. The point of this family is that it has two gold nodes at all: Polynesian has one, so condition 6 — does a reconstructed child make a usable parent? — cannot be answered there. It is also the first benchmark whose cognacy is coded one morpheme at a time.",
+  "dataset_path": "../data/lexibank/hillburmish",
+  "daughters": [
+    "hillburmish:AchangLongchuan",
+    "hillburmish:Xiandao",
+    "hillburmish:Rangoon",
+    "hillburmish:Atsi",
+    "hillburmish:Bola",
+    "hillburmish:Lashi",
+    "hillburmish:Maru"
+  ],
+  "targets": [
+    {
+      "source_variety_id": "hillburmish:ProtoBurmish",
+      "node_id": "proto_burmish",
+      "gold_evidence_kind": "reconstructed",
+      "source_reference": "Hill & Gong (2020), Materials for an Etymological Dictionary of Burmish: Proto-Burmish reconstructions held out as evaluation target"
+    },
+    {
+      "source_variety_id": "hillburmish:OldBurmese",
+      "node_id": "burmic",
+      "gold_evidence_kind": "attested",
+      "source_reference": "Hill & Gong (2020) via Huang (1992): Old Burmese held out as evaluation target. TEMPORARY BINDING, see provenance.note"
+    }
+  ],
+  "newick_path": "../examples/burmish_benchmark_tree.nwk",
+  "concept_selection": "fully_cognate_with_target",
+  "concept_selection_source_variety_id": "hillburmish:ProtoBurmish",
+  "provenance": {
+    "source": "Hill & Gong (2020), Materials for an Etymological Dictionary of Burmish; Burmish CLDF via Lexibank (hillburmish)",
+    "publication_date": "2020-01-01",
+    "leakage_note": "Proto-Burmish is a published reconstruction and Old Burmese is one of the better-attested older stages in Tibeto-Burman, so both gold sets can in principle be recalled rather than derived. Leakage is plausibly lower than for Romance and probably lower than for Polynesian, because the Burmish correspondence literature is smaller and less frequently rehearsed; that is a guess about training data and not a measurement, and no headline claim should rest on it. Use benchmarks/synthetic/ for a leakage-free measurement.",
+    "note": "TEMPORARY BINDING, approved by the research owner and recorded so it can be removed. Old Burmese is bound at 'burmic', which under Nishi (1999) contains Burmese, Achang and Xiandao. Old Burmese is the ancestor of Burmese only; it is not the ancestor of Achang or Xiandao, so scoring it at this node is a convenience and not a historical claim, in the same way that benchmarks/romance.json scores classical Latin against daughters descended from Vulgar Latin. To remove the binding, delete the second entry in 'targets' and nothing else: 'concept_selection_source_variety_id' is stated explicitly so the concept selection does not change when the target list does, and 'burmic' stays a traversed node either way. Two alternatives were considered and rejected. Making Old Burmese a sister of Rangoon is historically false. Supplying it as an anchor costs no linguistic claim and is supported, but an anchor is never scored, so it yields no second gold node. Two further notes on the tree. The split is Nishi's (1999) Burmic/Maruic, on the treatment of Proto-Burmish pre-glottalized initials, which is the division the Burmish reconstruction literature uses; Lama's (2012) Northern/Southern Burmish cross-cuts it, and under Lama's names 'Southern Burmish' contains Rangoon alone, which normalize_tree collapses and postorder_groups then refuses. Both subgroups are left as polytomies: Xiandao is usually treated as a variety of Achang and Maruic is further divided in the literature, but neither refinement is needed for a node this benchmark scores, and each one added would be another traversal node and another session's cost."
+  }
+}

@@ -1192,6 +1192,14 @@ class TestProtoAssemblyResult(WorkbenchModel):
     that cannot spell the change, because `+` and `-` are refused as rule
     targets and as insertions on purpose.
     """
+    unspellable_reflex_child_ids: tuple[NonEmptyStr, ...] = ()
+    """Children a committed set gives a segment the DSL cannot name.
+
+    The fourth of the same shape. A segment carrying `>`, `/`, `_`, `#` or
+    whitespace cannot be written into a rule — `pylexibank` spells a
+    grapheme/phoneme pair with a literal slash, as in `ṅ/ŋ` — so the derived
+    rule is dropped and the child recorded. The assembly is unaffected.
+    """
 
 
 class RealignArgs(WorkbenchModel):

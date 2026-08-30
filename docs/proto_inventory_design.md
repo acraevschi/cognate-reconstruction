@@ -1978,6 +1978,25 @@ numbers measure a model, and they are never interchangeable.
 > the set that runs a live model on a real family and is the only one with no
 > reading. §7.10 also proposes three conditions to the research owner beside the
 > originals, one of which the change does not currently pass.
+>
+> **Condition 6 has a real-data reading designed for it as of 2026-08-29.**
+> §7.19 decides what that reading is taken on and why — `burmish`, at both
+> gold nodes, never pooled — and says in advance what a sweep of the size
+> that fits cannot settle. §7.20 is the sweep. Neither changes §7.10's
+> verdict; they replace "unmeasurable" with a measurement and a stated cost.
+>
+> **And §7.20 is the finding that outranks both.** No live figure in this
+> document was ever published beside what *copying a daughter* scores. Measured:
+> every live Polynesian number here is below that baseline, and the after
+> condition's whole condition-6 column on `synthetic_hard` consists of nodes
+> byte-identical to a daughter. Read §7.20 before quoting any live number in
+> this section.
+>
+> **§7.21 is the sweep §7.19 designed**, and condition 6 has its first real-data
+> reading: **0.000 ± 0.000 at both gold nodes in both arms**. The condition
+> trips because the measure is pinned at its floor, which is a different failure
+> from §7.7's overlapping spreads and is not a verdict on either instruction
+> set.
 
 > **Every figure below was re-derived 2026-08-23** against
 > `tools/oracle_ceiling.py` and `tools/assembly_ceiling.py` as prompt 07
@@ -2317,6 +2336,11 @@ destroys the very property the condition asks about, so condition 6 must be read
   `unaccounted_column_rate` floor before any threshold applies to it (§7.2). It
   is the right long-term answer to the gold-binding problem and it delays
   condition 6 rather than enabling it.
+
+  > **Executed 2026-08-29.** Option B is `benchmarks/burmish.json`, with its
+  > own ceilings and its own `unaccounted_column_rate` floor measured first,
+  > as this bullet required. §7.19 is the recommendation that follows from
+  > it and §7.20 is the sweep.
 - **C — read condition 6 on `synthetic_hard`, per gold node, and report
   Polynesian beside it without a verdict.** Costs one sweep of 10 runs (~3 h),
   uses the benchmark that degrades gracefully — every one of its six seeds
@@ -2431,6 +2455,17 @@ before 0.88; `east` 0.88 in every seed of both conditions.
 be compared at all. Top-1 is up at both comparable nodes and that is not
 sufficient for the condition as phrased. Recorded, not rewritten — the same
 treatment §7.3 gives condition 2.
+
+> **The argument below is superseded by §7.20, measured 2026-08-29. The verdict
+> is not.** Condition 6 tripped here and still trips. But "top-1 is up at both
+> comparable nodes" does not survive: **every scored `proto` evaluation in the
+> after condition is a node whose lexicon is byte-identical to a daughter**, and
+> so are seven of the eight at `west`, while the before column at `proto`
+> contains none. Removing identity commits leaves the after column at `proto`
+> with n=0. And 0.535 is exactly the copy baseline of `d1` and `d2`. So what
+> changed between the instruction sets at this node is not that the model
+> reconstructed better; it is that it stopped reconstructing badly and started
+> copying. §7.20 has the tables and the cross-check.
 
 **The argument, in prose, and it is not a defence of the threshold.** The
 quantity condition 6 compares is conditioned on the node having committed, and
@@ -2949,6 +2984,14 @@ change passes it — the third one it does not.
   `synthetic_hard` per-gold-node verdict at 5 seeds, is §7.7 and it tripped;
   step 2, Polynesian run at 5 seeds and reported rather than scored, has not
   been run. Discharging step 2 is worth doing and will not close the condition.
+
+  > **Superseded in part on 2026-08-29.** "Unmeasurable in verdict-bearing
+  > form" was true of the datasets this repository had *defined*, not of the
+  > datasets it has. §7.6's option B is now `benchmarks/burmish.json` — two
+  > gold nodes at two depths on a real family — and **§7.19 decides that the
+  > live comparison is read there**, states what that reading cannot settle,
+  > and prices what closing the condition would cost. The judgement that a
+  > *Polynesian* sweep cannot produce a verdict is unaffected and stands.
 
 ### 7.11 The two protocol items, closed 2026-08-28
 
@@ -3583,6 +3626,1105 @@ reading of it changes.
 - **The remaining stall modes are untouched**, and the by-design rationale
   requirement is one of the codes that filled `marquesic`'s window.
 
+
+### 7.16 A third-party division by zero ended a whole seed
+
+*Found live on 2026-08-29. Made survivable the same day. The trigger was then
+reproduced from the banked run, so nothing in this section is a hypothesis.*
+
+#### What happened
+
+A sweep seed had committed 5 of 7 nodes. LingPy raised `ZeroDivisionError`, the
+exception left a C module, crossed the identity fallback the harness was
+building for a node that had already failed, and ended the process. The
+trajectories were on disk and survived. `result.json` was never written, so the
+aggregate was lost with five good commits in it.
+
+The arithmetic is LingPy's own, at `lingpy/algorithm/cython/_calign.py:1879`
+inside `align_pairwise`:
+
+```python
+dist = 1 - ( 2 * sim / ( simA + simB ) )
+```
+
+`simA` and `simB` are the self-similarity of the two rows. Material with no
+phonological content scores zero on both, and the sum is not guarded. The path
+is `prog_align` → `_get_pairwise_alignments` → `align_pairwise`, reached from
+`alignment/lingpy_adapter.py::align_multiple`.
+
+#### The exact input, reproduced
+
+The trigger is **within one node's own beam, not across two nodes**. That is
+why an earlier probe that aligned each shared concept first-candidate against
+first-candidate reproduced nothing.
+
+`traversal/beam.py::beam_to_lexicon` exposes *every* retained candidate as its
+own `LexicalForm`. A reconstructed child carries no cognate set, so all of one
+concept's candidates land in a single alignment group. In
+`runs/sweeps/polynesian-after-window/seed-00`, `nuclear_polynesian` retained
+five candidates for concept `1920`, and three of them were nothing but a
+morphological boundary, at lengths 1, 2 and 3:
+
+| candidate segments | probability |
+| --- | --- |
+| `['+']` | 0.0 |
+| `['+', '+']` | 0.0 |
+| `['+', '+', '+']` | 0.0 |
+
+Replaying that banked beam through the aligner refuses concept `1920` against
+**every** sibling — `central_eastern`, `futunic`, `marquesic` and `tongic`
+alike — because the failing pair is inside `nuclear_polynesian` and the sibling
+is only along for the ride.
+
+The minimal reproduction is two boundary-only rows of unequal length. Two rows
+of *equal* length align without complaint, and an empty sequence raises
+`ValueError` rather than `ZeroDivisionError`, so neither is the case being
+guarded. `tests/workbench/test_degenerate_alignment.py` pins all of it.
+
+#### The fix, in two layers
+
+- **`AlignmentFailure`** (`alignment/protocol.py`) is raised where the harness
+  calls LingPy, naming the concept and the cognate set that was refused. It
+  subclasses `ValueError` on purpose: `registry.execute` and
+  `agent/tools/polarize.py` already code a refused alignment as a tool error on
+  `ValueError`, so every model-facing caller keeps the handling it has and
+  `polarize` is repaired without touching it.
+- **`_correspondence_maps` degrades instead of dying.**
+  `ReconstructionStep.correspondence_maps` is a report, nothing scores it, and
+  the method already returns `()` when it has fewer than two lexicons.
+  Returning `()` on a refusal matches the branch beside it.
+
+The node then behaves the way every other node failure already behaves: it is
+recorded in `result.json:node_failures`, the parent becomes an identity
+fallback, and the run continues.
+
+**It is not a silent swallow.** The step records
+`diagnostics.correspondence_map_failure` with the reason, and the agent layer
+turns that into a `correspondence_map_degraded` event naming the node. An empty
+`correspondence_maps` on its own has always been ambiguous — a node with one
+child lexicon produces one too — so the field says *why* the report is empty.
+
+#### Why a beam candidate is a bare `+`, measured
+
+The crash is a symptom. Over every banked sweep in `runs/sweeps` — 28 seed
+files, 4940 beam candidates:
+
+| measurement | value |
+| --- | --- |
+| boundary-only candidates | **20** (0.40%) |
+| seeds carrying one | 3 of 28 |
+| node sessions carrying one | 3 |
+| commit shape | **inventory on all 20**; none from a branch cascade |
+| `residue_policy` at those three nodes | **`drop` on all three** |
+| candidates that were their concept's **only** candidate | **12 of 20** |
+
+Those 12 are the serious number. A sole candidate at probability 1.0 means the
+assembled parent form for that concept *is* a bare `+`.
+
+The node that crashed the run says why. Its diagnostics, beside its siblings in
+the same seed:
+
+| node | committed sets | assembled columns | unaccounted | rate | concepts out |
+| --- | --- | --- | --- | --- | --- |
+| `tongic` | 30 | 231 | 27 | 0.117 | 46 |
+| `futunic` | 15 | 213 | 51 | 0.239 | 46 |
+| `marquesic` | 15 | 203 | 36 | 0.177 | 45 |
+| `central_eastern` | 26 | 191 | 5 | 0.026 | 45 |
+| **`nuclear_polynesian`** | 15 | 165 | **135** | **0.818** | **23** |
+
+`nuclear_polynesian` committed sets that explained 30 of its 165 columns and
+chose `residue_policy: drop`, which asserts that the other 135 are branch-
+specific innovation. `drop` then deleted them. For 12 concepts the only column
+the inventory explained was the boundary column, so the boundary is the whole
+parent form. Half the concepts did not survive at all: 23 out of 46.
+
+So a boundary-only candidate is **not a boundary bug**. It is `drop` applied to
+an inventory that explained 18% of its columns — the failure mode
+`ResiduePolicy.DROP`'s own docstring predicts, at the scale §7.2's
+`unaccounted_column_rate` floor exists to catch.
+
+**Nothing was changed on the strength of this.** The measurement is reported
+first, as the prompt asked, and the decision sits beside the morpheme reading:
+if a morpheme reading changes what a boundary is, it changes this too, and the
+two should be decided together.
+
+
+### 7.17 Three tools built for §7.13, used once in a thousand calls
+
+*Prompt edited 2026-08-29. The "before" counts are banked. The "after" counts
+need a live sweep and are not in this document yet.*
+
+#### The before measurement
+
+Across the 12 Polynesian seed files in `runs/sweeps`, 1079 tool calls:
+
+| tool | calls |
+| --- | --- |
+| `test_proto_assembly` | 246 |
+| `commit_reconstruction` | 230 |
+| `get_alignments` | 170 |
+| `polarize` | 161 |
+| `test_sound_law` | 110 |
+| `summarize_correspondences` | 95 |
+| `search_forms` | 34 |
+| `test_rule_cascade` | 26 |
+| `get_node_reconstruction` | 3 |
+| `list_available_nodes` | 2 |
+| **`realign`** | **1** |
+| `list_concepts` | 1 |
+| **`segment_morphemes`** | **0** |
+
+The single `realign` call is in `polynesian-after-window`. Both tools exist for
+the cases §7.13 names, and between them they account for 1 call in 1079.
+
+**One correction to the prompt that raised this.** It counted a third tool,
+`restore_segment`, at zero calls. There is no such tool. The registry holds 13
+and it is not among them: restoration is `restorations`, a field on the
+committed inventory, verified by `test_proto_assembly`. Zero calls to a tool
+that was never callable says nothing about the interface, so the finding is two
+tools, not three.
+
+#### What changed in the prompt
+
+`agent/system_prompt.md` gained a workflow step, numbered 7, directly after the
+step that pulls alignments and before the step that assigns values. The other
+steps shifted by one.
+
+It says three things and no more:
+
+- `+` inside a form is a morphological boundary the source data recorded, not a
+  phonetic segment. The aligner treats it as material, so it takes a column of
+  its own, and a child carrying a boundary the others lack contributes extra
+  columns — each of which is a correspondence set the model will be asked for a
+  value for.
+- Three situations have three different answers: columns laid wrongly
+  (`realign`), boundaries cut in the wrong place (`segment_morphemes`), and a
+  segment every active child lost (`restorations`).
+- The default is to accept the aligner's output, and reaching for these on a
+  large share of concepts is fitting rather than reading.
+
+**It does not say what to conclude.** "Split compounds at the boundary" would be
+an instruction to reach a linguistic conclusion, which is the constraint this
+architecture exists to keep. The step names the observation and the
+affordances; the model decides whether either applies.
+
+The old step 11, which mentioned `segment_morphemes` once and late — after the
+inventory was already drafted — now points back at step 7 instead of repeating
+the guidance in two places.
+
+#### The after measurement: usage stayed at zero
+
+*Run 2026-08-29 on LM Studio, `google/gemma-4-26b-a4b`, three seeds, at the
+banked configuration — beam width 5, 24 turns, 48 tool calls, 3 failed nodes,
+temperature 1.0. `runs/sweeps/polynesian-after-toolstep`.*
+
+The comparison set is the four banked sweeps that already ran under the
+inventory protocol. `polynesian-before` is the pre-flip branch-cascade condition
+and is excluded, because it is the only sweep with any `test_sound_law` calls at
+all and mixing it in would credit stage 3's flip to this prompt edit.
+
+| condition | seeds | tool calls | `realign` | `segment_morphemes` |
+| --- | --- | --- | --- | --- |
+| banked, post-flip | 9 | 678 | 1 | 0 |
+| after the prompt edit | 3 | 264 | **0** | **0** |
+
+**Nothing moved.** The prompt names both tools in the workflow, at the step
+where the model is looking at columns, and neither was called once.
+
+**The sample excludes a large effect and not a small one.** At the banked rate of
+1 in 678, 264 calls predict 0.4 calls, so observing zero is exactly what no
+change looks like. A true rate of 2% would give a 0.5% chance of seeing none, so
+2% or more is excluded. A rate near 1% is not.
+
+Accuracy did not move either: top-1 exact averaged 0.446 over the two scored
+node evaluations, against the 0.457 recorded for the same model in
+`docs/benchmarks.md`, and the seed-to-seed spread is 0.138.
+
+#### What this changes
+
+**It is a finding about the interface, not about the prompt.** The tools were
+described before this edit and are named in the workflow after it, and the call
+count is the same either way. Whatever keeps a model from reaching for `realign`
+is not that it had not been told the tool exists.
+
+**It strengthens the case for reading morphology out of the data rather than
+repairing it with a tool.** §7.18's morpheme reading needs no tool call at all:
+on `hillburmish` the per-morpheme memberships make it the evidence view by
+default. A repair path that a model does not take twice in 942 calls is a worse
+bet than a reading the data already carries.
+
+#### What this does not establish
+
+- **Nothing about §7.16.** The crash path was never exercised:
+  `correspondence_map_degraded` fired 0 times, and all five node failures across
+  the three seeds were `ProtocolStallError`.
+- **Nothing about abandonment.** Three of three seeds wrote a `result.json`,
+  against six of nine in the banked post-flip sweeps. Three seeds is too few,
+  and too much changed between the two, to read that as an effect.
+- **Nothing about a larger model.** One model on one benchmark.
+
+
+### 7.18 The morpheme reading: what it already is, and what it actually costs
+
+*Measured 2026-08-29, after `Partial_Cognacy` landed. Prose before code, as the
+brief asked, and the prose turned out to be shorter than expected in one place
+and longer in another.*
+
+#### It is already the reading, in the evidence view
+
+No new code was needed for it. `alignment/lingpy_adapter.py::_alignment_inputs`
+already fans a form out into one alignment input per `cognate_membership` and
+groups by `cognate_set_id`, so a form with three morpheme memberships enters
+three different alignment groups. On `hillburmish` that is in force today.
+
+**Position does not decide the pairing; the shared cognate ID does.** Aligning
+Rangoon against Atsi, morpheme 2 of one lands against morpheme 2 of the other
+because they carry the same ID, and
+`test_a_morpheme_aligns_against_the_morpheme_that_shares_its_id` proves the
+point on a crossed pair — two forms with the same two morphemes in opposite
+orders align morpheme 1 against morpheme 2.
+
+#### Scoring: there is nothing to join
+
+The brief asks what joins separately reconstructed morphemes back into one word
+before anything can be scored, and calls that new work with its own failure
+modes. **Measured: the question does not arise.**
+
+The assembler never splits a form. `traversal/assembler.py::align_candidate_tuple`
+builds a synthetic `LexicalForm` from `segments=` alone, with no cognate
+memberships, so `respect_cognate_sets` finds nothing to respect and the aligner
+sees whole candidate strings, boundaries included. One parent form per concept
+comes out. The gold is a whole word and it is scored against a whole word,
+exactly as before.
+
+#### The real cost is a reading gap
+
+What the morpheme reading actually buys is a *different evidence view from the
+assembler's*, and that is the thing to price. Measured at `burmic` — three
+daughters, 54 concepts, 40.6% of whose forms carry a boundary:
+
+| view | alignment groups | columns | boundary columns |
+| --- | --- | --- | --- |
+| evidence — what the model surveys | 57 | 223 | **0** |
+| assembly — what the assembler resolves | 54 | 344 | **28** (8.1%) |
+
+The model is shown 223 columns and not one of them is a boundary: a
+`segment_slice` membership covers a morpheme, and `_morpheme_groups` excludes
+the boundary tokens between them. The assembler then resolves 344 columns, of
+which 28 are boundary columns no committed set can possibly name, because the
+survey never returned one. Those 28 go to the residue policy at every node.
+
+**What keeps this from failing outright is also what makes it silent.** A
+commitment matches a column by its *reflex tuple*, through `plan.by_reflexes`,
+not by column index or `set_id`. So a set derived in the morpheme view can still
+match a whole-string column — and can also match one that is not the same
+object.
+
+#### Why the assembler cannot simply be given the same reading
+
+It aligns **beam candidates**, and a beam candidate is a reconstructed string
+with no cognate memberships at all. This is the same fact §12.4 identifies as
+the source of Polynesian's floor. Giving the assembler the morpheme reading
+means giving a reconstructed candidate a morpheme analysis — a linguistic claim
+about a form nobody attests, made by the harness. That is a design problem, and
+it is emphatically not a reader.
+
+#### Every number resets, and here are the ones that exist now
+
+Assembly ceilings on `burmish`, `--oracle assembly` at width 5: **42/54 (77.8%)**
+at `proto_burmish` and **25/37 (67.6%)** at `burmic`. The second is a floor on
+the ceiling rather than the ceiling: 142 of Old Burmese's 219 forms carry a
+`pylexibank` grapheme/phoneme segment such as `ṅ/ŋ` that no daughter can
+produce.
+
+The `unaccounted_column_rate` floor, by §7.2's own recipe — commit a proto
+phoneme for every set the survey returns, then read the rate — with Polynesian
+run through the same probe as a control:
+
+| node | children | sets committed | assembled columns | unaccounted | **floor** |
+| --- | --- | --- | --- | --- | --- |
+| `proto_polynesian` (control) | 10 leaves | 237 | 335 | 57 | **0.170** |
+| `burmish:maruic` | 4 leaves | 152 | 346 | 97 | **0.280** |
+| `burmish:burmic` | 3 leaves | 129 | 343 | 116 | **0.338** |
+
+**These are not §7.2's numbers and must not be quoted as if they were.** §7.2
+records 0.125 for Polynesian over 246 sets; this probe gets 0.170 over 237,
+because §7.2 measured under the `reported` reading — one form per node per
+(concept, set) — and this probe under `all`. The instrument differs, not the
+family. The three rows above are comparable to each other and to nothing else.
+
+Read that way the finding is blunt: **§7.2's "above ~0.3 at most nodes" threshold
+is at or below `burmish`'s own floor at both nodes.** On this family that
+threshold is not a warning sign, it is the starting position, and it has to be
+re-derived under one instrument before any live rate can be read against it.
+
+#### What the reading is worth, and the bound
+
+**On Polynesian, nothing, because it cannot be expressed there.** All 520 forms
+are `scope: whole_form` with zero `segment_indices`.
+
+On §7.13's five concepts the bound is **2 of 5** — `670`, a compound against a
+simplex, and `671`, reduplication. The other three use genuinely different words
+for the concept and share no piece to line up. That figure is a ceiling on the
+gain, not an estimate of it, and nothing here moves it upward.
+
+#### What is not established
+
+- **No live run under this reading.** Nothing here says a model does better with
+  it, only what the harness now does.
+- **The reading gap is measured at one node of one family.** Whether 8.1%
+  boundary columns is typical is unknown.
+- **The 344-against-223 column gap is not only boundaries.** A whole-string
+  alignment of a three-morpheme form against a one-morpheme form makes columns
+  the morpheme view never creates. How the remainder divides was not measured.
+
+### 7.19 What the live comparison is read on, and what it will not settle
+
+*Written 2026-08-29. The after arm of §7.20 was already running when this was
+typed — the choice of family, of nodes, of seed count and of before-arm
+construction was fixed before it was launched, and the prose was written while
+the machine was busy — but **no seed had produced a result**, so nothing below
+can have been chosen by looking at an outcome. Every rate quoted as a **prior**
+comes from another family and is labelled as such; nothing here is a
+measurement of `burmish` behaviour, because none existed yet. §7.6 is the
+previous section of this shape and this one answers the option it left open.*
+
+§7.10 leaves condition 6 as the single reason §7 does not close, and says two
+things about it that constrain what can be done next. A Polynesian sweep cannot
+produce a verdict, because a single-gold family cannot be read per gold node and
+§7.6(b) shows that pooling across nodes destroys the property the condition asks
+about. And option B — a real family carrying two gold nodes in one tree — was at
+that point a candidate rather than a definition.
+
+Option B now exists. `benchmarks/burmish.json` is defined, built, leakage-checked
+and characterised: two gold nodes, ceilings at both, and an
+`unaccounted_column_rate` floor measured under a stated instrument (§7.18). So
+the question this subsection answers is the narrow one that remains: **what
+should the live before/after comparison be read on?**
+
+#### The recommendation
+
+**Read it on `burmish`, at both gold nodes, never pooled — with the before arm
+built on *this* tree with only the two instruction surfaces reverted, and with
+`synthetic_hard` kept beside it as the control it already is rather than
+replaced.**
+
+The case is not that `burmish` makes the comparison statistically easy. It does
+not, and the arithmetic below says so plainly. The case is that `burmish` is the
+only real family on which the comparison measures the quantity condition 6 names
+at all, and that it is roughly half the cost of the family that cannot.
+
+#### What each candidate gives, before any argument
+
+| benchmark | internal nodes | gold nodes | gold at two depths | daughters | concepts | assembly ceiling, top-1 |
+| --- | --- | --- | --- | --- | --- | --- |
+| `polynesian` | 7 | **1** (root) | no | 10 | 46 | 39/46 — **84.8%** |
+| `romance` | 4 | **1** (root) | no | 5 | 900 | 88/900 — **9.8%** |
+| `synthetic_hard` | 4 | 3 | yes | 5 | 25 | 25/25 (`proto`, `west`) · 22/25 (`east`) |
+| **`burmish`** | **3** | **2** | **yes** | 7 | 54 | 42/54 — **77.8%** (`proto_burmish`) · 25/37 — **67.6%** (`burmic`) |
+
+Every ceiling in that column is `tools/oracle_ceiling.py --oracle assembly` at
+beam width 5, default boundaries and default reading. Quoted without those flags
+none of them means anything (§7.3), and they bound the architecture rather than
+the model. The `polynesian`, `burmish` and `synthetic_hard` rows were
+re-measured in this checkout while this was written; the `romance` row is
+quoted from the same-day measurement recorded in
+[benchmarks](benchmarks.md), because re-running a 900-concept oracle would have
+competed for CPU with the live timing measurement §7.20 was taking at the time.
+
+#### Why not each of the others
+
+**`romance` is refused on a measurement, not on taste.** Its assembly ceiling is
+**88 of 900 — 9.8%**. That is not a hard benchmark; it is a benchmark on which
+the architecture cannot express the answer, and a before/after difference read
+inside a ten-percent ceiling is a difference between two ways of being wrong. It
+is also the family with the worst leakage in the repository by the argument
+`docs/benchmarks.md` already makes — Latin is attested *and* textbook — and its
+900 concepts make every node session the largest in the corpus. Three
+independent reasons, of which the first alone is sufficient.
+
+**`polynesian` is refused for the reason §7.6 and §7.10 already gave**, and one
+new measurement does not rescue it. §7.6 estimated the root's commit rate at
+0.50–0.60 from four seeds. Pooled over the eight post-flip seeds now banked it
+is **6/8 = 0.75**, so the seed arithmetic is less brutal than §7.6 computed. It
+changes nothing, because the defect was never the rate: with one gold node there
+is no per-node reading, and §7.6(b) is the finding that the pooled number is not
+the quantity the condition asks about. A better rate on the wrong quantity is
+still the wrong quantity.
+
+**`synthetic_hard` is not refused and is not sufficient.** §7.7 read condition 6
+there, per gold node, at five seeds a side, and it tripped. It stays as the
+control — it is the one evaluation nothing can have memorised — but condition 6
+says "both benchmarks", and a synthetic family cannot discharge the real-data
+half. This subsection is about that half only.
+
+**`mcd` is refused on a prior measurement and is not re-opened here.** `acd`, at
+1,064 varieties, was never a live-sweep candidate.
+
+**Binding more gold nodes in Polynesian does not exist as an option.**
+`walworthpolynesian` contains one proto variety. §7.6(D) already ruled this out
+and nothing has changed.
+
+#### The arithmetic, and where the gain is not
+
+The number that decides whether a seed yields anything is the rate at which a
+gold node commits rather than falling back. Measured per node over the banked
+Polynesian seeds — pooled across the five post-flip sweep directories, which
+carry **different instruction hashes** and are therefore post-flip draws rather
+than one configuration:
+
+| node | children | post-flip, 8 seeds | pre-flip, 3 seeds |
+| --- | --- | --- | --- |
+| `tongic` | 2 leaves | 8/8 | 0/3 |
+| `tahitic` | 3 leaves | 8/8 | 2/3 |
+| `futunic` | 2 leaves | 6/8 | 2/3 |
+| `marquesic` | 2 leaves | 6/8 | 3/3 |
+| `central_eastern` | 2 reconstructions | 7/8 | 3/3 |
+| `nuclear_polynesian` | 1 leaf + 2 reconstructions | **2/8** | 1/3 |
+| `proto_polynesian` | 2 reconstructions | 6/8 | 2/3 |
+| *leaf-child nodes* | | 28/32 = **0.875** | 7/12 = 0.583 |
+
+Taking the leaf-child pooled rate as the prior for `burmic` (three leaves) and
+`proto_polynesian`'s own rate as the prior for `proto_burmish` (two
+reconstructions, at the root), for N seeds launched in one arm:
+
+| N | P(≥3 scored at `burmic`) | P(≥3 at `proto_burmish`) | P(≥3 in **both arms**, `burmic`) | P(≥3 in **both arms**, `proto_burmish`) |
+| --- | --- | --- | --- | --- |
+| 3 | 0.670 | 0.422 | 0.133 | 0.125 |
+| **5** | **0.984** | **0.896** | **0.642** | **0.709** |
+| 6 | 0.997 | 0.962 | 0.794 | 0.866 |
+| 8 | 1.000 | 0.996 | 0.939 | 0.976 |
+
+**Read the honest comparison off that table.** At five seeds a side, the
+probability of getting three scored seeds in both arms at `proto_burmish` is
+0.709 — which is *exactly* what the same calculation gives for Polynesian's
+single root, because the prior is the same number. **Per node, `burmish` buys no
+statistical power at all.** Anyone recommending it on the grounds that it
+"solves the sample-size problem" has not done this arithmetic.
+
+What it buys is three things the arithmetic does not show:
+
+1. **Two nodes instead of one, so the per-node reading §7.6(b) requires
+   exists.** On Polynesian it does not exist at any seed count.
+2. **The two nodes are at different depths, which is condition 6's actual
+   question.** `burmic` is reconstructed from three attested daughters;
+   `proto_burmish` is reconstructed from `maruic` and `burmic`, both of which
+   are themselves reconstructions. *Does a reconstructed child make a usable
+   parent?* is the difference between those two rows, inside one seed. Polynesian
+   has no second row to difference against; `synthetic_hard` has one and is
+   synthetic.
+3. **A seed is about half the cost.** Three internal nodes against seven, and
+   seven daughters against ten. §7.9 measured wall-clock as output tokens almost
+   entirely, and output scales with nodes and turns rather than with prompt size,
+   so the estimate is roughly 26 minutes a seed against Polynesian's measured
+   mean of 61. **That estimate was unverified when this was written** and is the
+   first thing the sweep measures.
+
+   > **Measured, and wrong — see §7.21.** A Burmish seed costs **43.8 ± 18.4**
+   > minutes in the after arm and **67.1 ± 62.7** in the before arm, which is
+   > about the same as a Polynesian seed rather than half. Fewer nodes are
+   > cancelled out by more expensive ones: the median turn is 95 s against
+   > Polynesian's 36 s, because prompts reach 115,887 tokens against about
+   > 31,000. This bullet is the one part of §7.19's argument the sweep
+   > falsified, and it is left standing above so the correction has something to
+   > correct.
+
+> **One argument for this family that §7.19 did not know to make**, added
+> 2026-08-30 after §7.20: **Burmish's copy baseline is 0.000 at both gold
+> nodes**, where Polynesian's is 0.587. On Polynesian a live figure near 0.5
+> does not distinguish reconstruction from copying a conservative daughter. Here
+> nothing is hidden. That turned out to be the strongest reason to read the
+> comparison on this family, and it is a better reason than any given below.
+
+And one property that is a genuine asset and is easy to overstate: the seed-level
+scoreability. A `burmish` seed produces at least one scoreable evaluation unless
+*both* gold nodes fall back — under the priors above, 0.97 post-flip against
+Polynesian's 0.75. That is real, and it is why a small sweep on this family
+returns something rather than nothing. It is not power at a node.
+
+#### The two gold nodes are not two independent observations
+
+`proto_burmish` is assembled from `burmic`'s own beam. A seed that loses `burmic`
+hands the root an identity child, so the root's score in that seed is measuring
+something different from the root's score in a seed where `burmic` committed.
+The rows in any report must therefore carry, per seed, the **joint** outcome —
+which of the two nodes committed — and not only the two marginals.
+
+This is the one place where the dependence is an advantage rather than a
+nuisance: comparing the root's accuracy in seeds where `burmic` committed
+against seeds where it did not is the direct form of the condition-6 question,
+and it is unavailable on every other real family in the repository. At five
+seeds a side it will be badly underpowered. It should still be reported, as a
+count with its n stated, because a quantity that has never been observed at all
+is worth observing once.
+
+#### The before arm cannot be a checkout, and what it is instead
+
+The 2026-08-24 and 2026-08-25 sweeps built their before condition as a separate
+checkout at the pre-stage-3 commit. **That construction is unavailable here, and
+not by choice.** `hillburmish` cannot be ingested by the pre-stage-3 tree at all:
+its cognacy is coded per morpheme and `Partial_Cognacy` was not read until
+`90414ad`, the grapheme/phoneme reduction that makes its gold reachable landed at
+`53ad7c9`, and the benchmark definition did not exist. An old checkout cannot run
+this family, so the before arm has to be the other construction §7.6's closing
+paragraph named: **this tree, with only the instruction surfaces reverted.**
+
+The flip is exactly two surfaces, `agent/system_prompt.md` and
+`COMMIT_REQUIREMENT_NOTES` in `agent/schemas.py`, both changed at `991bc16`.
+Reverting both in a worktree at `HEAD` gives an instruction hash of
+`c4d25af18c87e2e2…` — **byte-identical to the `the agent instructions` digest
+recorded by the 2026-08-24 and 2026-08-25 before runs.** That is a verification
+rather than an assertion, and it is the one part of the before arm that is
+exactly the historical one.
+
+Everything else about the before arm is not. `the tool schemas` digest differs,
+because `schemas.py` has changed nine times since the flip for reasons unrelated
+to it — the stall-signature repair, the polarize row, the Gemini preamble, the
+window rule. Those are on **both** arms. The instruction edits since the flip —
+tasks 1 and 3 of prompt 10, the anomaly description, the confidence note, the
+word-structure workflow step — are on the **after** arm only, because they live
+in the two surfaces being reverted. That is the same confound §7.7 carried and
+it is **not repaired here**; it is stated so that the sweep is read as *the flip
+plus its subsequent instruction fixes* against *the pre-flip manual*, which is
+what it is.
+
+#### Five things this sweep cannot settle, written down before it ran
+
+- **It cannot close condition 6 as phrased.** The condition's stop column is
+  "spreads overlap", and at five seeds a side on a real family the spreads will
+  very likely overlap, as they did on `synthetic_hard` at the same n. A sweep
+  that trips the condition is the expected outcome and must not be reported as a
+  verdict on the architecture.
+- **It cannot be read against §7.2's `unaccounted_column_rate` threshold.** That
+  threshold is "above ~0.3 at most nodes" and this family's floor is **0.280** at
+  `maruic` and **0.338** at `burmic` (§7.18). The threshold sits at or below the
+  floor, so it fires on a complete inventory. Re-derive it per family or do not
+  quote it here.
+- **It cannot separate leakage from difficulty between the two gold nodes.**
+  `proto_burmish` is a published reconstruction and `burmic`'s gold is attested
+  Old Burmese, so the two rows differ in leakage — and also in depth, in concept
+  count (54 against 37) and in ceiling (77.8% against 67.6%). A difference
+  between the rows is attributable to none of these individually. It is a
+  diagnostic worth reading and it is not a control.
+- **It cannot say anything about `burmic` as a historical node.** The Old
+  Burmese binding is a convenience and is recorded as temporary in
+  `benchmarks/burmish.json`; Old Burmese is the ancestor of Burmese and not of
+  Achang or Xiandao. What is measured at that node is whether the harness
+  reconstructs something close to attested Old Burmese from three Burmic
+  daughters, which is a question about the harness.
+- **It cannot be pooled with anything.** Different family, different concept
+  count, different ceiling, and a `configuration_sha256` that differs from every
+  banked sweep. It is a new baseline, not an addition to an old one.
+
+#### What would actually close condition 6
+
+Nothing in the budget of this prompt. On the priors above, five scored seeds in
+both arms at both nodes needs roughly **8 seeds a side** — sixteen runs, and at
+the unverified 26-minute estimate about seven hours of serial local inference,
+which is the cheapest that number has ever been in this repository and still not
+cheap. The honest statement is that condition 6 is *now measurable on real data*
+where §7.10 recorded it as unmeasurable in verdict-bearing form, and that
+measuring it and closing it are different budgets.
+
+### 7.20 The identity baseline, and what it does to every live number here
+
+*Measured 2026-08-29 while the Burmish sweep of §7.21 was running. **No new
+inference was run for this subsection.** Every figure is a re-reading of
+artifacts already banked, through two computations that did not exist before:
+`tools/identity_commit_probe.py` and its `--baseline` mode. The subsection is
+separate from §7.21 because it is not about Burmish; it is about every live
+number in this document.*
+
+It began as a check on one Burmish node and did not stay there.
+
+#### The question nothing asked
+
+`benchmarks/sweep.py:270` excludes an evaluation whose node fell back, and its
+comment states the principle exactly: *a fallback node's beam is the harness's
+identity commit, so scoring it measures the fallback.* Nothing asks the same
+question of the nodes the exclusion lets through. A node that **commits
+successfully** can hand back a lexicon byte-identical to one of its children,
+and it is then scored as a reconstruction.
+
+Measured over every banked sweep in this checkout, at verbatim agreement — a
+concept agrees when the node's form set and the other lexicon's form set share
+a form, and the fraction is over the concepts both carry:
+
+| arm | committed nodes | verbatim copies |
+| --- | --- | --- |
+| `polynesian-before` (rule cascade) | 13 | **0** |
+| `polynesian-after` ×5 (inventory) | 43 | **12** |
+| `synthetic_hard-before` + `-before-r2` | 15 | 9 |
+| `synthetic_hard-after` + `-after-r2` | 24 | **23** |
+
+**All fifteen committed nodes in `synthetic_hard-after-r2` are copies**, and
+that is the sweep §7.7 read condition 6 from. Verified by hand on `seed-01`:
+`west` and `proto` are each 25 of 25 forms byte-identical to the daughter `d1`,
+both scored — while `east` fell back at 0.880 and was correctly excluded. **The
+exclusion rule dropped the honest fallback and admitted two copies.**
+
+On Polynesian the copies concentrate at the shallow nodes — `tongic` 4 of 8,
+`tahitic` 4 of 8, `central_eastern` and `nuclear_polynesian` 0 — and the
+pre-flip arm produced none at all in thirteen commits.
+
+#### The bar nothing published: what copying scores
+
+The probe asks whether a node copied. `--baseline` asks the question one step
+earlier and needs no run: **what does copying a daughter score against the
+gold?** Read exactly as `HistoricalTargetEvaluation` reads a reconstruction —
+any form the daughter carries against any gold alternative.
+
+| Proto-Polynesian, daughter copied unchanged | top-1 exact |
+| --- | --- |
+| East Futuna | **0.587** |
+| East Uvea | 0.565 |
+| Tongan | 0.543 |
+| Niuean | 0.500 |
+| Maori | 0.326 |
+| Samoan | 0.304 |
+| Rarotongan | 0.239 |
+| Hawaiian, North Marquesan | 0.174 |
+| Tahitian | 0.130 |
+
+**Every live Polynesian figure in this repository is below 0.587.**
+`docs/benchmarks.md` records 0.457; the banked sweeps give 0.457 before and
+0.446 after; the best single seed reached 0.543 — and *that seed's
+`proto_polynesian` is byte-identical to Tongan, whose own copy baseline is
+0.543 exactly.*
+
+#### The two computations agree where they must, which is the check
+
+The baseline is computed from the payload alone and never looks at a run. The
+probe is computed from a run and never looks at the baseline. On
+`synthetic_hard` every identity commit's score equals the copy baseline of the
+daughter it reproduced, to three decimals:
+
+| observed identity commit | scored | that daughter's copy baseline |
+| --- | --- | --- |
+| `proto` == `d1`, 4 seeds | 0.520 | **0.520** |
+| `proto` == `d2`, 2 seeds | 0.560 | **0.560** |
+| `west` == `d1`, 4 seeds | 0.800 | **0.800** |
+| `west` == `d2`, 1 seed | 0.880 | **0.880** |
+| `east` == `d3`, 1 seed | 0.880 | **0.880** |
+| `proto_polynesian` == Tongan, 1 seed | 0.543 | **0.543** |
+
+Four further scored copies are node copies rather than leaf copies — `proto` ==
+`west` twice and `west` == `proto` twice — which have no daughter baseline to
+check against and are counted in the arm totals above.
+
+Two independent readings landing on the same six numbers is what makes this a
+measurement rather than an inference.
+
+#### What this does to §7.7's condition 6
+
+§7.7 reported condition 6 per gold node and concluded that top-1 was up at both
+comparable nodes while the spreads overlapped. Re-read with identity commits
+removed from the scored set, and with nothing else changed:
+
+| gold node | before, as published | before, copies removed | after, as published | after, copies removed |
+| --- | --- | --- | --- | --- |
+| `proto` | 0.290 ± 0.100, n=4 | 0.290 ± 0.100, n=4 | 0.535 ± 0.077, n=8 | **n=0** |
+| `west` | 0.700 ± 0.028, n=2 | 0.700 ± 0.028, n=2 | 0.845 ± 0.110, n=8 | 1.000, n=1 |
+| `east` | 0.880, n=1 | n=0 | n=0 | n=0 |
+
+**Every scored `proto` evaluation in the after condition is an identity
+commit.** The before column at that node contains none. So the comparison §7.7
+made is between reconstructions on one side and copies on the other, and the
+copies are the side that scored higher.
+
+The sharpest form of it, and the reason this is not a quibble about an
+instrument: at `proto` the after condition scores **0.535**, which is the copy
+baseline of `d1` and `d2` (0.520 and 0.560). The before condition scores
+**0.290**, which is *below* the copy baseline of three of the five daughters
+(`d2` 0.560, `d1` 0.520, `d3` 0.320). Read
+together, the honest description of what changed between the two instruction
+sets at this node is **not** "top-1 went up". It is that the model stopped
+reconstructing badly and started copying — and copying scores better than a bad
+reconstruction.
+
+#### What this does and does not establish
+
+- **It does not establish that an identity commit is wrong.** A proto-language
+  can be identical to a conservative daughter, and Proto-Polynesian is close to
+  Tongan for real reasons. Copying is a *degenerate strategy*, not an incorrect
+  answer, and on a family where the conservative daughter is close to the proto
+  the two are hard to tell apart by any measure.
+- **It does not establish a direction for the instruction flip.** Part of the
+  after condition's copy rate is arithmetic: on Polynesian the pre-flip arm
+  committed 13 nodes and the post-flip arms 43, and the copies sit at the
+  shallow nodes the pre-flip arm mostly failed. Converting a failure into a copy
+  is not the same as converting a reconstruction into a copy, and these data
+  cannot separate the two.
+- **It does establish that no live figure in this document is interpretable
+  without its copy baseline beside it**, and that none of them has ever been
+  published that way. That is a defect in how results were reported here, and it
+  is repaired by two numbers that cost no inference.
+- **It establishes that §7.7's condition-6 reading cannot stand as written.**
+  Not that the verdict flips — condition 6 tripped there and still trips — but
+  that its *argument*, "top-1 is up at both comparable nodes", is measuring
+  copies at one node and mostly copies at the other.
+
+#### The decisions, taken 2026-08-30
+
+**Proposal 9 — accepted, and strengthened by the research owner.** Every live
+figure carries its baseline. And the baseline is not "copy one whole daughter":
+it is **the best attested form per concept, chosen against the gold**, which is
+an oracle over the daughters that reconstructs nothing. `--baseline` reports
+both.
+
+| gold node | copy one daughter | **best form per concept** | mean NED |
+| --- | --- | --- | --- |
+| `proto_polynesian` | 0.587 | **0.826** | 0.045 |
+| `synthetic_hard:proto` | 0.560 | **0.840** | 0.038 |
+| `synthetic_hard:west` | 0.880 | **1.000** | 0.000 |
+| `synthetic_hard:east` | 0.880 | **1.000** | 0.000 |
+| `burmish:proto_burmish` | 0.000 | **0.000** | 0.604 |
+| `burmish:burmic` | 0.000 | **0.000** | 0.559 |
+
+**The stronger bar is worse news than the soft one, and it lands on §1.2 rather
+than on any live figure.** On Polynesian, selection among attested words reaches
+**0.826** against the assembly oracle's 0.848 and the two branch-cascade
+oracles' 0.587 and 0.717. **Picking the closest existing word beats both
+branch-cascade ceilings and comes within 0.022 of the assembly ceiling.** So the
+architecture's entire measured headroom over "choose an attested form" is two
+percentage points, and conditions 1 and 2 are both stated against oracles that
+selection already outruns.
+
+**And `synthetic_hard` is solved by selection at two of its three gold nodes**,
+1.000 against an assembly ceiling of 0.880. One of them is `east`, the node no
+live seed ever committed and whose identity fallback scored 0.880. A synthetic
+family whose answer key is reachable by choosing an existing word is not testing
+reconstruction there, which is a defect in §9.2's generator and not in any run.
+
+Burmish is the only family whose hard bar is zero, at a mean NED near 0.6.
+
+**Proposal 10 — rejected as a gate, accepted as a report.** Option B:
+`commit_reconstruction` refuses nothing, and the copy rate is published. The
+reason is the one the proposal was written with — an identity correspondence is
+usually correct, and a gate that raises the headline number is the failure this
+section exists to prevent. Option C, warning the model inside the session and
+letting it commit anyway, stays open as an experiment with its own paired sweep.
+
+**Conditions 2′, 5′ and 8 — decided by the implementer on 2026-08-30, on the
+research owner's instruction to decide and record rather than defer.**
+
+- **5′ accepted, and it is a defect repair rather than a threshold.**
+  `precision` does not abstain on an empty `true_inverse_rules` while `recall`
+  does. That is an instrument bug, and a bug is fixed rather than voted on.
+- **8 accepted**, and accepted *because* the change does not currently pass it:
+  4.00 ± 1.00 after against 4.33 ± 0.58 before on Polynesian. A falsification
+  set whose new conditions all pass is the failure §7.10 was written to prevent.
+  Report, never a gate, and nothing filters a trajectory on it.
+- **2′ accepted as a reported figure and not as a stop.** It currently sits at 39
+  against 33 and costs nothing to publish. It is kept beside condition 2 rather
+  than in place of it, because condition 2 stays as written and stays tripped.
+
+All three are recorded here as implementer decisions and remain open to reversal
+by the research owner.
+
+#### How a copy is produced, which is not what it looks like
+
+The obvious mechanism is the residue policy: a node that explains nothing and
+falls back on `retain_from_witness` reproduces the witness. That mechanism is
+real and it is **not** the common one.
+
+Measured over every banked inventory commit, the copies have a *lower*
+unaccounted-column rate than the nodes that are not copies — mean 0.176 against
+0.286, median **0.000** against 0.242. A copy is usually not a node that
+explained nothing. It is a node that explained everything, trivially.
+
+**64.8% of all committed correspondence sets — 776 of 1198 — are identity
+correspondences**, meaning every reflex in the set is the same segment and the
+committed proto segment is that segment. `polynesian-after-toolstep/seed-00`
+at `tongic` is the clean case: 15 sets committed, 13 of them `a : a > *a` in
+form, unaccounted rate 0.299, and a lexicon byte-identical to Tongan. On
+Polynesian the copying nodes commit 83.9% identity sets against 63.1% for the
+rest.
+
+So there are two routes to the same artifact, and they are opposites:
+
+- **A complete inventory of identity correspondences.** The hypothesis *is* the
+  copy. This is the common route, and the one no residue check would catch.
+- **A near-empty inventory plus `retain_from_witness`.** `burmish-after/seed-01`
+  at `burmic` committed **one** set, support 2, left 338 of 341 columns
+  unaccounted, and returned Rangoon verbatim. Rare, and the one the
+  `unaccounted_column_rate` threshold does catch.
+
+**None of this makes an identity correspondence wrong.** Sister languages share
+most of their phonology, and `a : a > *a` is usually the right answer. What it
+means is that `unaccounted_column_rate` cannot serve as the copy detector — it
+points the wrong way — and that the check has to be on the assembled lexicon,
+which is what the probe does.
+
+#### Two proposals, and one thing that must not be done
+
+**Proposal 9, beside the originals.** *Publish the copy baseline and the
+identity-commit count beside every live accuracy figure, per gold node.* Report,
+never a gate. This is the same treatment §7.6's recommendation already asks for
+the commit rate and the fallback score, and it is the minimum that makes a live
+number readable.
+
+**Proposal 10, for the research owner and deliberately not implemented here.**
+*Should `commit_reconstruction` refuse a hypothesis whose assembled lexicon
+reproduces a child verbatim?* There is a real argument on both sides: it is the
+signature of a degenerate commit, and it is also a legitimate answer on a family
+with a very conservative daughter. **Nothing here should be resolved by adding a
+gate that makes the number look better**, which is exactly the failure mode
+§7.7's rationale note warns about.
+
+**And the thing that must not be done:** no trajectory may be filtered on the
+identity check. Dropping copies from a scored set turns a reporting instrument
+into a selection rule, and §7.6(a) already measured what selection does to this
+comparison — the excluded seeds were not the bad ones.
+
+### 7.21 The Burmish paired sweep: the first real-data reading of condition 6
+
+*Run 2026-08-29/30 under the design §7.19 fixed before any seed produced a
+result. `google/gemma-4-26b-a4b` on LM Studio, temperature 1.0, `top_k` 64 /
+`top_p` 0.95 / `repeat_penalty` 1.0, `--provider-seed-base 1000`, beam width 5,
+`--max-turns 24`, `--max-tool-calls 48`, `--max-failed-nodes 3`,
+`--timeout 600`. **Three seeds per arm, not the five §7.19 costed**, on the
+research owner's instruction to spend the remaining budget on the problems the
+sweep exposed rather than on confirming them. Directories
+`runs/sweeps/burmish-{after,before}`, gitignored.*
+
+#### The pairing, verified rather than asserted
+
+The before arm is this tree with `agent/system_prompt.md` and
+`COMMIT_REQUIREMENT_NOTES` reverted to `991bc16^`, run from a worktree — the
+construction §7.19 argued for, because the pre-stage-3 checkout cannot ingest
+`hillburmish` at all. Live check on the artifacts rather than on the plan:
+
+| | before arm | after arm |
+| --- | --- | --- |
+| `instruction_sha256` | **`c4d25af18c87…`** | `b75f7f1e1d04…` |
+| matches the 2026-08-24/25 before runs | **yes, byte-identical** | — |
+| commit shape actually used | `rules`, 0 inventories | `commitments`, 0 rule cascades |
+| payload | the same file, by absolute path | the same file |
+
+Both arms attempted all three nodes in all three seeds, and none was abandoned:
+on a three-node tree `--max-failed-nodes 3` cannot trigger, because the check is
+`>` rather than `>=`. So this family has no "abandoned, no result" failure mode.
+
+#### Condition 6, per gold node, never pooled
+
+| gold node | before, 3 seeds | after, 3 seeds | condition 6 |
+| --- | --- | --- | --- |
+| `burmic` | committed **2/3**, top-1 **0.000 ± 0.000** | committed **2/3**, top-1 **0.000 ± 0.000** | not up; spreads identical |
+| `proto_burmish` | committed **2/3**, top-1 **0.000 ± 0.000** | committed **2/3**, top-1 **0.000 ± 0.000** | not up; spreads identical |
+
+Identity fallbacks scored 0.000 at both nodes in both arms. Four evaluations
+were scored per arm and two excluded per arm.
+
+**Condition 6 trips, and for a reason no previous run could produce: the
+measure is pinned at its floor in both arms.** "Top-1 up with non-overlapping
+spread" cannot be satisfied by two zeros, and it also cannot be *falsified* in
+any informative way. This is not the same failure as §7.7's, where the
+condition tripped on overlapping spreads around different means.
+
+#### Zero is the floor here, and that is a property of the family
+
+`tools/identity_commit_probe.py --baseline` says every one of the seven
+daughters scores **0.000** at both gold nodes. So on this benchmark zero is what
+copying earns, and the live arms earned exactly that. Three measured reasons,
+largest first, and only the third is a defect:
+
+- **The reconstructions are simply wrong.** At `proto_burmish` in
+  `after/seed-00` the residue rate was 0.156, the forms ran full length, and the
+  mean top NED was 0.707 — about seventy percent of each string differs.
+- **The gold is a root and the daughters are compounds.** All 92 Proto-Burmish
+  gold forms carry no `+`; 151 of 392 daughter forms do. The model reconstructed
+  `ŋ j i ⁵⁵ + kʰ j ui ⁵⁵` where the gold reads `ŋ j i ³`.
+- **The proto tone marks are categories the daughters do not carry.** Gold
+  writes `¹ ² ³ ⁴`; daughters write Chao contours, and `¹` and `²` appear in no
+  daughter at all.
+
+Relaxing the reading on the last two moves almost nothing, and moves both arms
+by the same amount — which is why neither was repaired:
+
+| reading, per seed over 54 concepts at `proto_burmish` | before | after |
+| --- | --- | --- |
+| whole form, exact | 0.0 | 0.0 |
+| tone marks removed from both sides | 2.0 | 2.0 |
+| any one morpheme of the candidate, tone removed | 4.0 | 4.5 |
+
+**A benchmark whose copy baseline is zero is worth keeping even when the live
+score is zero**, which is the §7.19 argument surviving contact with the result.
+On Polynesian a live 0.5 does not distinguish reconstruction from copying East
+Futuna. Here nothing is hidden: 0.000 means 0.000.
+
+#### What the sweep did establish, which is not condition 6
+
+§7.20's identity finding replicates on this family, in the same direction, in a
+paired design:
+
+| arm | committed nodes | verbatim copies |
+| --- | --- | --- |
+| `burmish-before` (rule cascade) | 5 | **0** |
+| `burmish-after` (inventory) | 7 | **4** |
+
+Pooled with the banked Polynesian sweeps — the two **real** families only, and
+committed nodes only:
+
+| commit shape | committed nodes | verbatim copies |
+| --- | --- | --- |
+| rule cascade (before) | 18 | **0** |
+| inventory (after) | 50 | **16** |
+
+Fisher's exact, one-sided, gives **p = 0.0034**. Read that as indicative rather
+than as a clean test: the after column pools five sweep directories carrying
+different instruction hashes, and nodes inside a seed are not independent draws.
+**And the commit-rate confound of §7.7 applies here too and is not removed by
+pooling** — the after condition commits more nodes (50 against 18) and the
+copies sit at the shallow nodes the before condition mostly failed, so
+converting a failure into a copy is not the same as converting a reconstruction
+into one. What the number does support is that the two commit shapes differ in
+whether they produce copies at all, on real data, at a size that is unlikely to
+be chance.
+
+The residue side, which the rule shape has no equivalent of:
+
+| seed | `maruic` | `burmic` | `proto_burmish` |
+| --- | --- | --- | --- |
+| after/00 | 30 sets, 0.545, `retain_from_witness` | 10 sets, **0.684**, `drop` | 30 sets, 0.156, `retain_from_witness` |
+| after/01 | 7 sets, **0.786** | **1 set, 0.991**, `retain_from_witness` | 25 sets, 0.447, `drop` |
+| after/02 | 30 sets, 0.525, `drop` | fallback | fallback |
+
+Mean 0.591 over seven inventory commits, against this family's floor of 0.280
+and 0.338 (§7.18). **`after/seed-01` at `burmic` committed one correspondence
+set of support 2, left 338 of 341 columns unaccounted, and returned Rangoon
+verbatim — and the harness accepted it as a completed node and scored it.**
+
+#### Cost, measured, and §7.19's estimate was wrong
+
+| arm | minutes a seed | `maruic` | `burmic` | `proto_burmish` |
+| --- | --- | --- | --- | --- |
+| after | **43.8 ± 18.4**, range 23.5–59.2 | 19.4 | 13.3 | 11.6 |
+| before | **67.1 ± 62.7**, range 25.7–139.3 | — | — | — |
+
+§7.19 predicted "roughly 26 minutes a seed" and "about half the cost" of
+Polynesian's measured 61. **Both halves are wrong.** A Burmish seed costs about
+the same as a Polynesian one, and the reason is that fewer nodes are cancelled
+out by more expensive ones: the median turn here is 95 s against Polynesian's
+36 s, because prompts reach 115,887 tokens against Polynesian's ~31,000. §7.9's
+"a bigger family costs mainly through more nodes" needs the qualifier that a
+family with larger per-node evidence costs through longer turns instead. The
+before arm is again the slow one, as §7.9 predicts for the arm that fails more.
+
+#### What this does not establish
+
+- **Nothing about which instruction set reconstructs better.** Both arms scored
+  zero at both gold nodes. This sweep cannot rank them on accuracy and does not.
+- **Nothing at five seeds.** Three seeds a side was a budget decision, recorded
+  as one. §7.19's table says five a side gives P(≥3 scored in both arms) of 0.64
+  and 0.71 per node; at three it is 0.13 each, and the observed 2/3 commit rate
+  at both nodes in both arms is better than that arithmetic predicted.
+- **Nothing clean about the before arm's instructions.** The manual was reverted
+  and the *tool schemas* were not, so the before arm still saw an inventory
+  argument its manual never describes — and reached for it: its error codes
+  include `commitments[].correspondence=extra_forbidden` five times. That is the
+  §7.19 confound, observed live rather than predicted.
+- **Nothing about the `unaccounted_column_rate` threshold**, which §7.19 already
+  ruled unusable on this family, and which §7.20 shows points the wrong way for
+  detecting a copy in any case.
+
+### 7.22 Stage 4 is not being put, and what that changes upstream
+
+*Decided by the research owner 2026-08-30, on the evidence of §7.20 and §7.21:
+the branch-cascade commit path stays. §7.10 already recommended against putting
+stage 4 while condition 6 had no reading. The new and stronger reason is §7.21's
+— the cascade is the arm that produced **0 verbatim copies in 18 committed
+nodes**, against the inventory's **16 of 50**, so deleting it removes the only
+commit shape without the pathology and the only control a future comparison has.*
+
+**Stage 4 was not a tidy-up at the end of a plan. Several earlier decisions were
+taken because it was coming.** Those decisions are listed here with what each
+one now needs. Nothing below is implemented; this subsection is the audit, and
+each item is a decision for the research owner.
+
+#### 1. "Prefer the inventory" is now a standing instruction, not a transition
+
+`COMMIT_REQUIREMENT_NOTES` opens with *"Prefer the inventory"*, and
+`system_prompt.md` leads with the inventory loop. That was right while the
+cascade was scheduled for deletion. It is a permanent instruction now, and it
+points at the shape that copies: **16 of 50 inventory commits reproduce a child
+verbatim, against 0 of 18 cascade commits.**
+
+Three options, and the third is the one this document favours because it decides
+nothing on n=68 nodes:
+
+- Keep the preference. Simple, and it steers toward the measured pathology.
+- Reverse it. Equally unjustified: the cascade is slower, commits fewer nodes,
+  and its live accuracy is not better.
+- **State both shapes without a preference, and let the evidence at the node
+  decide.** The manual already describes what a cascade cannot do — a rule
+  rewrites one child's own segments — which is the honest asymmetry, and it does
+  not need a ranking on top.
+
+#### 2. Three diagnostics are not "retired". They are shape-specific.
+
+§9.1 lists `child_convergence_rate`, `divergent_concept_count` and
+`divergent_concept_ids` as *retired, not removed*, on the ground that nothing
+populates them on a 3.0 step. With both shapes permanent they are alive under
+the cascade and dead under the inventory. The same is true of
+`rule_coverage`, which §9.1 calls "replaced by `unaccounted_column_rate`".
+**Neither is a replacement any more; they are one metric per shape**, and every
+reader of a diagnostic now has to know which shape produced it.
+
+#### 3. `high_quality`'s asymmetry across shapes becomes permanent
+
+§12.2 records that the gate silently loosens under the inventory shape, and
+treats that as a transitional wrinkle. It is not transitional now. A gate that
+means two different things depending on the commit shape is a permanent defect
+in an artifact-level filter that `export-trajectories` depends on.
+
+#### 4. `test_rule_cascade`'s context cost stops being temporary
+
+§9.1 justifies deleting it partly on cost: **399 KB across three calls at one
+node, against 22 KB for all the evidence that node inspected, and never
+compactable.** That cost was acceptable because the tool was leaving. It stays,
+so the right response is to make it cheaper rather than to tolerate it, and
+§7.9's anatomy says why it matters less than it looks — latency tracks output
+tokens, not context.
+
+#### 5. One thing that needs *no* change, said so nobody repairs it
+
+Stage 4 would have made `assembly` the default oracle in
+`tools/oracle_ceiling.py`. Not doing stage 4 means `context_free` stays the
+default, which is what every recorded baseline in this repository was measured
+with. **That is now the correct outcome rather than an omission.** Leave it.
+
+#### 6. §7 asks a question that is no longer the question
+
+The falsification set asks whether the new architecture is good enough to
+*replace* the old one. With no replacement, the live question becomes **when
+each shape wins**, and §7 was not written for it. Conditions 1, 2 and 4 compare
+one architecture's ceiling against another's; they stay valid as ceilings and
+they stop being a decision procedure. This is the largest consequence of the
+decision and it is not repaired by editing a threshold.
+
+#### 7. And a hole that has nothing to do with stage 4
+
+§7.20's `--baseline`, under the research owner's stronger reading, reports that
+**selecting the best attested form per concept reaches 38/46 on Polynesian**
+with no reconstruction at all. Condition 1's stop is *top-1 below 33/46*.
+
+**So a system that only picks the closest existing word passes condition 1.** It
+also beats the context-free branch-cascade oracle outright (27/46) and the
+context-sensitive one (33/46), and lands 1 concept below the assembly ceiling
+(39/46). Condition 1 and condition 2 are stated against bars that pure selection
+clears, which means neither can distinguish reconstruction from selection.
+
+*The context-free oracle's 27/46 and East Futuna's copy baseline of 27/46 are
+the same number. Whether they are the same 27 concepts was not measured, and the
+claim here rests only on the totals.*
+
+The repair is not to raise the thresholds, which would be choosing a number to
+pass. It is to state a condition against **the selection bar** — a live or
+oracle figure is evidence of reconstruction only above 38/46 on this family —
+and to publish that bar with every ceiling on the page. Proposed as **condition
+11**, beside the originals, and not adopted here.
+
 ---
 
 ## 8. Staged implementation plan
@@ -3720,6 +4862,15 @@ Both commit shapes still accepted. A regression is a revert of one document.
 
 ### Stage 4 — remove the branch-cascade commit path
 
+> **Not being put. Decided by the research owner 2026-08-30.** The cascade
+> stays. §7.10 recommended against it while condition 6 had no reading, and
+> §7.21 gives the stronger reason: the cascade produced **0 verbatim copies in
+> 18 committed nodes** against the inventory's **16 of 50**, so stage 4 would
+> delete the only commit shape without the pathology and the only control a
+> future comparison has. **§7.22 audits what earlier decisions were taken
+> because stage 4 was coming**, and every item there is now open. §9 below
+> describes a deletion that is not happening.
+
 - Delete what §9 lists.
 - `oracle_ceiling.py` default mode becomes `assembly`; the two branch-cascade
   modes stay runnable as the historical baseline.
@@ -3733,6 +4884,13 @@ Both commit shapes still accepted. A regression is a revert of one document.
 
 The prompt is right that the value is as much in the removal as in the addition.
 Everything here goes at stage 4, and only if §7 holds.
+
+> **Nothing here is being deleted.** Stage 4 is not being put (§7.22), so this
+> section is a record of a plan rather than a work list. Two of its rows are
+> actively misleading now and §7.22 says so: the three "retired, not removed"
+> diagnostics are shape-specific rather than retired, and `rule_coverage` is not
+> replaced by `unaccounted_column_rate` but coexists with it, one metric per
+> commit shape.
 
 ### 9.1 From the harness
 
