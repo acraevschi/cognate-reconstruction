@@ -4398,6 +4398,30 @@ reconstruction there, which is a defect in §9.2's generator and not in any run.
 
 Burmish is the only family whose hard bar is zero, at a mean NED near 0.6.
 
+**Proposal 10 — rejected as a gate, accepted as a report.** Option B:
+`commit_reconstruction` refuses nothing, and the copy rate is published. The
+reason is the one the proposal was written with — an identity correspondence is
+usually correct, and a gate that raises the headline number is the failure this
+section exists to prevent. Option C, warning the model inside the session and
+letting it commit anyway, stays open as an experiment with its own paired sweep.
+
+**Conditions 2′, 5′ and 8 — decided by the implementer on 2026-08-30, on the
+research owner's instruction to decide and record rather than defer.**
+
+- **5′ accepted, and it is a defect repair rather than a threshold.**
+  `precision` does not abstain on an empty `true_inverse_rules` while `recall`
+  does. That is an instrument bug, and a bug is fixed rather than voted on.
+- **8 accepted**, and accepted *because* the change does not currently pass it:
+  4.00 ± 1.00 after against 4.33 ± 0.58 before on Polynesian. A falsification
+  set whose new conditions all pass is the failure §7.10 was written to prevent.
+  Report, never a gate, and nothing filters a trajectory on it.
+- **2′ accepted as a reported figure and not as a stop.** It currently sits at 39
+  against 33 and costs nothing to publish. It is kept beside condition 2 rather
+  than in place of it, because condition 2 stays as written and stays tripped.
+
+All three are recorded here as implementer decisions and remain open to reversal
+by the research owner.
+
 #### How a copy is produced, which is not what it looks like
 
 The obvious mechanism is the residue policy: a node that explains nothing and
