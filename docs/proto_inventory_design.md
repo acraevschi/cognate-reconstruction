@@ -4827,6 +4827,69 @@ separate.
 
 ---
 
+### 7.23 §7.22's audit, decided
+
+*2026-08-30. Each of §7.22's six items is taken or refused here, with the
+reason. Items touching `system_prompt.md`, the tool schemas, or the trajectory
+metrics were held until the Qwen sweep of §7.24 finished, because a tree that
+moves between arms makes seeds incomparable and that has cost this repository
+two full sweeps.*
+
+#### Item 5 — leave `oracle_ceiling.py`'s default alone. **Confirmed, no change.**
+
+Recorded first because it is the one that needs nothing, and §7.22 wrote it down
+precisely so that a later reader would not "repair" it. `context_free` remains
+the default oracle. Every recorded baseline in this repository was measured with
+it, and stage 4 — which would have promoted `assembly` — is not being put.
+
+Checked rather than assumed: `--selection-overlap` was added to that script on
+2026-08-30 and the default was not touched. `--oracle` still defaults to
+`CONTEXT_FREE` and the regression test still asserts
+`result.oracle == "context_free"` for a call that passes no oracle.
+
+#### Item 6 — §7 asks a question that is no longer the question. **Taken, and the answer is that nothing replaces it.**
+
+Conditions 1, 2 and 4 compare the assembly ceiling against the branch-cascade
+ceilings, and their stop clauses are written as a decision procedure — condition
+1 stops "if the change bought nothing an `--oracle contextual` flag would not
+have shown". With both shapes permanent there is no change to buy anything, and
+no replacement to authorise.
+
+**They stay, unedited, as characterisations of a ceiling.** A ceiling is a fact
+about an architecture and does not stop being one because the architectures now
+coexist. What they no longer are is a procedure that outputs a decision, and
+editing the thresholds would not restore that — it would only hide that the
+output is no longer used.
+
+**And the live question — when does each shape win — has no instrument in this
+repository.** That is the honest state, and inventing a criterion to fill the
+gap would be worse than naming it. What is measured about the two shapes, all
+of it:
+
+| | branch cascade | inventory |
+| --- | --- | --- |
+| verbatim copies among committed nodes | **0 of 18** | **16 of 50** (§7.20; indicative, p = 0.0034, three stated caveats) |
+| Polynesian oracle ceiling | 27/46, 33/46 | 39/46 |
+| …of which outside the selection bar | 1, **2** | **3** (§7.1 condition 11) |
+| live accuracy | not better | not better |
+| nodes committed, speed | fewer, slower | more, faster |
+
+**Read the third row against the second.** The assembly ceiling beats the
+context-sensitive cascade ceiling by six concepts on Polynesian, which is the
+gap the architecture was argued from. Net of the selection bar, the advantage is
+**one concept** — `1439` — because four of the six were forms a daughter already
+attested and the cascade oracle reaches the other two as well. The ceiling
+argument for the architecture is not wrong; it is one concept wide on this
+family, and it was never stated that way because the bar did not exist yet.
+
+None of that chooses a shape at a node, and it is not supposed to. What it does
+is set the price of building an instrument that would: a per-node criterion has
+to separate two architectures whose ceilings, read the only way §7.1 now permits
+them to be read, differ by one concept on the family this repository measures
+most.
+
+---
+
 ## 8. Staged implementation plan
 
 Every stage leaves the suite green and the harness runnable. Stage numbering is
