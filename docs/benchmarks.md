@@ -394,6 +394,24 @@ Xiandao with Burmese, giving a node with three children. Both subgroups are left
 as polytomies; each refinement added would be another traversal node and another
 session's cost, and neither is needed for a node this benchmark scores.
 
+**Live figures, three seeds per arm, `google/gemma-4-26b-a4b`** — the paired
+sweep of §7.21, and the first real-data reading condition 6 has ever had:
+
+| gold node | before (rule cascade) | after (inventory) | copy baseline |
+| --- | --- | --- | --- |
+| `proto_burmish` | committed 2/3, top-1 **0.000 ± 0.000** | committed 2/3, top-1 **0.000 ± 0.000** | **0.000** |
+| `burmic` | committed 2/3, top-1 **0.000 ± 0.000** | committed 2/3, top-1 **0.000 ± 0.000** | **0.000** |
+
+Zero is the floor of this benchmark, not a collapse: every daughter copied
+unchanged also scores 0.000, because the gold writes tone as a category and
+writes pre-glottalized initials no daughter preserves. **That is the reason to
+keep the family despite the result.** A live 0.5 on Polynesian does not
+distinguish reconstruction from copying East Futuna; here nothing is hidden.
+Relaxing the reading — tone marks dropped from both sides, or any single
+morpheme of the candidate accepted — moves both arms by the same two to four
+concepts of 54, which is why neither relaxation was adopted. A seed costs
+43.8 ± 18.4 minutes in the after arm and 67.1 ± 62.7 in the before arm.
+
 `hillburmish` is also the first benchmark whose cognacy is coded one morpheme at
 a time — see `Partial_Cognacy` in [running inference](running_inference.md).
 That makes the morpheme reading its evidence view by default, and §7.18 of
