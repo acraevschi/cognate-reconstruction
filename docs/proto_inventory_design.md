@@ -4628,6 +4628,103 @@ before arm is again the slow one, as §7.9 predicts for the arm that fails more.
   ruled unusable on this family, and which §7.20 shows points the wrong way for
   detecting a copy in any case.
 
+### 7.22 Stage 4 is not being put, and what that changes upstream
+
+*Decided by the research owner 2026-08-30, on the evidence of §7.20 and §7.21:
+the branch-cascade commit path stays. §7.10 already recommended against putting
+stage 4 while condition 6 had no reading. The new and stronger reason is §7.21's
+— the cascade is the arm that produced **0 verbatim copies in 18 committed
+nodes**, against the inventory's **16 of 50**, so deleting it removes the only
+commit shape without the pathology and the only control a future comparison has.*
+
+**Stage 4 was not a tidy-up at the end of a plan. Several earlier decisions were
+taken because it was coming.** Those decisions are listed here with what each
+one now needs. Nothing below is implemented; this subsection is the audit, and
+each item is a decision for the research owner.
+
+#### 1. "Prefer the inventory" is now a standing instruction, not a transition
+
+`COMMIT_REQUIREMENT_NOTES` opens with *"Prefer the inventory"*, and
+`system_prompt.md` leads with the inventory loop. That was right while the
+cascade was scheduled for deletion. It is a permanent instruction now, and it
+points at the shape that copies: **16 of 50 inventory commits reproduce a child
+verbatim, against 0 of 18 cascade commits.**
+
+Three options, and the third is the one this document favours because it decides
+nothing on n=68 nodes:
+
+- Keep the preference. Simple, and it steers toward the measured pathology.
+- Reverse it. Equally unjustified: the cascade is slower, commits fewer nodes,
+  and its live accuracy is not better.
+- **State both shapes without a preference, and let the evidence at the node
+  decide.** The manual already describes what a cascade cannot do — a rule
+  rewrites one child's own segments — which is the honest asymmetry, and it does
+  not need a ranking on top.
+
+#### 2. Three diagnostics are not "retired". They are shape-specific.
+
+§9.1 lists `child_convergence_rate`, `divergent_concept_count` and
+`divergent_concept_ids` as *retired, not removed*, on the ground that nothing
+populates them on a 3.0 step. With both shapes permanent they are alive under
+the cascade and dead under the inventory. The same is true of
+`rule_coverage`, which §9.1 calls "replaced by `unaccounted_column_rate`".
+**Neither is a replacement any more; they are one metric per shape**, and every
+reader of a diagnostic now has to know which shape produced it.
+
+#### 3. `high_quality`'s asymmetry across shapes becomes permanent
+
+§12.2 records that the gate silently loosens under the inventory shape, and
+treats that as a transitional wrinkle. It is not transitional now. A gate that
+means two different things depending on the commit shape is a permanent defect
+in an artifact-level filter that `export-trajectories` depends on.
+
+#### 4. `test_rule_cascade`'s context cost stops being temporary
+
+§9.1 justifies deleting it partly on cost: **399 KB across three calls at one
+node, against 22 KB for all the evidence that node inspected, and never
+compactable.** That cost was acceptable because the tool was leaving. It stays,
+so the right response is to make it cheaper rather than to tolerate it, and
+§7.9's anatomy says why it matters less than it looks — latency tracks output
+tokens, not context.
+
+#### 5. One thing that needs *no* change, said so nobody repairs it
+
+Stage 4 would have made `assembly` the default oracle in
+`tools/oracle_ceiling.py`. Not doing stage 4 means `context_free` stays the
+default, which is what every recorded baseline in this repository was measured
+with. **That is now the correct outcome rather than an omission.** Leave it.
+
+#### 6. §7 asks a question that is no longer the question
+
+The falsification set asks whether the new architecture is good enough to
+*replace* the old one. With no replacement, the live question becomes **when
+each shape wins**, and §7 was not written for it. Conditions 1, 2 and 4 compare
+one architecture's ceiling against another's; they stay valid as ceilings and
+they stop being a decision procedure. This is the largest consequence of the
+decision and it is not repaired by editing a threshold.
+
+#### 7. And a hole that has nothing to do with stage 4
+
+§7.20's `--baseline`, under the research owner's stronger reading, reports that
+**selecting the best attested form per concept reaches 38/46 on Polynesian**
+with no reconstruction at all. Condition 1's stop is *top-1 below 33/46*.
+
+**So a system that only picks the closest existing word passes condition 1.** It
+also beats the context-free branch-cascade oracle outright (27/46) and the
+context-sensitive one (33/46), and lands 1 concept below the assembly ceiling
+(39/46). Condition 1 and condition 2 are stated against bars that pure selection
+clears, which means neither can distinguish reconstruction from selection.
+
+*The context-free oracle's 27/46 and East Futuna's copy baseline of 27/46 are
+the same number. Whether they are the same 27 concepts was not measured, and the
+claim here rests only on the totals.*
+
+The repair is not to raise the thresholds, which would be choosing a number to
+pass. It is to state a condition against **the selection bar** — a live or
+oracle figure is evidence of reconstruction only above 38/46 on this family —
+and to publish that bar with every ceiling on the page. Proposed as **condition
+11**, beside the originals, and not adopted here.
+
 ---
 
 ## 8. Staged implementation plan
@@ -4765,6 +4862,15 @@ Both commit shapes still accepted. A regression is a revert of one document.
 
 ### Stage 4 — remove the branch-cascade commit path
 
+> **Not being put. Decided by the research owner 2026-08-30.** The cascade
+> stays. §7.10 recommended against it while condition 6 had no reading, and
+> §7.21 gives the stronger reason: the cascade produced **0 verbatim copies in
+> 18 committed nodes** against the inventory's **16 of 50**, so stage 4 would
+> delete the only commit shape without the pathology and the only control a
+> future comparison has. **§7.22 audits what earlier decisions were taken
+> because stage 4 was coming**, and every item there is now open. §9 below
+> describes a deletion that is not happening.
+
 - Delete what §9 lists.
 - `oracle_ceiling.py` default mode becomes `assembly`; the two branch-cascade
   modes stay runnable as the historical baseline.
@@ -4778,6 +4884,13 @@ Both commit shapes still accepted. A regression is a revert of one document.
 
 The prompt is right that the value is as much in the removal as in the addition.
 Everything here goes at stage 4, and only if §7 holds.
+
+> **Nothing here is being deleted.** Stage 4 is not being put (§7.22), so this
+> section is a record of a plan rather than a work list. Two of its rows are
+> actively misleading now and §7.22 says so: the three "retired, not removed"
+> diagnostics are shape-specific rather than retired, and `rule_coverage` is not
+> replaced by `unaccounted_column_rate` but coexists with it, one metric per
+> commit shape.
 
 ### 9.1 From the harness
 
