@@ -5640,6 +5640,45 @@ fallbacks. And record the reason a node fell back in the aggregate, so a sweep
 whose evaluations were lost to a provider limit cannot be read as a sweep whose
 model failed to reconstruct.
 
+#### The retry fix worked, and the second attempt died of something else
+
+*Added later the same day.* The limit was identified from the account's own
+dashboard: **TPM, peak 2.21M against a 2M ceiling**, with RPM at 14/1K and RPD
+at 699/10K nowhere near. Reconstructing the sweeps' own traffic from event
+timestamps agrees — calendar-minute peaks of 1.73M, 1.86M and 1.59M input
+tokens, which a sliding 60-second window would push over 2M. So the run died of
+a per-minute rate ceiling, not of quota exhaustion and not of the balance.
+
+**Cached tokens count toward TPM, and that asymmetry is the thing to remember.**
+91% of this sweep's input was cache hits. Had they been exempt the effective
+rate would have been a tenth of the above and nothing would have been limited.
+Caching cut the *bill* tenfold and did *nothing* for the *rate*, which is why
+the void run was simultaneously the cheapest and the most thoroughly limited.
+
+Re-run as `burmish-gemini-t36b` with `--retry-backoff-seconds 30 --max-retries
+4`, giving waits of 30/60/120/240s against the ~60s a TPM window needs. **The
+backoff worked exactly as designed and the run still failed**, because the
+failure was no longer the same one: all six nodes died at turn 1 on a provider
+**503 "This model is currently experiencing high demand"**, over a 47-minute
+window with all 24 retries spent. Verified outside the harness — a bare
+`generateContent` request to `gemini-3.7-flash` returned the same 503 while the
+models endpoint returned 200. Zero tokens, zero cost.
+
+**A correction to §7.26's account of the morning.** The first two smoke attempts
+that day 503'd on an unbilled key, and enabling billing coincided with them
+working, so the failure was attributed to the tier. The same 503 now appears on
+a paid key. That attribution is not supported: `gemini-3.7-flash` has
+intermittent capacity problems, and the morning's recovery was a coincidence
+rather than a tier effect.
+
+**A third change this argues for.** `--max-retries` and
+`--retry-backoff-seconds` are in the hashed configuration, while every other
+give-up threshold — `--max-failed-nodes`, `--fail-fast`, the truncation-backoff
+flags — is deliberately not. They are the same kind of setting, and the
+inconsistency has a concrete cost: a run killed by a provider limit cannot be
+made more patient and resumed, which is exactly the repair the situation calls
+for.
+
 #### What is still true, and what is not
 
 - §7.27's Burmish 0.000 **stands as recorded**, with the turn-budget confound it
