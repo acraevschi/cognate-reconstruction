@@ -4935,10 +4935,15 @@ produces copies" from "Gemma produces copies". This removes that confound.*
 #### The sampler, stated because a figure whose sampling is not stated cannot be compared
 
 `runs/sweeps/gemma-sampling.json` holds **Gemma's** published values, so it was
-not reused. This MLX conversion ships no `generation_config.json`, so
-`runs/sweeps/qwen-sampling.json` was written from the Qwen family's published
-sampling instead: `top_k 20`, `top_p 0.95`, `min_p 0.0`, `repeat_penalty 1.0`.
-Temperature 1.0 by flag, as every sweep since 2026-08-24 pins it.
+not reused. This MLX conversion ships no `generation_config.json`, so a Qwen file
+was written from the Qwen family's published sampling instead: `top_k 20`,
+`top_p 0.95`, `min_p 0.0`, `repeat_penalty 1.0`. Temperature 1.0 by flag, as
+every sweep since 2026-08-24 pins it.
+
+Both files are now tracked at `examples/sampling/`, with the provenance of each
+value. Until 2026-08-31 they existed only under the gitignored `runs/` tree,
+which meant every live figure in this document was published while the sampler
+that produced it was not in the repository at all.
 
 **Verified rather than assumed.** LM Studio applies its own panel to anything
 the client omits and `configuration_sha256` cannot see it, so all four
