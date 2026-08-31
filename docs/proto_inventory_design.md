@@ -2080,6 +2080,14 @@ condition 1** — that remains true and is now stated rather than implied.
 Condition 11 is what a figure has to answer to on top of them, and it is
 answerable at any threshold, including zero.
 
+**Applied to live figures for the first time on 2026-08-31, it trips.** All four
+scored Polynesian seeds across both models — Qwen 0.565 and 0.500, Gemma 0.543
+and 0.348 — reached **zero** concepts outside the selection bar. Every form any
+live run on this family has ever got right was a form some daughter already
+attested. §7.24 has the table. The condition is not stuck at zero: the same
+reading returns 3 for the assembly oracle here, 42 and 25 on Burmish, and 4 at
+`synthetic_hard:proto`.
+
 **Where condition 11 cannot be evaluated, it says so rather than passing.** It
 needs the gold binding and the daughter lexicons, so it is computable for every
 oracle figure and every live figure this repository records. It is not a
@@ -3818,6 +3826,22 @@ two should be decided together.
 *Prompt edited 2026-08-29. The "before" counts are banked. The "after" counts
 need a live sweep and are not in this document yet.*
 
+> **Scope correction, 2026-08-31.** Every count in this subsection is
+> `google/gemma-4-26b-a4b`, and the conclusion drawn from them — that naming a
+> tool in the workflow does not make it get called — is a fact about that model
+> and not about the instructions. §7.24 ran the same instructions on
+> `qwen3.6-35b-a3b`: the three browsing tools go from **3.8% to 14.2%** of all
+> calls, `search_forms` from 8 calls to 39, and the share of non-root nodes
+> using any of them from **5 of 18 to 16 of 18**. Reaching for out-group
+> material is a model property, and a strong one.
+>
+> Two things that correction does *not* license. It does not show the tools were
+> well designed — §7.25 measures that per correspondence rather than per call,
+> and Qwen still commits three sets for every one it polarizes. And it does not
+> show that reaching more helps: Qwen browsed four times as much, doubled
+> out-group coverage, and produced the same **zero** concepts outside the
+> selection bar that Gemma did (§7.24).
+
 #### The before measurement
 
 Across the 12 Polynesian seed files in `runs/sweeps`, 1079 tool calls:
@@ -4419,6 +4443,16 @@ reconstruction.
   shallow nodes the pre-flip arm mostly failed. Converting a failure into a copy
   is not the same as converting a reconstruction into a copy, and these data
   cannot separate the two.
+- **~~It is one model, and nothing here separates "the inventory commit shape
+  produces copies" from "Gemma produces copies".~~ Removed 2026-08-31.** §7.24
+  ran three Polynesian seeds on `qwen3.6-35b-a3b` under the same instructions:
+  **3 copies in 17 committed nodes against Gemma's 4 in 16, Fisher two-sided
+  p = 0.688.** The two models copy at rates this design cannot tell apart, so
+  the copying is **not** a property of Gemma. Pooling Qwen into the inventory
+  arm leaves the headline comparison standing at 0 of 18 against 19 of 67,
+  one-sided p = 0.0057. The arm now pools two models as well as five instruction
+  hashes, which is one caveat worse than it was, and the confound this bullet
+  named is gone.
 - **It does establish that no live figure in this document is interpretable
   without its copy baseline beside it**, and that none of them has ever been
   published that way. That is a defect in how results were reported here, and it
@@ -4887,6 +4921,214 @@ is set the price of building an instrument that would: a per-node criterion has
 to separate two architectures whose ceilings, read the only way §7.1 now permits
 them to be read, differ by one concept on the family this repository measures
 most.
+
+---
+
+### 7.24 A second model, and the first live reading of condition 11
+
+*Run 2026-08-30/31. Three seeds, Polynesian, current instructions,
+`qwen3.6-35b-a3b` — the `unsloth/Qwen3.6-35B-A3B-UD-MLX-4bit` build, 21.66 GB,
+served at a context of 262,144. Every observation in §7.20 came from
+`google/gemma-4-26b-a4b`, and nothing distinguished "the inventory commit shape
+produces copies" from "Gemma produces copies". This removes that confound.*
+
+#### The sampler, stated because a figure whose sampling is not stated cannot be compared
+
+`runs/sweeps/gemma-sampling.json` holds **Gemma's** published values, so it was
+not reused. This MLX conversion ships no `generation_config.json`, so
+`runs/sweeps/qwen-sampling.json` was written from the Qwen family's published
+sampling instead: `top_k 20`, `top_p 0.95`, `min_p 0.0`, `repeat_penalty 1.0`.
+Temperature 1.0 by flag, as every sweep since 2026-08-24 pins it.
+
+**Verified rather than assumed.** LM Studio applies its own panel to anything
+the client omits and `configuration_sha256` cannot see it, so all four
+parameters were read back out of the server's own request log:
+
+```
+"temperature": 1  "top_p": 0.95  "top_k": 20  "min_p": 0  "repeat_penalty": 1
+```
+
+**One deviation, recorded rather than buried.** The Qwen family publishes
+temperature 0.6 for thinking mode; this ran at 1.0 because the sweep protocol
+pins it and a temperature above zero is what makes `--provider-seed-base` buy
+independent draws at all. Gemma's published temperature *is* 1.0, so the pin
+coincided with its recommendation and does not here. A comparison of the two
+models is therefore a comparison at one sampler, not at each model's own.
+
+#### What it did
+
+| | Qwen | Gemma (`polynesian-after-toolstep`) |
+| --- | --- | --- |
+| seeds finished / abandoned | 3 / 0 | 3 / 0 |
+| nodes committed, of 7 | **5.67 ± 0.58** | 5.33 ± 0.58 |
+| identity fallbacks per seed | 1.33 ± 0.58 | 1.67 ± 0.58 |
+| failure taxonomy | 4 × `AgentLoopLimitError` | 5 × `ProtocolStallError` |
+| commit shape | **17 of 17 inventory** | inventory |
+| wall clock | ~8.1 h | ~3.7 h |
+
+The two models commit at the same rate and fail differently: Qwen never trips a
+stall condition and instead runs out of turns — all four failures are a node
+still exploring at turn 24 of 24. Gemma's five were protocol stalls. That is a
+difference in how a session ends, not in how often it ends badly.
+
+#### Accuracy, at the one gold node, never pooled
+
+`proto_polynesian` is Polynesian's only gold node. **2 of 3 seeds scored**; the
+third's root was an identity fallback and is excluded, as it must be.
+
+| | value |
+| --- | --- |
+| top-1 exact | **0.533 ± 0.046** (n=2, range 0.500–0.565) |
+| beam exact | 0.663 ± 0.046 |
+| mean top NED | 0.180 ± 0.027 |
+| **copy one whole daughter** | **0.587** (East Futuna) |
+| **best attested form per concept** | **0.826** |
+| assembly oracle ceiling | 0.848 |
+| best Gemma figure ever recorded | 0.543 |
+
+**0.533 is below the copy baseline and 0.293 below the selection bar.** It is
+also statistically indistinguishable from Gemma's 0.543. A second model, a
+different family of tokenizer, a different sampler, four times the reasoning
+tokens — and the same place on the scale.
+
+**The excluded fallback is the number to sit with.** Seed 0's root fell back to
+the harness's identity commit, and that commit would have scored **0.609** —
+above both scored seeds and above the copy baseline. The one node where the
+model contributed nothing outscored the two where it committed. It is excluded
+from the headline for the right reason, and reporting the headline without it
+would be reporting the better half of a result.
+
+#### Condition 11, applied to a live figure for the first time
+
+§7.1's condition 11 asks how many of the concepts a system got right are ones no
+daughter attests. Applied to every live Polynesian figure this repository holds,
+across both models and all four scored seeds:
+
+| seed | top-1 | hits | inside the selection bar | **outside it** |
+| --- | --- | --- | --- | --- |
+| Qwen seed-01 | 0.565 | 26 | 26 | **0** |
+| Qwen seed-02 | 0.500 | 23 | 23 | **0** |
+| Gemma seed-00 | 0.543 | 25 | 25 | **0** |
+| Gemma seed-01 | 0.348 | 16 | 16 | **0** |
+
+**Zero, four times out of four. Condition 11 trips on its first application, on
+every live figure ever recorded on this family.** Not one live run has produced
+a correct Polynesian proto-form that no daughter already attests.
+
+The instrument is not stuck at zero: the same reading returns 3 for the assembly
+oracle on this family, 42 and 25 on Burmish, and 4 at `synthetic_hard:proto`. It
+discriminates, and here it discriminates a zero.
+
+That is the sharpest statement this repository can currently make about live
+performance, and it is sharper than the headline it sits beside. 0.533 against a
+bar of 0.826 says the figure was beaten by picking existing words. The table
+above says something stronger: **every form these runs got right was an existing
+word.** The comparative step, live, has not yet produced one correct form that
+selection could not.
+
+#### The copy rate, and the confound this sweep existed to remove
+
+The reading was fixed before the run, so it cannot be chosen afterwards: *near
+Gemma's rate → the commit shape causes it; rare → the finding is about Gemma.*
+
+| | committed nodes | verbatim copies | rate |
+| --- | --- | --- | --- |
+| Qwen, Polynesian, 3 seeds | 17 | **3** | 17.6% |
+| Gemma, Polynesian, 3 seeds | 16 | **4** | 25.0% |
+
+Fisher's exact, two-sided: **p = 0.688.** The two models copy at rates this
+design cannot distinguish. **The first branch fires: the copying is not a Gemma
+property.**
+
+§7.20's headline comparison survives the addition, slightly weakened and in the
+direction honesty requires — the cascade arm against the inventory arm with
+Qwen's nodes pooled in is **0 of 18 against 19 of 67, one-sided p = 0.0057**,
+where it was 0.0034 on Gemma alone. Every caveat §7.20 attached to it still
+applies and one is now worse: the inventory arm pools two models as well as five
+instruction hashes.
+
+**What Qwen copies is not what Gemma copies**, and the difference is worth more
+than the rates. Gemma's four were all *leaf* copies — a node reproducing an
+attested daughter. Qwen's three are one leaf copy (`futunic` ≡ East Futuna) and
+**two node copies that are the same pair**: at seed 2, `central_eastern` and
+`nuclear_polynesian` are byte-identical to each other. That is a parent
+reproducing its own reconstructed child, which is condition 6's question
+answered in the least interesting way, and it is the shape §7.21's Burmish sweep
+was built to look for and could not see at a floor of 0.000.
+
+**Consequence, per the pre-registered reading: proposal 10's option C becomes
+the urgent one.** Option B — publish the rate, gate nothing — is already
+decided and stays. Option C, warning the model inside the session and letting it
+commit anyway, was left open "as an experiment with its own paired sweep". With
+the confound removed, that experiment is now about the commit shape rather than
+about one model, which is what it needed to be worth running.
+
+#### What Qwen does differently, and it is the thing §7.17 measured
+
+§7.17 and §7.19 measured that the three browsing tools are ~2% of all calls and
+concluded that naming a tool in the workflow does not make it get called. That
+conclusion was drawn from one model.
+
+| | Qwen | Gemma |
+| --- | --- | --- |
+| total tool calls, 3 seeds | 409 | 264 |
+| `polarize` | **25.9%** | 14.0% |
+| browsing tools | **14.2%** | 3.8% |
+| non-root nodes using a browsing tool | **16 of 18** | 5 of 18 |
+| out-group coverage per committed set | **24.8%** | 11.0% |
+
+**Qwen reaches for out-group material at roughly four times Gemma's rate and
+doubles the share of committed sets that had anything outside the group
+retrieved for them.** `search_forms` alone goes from 8 calls to 39.
+
+So §7.17's finding needs its scope narrowed in its own text: *this* model did
+not reach for the browsing tools. Reaching for them is a model property, and a
+strong one. **It is also not enough.** Qwen doubled the coverage and produced
+zero concepts outside the selection bar — the same zero as the model that
+browsed a quarter as much. Whatever is limiting these runs is not the rate at
+which sibling evidence is fetched, and §7.25's change should be priced against
+that fact rather than against the hope behind it.
+
+#### Cost, measured
+
+| | Qwen | Gemma |
+| --- | --- | --- |
+| first-call prompt, every node | **22,960** | 13,760 |
+| peak prompt in a node | 118,873 | 129,263 |
+| reasoning share of output | **77%** | not reported |
+| total node time, 3 seeds | 8.06 h | ~3.7 h |
+
+The first-call prompt is **67% larger for identical content** — same
+instructions, same tool schemas, same payload, different tokenizer. Any
+per-node payload cost quoted in this document is therefore a Gemma figure, and a
+budget derived from it understates Qwen by about two thirds. The 77% reasoning
+share is the whole explanation of the wall clock: Qwen is not slower per token,
+it emits four tokens of thinking per token of answer.
+
+**Memory was a non-issue and the prediction behind the worry was wrong.** Swap
+sat at ~3.5 GB of its total for the entire 8 hours, unchanged from before the
+run, and the backend held ~23 GB against a 21.66 GB model — about 1.3 GB of
+cache at a 119K-token peak, where Gemma held roughly 15 GB at 116K. Qwen 3.6's
+hybrid linear attention keeps the cache an order of magnitude smaller, so the
+guess that "Qwen's is probably larger per token" was backwards. A 64 GB machine
+has considerably more headroom for this model than for the one measured before
+it.
+
+#### What this does not establish
+
+- **n = 2 scored evaluations.** The accuracy is two numbers with a spread, on
+  one family, at one gold node. It is quoted with its spread and it should not
+  be quoted without it.
+- **One sampler, not each model's own.** Qwen ran 0.4 above its published
+  thinking temperature. Whether that costs it accuracy here is unmeasured, and a
+  paired sweep at 0.6 is the cheapest way to find out.
+- **The copy comparison is 17 nodes against 16.** p = 0.688 is a failure to
+  distinguish, not a demonstration of equality; a real difference smaller than
+  about 25 points would not have shown.
+- **Two models is not "models".** Both are 4-bit MLX quantisations of open
+  mid-size MoE models served by the same runtime. Nothing here reaches a hosted
+  frontier model, and the one claim that would most benefit from one is the
+  condition 11 zero.
 
 ---
 

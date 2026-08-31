@@ -508,6 +508,47 @@ Burmish is the opposite case and it is why that family is worth keeping: every
 one of its seven daughters scores **0.000** at both gold nodes, so a non-zero
 figure there is reconstruction rather than resemblance.
 
+**And the harder bar is the one to read against.** Selecting the *best attested
+form per concept*, chosen against the gold, reaches **0.826** on Polynesian with
+no reconstruction at all. Every live figure on this page is below it. Condition
+11 of the design document turns that into the reading each figure has to carry:
+of the concepts a run got right, how many does no daughter attest? Measured
+2026-08-31 across both models and all four scored Polynesian seeds, the answer
+is **zero, four times out of four**. The instrument is not stuck — it returns 3
+for the assembly oracle here and 42 on Burmish — so on this family the live
+runs have not yet produced one correct form that picking an existing word could
+not.
+
+### A second model, 2026-08-31
+
+`qwen3.6-35b-a3b`, three seeds, current instructions, same tree. It exists to
+remove the confound that every live observation in this repository came from one
+model. Sampling was `top_k 20, top_p 0.95, min_p 0.0, repeat_penalty 1.0` at
+temperature 1.0 — the Qwen family's published values, not Gemma's, and verified
+in the server's own request log. Qwen publishes 0.6 for thinking mode; 1.0 is
+the sweep pin and the deviation is stated wherever the figure is.
+
+| | `qwen3.6-35b-a3b` | `google/gemma-4-26b-a4b` |
+| --- | --- | --- |
+| top-1 at `proto_polynesian` | **0.533 ± 0.046** (n=2) | 0.543 best seed |
+| nodes committed of 7 | 5.67 ± 0.58 | 5.33 ± 0.58 |
+| verbatim copies among committed nodes | 3 of 17 | 4 of 16 |
+| concepts outside the selection bar | **0** | **0** |
+| first-call prompt, every node | **22,960 tokens** | 13,760 tokens |
+| reasoning share of output | 77% | not reported |
+
+Three things a reader of this family should take from it. The two models land in
+the same place, below the 0.587 copy baseline and well below the 0.826 selection
+bar. They copy at rates that cannot be told apart (Fisher two-sided p = 0.688),
+so **the copying is a property of the commit shape rather than of Gemma**. And
+the identical content costs Qwen **67% more prompt tokens** — same instructions,
+same schemas, same payload, different tokenizer — so any per-node budget on this
+page is a Gemma figure and understates Qwen by about two thirds.
+
+§7.24 of [the design document](proto_inventory_design.md) has the full reading,
+including the seed whose root fell back to the harness's identity commit and
+would have scored **0.609**, above both seeds that actually committed.
+
 Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the
 live figures measure one model on one seed.
 
