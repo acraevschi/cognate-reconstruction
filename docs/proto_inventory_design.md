@@ -5237,6 +5237,121 @@ it.
 
 ---
 
+### 7.25 Sibling evidence, and the ratio that was actually wrong
+
+*Built 2026-08-31, after §7.24's sweep, because it changes what a node is shown
+and landing it mid-sweep makes seeds incomparable.*
+
+#### The premise needed correcting before the change was worth making
+
+The request was that a node stay focused on its own node while being able to
+look outside its own monophyletic group for extra evidence, and §7.17's reading
+was that the model does not reach for it: the three browsing tools are ~2% of
+all calls. Measured properly with `tools/outgroup_coverage.py`, that reading is
+wrong in one direction and understated in the other.
+
+**Per node the reaching is complete.** Every one of the 18 non-root Polynesian
+nodes called `polarize`, and every one got an out-group back — on Gemma's sweep
+and on Qwen's. 18 of 18. The 14% in §7.17's table is a share of *calls* and was
+being read as a share of nodes.
+
+**Per correspondence it is thin, and that is the real gap:**
+
+| | polarize calls | committed sets | coverage |
+| --- | --- | --- | --- |
+| Polynesian, Gemma, inventory | 28 | 254 | **11.0%** |
+| Polynesian, Qwen, inventory | 82 | 330 | **24.8%** |
+| Burmish, Gemma, inventory | 12 | 78 | 15.4% |
+| Burmish, Gemma, **cascade** | 6 | 12 | **50.0%** |
+
+A call covers one correspondence and a node commits fifteen to thirty sets. The
+model is not failing to look outside; **it looks outside once and commits
+fifteen times.** The cascade/inventory split in the last two rows is mechanical
+rather than behavioural — the inventory commits six times as many units per node
+for twice the calls — and it sits beside §7.20's copy rates, which split the
+same way on the same sweeps, without either explaining the other at this n.
+
+#### The change
+
+`summarize_correspondences` now carries, per returned set, what every node
+outside the active children shows in that set's own aligned columns. It is
+`polarize`'s answer computed once for the survey instead of once per call, and
+**it is on by default**: §7.17 and §7.19 both measured that naming a tool in the
+workflow does not make it get called, and a flag the model has to set is the
+same experiment a third time.
+
+It imports `matching_column` and `outside_nodes` from `polarize` rather than
+reimplementing them, so the two cannot disagree about which columns show a
+correspondence — a test pins that the survey's presences are a subset of what
+`polarize` returns for the same set.
+
+**Two constraints held.** The out-group nodes are evidence and never a second
+reconstruction target: they do not enter the assembled parent form and no
+residue policy accounts for them. And the root is not allowed to look as though
+it had evidence — `outgroup_note` says in as many words that every available
+node there is a descendant, which is `polarize._witnesses`' distinction in the
+same words.
+
+#### The price, measured rather than estimated
+
+Evidence is rationed here, so the addition is priced on the real benchmarks at a
+real node:
+
+| | narrow | wide | |
+| --- | --- | --- | --- |
+| Polynesian `tongic` | 10,653 chars | **16,002** | 1.50× |
+| Burmish `maruic` | 11,347 chars | **18,410** | 1.62× |
+
+Two design decisions did that, and both are properties of the question rather
+than truncations:
+
+- **Only sets whose children disagree are profiled.** A set where every child
+  shows the same segment has no competing value to choose between. This alone
+  took Polynesian from **3.9× to 1.8×**.
+- **Gaps are never reported.** A node showing nothing attests nothing, and
+  `tools/outgroup_probe.py` measured that scoring absence lands *below*
+  alphabetical tie-breaking. It is also the widest row when kept, since a gap is
+  usually shown by every outside node at once: dropping it took 1.8× to 1.5×.
+
+**In context that is close to cost-neutral against what it displaces.**
+`summarize_correspondences` runs ~1.7 times per node, so this adds ~9,100
+characters to a node's conversation. Qwen made 5 `polarize` calls per node at
+~3,465 characters each — ~17,000 characters — to cover five correspondences. The
+survey covers 16 of 30 sets for about half that.
+
+**A caution on the token figures.** All character counts here convert to tokens
+at Gemma's rate. §7.24 measured that identical content costs Qwen **67% more
+tokens**, so a budget taken from this table understates that model by about two
+thirds.
+
+#### What this has not been measured to do, and it is the whole question
+
+**No paired sweep has been run, and none of the numbers above is an effect.**
+They are a price and a coverage mechanism. What the change has to be judged on
+is a paired sweep, per gold node, with the selection bar and the copy rate
+published beside every number — and §7.24 sharpened what to expect from it:
+
+- **Qwen already browsed four times as much as Gemma, doubled out-group coverage
+  from 11% to 24.8%, and produced the same zero concepts outside the selection
+  bar.** More sibling evidence, on the one comparison available, did not convert
+  into reconstruction that selection could not do. That is the prior this change
+  runs against, and it is not a favourable one.
+- **The copy rate and the identity probe matter more here than the accuracy.**
+  This is exactly the kind of change that can raise a score by handing the model
+  more of the answer's neighbourhood, and §7.20's instruments are what would
+  catch that.
+- **The root cannot benefit**, and an effect appearing there is an instrument
+  fault rather than a finding. On Polynesian the root is the only gold node, so
+  **the family whose live figures this repository has the most of is the one
+  where this change can least show up.** Burmish carries gold at `burmic`, which
+  is below the root, and is the better arm for it despite scoring 0.000.
+- **`item 1` landed first and also moves the instruction hash.** A sweep run now
+  differs from §7.24's by two changes, not one. Any paired measurement of *this*
+  change must run both arms under the current instructions, toggling only
+  `include_outgroup`, which is exactly what that flag is for.
+
+---
+
 ## 8. Staged implementation plan
 
 Every stage leaves the suite green and the harness runnable. Stage numbering is

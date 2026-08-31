@@ -84,7 +84,7 @@ def _edge_ok(
     return all(segment is None for segment in segments[column + 1 :])
 
 
-def _matching_column(
+def matching_column(
     members_by_node: dict[str, tuple[AlignmentMember, ...]],
     column: int,
     child_ids: tuple[str, ...],
@@ -102,7 +102,7 @@ def _matching_column(
     return True
 
 
-def _outside_nodes(
+def outside_nodes(
     context: AgentContext,
     selected: tuple[str, ...],
 ) -> tuple[NodeEvidence, ...]:
@@ -123,7 +123,7 @@ def _outside_nodes(
     return tuple(item for item in available if item.node_id in selected)
 
 
-def _restrict(
+def restrict(
     lexicon: LanguageLexicon,
     concept_ids: set[str],
 ) -> LanguageLexicon:
@@ -205,10 +205,10 @@ def polarize(
         context.lexicon(child_id, arguments.segmentation_overlay_id)
         for child_id in arguments.child_ids
     )
-    outside = _outside_nodes(context, arguments.node_ids)
+    outside = outside_nodes(context, arguments.node_ids)
     # Already normalized: `PolarizeArgs` maps every written spelling of a gap
     # to None at the boundary, so a gap is None here exactly as it is in an
-    # `AlignmentMember`, which is what `_matching_column` compares against.
+    # `AlignmentMember`, which is what `matching_column` compares against.
     wanted = arguments.correspondence
     if not outside:
         return PolarizeResult(
@@ -222,10 +222,10 @@ def polarize(
 
     selected_concepts = set(arguments.concept_ids)
     lexicons = [
-        _restrict(lexicon, selected_concepts) for lexicon in child_lexicons
+        restrict(lexicon, selected_concepts) for lexicon in child_lexicons
     ]
     lexicons.extend(
-        _restrict(
+        restrict(
             context.evidence_lexicon(
                 item.node_id, arguments.segmentation_overlay_id
             ),
@@ -268,7 +268,7 @@ def polarize(
             )
         width = len(alignment.members[0].aligned_segments)
         for column in range(width):
-            if not _matching_column(
+            if not matching_column(
                 members_by_node,
                 column,
                 arguments.child_ids,
