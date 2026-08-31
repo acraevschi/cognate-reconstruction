@@ -2080,9 +2080,11 @@ condition 1** — that remains true and is now stated rather than implied.
 Condition 11 is what a figure has to answer to on top of them, and it is
 answerable at any threshold, including zero.
 
-**Applied to live figures for the first time on 2026-08-31, it trips.** All four
-scored Polynesian seeds across both models — Qwen 0.565 and 0.500, Gemma 0.543
-and 0.348 — reached **zero** concepts outside the selection bar. Every form any
+**Applied to live figures for the first time on 2026-08-31, it trips — and it
+kept tripping on a frontier model.** All ten scored Polynesian seeds across
+three models reached **zero** concepts outside the selection bar: Qwen 0.565 and
+0.500, Gemma 0.543 and 0.348, and `gemini-3.7-flash` at 0.630 ± 0.022 (§7.26),
+which clears the copy baseline and is still zero. Every form any
 live run on this family has ever got right was a form some daughter already
 attested. §7.24 has the table. The condition is not stuck at zero: the same
 reading returns 3 for the assembly oracle here, 42 and 25 on Burmish, and 4 at
@@ -5349,6 +5351,150 @@ published beside every number — and §7.24 sharpened what to expect from it:
   differs from §7.24's by two changes, not one. Any paired measurement of *this*
   change must run both arms under the current instructions, toggling only
   `include_outgroup`, which is exactly what that flag is for.
+
+---
+
+### 7.26 A frontier model clears the copy baseline, and condition 11 still returns zero
+
+*Run 2026-08-31 on `gemini-3.7-flash`, hosted, three Polynesian seeds,
+`--reasoning-effort medium`, current instructions. §7.24 left one reading open:
+whether condition 11's zero was a property of this harness or of two similar
+4-bit MoE quantisations served by one runtime. This settles it.*
+
+#### Configuration, and two deliberate omissions
+
+`--temperature 1.0`, beam width 5, 24 turns, 48 tool calls, 3 max failed nodes —
+identical to §7.24's Qwen sweep, so the two are comparable. Reasoning effort is
+hashed and `run-benchmark` forwards it to every repetition, so it is constant
+across the three seeds.
+
+**No `--provider-config`**, which is a real difference from every local sweep
+rather than an oversight: those files exist because LM Studio's Inference panel
+silently supplies anything the client omits, and the hosted API has no such
+panel. **No `--provider-seed-base`**, because Gemini has no seed and the harness
+refuses one up front; the seeds differ by provider nondeterminism, which the
+aggregate reports as spread.
+
+**Nothing could reach Google Search**, checked three ways rather than assumed:
+the provider sends only `model`, `messages`, the typed `tools`, `tool_choice`
+and the options dict; the preset adds only `reasoning_effort` and the key; and
+`provider_config.py` refuses grounding options by name, with
+`test_grounding_is_refused_however_deeply_it_is_buried` covering nested
+attempts. A grounded model could retrieve a published Proto-Polynesian
+reconstruction instead of deriving one and the trajectory would look identical,
+so this is a precondition of the measurement rather than hygiene.
+
+#### The headline moved. It is the first live figure here that ever has.
+
+| | value |
+| --- | --- |
+| top-1 exact | **0.630 ± 0.022** (n=3, range 0.609–0.652) |
+| beam exact | 0.667 ± 0.045 |
+| mean top NED | 0.163 ± 0.014 |
+| **copy one whole daughter** | 0.587 |
+| **best attested form per concept** | **0.826** |
+| Qwen (§7.24) | 0.533 ± 0.046 |
+| Gemma, best seed ever | 0.543 |
+
+**All three seeds scored — no root fell back**, which no previous Polynesian
+sweep managed. And 0.630 sits **3.5 standard errors above the 0.587 copy
+baseline**: the first live figure in this repository to clear the bar that
+§7.20 measured every earlier one against. It also passes the context-free
+oracle's 27/46 outright, which is a live model beating a ceiling that reads the
+answer key.
+
+#### And condition 11 returns zero anyway
+
+| seed | top-1 | hits | inside the bar | **outside it** |
+| --- | --- | --- | --- | --- |
+| seed-00 | 0.630 | 29 | 29 | **0** |
+| seed-01 | 0.652 | 30 | 30 | **0** |
+| seed-02 | 0.609 | 28 | 28 | **0** |
+
+**Three models, ten scored seeds, zero every time.** Gemini reconstructed 87
+correct Polynesian proto-forms across three seeds and **not one of them was a
+form that no daughter attests.** The selection bar is 15.8 standard errors above
+its mean, so this is not a near miss.
+
+This is the reading §7.24 asked for and could not give. The zero is **not an
+artifact of small quantised models.** A frontier model, better on the headline
+by a margin that is real rather than noise, and better than a gold-reading
+oracle, still produced nothing that selection among the daughters could not
+have produced. Whatever bounds these runs is a property of the harness, the
+benchmark, or the task as posed — and it is now the largest open question in
+this document.
+
+**One thing this does not license.** It does not show that the model reconstructs
+nothing: 0.630 against 0.587 is 2 concepts of real improvement over copying the
+best daughter, and improvement inside the bar is still improvement. What it
+shows is that the improvement is *within the space selection already spans*.
+
+#### The copy rate keeps falling, and the trend is not significant
+
+| | committed nodes | copies | rate |
+| --- | --- | --- | --- |
+| Gemma | 16 | 4 | 25.0% |
+| Qwen | 17 | 3 | 17.6% |
+| **Gemini** | **13** | **1** | **7.7%** |
+
+Monotone with model strength, and **Fisher two-sided p = 0.343 against Gemma,
+p = 0.613 against Qwen.** At these n a real halving would not show, so the trend
+is worth watching and is not a finding. Gemini's single copy is a leaf copy
+(`tongic` ≡ Tongan at seed 0) and it produced **no node copies at all**, unlike
+Qwen's mutual `central_eastern`/`nuclear_polynesian` pair.
+
+#### The commit rate is the weakest number, and it is a budget artifact
+
+4.33 ± 0.58 of 7 nodes, against Qwen's 5.67 and Gemma's 5.33 — the lowest of the
+three. **Every one of the 8 failures is `AgentLoopLimitError` at exactly 24 turns
+of 24.** Not one stall, not one protocol collapse.
+
+| | turns/node | input tokens/node |
+| --- | --- | --- |
+| Gemini | **21.9** | 2,061,468 |
+| Qwen | 18.5 | 1,013,359 |
+| Gemma | 12.7 | 461,010 |
+
+Gemini explores for nearly the whole budget and is cut off mid-session. Holding
+the budget fixed is the right choice for comparing three models, and it means
+**this sweep understates what Gemini would commit with room** — the honest
+reading of 4.33 is "at 24 turns", not "this model commits less". `--max-turns` is
+hashed, so testing that needs a fresh sweep rather than a resume.
+
+Note what it does *not* contaminate: the gold node committed in all three seeds,
+so the accuracy and the condition 11 zero rest on scored roots, not on fallbacks.
+
+#### Tool use, which completes §7.17's correction
+
+| | browsing tools, share of calls | non-root nodes using one | out-group coverage per set |
+| --- | --- | --- | --- |
+| Gemma | 3.8% | 5 of 18 | 11.0% |
+| Qwen | 14.2% | 16 of 18 | 24.8% |
+| **Gemini** | **18.9%** | **18 of 18** | 18.1% |
+
+**Every non-root node reached for material outside its group.** §7.17's finding
+that "naming a tool in the workflow does not make it get called" is now
+comprehensively a fact about `gemma-4-26b-a4b` and about nothing else.
+
+And it strengthens §7.25's caution against its own change: the model that browsed
+most produced the same zero as the model that browsed least. Sibling evidence
+being fetched more often has now failed to convert into reconstruction beyond
+selection across a 5× range in browsing rate.
+
+#### Cost, measured
+
+**$8.42** for the sweep: 43,488,832 input tokens at **91% cached**, 642,449
+output at 54% reasoning. The harness's cost figure was verified against the
+published rates by hand on a check node and matches to the cent, cached discount
+included.
+
+The 91% cache rate is what made this affordable — the same sweep at full input
+price is about $28. It works because the cacheable prefix is byte-identical
+across runs, verified by hashing: the system prompt is 38,166 characters and the
+node payload follows it, both far above the 4,096-token minimum, with only the
+turn-by-turn delta appended after. **Anything that puts a varying token near the
+front of the prompt would quadruple the cost of a hosted sweep**, which is worth
+knowing before something innocuous like a timestamp is added to the payload.
 
 ---
 

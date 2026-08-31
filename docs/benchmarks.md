@@ -514,10 +514,11 @@ no reconstruction at all. Every live figure on this page is below it. Condition
 11 of the design document turns that into the reading each figure has to carry:
 of the concepts a run got right, how many does no daughter attest? Measured
 2026-08-31 across both models and all four scored Polynesian seeds, the answer
-is **zero, four times out of four**. The instrument is not stuck — it returns 3
-for the assembly oracle here and 42 on Burmish — so on this family the live
-runs have not yet produced one correct form that picking an existing word could
-not.
+is **zero, ten times out of ten across three models** — including
+`gemini-3.7-flash`, which is the first live figure here to clear the copy
+baseline. The instrument is not stuck — it returns 3 for the assembly oracle
+here and 42 on Burmish — so on this family the live runs have not yet produced
+one correct form that picking an existing word could not.
 
 ### A second model, 2026-08-31
 
@@ -548,6 +549,36 @@ page is a Gemma figure and understates Qwen by about two thirds.
 §7.24 of [the design document](proto_inventory_design.md) has the full reading,
 including the seed whose root fell back to the harness's identity commit and
 would have scored **0.609**, above both seeds that actually committed.
+
+### A frontier model, 2026-08-31
+
+`gemini-3.7-flash`, hosted, three seeds, `--reasoning-effort medium`, same tree
+and same budgets. No `--provider-config` (no local sampler panel to defend
+against) and no `--provider-seed-base` (Gemini has no seed).
+
+| | `gemini-3.7-flash` | `qwen3.6-35b-a3b` | `gemma-4-26b-a4b` |
+| --- | --- | --- | --- |
+| top-1 at `proto_polynesian` | **0.630 ± 0.022** (n=3) | 0.533 ± 0.046 (n=2) | 0.543 best seed |
+| scored seeds / excluded | 3 / 0 | 2 / 1 | 2 / 1 |
+| nodes committed of 7 | 4.33 ± 0.58 | 5.67 ± 0.58 | 5.33 ± 0.58 |
+| verbatim copies | **1 of 13** | 3 of 17 | 4 of 16 |
+| **concepts outside the selection bar** | **0** | **0** | **0** |
+| cost | $8.42 (91% cached) | — | — |
+
+**0.630 is the first live figure on this page to clear the 0.587 copy
+baseline**, by 3.5 standard errors, and it also beats the context-free oracle
+ceiling of 0.587 — a live model above a bound computed from the answer key. It
+is still 15.8 standard errors below the 0.826 selection bar, and **condition 11
+returns zero on all three seeds**: 87 correct proto-forms, not one of them a
+form no daughter attests.
+
+Two caveats a reader of this family needs. The commit rate of 4.33 is the
+lowest of the three and is **a budget artifact** — all 8 failures are
+`AgentLoopLimitError` at exactly 24 of 24 turns, and Gemini averages 21.9
+turns per node against Gemma's 12.7. And the cost held at $8.42 only because
+implicit caching hit **91%**; the same sweep at full input price is about $28.
+
+§7.26 of [the design document](proto_inventory_design.md) has the full reading.
 
 Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the
 live figures measure one model on one seed.
