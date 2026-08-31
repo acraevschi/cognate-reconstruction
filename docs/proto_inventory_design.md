@@ -4869,6 +4869,106 @@ metrics were held until the Qwen sweep of §7.24 finished, because a tree that
 moves between arms makes seeds incomparable and that has cost this repository
 two full sweeps.*
 
+#### Item 1 — "Prefer the inventory" is gone. **Taken, in the third form.**
+
+The preference was right while the cascade was scheduled for deletion. §7.22
+offered three options and favoured the third, and that is what landed: **both
+shapes are stated, neither is preferred, and the asymmetry is given in both
+directions** rather than as a ranking.
+
+`system_prompt.md` and `COMMIT_REQUIREMENT_NOTES` now say the same thing — a rule
+rewrites one child's own segments, so a parent segment no single child preserves
+cannot be produced by any cascade; and correspondence sets carry no order, so a
+change that only makes sense as the consequence of another change cannot be
+stated as an inventory. Where both fit, either is a complete answer.
+
+**This changes the instruction hash**, so §7.24's Qwen sweep and every sweep
+before it are the *before* for any comparison that follows. That is deliberate
+and it is the reason the change was held until that sweep finished. Nothing here
+predicts the effect: the preference pointed at the shape that copies, and
+removing it may change the mix of shapes committed, the copy rate, both, or
+neither. It is a paired sweep's question and it has not been run.
+
+#### Item 2 — the diagnostics are shape-specific, and the summary now says which. **Taken.**
+
+§9.1's table already carries the correction §7.22 asked for. The part that was
+still wrong was in the numbers, not the prose: `summarize-trajectories` reported
+one pooled `committed_rules`, and §12.2 fixed `committed_rule_count` to mean
+`len(commitments)` under an inventory and rewrite rules under a cascade. **Over
+a mixed corpus that total added correspondence sets to rewrite rules and called
+the result "committed rules".**
+
+Two repairs, both additive because removing a key from a summary breaks a
+consumer silently:
+
+- `committed_units_by_shape` splits the total by the shape that gives it a unit.
+  It is the one to quote.
+- `trajectories_the_no_op_check_applies_to` gives `committed_no_op_rules` its
+  denominator. That counter is 0 for an inventory *by decision* (§12.2), so a
+  pooled 0 read as "no no-op rules were committed" when it may mean the check
+  had no subject. On the Qwen sweep the denominator is 0 of 6; on
+  `burmish-before` it is 3 of 3, and only the second 0 is a finding.
+
+#### Item 3 — the gate keeps its asymmetry. **Refused as stated, and the consequence repaired.**
+
+Making `high_quality` symmetric would mean adding a condition to the inventory
+branch or removing one from the cascade branch. Both are choosing a number, and
+the asymmetry is *per-condition correct*: `test_rule_cascade` previews an order,
+correspondence sets have none, so that condition has no subject under an
+inventory. §12.2 already made both branches real checks rather than fallbacks
+that evaluate to "no problem".
+
+**What was genuinely defective is downstream.** `export-trajectories
+--high-quality-only` selected a corpus filtered at two strictnesses and said
+nothing, and a selection cannot be un-made later. It now prints the mix with the
+selection:
+
+```
+--high-quality-only applies a different number of workflow conditions per commit
+shape (2 to 'rules', 1 to 'inventory'), so this corpus is filtered at two
+strictnesses:
+    inventory    5 of 6 completed trajectories passed
+```
+
+That is the honest treatment: the gate is not a linguistic grade and never was,
+and a filter whose strictness varies is usable as long as it is not silent.
+
+#### Item 4 — the cascade preview is bounded. **Taken, and it was worse than §7.22 recorded.**
+
+§9.1 quotes 399 KB across three calls at one node. Broken down on the largest
+banked call — 208,268 characters — the cost is not where it looks:
+
+| component | characters | |
+| --- | --- | --- |
+| `reports[].results` | 78,480 | every form the rules were tried against |
+| `reports[].exceptions` | 62,494 | **a computed re-serialization of a subset of the above** |
+| `final_forms` | 77,200 | of which **34,496 is an all-null `provenance` block**, repeated 105 times |
+
+**Two thirds of the call is one list plus a copy of part of it.** `exceptions`
+is a `@computed_field` over `results`, so every failure is serialized twice.
+
+`test_rule_cascade` now takes the same `detail` knob `test_proto_assembly` has,
+defaulting to `summary`. The summary keeps every exception — a preview is
+consulted for what did *not* work — with the per-rule counts, and drops the
+per-form record of the applications that succeeded. Replaying the recorded call
+through it costs **140,940 against 211,248, a 33% saving**. `detail="full"`
+returns the old payload unchanged, so nothing became unreachable.
+
+**One trap, found by the suite rather than by reading.** `commit_reconstruction`
+resolves a cascade's `supporting_form_ids` by walking `reports[].results` for
+entries that recorded a location. Dropping those results without carrying their
+IDs leaves a summary-validated commit with no supporting forms **and no error** —
+a silent loss of provenance. `CascadeRuleSummary.applied_form_ids` carries
+exactly that, and a test pins that both details resolve identically.
+
+**The 34,496 characters of null provenance are measured and not fixed.** The
+obvious global repair — serializing tool results with `exclude_none` — is
+refused rather than deferred: `proto_segment` and a commitment's `reflexes` use
+an explicit null to mean *reconstructs nothing* and *this child shows nothing*,
+and `COMMIT_REQUIREMENT_NOTES` states in as many words that null and absent are
+different claims there. Stripping nulls globally would erase a distinction the
+commit contract rests on to save 17% of one tool's output.
+
 #### Item 5 — leave `oracle_ceiling.py`'s default alone. **Confirmed, no change.**
 
 Recorded first because it is the one that needs nothing, and §7.22 wrote it down

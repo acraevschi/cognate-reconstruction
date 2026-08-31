@@ -883,3 +883,87 @@ def test_validate_unconditioned_then_commit_the_cascade_refinement() -> None:
     assert [
         list(rule.supporting_form_ids) for rule in state.commit.request.rules
     ] == [["TAH:one"], ["TAH:two"], ["TAH:three"]]
+
+
+# ---------------------------------------------------------------------------
+# §7.22 item 4: the cascade preview's context cost is permanent, so bound it
+#
+# `test_rule_cascade` was to be deleted at stage 4 and its size was tolerated
+# because it was leaving. Measured on the largest banked Polynesian call:
+# 208,268 characters, of which `reports[].results` is 78,480 and the
+# `exceptions` computed from those same results is another 62,494. Replaying
+# that recorded call through the summary shape costs 140,940 against 211,248,
+# a 33% saving with nothing the harness reads lost.
+# ---------------------------------------------------------------------------
+
+
+def test_the_cascade_summary_drops_results_and_keeps_what_is_read() -> None:
+    """Counts, every exception, and the applied IDs. Not the applied results."""
+    state = _context()
+    registry = default_tool_registry()
+    result = _cascade(
+        registry,
+        state,
+        "preview",
+        [{"dsl": "f > p / #_", "source_child_ids": ["B"]}],
+    )
+    payload = result.result
+    assert payload["reports"] == []
+    assert len(payload["report_summaries"]) == 1
+    summary = payload["report_summaries"][0]
+    assert summary["words_applied"] == 2
+    assert summary["forms_evaluated"] == 2
+    assert set(summary["applied_form_ids"]) == {"B:water", "B:fire"}
+    # Both forms took the rule, so there is nothing that failed to report.
+    assert summary["exceptions"] == []
+
+
+def test_detail_full_returns_the_unchanged_payload() -> None:
+    """`full` is the old behaviour byte for byte, so nothing is unreachable."""
+    state = _context()
+    registry = default_tool_registry()
+    result = _cascade(
+        registry,
+        state,
+        "preview",
+        [{"dsl": "f > p / #_", "source_child_ids": ["B"]}],
+        detail="full",
+    )
+    payload = result.result
+    assert payload["report_summaries"] == []
+    assert len(payload["reports"]) == 1
+    assert len(payload["reports"][0]["results"]) == 2
+
+
+def test_a_commit_resolves_the_same_supporting_forms_under_either_detail() -> None:
+    """The trap this change had to avoid, pinned.
+
+    `commit_reconstruction` collects `supporting_form_ids` by walking
+    `reports[].results` for entries that recorded a location. A summary preview
+    has no `reports`, so reading only those would leave a summary-validated
+    commit with no supporting forms and no error at all — a silent loss of
+    provenance rather than a failure. Both details must resolve identically.
+    """
+    resolved = {}
+    for detail in ("summary", "full"):
+        state = _context()
+        registry = default_tool_registry()
+        _cascade(
+            registry,
+            state,
+            "preview",
+            [{"dsl": "f > p / #_", "source_child_ids": ["B"]}],
+            detail=detail,
+        )
+        outcome = _commit(
+            registry,
+            state,
+            rules=[
+                {"dsl": "f > p / #_", "source_child_ids": ["B"], "confidence": 0.9}
+            ],
+        )
+        assert outcome.ok, outcome.error
+        committed = state.commit.request.rules[0]
+        assert committed.validation_kind == "test_rule_cascade"
+        resolved[detail] = set(committed.supporting_form_ids)
+    assert resolved["summary"] == resolved["full"] == {"B:water", "B:fire"}

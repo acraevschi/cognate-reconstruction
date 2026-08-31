@@ -22,12 +22,17 @@ harness does the string work. That is the comparative method's own object: a
 correspondence set is the unit of evidence, and a proto-phoneme is what you
 reconstruct from one.
 
-An older protocol is still accepted, in which you commit an ordered cascade of
+A second protocol is equally accepted, in which you commit an ordered cascade of
 child-to-parent rewrite rules instead. Both shapes reach the same tools and the
 same commit call; `commit_reconstruction` takes `inventory` **or** `rules` and
-refuses a call carrying both. **Prefer the inventory.** The rule cascade cannot
-express a parent segment no single child preserves, and its section below is
-kept for the cases where you deliberately want the older shape.
+refuses a call carrying both.
+
+**Neither shape is preferred. They express different things, and the evidence at
+this node decides which fits it.** A rule rewrites one child's own segments, so
+a parent segment that no single child preserves cannot be produced by any
+cascade. Correspondence sets, on the other hand, are independent and carry no
+order, so a change that only makes sense as the consequence of another change
+cannot be stated as an inventory. Where both fit, either is a complete answer.
 
 ## Comparative method
 
