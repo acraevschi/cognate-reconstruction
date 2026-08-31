@@ -5498,6 +5498,85 @@ knowing before something innocuous like a timestamp is added to the payload.
 
 ---
 
+### 7.27 The same frontier model on Burmish scores nothing at all
+
+*Run 2026-08-31, `gemini-3.7-flash`, three seeds, `--reasoning-effort medium`,
+budgets identical to §7.21's Gemma arms so the two are directly comparable.
+$5.81, 24.3M input tokens at 87% cached.*
+
+§7.26 established that a frontier model clears the copy baseline on Polynesian
+and still reaches zero concepts outside the selection bar. The obvious objection
+is that Polynesian cannot show otherwise: **the assembly oracle itself reaches
+only 3 concepts outside the bar there**, so the entire headroom is 3 of 46 and a
+live zero is nearly forced. Burmish has no such excuse — its selection bar is
+**0/54 and 0/37**, every correct form is outside it, and the assembly oracle
+reaches **42 and 25**.
+
+#### The result
+
+| | value |
+| --- | --- |
+| top-1 at `proto_burmish` | **0.000 ± 0.000** (n=2 scored, 4 excluded as fallbacks) |
+| beam exact | **0.000 ± 0.000** |
+| mean top NED | **0.708 ± 0.015** |
+| best attested form per concept, mean NED | **0.604** |
+| assembly oracle | 42/54 (0.778) |
+| Gemma, §7.21, both arms | 0.000 ± 0.000 |
+| `burmic` | **no live figure — it never committed in any seed** |
+
+**Zero, on the one family where copying earns nothing.** And the graded measure
+is worse than the ungraded one suggests: at **mean top NED 0.708 the
+reconstruction is further from the gold than simply picking the closest attested
+daughter form, which sits at 0.604.** On this family the model is not merely
+failing to beat selection; on the distance measure it is beaten by it.
+
+Read with §7.26 the pair is stark. Where selection can reach the answer, the
+model reaches it and improves on copying — 0.630 against 0.587. Where selection
+cannot reach the answer, the model reaches nothing. **Across two families,
+three models and twelve scored seeds, this repository has never recorded a
+single correct proto-form that no daughter attests.**
+
+#### The confound is now unavoidable, and it changes what to do next
+
+5 of the 6 node failures are `AgentLoopLimitError` at exactly 24 of 24 turns.
+The commit rate is **1.0 ± 1.0 of 3 nodes** — seed 2 committed nothing at all —
+and `burmic`, the second gold node, never committed in any seed.
+
+On Polynesian the turn budget was a confound that could not touch the finding,
+because the headroom there is 3 concepts however long the model runs. **On
+Burmish that argument does not hold.** The headroom is 42 concepts, the model is
+being cut off mid-session in 5 of 6 failures, and one of the two gold nodes has
+no live figure at all. So the honest statement of this result is:
+
+> A frontier model produced 0.000 on Burmish **at a 24-turn budget it hit in
+> almost every failure**, and the second gold node was never reached.
+
+That is still a real finding — a model that needed more turns did not produce a
+*partially* correct form either, and beam-exact is also 0.000, so nothing
+correct was computed and then discarded. But it is not the clean statement
+§7.26 makes, and it should not be quoted as one.
+
+**One 429 on a paid key.** `seed-00 maruic` died on
+`litellm.RateLimitError` after 17 turns rather than on the turn limit. Paid Tier
+1 carries a spend-rate limit as well as RPM/TPM, so a dense sweep can trip it;
+it is a provider limit rather than a quota exhaustion, and the harness
+classified it transient and retried before giving up.
+
+#### What this does and does not establish
+
+- **It establishes that the bound is not the model.** Three models, one of them
+  frontier and markedly stronger on Polynesian, all produce zero outside the
+  selection bar. Whatever limits these runs is the harness, the benchmark, or
+  the task as posed to the model.
+- **It does not establish that Burmish is unreachable**, because the budget was
+  binding. Raising `--max-turns` on Burmish is now the one cheap experiment that
+  could still move condition 11 off zero, and §7.26's argument against raising
+  it applies only to Polynesian.
+- **`burmic` remains unmeasured live**, on any model, which is worth stating
+  plainly: §7.21 scored it 0.000 on Gemma, and here it never committed.
+
+---
+
 ## 8. Staged implementation plan
 
 Every stage leaves the suite green and the harness runnable. Stage numbering is
