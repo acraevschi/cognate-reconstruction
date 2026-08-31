@@ -5577,6 +5577,79 @@ classified it transient and retried before giving up.
 
 ---
 
+### 7.28 A void run, and the retry gap that made it void in forty seconds
+
+*2026-08-31. `runs/sweeps/burmish-gemini-t36` is **not a measurement** and its
+aggregate must not be quoted. This subsection exists so that nobody later reads
+the `0.000` sitting in that directory as a result.*
+
+#### What it was meant to test, and why it did not
+
+§7.27 left the Burmish zero confounded by the turn budget: 5 of 6 failures were
+`AgentLoopLimitError` at exactly 24 of 24 turns. The measurements in §7.27 said
+why — Gemini reaches its first `commit_reconstruction` attempt at call **19** and
+needs about **4** more to satisfy the contract, against a budget of 24, so it
+arrives at the commit with no slack. Gemma commits at call 7.9. The 24-turn
+budget was calibrated on a model that needs 12 turns and handed to one that needs
+23.
+
+Two seeds at `--max-turns 36`, one variable changed. It never got near the cap:
+
+| | value |
+| --- | --- |
+| turns/node | **6.5 mean, 19 max, against a cap of 36** |
+| nodes failed on `RateLimitError` | **5 of 6** — four of them **at turn 1** |
+| scored evaluations | 1, which is not a measurement |
+| cost | $1.16, against $5.81 for the 24-turn arm |
+
+The error is a quota 429, not a capacity spike:
+
+```
+429  "You exceeded your current quota, please check your plan and billing details."
+```
+
+#### The harness observation, which is the part worth keeping
+
+`_is_transient_error` classifies `litellm.RateLimitError` as transient, and the
+orchestrator retries it on the same exponential backoff it uses for a capacity
+503: `retry_backoff_seconds * 2**retry_index`, twice. **A quota 429 therefore
+consumes its entire retry budget in about three seconds** and fails the node.
+With `--max-failed-nodes 3` the seed is then abandoned almost immediately, and
+with two seeds queued the whole sweep is gone inside a minute.
+
+That backoff is right for the failure it was written for. §7.19's note records a
+503 "high demand" recovering on its own after a retry, and the Polynesian sweep
+of §7.26 rode out exactly that. **It is wrong for quota**, where the window is
+minutes to hours and no number of seconds-scale retries will help.
+
+The consequences are worse than a lost run, because the artifacts lie:
+
+- A node killed by quota is written as `node_failed` and walked over with an
+  identity fallback, which is the same treatment a node that genuinely could not
+  converge receives.
+- The aggregate then reports a `top_exact_rate` over whatever survived — here
+  **n=1** — with nothing marking it as a run that never happened.
+- `runs/sweeps/burmish-gemini-t36/` contains a well-formed `aggregate.json`
+  reading `0.000`, and it is indistinguishable at a glance from §7.27's real
+  0.000.
+
+**Two changes this argues for, neither implemented here.** Separate quota 429
+from capacity 429/503 and treat the first as fatal to the *run* rather than
+transient to the *node*, since continuing only converts the rest of the tree into
+fallbacks. And record the reason a node fell back in the aggregate, so a sweep
+whose evaluations were lost to a provider limit cannot be read as a sweep whose
+model failed to reconstruct.
+
+#### What is still true, and what is not
+
+- §7.27's Burmish 0.000 **stands as recorded**, with the turn-budget confound it
+  already states. Nothing here changes it.
+- **The turn-budget hypothesis remains untested.** It is neither supported nor
+  refuted, and §7.27's caveat is unresolved rather than closed.
+- `burmic` still has no live figure on any model.
+
+---
+
 ## 8. Staged implementation plan
 
 Every stage leaves the suite green and the harness runnable. Stage numbering is
