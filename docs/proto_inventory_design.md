@@ -2088,9 +2088,11 @@ copy baseline and is still zero.
 
 **It has been beaten exactly once.** On 2026-09-01 a Burmish seed reconstructed
 one concept at `burmic` that no daughter attests, by cross-branch assembly
-(§7.29). One of 37, in one seed of two. That is the whole of the positive
-evidence this repository holds, and it is what makes the condition a rate
-question rather than a possibility question. Every form any
+(§7.29) — and **three further seeds at the same settings did not reproduce it**,
+putting the rate at 1 seed in 4 and 1 of 148 scored concept evaluations. That
+single form is the whole of the positive evidence this repository holds. It is
+enough to make the condition a rate question rather than a possibility question,
+and the rate is very low. Every form any
 live run on this family has ever got right was a form some daughter already
 attested. §7.24 has the table. The condition is not stuck at zero: the same
 reading returns 3 for the assembly oracle here, 42 and 25 on Burmish, and 4 at
@@ -5752,11 +5754,43 @@ was built for. The diagnostic agrees with the reading:
 for that rate to be non-zero at some node; here it is non-zero *and* it produced
 a correct form nothing else could reach.
 
+#### Two more seeds, and the rate is 1 in 4 rather than 1 in 2
+
+*Added 2026-09-01 from `runs/sweeps/burmish-gemini-t36-r3`, $3.73. Both seeds
+committed **3 of 3 nodes with zero fallbacks** — the first Burmish seeds on any
+model to do so — at 19.3 turns a node against the 36 cap.*
+
+| gold node | r2 seed 0 | r2 seed 1 | r3 seed 0 | r3 seed 1 | pooled |
+| --- | --- | --- | --- | --- | --- |
+| `burmic` | 0.000 | **0.027** | 0.000 | 0.000 | **0.007 ± 0.014**, 1 of 148 concept-evaluations |
+| `proto_burmish` | 0.000 | 0.000 | 0.000 | 0.000 | **0.000**, 0 of 216 |
+
+**Neither new seed reproduced the hit.** The rate at `burmic` is **1 seed in 4**,
+not 1 in 2, and the pooled mean of 0.007 ± 0.014 has a spread that comfortably
+includes zero.
+
+Two things make this a real update rather than noise about noise. The r3 seeds
+are the **cleanest Burmish data this repository holds** — every node committed,
+nothing fell back, and the turn budget was never approached — so the zero is not
+an artifact of a starved or truncated run. And it removes the obvious benign
+explanation: more commits did not mean more chances.
+
+**The four seeds are poolable on the semantics but not on the hash, and the
+distinction is worth stating.** `configuration_components` differ in exactly one
+place, "the provider and limit settings", because r2 ran with
+`--max-total-cost-usd 4.5` and r3 with `3`. The agent instructions, the tool
+schemas, the anchors and the give-up thresholds hash identically, and **neither
+cost ceiling was ever reached** (r2 spent ~$2.5 a seed, r3 ~$1.9). So what the
+model saw was identical and only a run-level spend ceiling differed. That is a
+defensible pooling and it is not the same as an identical configuration, which
+is why it is written down rather than glossed.
+
 #### How much this is worth, stated carefully
 
-It is **one concept, in one seed of two.** The mean at `burmic` is
-**0.014 ± 0.019** and the spread includes zero. `proto_burmish` is still 0.000
-in both seeds, and the assembly oracle reaches 25/37 at `burmic` against this
+It is **one concept, in one seed of four** — one of 148 scored concept
+evaluations at `burmic`. The pooled mean is **0.007 ± 0.014** and the spread
+includes zero. `proto_burmish` is 0.000 across all four seeds and 216
+evaluations, and the assembly oracle reaches 25/37 at `burmic` against this
 1/37. Nothing here overturns §7.26 or §7.27.
 
 What it does change is the standing of the zero. Before this run the honest
