@@ -2080,11 +2080,17 @@ condition 1** — that remains true and is now stated rather than implied.
 Condition 11 is what a figure has to answer to on top of them, and it is
 answerable at any threshold, including zero.
 
-**Applied to live figures for the first time on 2026-08-31, it trips — and it
-kept tripping on a frontier model.** All ten scored Polynesian seeds across
-three models reached **zero** concepts outside the selection bar: Qwen 0.565 and
-0.500, Gemma 0.543 and 0.348, and `gemini-3.7-flash` at 0.630 ± 0.022 (§7.26),
-which clears the copy baseline and is still zero. Every form any
+**Applied to live figures for the first time on 2026-08-31, it trips almost
+everywhere.** All ten scored Polynesian seeds across three models reached
+**zero** concepts outside the selection bar: Qwen 0.565 and 0.500, Gemma 0.543
+and 0.348, and `gemini-3.7-flash` at 0.630 ± 0.022 (§7.26), which clears the
+copy baseline and is still zero.
+
+**It has been beaten exactly once.** On 2026-09-01 a Burmish seed reconstructed
+one concept at `burmic` that no daughter attests, by cross-branch assembly
+(§7.29). One of 37, in one seed of two. That is the whole of the positive
+evidence this repository holds, and it is what makes the condition a rate
+question rather than a possibility question. Every form any
 live run on this family has ever got right was a form some daughter already
 attested. §7.24 has the table. The condition is not stuck at zero: the same
 reading returns 3 for the assembly oracle here, 42 and 25 on Burmish, and 4 at
@@ -5686,6 +5692,84 @@ for.
 - **The turn-budget hypothesis remains untested.** It is neither supported nor
   refuted, and §7.27's caveat is unresolved rather than closed.
 - `burmic` still has no live figure on any model.
+
+---
+
+### 7.29 The turn budget was binding, and the first form no daughter attests
+
+*2026-09-01, `gemini-3.7-flash`, Burmish, two seeds at `--max-turns 36`.
+`runs/sweeps/burmish-gemini-t36-r2`. $5.03. One experimental variable against
+§7.27's arm; retries were also loosened to `--max-retries 6
+--retry-backoff-seconds 20` after §7.28, which is operational rather than a
+second variable — a run that hits no provider failure is identical either way.*
+
+#### The confound is resolved: the budget was binding
+
+| | 24 turns (§7.27) | **36 turns** |
+| --- | --- | --- |
+| nodes committed, of 3 | 1.0 ± 1.0 | **2.5 ± 0.7 (2/3 and 3/3)** |
+| turns/node | 22.2, hitting the 24 cap | **23.0, max 29, cap never reached** |
+| failures | 5 of 6 `AgentLoopLimitError` at 24/24 | **1 of 6, and it is a `ProtocolStallError`** |
+| `burmic` committed | never, on any model | **both seeds** |
+
+**Not one node failed on the turn limit.** The single failure is `maruic` at
+seed 0 stalling on rejected calls, which is a different problem. §7.27's caveat
+is closed: its 0.000 was measured under a budget the model was hitting in almost
+every failure, and with room the model commits.
+
+The prediction from §7.27's measurements held exactly. First commit attempt at
+call 18.0, about 4 calls to clear the contract, so ~22 needed against a 24-turn
+budget — no slack. At 36 the mean lands at 23.0 and the cap is never reached.
+
+#### And condition 11 returns a non-zero for the first time
+
+| gold node | selection bar | seed 0 | seed 1 |
+| --- | --- | --- | --- |
+| `burmic` | **0/37** | 0.000 — 0 outside | **0.027 — 1 outside** |
+| `proto_burmish` | **0/54** | 0.000 — 0 outside | 0.000 — 0 outside |
+
+At `burmic`, seed 1 reconstructed concept `1382` (NEEDLE) as **`a p ⁴`**, which
+is the gold exactly. The bar there is 0/37, so **no daughter attests it**. It is
+the first concept outside the selection bar that any live run in this repository
+has produced, across four models and roughly fourteen scored seeds.
+
+**And it is the intended mechanism, confirmed rather than inferred.** `burmic`'s
+three children are:
+
+```
+hillburmish:AchangLongchuan   a p ⁵⁵      segments right, tone wrong
+hillburmish:Xiandao           a p ⁵⁵      segments right, tone wrong
+hillburmish:Rangoon           ɑ ʔ ⁴       tone right, vowel and coda wrong
+                    gold      a p ⁴
+```
+
+The parent takes `a p` from one branch and `⁴` from another. That is exactly the
+form §7.20 said a branch cascade could never produce — *"a rule rewrites one
+child's own segments, so a parent segment no single child preserves cannot be
+produced by any cascade"* — and it is the case the proto-inventory architecture
+was built for. The diagnostic agrees with the reading:
+**`cross_branch_assembly_rate = 0.667`** at that node. §7.1's condition 3 asks
+for that rate to be non-zero at some node; here it is non-zero *and* it produced
+a correct form nothing else could reach.
+
+#### How much this is worth, stated carefully
+
+It is **one concept, in one seed of two.** The mean at `burmic` is
+**0.014 ± 0.019** and the spread includes zero. `proto_burmish` is still 0.000
+in both seeds, and the assembly oracle reaches 25/37 at `burmic` against this
+1/37. Nothing here overturns §7.26 or §7.27.
+
+What it does change is the standing of the zero. Before this run the honest
+summary was *"no live run has ever produced a correct form that no daughter
+attests"*, and that could have meant the architecture cannot. It can, the
+mechanism that does it is the one that was designed to, and it fired on the
+family where the measure has room. The finding is now a matter of **rate**
+rather than of possibility, which is a different and more tractable problem.
+
+`unaccounted_column_rate` at that node is **0.537**, well above the 0.3
+threshold §7.2 names — but Burmish's floor has never been measured the way
+§7.2 requires, so this is a number to measure against a floor rather than a
+threshold breach. It is recorded here and not read.
 
 ---
 
