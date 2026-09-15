@@ -1,5 +1,9 @@
 # Running inference
 
+For current project status read [current state](current_state.md). Before live
+runs follow [experiment policy](experiment_policy.md): local-first, bounded and
+serial; historical model examples below are not defaults or current price quotes.
+
 ## Inputs
 
 The `infer` command accepts a strict `WorkbenchPayload`. Every form is already
@@ -469,7 +473,10 @@ after the process exits.
 ## Retry, limits, and checkpoints
 
 Per-node defaults are 24 turns and 64 tool calls. Transient provider errors
-retry twice with exponential backoff.
+retry twice with exponential backoff. These are current defaults, not recommended
+budgets for every model. The valid 36-turn Burmish experiments show that 24 can
+be binding. Retry patience still participates in the compatibility hash; the
+planned recovery work has not changed that behavior yet.
 
 Relevant controls:
 
@@ -638,10 +645,9 @@ is retrieved on demand.
 | `test_rule_cascade` | Ordered, branch-scoped full-cascade preview and final forms. |
 | `commit_reconstruction` | An `inventory` or a `rules` cascade, never both: exact validation references, scopes, support, anomalies, and the optional cascade check. |
 
-Since 2026-08-24 `agent/system_prompt.md` teaches the inventory workflow and the
-rule cascade is documented beside it as the older accepted shape. Both commit
-paths are live; `docs/proto_inventory_design.md` §8 stage 4 is what removes one,
-and it is gated on the falsification numbers in §7.
+Both commit paths are live and remain supported. Stage 4 was cancelled on
+2026-08-30. The system prompt describes both shapes; its remaining misleading
+capability claims are tracked in the current research plan, not a pending deletion.
 
 Rule IDs are optional labels in cascade and commit calls. If omitted, the
 harness deterministically derives a stable ID from the exact DSL and ordered

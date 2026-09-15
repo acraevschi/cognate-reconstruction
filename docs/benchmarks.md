@@ -1,5 +1,15 @@
 # Benchmarks and evaluation
 
+> **Current reading, 2026-09-15:** see [current state](current_state.md) and
+> [experiment policy](experiment_policy.md). This guide mixes implemented
+> interfaces with dated measurements. The September evaluation improvements are
+> planned, not yet reflected in the schemas or aggregate behavior below.
+> Outside-selection hits are evidence beyond literal selection, not a proof of
+> historical inference. Old Burmese at `burmic` is a provisional proxy target.
+> Existing per-word B-Cubed measures aligned repetition structure, not consistency
+> of a phoneme mapping across a lexicon. Always read it beside exact match/NED.
+
+
 What the harness can be measured against, how a new family is defined, and what
 each measurement is and is not evidence for.
 
@@ -118,8 +128,10 @@ model's training cutoff is a `build-benchmark` definition plus a recorded date.
 
 ## Running a benchmark several times
 
-The same input fails differently on every run. Single runs are not comparable
-and any number quoted from one is noise.
+The same input can produce different trajectories on repeated runs. A single
+run is useful for debugging or a labelled pilot, but cannot establish a stable
+quality difference. Plan repetition according to the question and budget, not a
+mandatory seed count. See the experiment policy before launching this example.
 
 ```bash
 python -m cognate_reconstruction.cli run-benchmark \
@@ -143,9 +155,11 @@ Two shapes of seed are reported separately and never conflated:
   losses are not in `node_failures` either. The taxonomy counts it under
   `run-abandoned-no-result`.
 
-A fallback node is never counted as a completion and never scored against gold.
-A run that scores seven nodes when two of them are fallbacks is exactly the
-false number this harness exists to avoid.
+Current sweep aggregates exclude fallback evaluations from the committed-node
+quality distribution and count them separately. A fallback may still have a
+labelled target evaluation in its result. This conditional view is not an
+end-to-end success rate; prompt 02 adds explicit intended-set outcomes without
+counting a fallback as a model commitment.
 
 The aggregate also carries the two numbers that say *how* a node reached its
 coverage — `contrast_reducing_rules_per_node` and
@@ -157,7 +171,10 @@ provider has, and the aggregate says so.
 
 ## Synthetic families: gold by construction
 
-The one evaluation a model cannot have memorized.
+Generated families separate their answer keys from the model payload. Fresh,
+withheld synthetic cases reduce memorization risk; repeatedly tuning against the
+same checked-in family still overfits the benchmark. Synthetic truth also needs
+an identifiability check: daughters do not always determine a unique ancestor.
 
 ```bash
 python -m cognate_reconstruction.cli build-synthetic --name synthetic_hard
@@ -359,7 +376,8 @@ Seven daughters, 54 concepts, two gold nodes:
 | `burmic` | `hillburmish:OldBurmese` | attested | 38 | **25/37 — 67.6%** | 0.090 |
 
 Both measured with `tools/oracle_ceiling.py --oracle assembly --gold-node …` at
-beam width 5. They bound the architecture, not the model, and they are not
+beam width 5. They characterize an answer-key-assisted construction, not a live
+model or an exhaustive architectural bound, and they are not
 comparable to a branch-cascade oracle by subtraction — §7.3 of the design
 document says why. `burmic` scores over 37 concepts rather than 54 because Old
 Burmese does not attest all of them.
@@ -402,7 +420,7 @@ sweep of §7.21, and the first real-data reading condition 6 has ever had:
 | `proto_burmish` | committed 2/3, top-1 **0.000 ± 0.000** | committed 2/3, top-1 **0.000 ± 0.000** | **0.000** |
 | `burmic` | committed 2/3, top-1 **0.000 ± 0.000** | committed 2/3, top-1 **0.000 ± 0.000** | **0.000** |
 
-Zero is the floor of this benchmark, not a collapse: every daughter copied
+The initial exact-match zero has a strong benchmark component: every daughter copied
 unchanged also scores 0.000, because the gold writes tone as a category and
 writes pre-glottalized initials no daughter preserves. **That is the reason to
 keep the family despite the result.** A live 0.5 on Polynesian does not
@@ -414,7 +432,8 @@ concepts of 54, which is why neither relaxation was adopted. A seed costs
 
 `hillburmish` is also the first benchmark whose cognacy is coded one morpheme at
 a time — see `Partial_Cognacy` in [running inference](running_inference.md).
-That makes the morpheme reading its evidence view by default, and §7.18 of
+That makes the morpheme reading its evidence view by default, while assembly
+still aligns whole candidate strings. This mismatch is unresolved. §7.18 of
 [the design document](proto_inventory_design.md) measures what that costs, the
 family's `unaccounted_column_rate` floor included. **Read that floor before
 quoting any rate from this family**: it is 0.280 and 0.338 at the two
@@ -492,33 +511,30 @@ left side. Nothing here settles it.
 
 ## Recorded baselines
 
-**Read every live figure on this page against the copy baseline first.**
-`tools/identity_commit_probe.py --baseline` reports what a single daughter
-scores against the gold, copied unchanged, and on Polynesian the answer is
-**0.587** for East Futuna — *above every live figure recorded here, including
-the 0.457 in the table below and the best single seed's 0.543.* That seed's
-`proto_polynesian` is byte-identical to Tongan, whose copy baseline is 0.543
-exactly. So the live rows below are not wrong, and they are not interpretable
-alone: at this benchmark a score near 0.5 does not distinguish reconstruction
-from copying a conservative daughter. §7.20 of
-[the design document](proto_inventory_design.md) has the measurement and what it
-does to §7.7's reading of condition 6.
+Read live results beside a single-daughter copy baseline and a gold-assisted
+per-concept selection diagnostic. On Polynesian these are 0.587 and 0.826.
+The second uses the answer key and is not an executable gold-free competitor.
+A correct output matching an observed daughter can be a legitimate reconstruction;
+an unattested exact hit exceeds literal selection but need not prove inference.
 
-Burmish is the opposite case and it is why that family is worth keeping: every
-one of its seven daughters scores **0.000** at both gold nodes, so a non-zero
-figure there is reconstruction rather than resemblance.
+Gemini's three Polynesian runs reached 0.630 ± 0.022 (sample SD), clearing the
+single-daughter baseline. Their exact hits were all already daughter-attested.
+The preceding Gemma and Qwen runs also returned zero outside-selection hits.
+Do not pool different instruction hashes/models as independent identical trials.
 
-**And the harder bar is the one to read against.** Selecting the *best attested
-form per concept*, chosen against the gold, reaches **0.826** on Polynesian with
-no reconstruction at all. Every live figure on this page is below it. Condition
-11 of the design document turns that into the reading each figure has to carry:
-of the concepts a run got right, how many does no daughter attest? Measured
-2026-08-31 across both models and all four scored Polynesian seeds, the answer
-is **zero, ten times out of ten across three models** — including
-`gemini-3.7-flash`, which is the first live figure here to clear the copy
-baseline. The instrument is not stuck — it returns 3 for the assembly oracle
-here and 42 on Burmish — so on this family the live runs have not yet produced
-one correct form that picking an existing word could not.
+The last valid Burmish experiments used 36 turns and produced these results:
+
+| Target | r2 seed 0 | r2 seed 1 | r3 seed 0 | r3 seed 1 |
+| --- | --- | --- | --- | --- |
+| `proto_burmish`, 54 concepts | 0 | 0 | 0 | 0 |
+| `burmic`, 37 concepts, provisional proxy | 0 | 1 | 0 | 0 |
+
+Cells are exact hit counts. No daughter attests the one hit (`a p ⁴`, NEEDLE).
+The final two runs committed all nodes. Across the four runs the counts are
+0/216 and 1/148 repeated concept evaluations, not independent word samples.
+See [current state](current_state.md) for artifact paths, caveats and the last
+stopping point. Earlier 24-turn and void provider-failure runs do not supersede
+this result.
 
 ### A second model, 2026-08-31
 
@@ -541,7 +557,8 @@ the sweep pin and the deviation is stated wherever the figure is.
 Three things a reader of this family should take from it. The two models land in
 the same place, below the 0.587 copy baseline and well below the 0.826 selection
 bar. They copy at rates that cannot be told apart (Fisher two-sided p = 0.688),
-so **the copying is a property of the commit shape rather than of Gemma**. And
+so the observations do not isolate copying to Gemma. They do not establish
+that commit shape causes it or that the two model populations are equivalent. And
 the identical content costs Qwen **67% more prompt tokens** — same instructions,
 same schemas, same payload, different tokenizer — so any per-node budget on this
 page is a Gemma figure and understates Qwen by about two thirds.
@@ -566,22 +583,22 @@ against) and no `--provider-seed-base` (Gemini has no seed).
 | cost | $8.42 (91% cached) | — | — |
 
 **0.630 is the first live figure on this page to clear the 0.587 copy
-baseline**, by 3.5 standard errors, and it also beats the context-free oracle
-ceiling of 0.587 — a live model above a bound computed from the answer key. It
-is still 15.8 standard errors below the 0.826 selection bar, and **condition 11
-returns zero on all three seeds**: 87 correct proto-forms, not one of them a
+baseline**, in this small sample. It also exceeds the context-free cascade oracle figure
+of 0.587; this is a different reconstruction procedure, not a violation of a
+universal bound. It remains below the 0.826 selection diagnostic, and
+**outside-selection exact hits are zero on all three seeds**: 87 correct proto-forms, not one of them a
 form no daughter attests.
 
 Two caveats a reader of this family needs. The commit rate of 4.33 is the
-lowest of the three and is **a budget artifact** — all 8 failures are
+lowest of the three and is **confounded by the budget** — all 8 failures are
 `AgentLoopLimitError` at exactly 24 of 24 turns, and Gemini averages 21.9
 turns per node against Gemma's 12.7. And the cost held at $8.42 only because
 implicit caching hit **91%**; the same sweep at full input price is about $28.
 
 §7.26 of [the design document](proto_inventory_design.md) has the full reading.
 
-Polynesian, 46 concepts, beam width 5. The oracle bounds the architecture; the
-live figures measure one model on one seed.
+Historical baseline table: Polynesian, 46 concepts, beam width 5. The oracle
+columns characterize the named procedures; the live column is one earlier run.
 
 | Measure | Oracle ceiling, context-free | Oracle ceiling, context-sensitive | Live `google/gemma-4-26b-a4b` |
 | --- | --- | --- | --- |
@@ -607,13 +624,13 @@ path that produced it before, and it stays the recorded before.
 The oracle assembly ceiling now exists — `tools/oracle_ceiling.py --oracle
 assembly`, top-1 **39/46** on Polynesian at width 5 against 27/46 and 33/46 for
 the two branch-cascade oracles, with the full table in `docs/analysis_tools.md`.
-It bounds the architecture and is not a live number.
+It characterizes that oracle procedure and is not a live number.
 
 `agent/system_prompt.md` now teaches the inventory workflow, which is the flip
-stage 3 is named for. The live before/after over five seeds on both benchmarks
-belongs in this document and is not in it yet; until it is, there is no live
-per-set number here, deliberately, because one seed is not a measurement and a
-number recorded before the sweep that produces it would be measuring nothing.
+stage 3 is named for. Live inventory experiments subsequently ran and are
+recorded above and in
+inventory design §7.7–§7.29. The historical staged migration is no longer the
+active experiment plan; both commitment shapes remain supported.
 
 The oracle rows were re-recorded 2026-08-22 when four defects in the instrument
 were repaired. Beam-exact moved 39 → 40 and the graded means with it, because the
@@ -624,8 +641,7 @@ rule-ordering fix worth seven forms to Hawaiian, which is the finding
 
 The live row is `runs/google-gemma-4-26b-a4b-20260820-212424`, one seed, seven
 nodes attempted, five committed and two walked over as identity fallbacks. It is
-a starting point, not a result: one seed is not a measurement, which is what
-`run-benchmark` exists to fix. It was measured before the alternatives fix, so
+a labelled single-run observation, not a stable estimate of quality. It was measured before the alternatives fix, so
 its beam-exact and graded figures are on the stricter last-alternative-only
 reading and are not exactly comparable to the oracle columns; re-running the
 sweep re-records them.

@@ -1,5 +1,10 @@
 # Report, reject, or score
 
+Current interpretation (2026-09-15): see [current state](current_state.md) and
+[experiment policy](experiment_policy.md). Linguistic diagnostics remain reports,
+including outside-selection hits. Neither copying nor novelty alone establishes
+historical correctness. The worked examples below retain their original context.
+
 Where a new signal belongs. This is the reasoning behind the invariant
 "distinguish mechanical correctness, workflow quality, and linguistic truth",
 written down because the three collapse into each other whenever nobody is
@@ -72,11 +77,11 @@ nothing crashed, and the corpora selected under the loosened gate could not be
 un-selected. The asymmetry is symmetric in that respect — a corpus cannot be
 un-selected whether the gate got stricter or laxer.
 
-The defence is not vigilance; it is a test that pins the gate across both
-shapes. Two sessions with equivalent workflow behaviour must earn the same
-verdict, and a session with the equivalent defect must be caught under either.
-Without that, nothing in a suite can tell "the gate passed this session" from
-"the gate could not see this session".
+Tests must distinguish a passed check from an inapplicable one. The implemented
+gate is shape-specific: the later decision in inventory design §7.23 retained
+different applicable workflow conditions and made export report the mix. Do not
+assume equal numbers of conditions or silently pool these filters as equivalent
+linguistic grading. A shared defect should be checked wherever it applies.
 
 ## The worked example: cross-node consistency
 
@@ -168,8 +173,8 @@ contradiction because nothing can express it.
 More broadly, the metric's *subject* is gone on such a node. One candidate tuple
 assembles into exactly one parent form, so "did the children end up agreeing
 about the parent?" has no content: they cannot disagree. `child_convergence_rate`
-and `divergent_concept_count` are therefore retired rather than reimplemented —
-they stay `None`-defaulted, 2.0 records keep the real values they carry, and a
+and `divergent_concept_count` are therefore inapplicable to inventory nodes
+rather than reimplemented — they stay `None`-defaulted, 2.0 records keep the real values they carry, and a
 3.0 step reads as "not recorded", which is honest rather than lossy.
 
 Two things replace them, and it takes two because the one measure was doing two

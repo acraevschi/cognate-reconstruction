@@ -1,6 +1,19 @@
 # Reconstructing per correspondence set
 
-> Design document. Nothing here is implemented. Written 2026-08-21 against
+> **Historical design and experiment notebook — status clarified 2026-09-15.**
+> Read [current state](current_state.md), [research plan](research_plan.md), and
+> [experiment policy](experiment_policy.md) for active work. Stages 1–3 landed;
+> stage 4 was cancelled on 2026-08-30, superseding §11's original approval.
+> The latest experiments are in §7.29. Earlier “not implemented,” “next,” and
+> “untested” statements describe their dated entries, not this checkout.
+> Original falsification thresholds are preserved as history, not current gates.
+> In particular, outside-selection hits show more than literal selection, not
+> proof of historical reasoning; Old Burmese at `burmic` is a provisional proxy.
+> Claims that cascades cannot emit unattested segments are superseded: the DSL
+> permits novel replacement symbols. The September plan corrects runtime wording
+> separately. Old source-prompt files were removed in the September reset.
+
+> Original design snapshot (implementation followed). Written 2026-08-21 against
 > commit `ce52d87`, suite at **320 passing**
 > (`pytest -q -k "not local_run_artifacts"`).
 >
@@ -662,14 +675,12 @@ class ResiduePolicy(StrEnum):
     the exact error `polarize` exists to prevent.
     """
 
-
 class ResidueDisposition(WorkbenchModel):
     """One named exception to the policy, for a column the model has looked at."""
     concept_id: NonEmptyStr
     column_index: int = Field(ge=0)
     proto_segment: NonEmptyStr | None
     explanation: NonEmptyStr
-
 
 class CommitProtoInventoryArgs(WorkbenchModel):
     node_id: NonEmptyStr
@@ -970,7 +981,6 @@ class CorrespondenceSet(WorkbenchModel):
     concept_count: int = Field(ge=1)
     example_concept_ids: tuple[NonEmptyStr, ...] = ()
 
-
 class ComplementaryCandidate(WorkbenchModel):
     """Two sets whose occurrences never share an environment. A report."""
     set_ids: tuple[NonEmptyStr, NonEmptyStr]
@@ -982,11 +992,9 @@ class ComplementaryCandidate(WorkbenchModel):
     left_context_tokens: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
     right_context_tokens: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
 
-
 class AssemblyDetail(StrEnum):
     SUMMARY = "summary"     # assembled forms and counts; the default
     FULL = "full"           # plus per-column resolutions and alignment rows
-
 
 class TestProtoAssemblyArgs(WorkbenchModel):
     commitments: tuple[CorrespondenceCommitment, ...]
@@ -999,7 +1007,6 @@ class TestProtoAssemblyArgs(WorkbenchModel):
     alignment_overlay_id: NonEmptyStr | None = None
     detail: AssemblyDetail = AssemblyDetail.SUMMARY
 
-
 class ColumnResolution(WorkbenchModel):
     column_index: int = Field(ge=0)
     reflexes: tuple[str | None, ...]
@@ -1008,7 +1015,6 @@ class ColumnResolution(WorkbenchModel):
     resolved_by: Literal["set", "conditioned_set", "residue_policy",
                          "residue_disposition", "restoration"]
 
-
 class ConceptAssemblyReport(WorkbenchModel):
     concept_id: NonEmptyStr
     alignment_id: NonEmptyStr
@@ -1016,7 +1022,6 @@ class ConceptAssemblyReport(WorkbenchModel):
     columns: tuple[ColumnResolution, ...] = ()     # detail="full" only
     unaccounted_column_count: int = Field(ge=0)
     matched_anchor_ids: tuple[NonEmptyStr, ...] = ()
-
 
 class TestProtoAssemblyResult(WorkbenchModel):
     # --- the part a commit is checked against; never compactable, tiny ---
@@ -1030,13 +1035,11 @@ class TestProtoAssemblyResult(WorkbenchModel):
     derived_rules: tuple[ReconstructionRule, ...] = ()
     non_invertible_child_ids: tuple[NonEmptyStr, ...] = ()
 
-
 class RealignArgs(WorkbenchModel):
     overrides: tuple[AlignmentOverride, ...] = Field(min_length=1)
     base_alignment_overlay_id: NonEmptyStr | None = None
     segmentation_overlay_id: NonEmptyStr | None = None
     rationale: NonEmptyStr
-
 
 class RealignResult(WorkbenchModel):
     alignment_overlay_id: NonEmptyStr
@@ -3708,7 +3711,6 @@ reading of it changes.
 - **The remaining stall modes are untouched**, and the by-design rationale
   requirement is one of the codes that filled `marquesic`'s window.
 
-
 ### 7.16 A third-party division by zero ended a whole seed
 
 *Found live on 2026-08-29. Made survivable the same day. The trigger was then
@@ -3829,7 +3831,6 @@ an inventory that explained 18% of its columns — the failure mode
 first, as the prompt asked, and the decision sits beside the morpheme reading:
 if a morpheme reading changes what a boundary is, it changes this too, and the
 two should be decided together.
-
 
 ### 7.17 Three tools built for §7.13, used once in a thousand calls
 
@@ -3960,7 +3961,6 @@ bet than a reading the data already carries.
   against six of nine in the banked post-flip sweeps. Three seeds is too few,
   and too much changed between the two, to read that as an effect.
 - **Nothing about a larger model.** One model on one benchmark.
-
 
 ### 7.18 The morpheme reading: what it already is, and what it actually costs
 
@@ -5948,7 +5948,7 @@ Both commit shapes still accepted. A regression is a revert of one document.
 > 18 committed nodes** against the inventory's **16 of 50**, so stage 4 would
 > delete the only commit shape without the pathology and the only control a
 > future comparison has. **§7.22 audits what earlier decisions were taken
-> because stage 4 was coming**, and every item there is now open. §9 below
+> because stage 4 was coming**; §7.23 records the subsequent resolutions. §9 below
 > describes a deletion that is not happening.
 
 - Delete what §9 lists.
@@ -6157,7 +6157,8 @@ inventory is **printed** — by `inspect-run`, in `result.json`, in
 
 ## 11. Decisions that need the research owner
 
-**1. Whether stage 4 happens at all — DECIDED: yes, proceed.** The decision was
+**1. Original approval — SUPERSEDED by the 2026-08-30 cancellation in §8.**
+The following records the earlier decision, not current authorization. The decision was
 taken on the division of labour rather than on the accuracy: **reading a
 correspondence set and naming the proto-phoneme that gave rise to it is the
 linguist's job, and it is the job this harness exists to have a model do.** The
