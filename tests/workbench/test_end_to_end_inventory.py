@@ -243,7 +243,8 @@ def test_the_trajectory_stamps_the_new_version_and_stays_readable(
     assert len(trajectories) == 1
     trajectory = trajectories[0]
     assert trajectory.completed
-    assert trajectory.schema_version == "3.0"
+    assert trajectory.schema_version == "4.0"
+    assert trajectory.committed_reconstruction.evidence_contract_version == "units-v1"
     assert trajectory.commit_shape == "inventory"
     commit = trajectory.committed_reconstruction
     assert isinstance(commit, CommittedProtoInventory)

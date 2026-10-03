@@ -15,6 +15,7 @@ from cognate_reconstruction.schemas.alignment import (
     CorrespondenceSet,
     MultipleAlignmentMap,
 )
+from cognate_reconstruction.schemas.evidence import UnitOrderClaim, AssemblyWork, PieceAnalysisClaim
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
@@ -257,6 +258,8 @@ class GetAlignmentsArgs(WorkbenchModel):
     the compact rendering; see `CorrespondenceDetail`.
     """
 
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+
     node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     concept_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
@@ -383,6 +386,8 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
     inventory over all of them is smaller than a handful of alignments. The
     *output* is bounded by pagination instead.
     """
+
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
 
     node_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
@@ -512,6 +517,8 @@ class SetOutgroupProfile(WorkbenchModel):
 
 
 class SummarizeCorrespondencesResult(WorkbenchModel):
+    evidence_revision: NonEmptyStr | None = None
+    work: AssemblyWork | None = None
     node_ids: tuple[NonEmptyStr, ...] = Field(
         description="Column order of every returned set's 'segments'."
     )
@@ -1242,6 +1249,8 @@ class TestRuleCascadeResult(WorkbenchModel):
 class TestProtoAssemblyArgs(WorkbenchModel):
     """Preview what a proposed inventory assembles, before committing it."""
 
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+
     commitments: tuple[CorrespondenceCommitment, ...] = Field(
         description=(
             "The correspondence-set commitments to preview. Order carries no "
@@ -1264,8 +1273,8 @@ class TestProtoAssemblyArgs(WorkbenchModel):
         default=(),
         description=(
             "Concepts to assemble; empty previews every concept at this node. "
-            "Coverage for a commit is over *sets*, not concepts, so batching a "
-            "large family across several calls is fine — their coverage unions."
+            "Validation requires the exact hypothesis and evidence revision. Batching a "
+            "large family is valid only with the same hypothesis in each call."
         ),
     )
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -1297,6 +1306,11 @@ class TestProtoAssemblyResult(WorkbenchModel):
     live node against 22 KB for all the evidence that node inspected.
     """
 
+    hypothesis_digest: NonEmptyStr | None = None
+    evidence_revision: NonEmptyStr | None = None
+    work: AssemblyWork | None = None
+
+    derived_rules_scope: Literal["global", "unscoped_view"] = "global"
     # --- the part a commit is checked against; never compactable, tiny ---
     validation_call_id: NonEmptyStr
     covered_set_ids: tuple[NonEmptyStr, ...] = ()
@@ -1353,6 +1367,8 @@ class RealignArgs(WorkbenchModel):
     accept the aligner's output.
     """
 
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+
     overrides: tuple[AlignmentOverride, ...] = Field(min_length=1)
     base_alignment_overlay_id: NonEmptyStr | None = None
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -1399,6 +1415,8 @@ class RealignResult(WorkbenchModel):
 
 
 class MorphemeSegmentation(WorkbenchModel):
+    analysis_claim: tuple[PieceAnalysisClaim, ...] | None = Field(default=None,
+        description="Optional explicit cognate-unit analysis in surface order covering every position. Null preserves known analysis. This is a recorded model claim; cognacy is never inferred from spelling.")
     form_id: NonEmptyStr
     segments: tuple[NonEmptyStr, ...] = Field(min_length=1)
 
@@ -1751,8 +1769,9 @@ COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
     "correspondence from residue and it is never a model claim. A realign "
     "invalidates every set_id derived under the previous alignment.",
     "Every committed correspondence set needs a successful same-session "
-    "test_proto_assembly covering it. Coverage is over sets rather than "
-    "concepts, so several previews over different concept batches union; the "
+    "test_proto_assembly for the exact values, conditioning, confidence, residue "
+    "choices, restorations, unit_orders and overlays. Concept batches union only "
+    "for the same hypothesis and evidence revision; the "
     "assembly_validation_call_id may be omitted and resolved from them.",
     "Three fields of a commitment are required and are the ones most often "
     "omitted. 'reflexes' carries one entry per active child in order, "

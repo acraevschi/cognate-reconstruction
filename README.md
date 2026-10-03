@@ -14,6 +14,8 @@ at zero. The next work is diagnosis and evaluation, followed by controlled chang
 - [Current state](docs/current_state.md): what exists, the last results, known
   limitations, and which older decisions have been superseded.
 - [Research plan](docs/research_plan.md): implementation order and decision points.
+- [Shared session handoff](docs/session_handoff.md): live task status, decisions,
+  unfinished work and amendments carried into the next session.
 - [Experiment policy](docs/experiment_policy.md): local-first testing, budgets,
   provenance, and interpretation of results. Read before any live run.
 - [Implementation prompts](prompts/README.md): local agent briefs for the plan.
@@ -48,9 +50,11 @@ explicit identity fallback, which must be distinguished from a model commitment.
 | [Running inference](docs/running_inference.md) | CLI, inputs, tools, providers, checkpoints, reports |
 | [Benchmarks](docs/benchmarks.md) | Dataset definitions, metrics, recorded experiments |
 | [Analysis tools](docs/analysis_tools.md) | Offline probes, answer-key-assisted measurements, baselines |
+| [Evidence contract](docs/research/evidence_contract.md) | units-v1 pieces, exact column bindings and inherited analysis |
+| [Evidence migration](docs/research/evidence_migration.md) | Typed tool changes, trajectory 4.0 and checkpoint compatibility |
 | [Report, reject, or score](docs/report_reject_or_score.md) | Separate mechanical validity, workflow quality, and linguistic judgment |
 | [Operator skill](skills/run-cognate-reconstruction/SKILL.md) | Operational recipes; use the experiment policy for current budgets and model preferences |
-| [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Instructions actually sent to reconstruction models; corrections are planned, not yet applied |
+| [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Instructions sent to models; units-v1 contract updated, broader task 04 corrections pending |
 | [Inventory design history](docs/proto_inventory_design.md) | Original design and dated experiment notebook; not the active task queue |
 | [Shared-innovation proposal](docs/shared_innovation_note.md) | Deferred report design, not an implemented feature |
 | [Previous README](docs/history/README-before-2026-09-15.md) | Preserved technical and decision history before this documentation reset |

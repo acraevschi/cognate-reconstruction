@@ -5,6 +5,11 @@ features. Read [current state](current_state.md) and
 [experiment policy](experiment_policy.md) first. Local executable briefs live in
 `prompts/`; this tracked document preserves their scope for other checkouts.
 
+[Shared session handoff](session_handoff.md) carries progress, decisions and
+concrete amendments between sessions. Follow its start/resume and completion
+steps for every work package. Keep live status there, accepted findings in
+`current_state.md`, and detailed evidence in each task's result document.
+
 ## Objective
 
 Develop a harness in which a local-capable LLM can infer defensible ancestral
@@ -44,6 +49,11 @@ cause, say what observation is missing. No new full sweep is a prerequisite.
 
 ## 02 — Make evaluation answer the right questions
 
+Implemented 2026-10-02: [contract](research/evaluation_contract.md),
+[result](research/evaluation_results.md), [migration](research/evaluation_migration.md).
+Evaluator task02-v1; no live model runs. Source-backed tone mapping and real output
+morpheme identity remain unresolved for downstream work, as the contract states.
+
 Preserve old exact/NED measurements and version new readings. Expose historical
 binding validity, selection-overlap sets, tone/segment/morphology diagnostics,
 missing outputs and failures. Preserve proxy scores without presenting them as
@@ -54,6 +64,11 @@ mechanisms and a null/ambiguous control; avoid building a second broad benchmark
 framework. Output a metric contract and migration notes.
 
 ## 03 — Unify the evidence contract
+
+Implemented 2026-10-03: [contract](research/evidence_contract.md),
+[migration](research/evidence_migration.md), [results](research/evidence_results.md).
+One bounded smoke produced two previews but no commit. Protocol usability remains
+for 04; quality/cost comparison remains for 06. The scope below is preserved.
 
 Determine which surveyed units were actually used by assembly, including at the
 next node. Choose the smallest typed design that preserves cognacy/morpheme

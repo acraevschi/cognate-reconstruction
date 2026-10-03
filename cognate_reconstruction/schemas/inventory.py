@@ -31,6 +31,7 @@ from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.alignment import GAP_SEGMENT_TOKENS
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.evidence import ColumnBinding, UnitOrderClaim, PieceSource
 from cognate_reconstruction.schemas.rules import (
     AnomalyReport,
     ReconstructionRule,
@@ -303,6 +304,7 @@ class ResidueDisposition(WorkbenchModel):
 
     concept_id: NonEmptyStr
     column_index: int = Field(ge=0)
+    evidence_column_id: NonEmptyStr | None = None
     proto_segment: NonEmptyStr | None
     explanation: NonEmptyStr
 
@@ -319,6 +321,8 @@ class SegmentRestoration(WorkbenchModel):
     """
 
     concept_id: NonEmptyStr
+    before_evidence_column_id: NonEmptyStr | None = None
+    unit_id: NonEmptyStr | None = None
     before_column_index: int = Field(
         ge=0,
         description=(
@@ -355,6 +359,8 @@ class ProtoInventorySpec(WorkbenchModel):
     duplicating `node_id`, `summary`, and `anomalies` into a second argument
     model that could drift from the first.
     """
+
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
 
     child_node_ids: tuple[NonEmptyStr, ...] = Field(
         min_length=2,
@@ -457,7 +463,7 @@ class ProtoInventorySpec(WorkbenchModel):
                 "residue_policy 'retain_from_witness'"
             )
         positions = [
-            (item.concept_id, item.column_index)
+            (item.concept_id, item.evidence_column_id or item.column_index)
             for item in self.residue_dispositions
         ]
         if len(positions) != len(set(positions)):
@@ -465,7 +471,7 @@ class ProtoInventorySpec(WorkbenchModel):
                 "a residue disposition may name each concept column only once"
             )
         restored = [
-            (item.concept_id, item.before_column_index)
+            (item.concept_id, item.before_evidence_column_id or item.before_column_index)
             for item in self.restorations
         ]
         if len(restored) != len(set(restored)):
@@ -498,6 +504,11 @@ class CommittedProtoInventory(WorkbenchModel):
     present.
     """
 
+    evidence_contract_version: Literal["legacy", "units-v1"] = "legacy"
+    derived_rules_scope: Literal["global", "unscoped_view"] = "global"
+    evidence_revision: NonEmptyStr | None = None
+    column_bindings: tuple[ColumnBinding, ...] = ()
+
     commit_shape: Literal["inventory"] = "inventory"
     request: CommitProtoInventoryArgs
     proto_phonemes: tuple[NonEmptyStr, ...] = ()
@@ -519,6 +530,15 @@ class CommittedProtoInventory(WorkbenchModel):
     compares like with like across the migration.
     """
 
+    @model_validator(mode="after")
+    def validate_evidence_contract(self):
+        if self.evidence_contract_version == "units-v1" and self.evidence_revision is None:
+            raise ValueError("units-v1 inventory requires its evidence revision")
+        ids = [binding.column_id for binding in self.column_bindings]
+        if len(set(ids)) != len(ids):
+            raise ValueError("column bindings must name each evidence column once")
+        return self
+
     @property
     def anomalies(self) -> tuple[AnomalyReport, ...]:
         """Anomalies the commit carried, under the rule shape's own name."""
@@ -536,6 +556,7 @@ class CommittedProtoInventory(WorkbenchModel):
             self.request.commitments
             or self.request.residue_dispositions
             or self.request.restorations
+            or self.request.unit_orders
         )
 
 
@@ -548,6 +569,11 @@ class AssemblyDetail(StrEnum):
 
 class ColumnResolution(WorkbenchModel):
     """How one alignment column got its proto value, or failed to."""
+
+    source_positions: tuple[PieceSource, ...] = ()
+    evidence_column_id: NonEmptyStr | None = None
+    unit_id: NonEmptyStr | None = None
+    unmatched_reason: NonEmptyStr | None = None
 
     column_index: int = Field(ge=0)
     reflexes: tuple[str | None, ...]
@@ -578,6 +604,9 @@ class ConceptAssemblyReport(WorkbenchModel):
     of a 10,017 KB result for something no reader had asked for.
     """
 
+    unit_ids: tuple[NonEmptyStr, ...] = ()
+    unmatched_columns: tuple[ColumnResolution, ...] = ()
+
     concept_id: NonEmptyStr
     alignment_id: NonEmptyStr
     assembled_segments: tuple[str, ...] = ()
@@ -605,6 +634,9 @@ class AlignmentOverride(WorkbenchModel):
     row must reproduce that child's form token for token — so material may be
     moved between columns but never invented, deleted, or reordered.
     """
+
+    analysis_ids: tuple[str | None, ...] = ()
+    unit_id: NonEmptyStr | None = Field(default=None, description="Exact evidence unit to realign; required for partial evidence. Whole-form legacy edits omit this.")
 
     concept_id: NonEmptyStr
     rows: tuple[tuple[str | None, ...], ...] = Field(
@@ -635,7 +667,8 @@ class AlignmentOverride(WorkbenchModel):
         rows = value.get("rows")
         if not isinstance(rows, (list, tuple)):
             return value
-        return {**value, "rows": tuple(normalize_written_gaps(row) for row in rows)}
+        return {**value, "rows": tuple(normalize_written_gaps(row) for row in rows),
+                "analysis_ids": tuple(value.get("analysis_ids", ())) }
 
     @model_validator(mode="after")
     def validate_width(self) -> AlignmentOverride:

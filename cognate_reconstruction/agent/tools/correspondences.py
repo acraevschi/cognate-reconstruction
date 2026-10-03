@@ -41,6 +41,7 @@ from cognate_reconstruction.schemas.alignment import (
 )
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.traversal import EvidenceRelation
+from cognate_reconstruction.alignment.units import evidence_map
 
 
 def _matches_segment(
@@ -279,20 +280,25 @@ def summarize_correspondences(
     # anchors are passed: they are not columns of a correspondence set, and an
     # anchor that changed the support counts would make recurrence depend on
     # whether one happened to be supplied.
+    work = None
     try:
-        alignment_map = context.aligner.align_multiple(
-            # One reading per node, so a correspondence is between the nodes'
-            # reported forms and so the set IDs below are ones the assembler can
-            # reproduce from a candidate tuple. See `one_reading_per_node`.
-            one_reading_per_node(lexicons),
-            respect_cognate_sets=arguments.respect_cognate_sets,
-            correspondence_detail=CorrespondenceDetail.SUMMARY,
-        )
-        alignment_map = apply_alignment_overrides(
-            alignment_map,
-            context.alignment_overrides(arguments.alignment_overlay_id),
-            node_ids,
-        )
+        if arguments.respect_cognate_sets:
+            full = tuple(context.evidence_lexicon(node, arguments.segmentation_overlay_id)
+                         for node in node_ids)
+            alignment_map, work = evidence_map(full, context.aligner,
+                unit_orders=arguments.unit_orders,
+                overrides=context.alignment_overrides(arguments.alignment_overlay_id),
+                overlay_ids=(arguments.segmentation_overlay_id, arguments.alignment_overlay_id),
+                cache=context.unit_alignment_cache)
+            if selected_concepts:
+                alignment_map = alignment_map.model_copy(update={"alignments": tuple(
+                    a for a in alignment_map.alignments if a.concept_id in selected_concepts)})
+        else:
+            alignment_map = context.aligner.align_multiple(
+                one_reading_per_node(lexicons), respect_cognate_sets=False,
+                correspondence_detail=CorrespondenceDetail.SUMMARY)
+            alignment_map = apply_alignment_overrides(
+                alignment_map, context.alignment_overrides(arguments.alignment_overlay_id), node_ids)
         inventory = build_correspondence_sets(
             alignment_map,
             node_ids=node_ids,
@@ -331,6 +337,8 @@ def summarize_correspondences(
             selected_concepts=selected_concepts,
         )
     return SummarizeCorrespondencesResult(
+        evidence_revision=alignment_map.evidence_revision,
+        work=work,
         node_ids=node_ids,
         outgroup_reflexes=profiles,
         outgroup_note=note,

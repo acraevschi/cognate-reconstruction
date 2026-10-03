@@ -14,6 +14,8 @@ from cognate_reconstruction.schemas.beam import (
     ReconstructionCandidate,
 )
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
+from cognate_reconstruction.alignment.units import source_analyses
+from cognate_reconstruction.schemas.evidence import digest, merge_compatible_analyses
 
 RawCandidate = tuple[tuple[str, ...], float, CandidateDerivation]
 
@@ -106,58 +108,55 @@ def normalize_and_prune(
     reconstructions is the better historical hypothesis. Read `TIE_BREAK_POLICY`
     before treating the winner of a tie as a finding.
     """
-    grouped_scores: dict[tuple[str, ...], list[float]] = defaultdict(list)
-    grouped_derivations: dict[tuple[str, ...], list[CandidateDerivation]] = defaultdict(list)
+    grouped_scores: dict[tuple, list[float]] = defaultdict(list)
+    grouped_derivations: dict[tuple, list[CandidateDerivation]] = defaultdict(list)
+    analyses = {}
     for segments, log_score, derivation in raw_candidates:
         if not segments or not math.isfinite(log_score):
             continue
-        grouped_scores[segments].append(log_score)
-        grouped_derivations[segments].append(derivation)
+        key = (segments, derivation.analysis.compatibility_key() if derivation.analysis else "")
+        analyses.setdefault(key, []).append(derivation.analysis)
+        grouped_scores[key].append(log_score)
+        grouped_derivations[key].append(derivation)
     if not grouped_scores:
         raise ValueError(f"no viable candidates for concept {concept_id!r}")
     merged = sorted(
         ((segments, _logsumexp(scores)) for segments, scores in grouped_scores.items()),
-        key=lambda item: (-item[1], _tie_break_key(item[0])),
+        key=lambda item: (-item[1], _tie_break_key(item[0][0]), item[0][1]),
     )[:beam_width]
     normalizer = _logsumexp(score for _, score in merged)
     candidates = tuple(
         ReconstructionCandidate(
-            candidate_id=_candidate_id(node_id, concept_id, segments),
-            segments=segments,
+            candidate_id=(_candidate_id(node_id, concept_id, key[0])
+                          + (":" + digest(key[1]) if key[1] else "")),
+            segments=key[0],
+            analysis=merge_compatible_analyses(analyses[key]),
             probability=math.exp(score - normalizer),
             log_score=score,
-            derivations=tuple(grouped_derivations[segments]),
+            derivations=tuple(grouped_derivations[key]),
         )
-        for segments, score in merged
+        for key, score in merged
     )
-    return ConceptCandidateDistribution(concept_id=concept_id, candidates=candidates)
+    return ConceptCandidateDistribution(concept_id=concept_id, candidates=candidates,
+        pre_prune_candidate_count=len(grouped_scores) if any(a[0] is not None for a in analyses.values()) else None,
+        pruned_candidate_count=max(0, len(grouped_scores) - beam_width) if any(a[0] is not None for a in analyses.values()) else None)
 
 
-def make_leaf_beam(lexicon: LanguageLexicon, *, beam_width: int) -> NodeBeamState:
+def make_leaf_beam(lexicon: LanguageLexicon, *, beam_width: int, carry_analysis: bool = True) -> NodeBeamState:
     """Represent observed forms as an initial per-concept distribution."""
-    by_concept: dict[str, list[tuple[str, ...]]] = defaultdict(list)
+    by_concept = defaultdict(list)
     for form in lexicon.forms:
-        by_concept[form.concept_id].append(form.segments)
-    distributions: list[ConceptCandidateDistribution] = []
-    for concept_id, sequences in sorted(by_concept.items()):
-        log_prior = -math.log(len(sequences))
-        raw = (
-            (
-                segments,
-                log_prior,
-                CandidateDerivation(
-                    derivation_id=f"observed:{lexicon.variety_id}:{concept_id}:{index}",
-                    child_candidate_ids=(),
-                    note="observed leaf form",
-                ),
-            )
-            for index, segments in enumerate(sequences)
-        )
-        distributions.append(
-            normalize_and_prune(
-                lexicon.variety_id, concept_id, raw, beam_width=beam_width
-            )
-        )
+        for analysis in source_analyses(form) if carry_analysis else (None,):
+            by_concept[form.concept_id].append((form, analysis))
+    distributions = []
+    for concept_id, readings in sorted(by_concept.items()):
+        log_prior = -math.log(len(readings))
+        raw = ((form.segments, log_prior, CandidateDerivation(
+            derivation_id=f"observed:{lexicon.variety_id}:{concept_id}:{index}",
+            child_candidate_ids=(), analysis=analysis, note="observed leaf form",
+        )) for index, (form, analysis) in enumerate(readings))
+        distributions.append(normalize_and_prune(lexicon.variety_id, concept_id, raw,
+                                                beam_width=beam_width))
     return NodeBeamState(
         node_id=lexicon.variety_id,
         distributions=tuple(distributions),
@@ -176,6 +175,7 @@ def beam_to_lexicon(beam: NodeBeamState) -> LanguageLexicon:
                 variety_id=beam.node_id,
                 concept_id=distribution.concept_id,
                 segments=candidate.segments,
+                analysis=candidate.analysis,
             )
             for distribution in beam.distributions
             for candidate in distribution.candidates

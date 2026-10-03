@@ -32,6 +32,7 @@ from cognate_reconstruction.schemas.traversal import (
     NodeReconstructionContext,
 )
 from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
+from cognate_reconstruction.agent.tools.segment_morphemes import remap_analysis
 from cognate_reconstruction.traversal.assembler import ProtoInventoryAssembler
 from cognate_reconstruction.traversal.beam import beam_to_lexicon
 from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
@@ -59,7 +60,9 @@ def _apply_overlay(
                                 candidate.segments,
                                 original,
                                 overlaid_by_id,
-                            )
+                            ),
+                            "analysis": _overlay_candidate_analysis(candidate, distribution.concept_id,
+                                beam.node_id, original, overlaid_by_id),
                         }
                     )
                     for candidate in distribution.candidates
@@ -70,6 +73,25 @@ def _apply_overlay(
     )
     return beam.model_copy(update={"distributions": distributions})
 
+
+
+def _overlay_candidate_analysis(candidate, concept_id, node_id, original, overlaid_by_id):
+    if candidate.candidate_id in overlaid_by_id:
+        return overlaid_by_id[candidate.candidate_id].analysis
+    source_ids = {source.form_id for piece in candidate.analysis.pieces for source in piece.sources} if candidate.analysis else set()
+    selected = [overlaid_by_id[f.form_id] for f in original.forms
+                if f.concept_id == concept_id and f.segments == candidate.segments
+                and (not source_ids or f.form_id in source_ids)]
+    explicit = [f.analysis for f in selected if f.analysis is not None]
+    if explicit:
+        values = {a.model_dump_json() for a in explicit}
+        if len(values) != 1:
+            raise ValueError("segmentation overlay has incompatible candidate analyses; select an exact form")
+        return explicit[0]
+    segments = _overlay_candidate_segments(concept_id, candidate.candidate_id,
+                                          candidate.segments, original, overlaid_by_id)
+    return remap_analysis(LexicalForm(form_id=candidate.candidate_id, variety_id=node_id,
+        concept_id=concept_id, segments=candidate.segments, analysis=candidate.analysis), segments)
 
 def _overlay_candidate_segments(
     concept_id: str,
@@ -248,8 +270,9 @@ class AgenticNodeReconstructor:
         )
         context = AgentContext(
             node_id=parent_node_id,
+            child_beams=child_beams,
             child_lexicons=tuple(
-                active_evidence.get(child.node_id, beam_to_lexicon(child))
+                beam_to_lexicon(child)
                 for child in child_beams
             ),
             aligner=self.aligner,

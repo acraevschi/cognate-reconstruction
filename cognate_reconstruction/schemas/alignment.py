@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.evidence import EvidenceColumn
 from cognate_reconstruction.schemas.lexicon import (
     CognateMembershipInterpretation,
     CognateMembershipScope,
@@ -45,6 +46,7 @@ class CorrespondenceDetail(StrEnum):
 
 
 class AlignmentMember(WorkbenchModel):
+    analysis_id: NonEmptyStr | None = None
     form_id: NonEmptyStr
     variety_id: NonEmptyStr
     concept_id: NonEmptyStr
@@ -73,6 +75,7 @@ class AlignmentMember(WorkbenchModel):
 
 
 class AlignmentResult(WorkbenchModel):
+    evidence_columns: tuple[EvidenceColumn, ...] = ()
     alignment_id: NonEmptyStr
     concept_id: NonEmptyStr
     members: tuple[AlignmentMember, ...] = Field(min_length=2)
@@ -86,6 +89,8 @@ class AlignmentResult(WorkbenchModel):
         widths = {len(member.aligned_segments) for member in self.members}
         if len(widths) != 1:
             raise ValueError("all alignment members must have equal width")
+        if self.evidence_columns and len(self.evidence_columns) != next(iter(widths)):
+            raise ValueError("evidence columns must cover the alignment width")
         return self
 
 
@@ -167,6 +172,8 @@ class CorrespondenceMap(WorkbenchModel):
 class MultipleAlignmentMap(WorkbenchModel):
     """N-way alignment plus derived pairwise correspondence views."""
 
+    evidence_revision: NonEmptyStr | None = None
+
     variety_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     alignments: tuple[AlignmentResult, ...]
     pairwise_correspondences: tuple[CorrespondenceMap, ...]
@@ -217,6 +224,9 @@ class CorrespondenceSet(WorkbenchModel):
     handle every other evidence tool accepts: the follow-up call from a row of
     this inventory is `get_alignments` or `search_forms` over those concepts.
     """
+
+    scope_id: NonEmptyStr | None = None
+    example_column_ids: tuple[NonEmptyStr, ...] = ()
 
     set_id: NonEmptyStr | Literal[""] = ""
     """This set's deterministic ID, or "" when nobody derived one.

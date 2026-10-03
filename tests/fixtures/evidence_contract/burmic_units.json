@@ -1,0 +1,3243 @@
+{
+  "source_run": "burmish-gemini-t36-r2/seed-01",
+  "source_sha256": "7d3ef8e685eb696d24e326f4ac1b934f3ac583b8cc0eddd992442a5cce42b5a7",
+  "node_id": "burmic",
+  "child_ids": [
+    "hillburmish:AchangLongchuan",
+    "hillburmish:Xiandao",
+    "hillburmish:Rangoon"
+  ],
+  "concept_ids": [
+    "96",
+    "239",
+    "1382"
+  ],
+  "lexicons": [
+    {
+      "variety_id": "hillburmish:AchangLongchuan",
+      "name": "Achang",
+      "forms": [
+        {
+          "form_id": "hillburmish:AchangLongchuan-1536_crawlofpeople-1",
+          "variety_id": "hillburmish:AchangLongchuan",
+          "concept_id": "96",
+          "segments": [
+            "t",
+            "o",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-1536_crawlofpeople-1:1",
+              "cognate_set_id": "hillburmish:79",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 721,
+                "source_membership_id": "AchangLongchuan-1536_crawlofpeople-1",
+                "source_cognateset_id": "79",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "AchangLongchuan-1536_crawlofpeople-1",
+            "source_language_id": "AchangLongchuan",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 721,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:AchangLongchuan-377_flower-1",
+          "variety_id": "hillburmish:AchangLongchuan",
+          "concept_id": "239",
+          "segments": [
+            "k",
+            "ă",
+            "n",
+            "⁵⁵",
+            "+",
+            "t",
+            "a",
+            "m",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-377_flower-1:1",
+              "cognate_set_id": "hillburmish:7",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1326,
+                "source_membership_id": "AchangLongchuan-377_flower-1",
+                "source_cognateset_id": "7",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-377_flower-1:2",
+              "cognate_set_id": "hillburmish:1708",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                5,
+                6,
+                7,
+                8
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1326,
+                "source_membership_id": "AchangLongchuan-377_flower-1",
+                "source_cognateset_id": "1708",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "AchangLongchuan-377_flower-1",
+            "source_language_id": "AchangLongchuan",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 1326,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:AchangLongchuan-578_needle-1",
+          "variety_id": "hillburmish:AchangLongchuan",
+          "concept_id": "1382",
+          "segments": [
+            "a",
+            "p",
+            "⁵⁵"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-578_needle-1:1",
+              "cognate_set_id": "hillburmish:932",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 2241,
+                "source_membership_id": "AchangLongchuan-578_needle-1",
+                "source_cognateset_id": "932",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "AchangLongchuan-578_needle-1",
+            "source_language_id": "AchangLongchuan",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 2241,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        }
+      ],
+      "dataset_id": "hillburmish",
+      "source_language_id": "AchangLongchuan",
+      "source_glottocode": null,
+      "tree_glottocode": null,
+      "compatibility_rule_ids": [],
+      "family": "Sino-Tibetan",
+      "is_historical": false
+    },
+    {
+      "variety_id": "hillburmish:Rangoon",
+      "name": "Rangoon Burmese",
+      "forms": [
+        {
+          "form_id": "hillburmish:Rangoon-1536_crawlofpeople-1",
+          "variety_id": "hillburmish:Rangoon",
+          "concept_id": "96",
+          "segments": [
+            "t",
+            "w",
+            "ɑ",
+            "⁵⁵",
+            "+",
+            "tθ",
+            "w",
+            "ɑ",
+            "⁵⁵"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-1536_crawlofpeople-1:1",
+              "cognate_set_id": "hillburmish:79",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 720,
+                "source_membership_id": "Rangoon-1536_crawlofpeople-1",
+                "source_cognateset_id": "79",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-1536_crawlofpeople-1:2",
+              "cognate_set_id": "hillburmish:1891",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                5,
+                6,
+                7,
+                8
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 720,
+                "source_membership_id": "Rangoon-1536_crawlofpeople-1",
+                "source_cognateset_id": "1891",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Rangoon-1536_crawlofpeople-1",
+            "source_language_id": "Rangoon",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 720,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Rangoon-377_flower-1",
+          "variety_id": "hillburmish:Rangoon",
+          "concept_id": "239",
+          "segments": [
+            "ɑ",
+            "⁵³",
+            "+",
+            "p",
+            "w",
+            "ĩ",
+            "⁵³"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-377_flower-1:1",
+              "cognate_set_id": "hillburmish:1707",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1325,
+                "source_membership_id": "Rangoon-377_flower-1",
+                "source_cognateset_id": "1707",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-377_flower-1:2",
+              "cognate_set_id": "hillburmish:7",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                3,
+                4,
+                5,
+                6
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1325,
+                "source_membership_id": "Rangoon-377_flower-1",
+                "source_cognateset_id": "7",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Rangoon-377_flower-1",
+            "source_language_id": "Rangoon",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 1325,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Rangoon-578_needle-1",
+          "variety_id": "hillburmish:Rangoon",
+          "concept_id": "1382",
+          "segments": [
+            "ɑ",
+            "ʔ",
+            "⁴"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-578_needle-1:1",
+              "cognate_set_id": "hillburmish:930",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 2240,
+                "source_membership_id": "Rangoon-578_needle-1",
+                "source_cognateset_id": "930",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Rangoon-578_needle-1",
+            "source_language_id": "Rangoon",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 2240,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        }
+      ],
+      "dataset_id": "hillburmish",
+      "source_language_id": "Rangoon",
+      "source_glottocode": null,
+      "tree_glottocode": null,
+      "compatibility_rule_ids": [],
+      "family": "Sino-Tibetan",
+      "is_historical": false
+    },
+    {
+      "variety_id": "hillburmish:Xiandao",
+      "name": "Xiandao",
+      "forms": [
+        {
+          "form_id": "hillburmish:Xiandao-1536_crawlofpeople-1",
+          "variety_id": "hillburmish:Xiandao",
+          "concept_id": "96",
+          "segments": [
+            "t",
+            "o",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-1536_crawlofpeople-1:1",
+              "cognate_set_id": "hillburmish:79",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 726,
+                "source_membership_id": "Xiandao-1536_crawlofpeople-1",
+                "source_cognateset_id": "79",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Xiandao-1536_crawlofpeople-1",
+            "source_language_id": "Xiandao",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 726,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Xiandao-377_flower-1",
+          "variety_id": "hillburmish:Xiandao",
+          "concept_id": "239",
+          "segments": [
+            "p",
+            "a",
+            "n",
+            "⁵⁵",
+            "+",
+            "t",
+            "a",
+            "m",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-377_flower-1:1",
+              "cognate_set_id": "hillburmish:7",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1331,
+                "source_membership_id": "Xiandao-377_flower-1",
+                "source_cognateset_id": "7",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-377_flower-1:2",
+              "cognate_set_id": "hillburmish:1710",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                5,
+                6,
+                7,
+                8
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1331,
+                "source_membership_id": "Xiandao-377_flower-1",
+                "source_cognateset_id": "1710",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Xiandao-377_flower-1",
+            "source_language_id": "Xiandao",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 1331,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Xiandao-578_needle-1",
+          "variety_id": "hillburmish:Xiandao",
+          "concept_id": "1382",
+          "segments": [
+            "a",
+            "p",
+            "⁵⁵"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-578_needle-1:1",
+              "cognate_set_id": "hillburmish:930",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 2246,
+                "source_membership_id": "Xiandao-578_needle-1",
+                "source_cognateset_id": "930",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Xiandao-578_needle-1",
+            "source_language_id": "Xiandao",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 2246,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        }
+      ],
+      "dataset_id": "hillburmish",
+      "source_language_id": "Xiandao",
+      "source_glottocode": null,
+      "tree_glottocode": null,
+      "compatibility_rule_ids": [],
+      "family": "Sino-Tibetan",
+      "is_historical": false
+    }
+  ],
+  "legacy_inventory": {
+    "commit_shape": "inventory",
+    "request": {
+      "child_node_ids": [
+        "hillburmish:AchangLongchuan",
+        "hillburmish:Xiandao",
+        "hillburmish:Rangoon"
+      ],
+      "alignment_overlay_id": null,
+      "assembly_validation_call_id": "call_3f4a90bb3a2446eeb773c8fec0c9",
+      "commitments": [
+        {
+          "set_id": "cs-fa51654cfe91",
+          "reflexes": [
+            "³¹",
+            "³¹",
+            "⁵⁵"
+          ],
+          "proto_segment": "³¹",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 14,
+          "confidence": 0.95,
+          "rationale": "Tone *31 (Tone 1).",
+          "directionality_rationale": "Tone *31 (Tone 1) is preserved in Achang and Xiandao as 31; Rangoon Burmese shifted it to 55."
+        },
+        {
+          "set_id": "cs-2db875d1d1f6",
+          "reflexes": [
+            "⁵⁵",
+            "⁵⁵",
+            "²²"
+          ],
+          "proto_segment": "⁵⁵",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 10,
+          "confidence": 0.95,
+          "rationale": "Tone *55 (Tone 2).",
+          "directionality_rationale": "Tone *55 (Tone 2) is preserved in Achang and Xiandao as 55; Rangoon Burmese shifted it to 22."
+        },
+        {
+          "set_id": "cs-3717ce164096",
+          "reflexes": [
+            "⁵⁵",
+            "⁵⁵",
+            "⁴"
+          ],
+          "proto_segment": "⁴",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 8,
+          "confidence": 0.95,
+          "rationale": "Checked tone *4 in stopped syllables.",
+          "directionality_rationale": "Checked tone *4 in stopped syllables is preserved in Rangoon; merged into 55 in Achang and Xiandao."
+        },
+        {
+          "set_id": "cs-cbb77cd3026d",
+          "reflexes": [
+            null,
+            null,
+            "w"
+          ],
+          "proto_segment": "w",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 6,
+          "confidence": 0.9,
+          "rationale": "Medial glide *-w-.",
+          "directionality_rationale": "Medial glide *-w- is preserved in Rangoon Burmese and outgroups (Atsi, Bola, Lashi, Maru v); monophthongized/lost in Achang and Xiandao."
+        },
+        {
+          "set_id": "cs-3be2310657b3",
+          "reflexes": [
+            "ʔ",
+            "ʔ",
+            "ʔ"
+          ],
+          "proto_segment": "ʔ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 6,
+          "confidence": 0.95,
+          "rationale": "Final glottal stop *-ʔ.",
+          "directionality_rationale": "Final glottal stop *-ʔ preserved across all children."
+        },
+        {
+          "set_id": "cs-0dbeb7d428bf",
+          "reflexes": [
+            null,
+            "⁵⁵",
+            "⁴"
+          ],
+          "proto_segment": "⁴",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 5,
+          "confidence": 0.9,
+          "rationale": "Checked tone *4 in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Checked tone *4 in 2-way Xiandao-Rangoon cognates; Xiandao merged into 55, Rangoon preserves short checked tone 4."
+        },
+        {
+          "set_id": "cs-055084c09d5c",
+          "reflexes": [
+            "a",
+            "a",
+            "ɑ"
+          ],
+          "proto_segment": "a",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 4,
+          "confidence": 0.95,
+          "rationale": "Open vowel *a.",
+          "directionality_rationale": "Open vowel *a is preserved in Achang and Xiandao as a; backed to ɑ in Rangoon Burmese."
+        },
+        {
+          "set_id": "cs-0d99c7389c1d",
+          "reflexes": [
+            "m",
+            "m",
+            null
+          ],
+          "proto_segment": "m",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 4,
+          "confidence": 0.9,
+          "rationale": "Coda *-m.",
+          "directionality_rationale": "Coda *-m is preserved in Achang, Xiandao, and outgroups (Atsi, Lashi); lost or nasalized in Rangoon Burmese."
+        },
+        {
+          "set_id": "cs-dacccc0f7740",
+          "reflexes": [
+            "n",
+            "n",
+            null
+          ],
+          "proto_segment": "n",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 4,
+          "confidence": 0.9,
+          "rationale": "Coda *-n.",
+          "directionality_rationale": "Coda *-n is preserved in Achang, Xiandao, and outgroups (Atsi, Lashi, Bola); lost or nasalized in Rangoon Burmese."
+        },
+        {
+          "set_id": "cs-6275ed29de1d",
+          "reflexes": [
+            "ŋ",
+            "ŋ",
+            null
+          ],
+          "proto_segment": "ŋ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 4,
+          "confidence": 0.9,
+          "rationale": "Coda *-ŋ.",
+          "directionality_rationale": "Coda *-ŋ is preserved in Achang, Xiandao, and outgroups (Atsi, Lashi, Bola, Maru); lost or nasalized in Rangoon Burmese."
+        },
+        {
+          "set_id": "cs-70eed8c9ef91",
+          "reflexes": [
+            null,
+            null,
+            "j"
+          ],
+          "proto_segment": "j",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.9,
+          "rationale": "Medial glide *-j-.",
+          "directionality_rationale": "Medial glide *-j- is preserved in Rangoon and outgroups (Atsi, Bola, Lashi, Maru); palatalized/lost in Achang and Xiandao."
+        },
+        {
+          "set_id": "cs-4763a59f1f13",
+          "reflexes": [
+            null,
+            "³¹",
+            "⁵⁵"
+          ],
+          "proto_segment": "³¹",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.9,
+          "rationale": "Tone *31 in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Tone *31 in 2-way Xiandao-Rangoon cognates; Xiandao preserves 31, Rangoon shifted to 55."
+        },
+        {
+          "set_id": "cs-e4e8ffbb1ead",
+          "reflexes": [
+            "a",
+            "a",
+            "ɑ̃"
+          ],
+          "proto_segment": "a",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.95,
+          "rationale": "Vowel *a before nasal coda.",
+          "directionality_rationale": "Vowel *a before nasal coda; preserved as a in Achang and Xiandao, nasalized to ɑ̃ in Rangoon."
+        },
+        {
+          "set_id": "cs-78c16c4e9a4d",
+          "reflexes": [
+            "au",
+            "au",
+            "o"
+          ],
+          "proto_segment": "au",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.9,
+          "rationale": "Diphthong *au.",
+          "directionality_rationale": "Diphthong *au is preserved in Achang, Xiandao, and outgroups (Atsi, Bola); monophthongized to o in Rangoon."
+        },
+        {
+          "set_id": "cs-8b1dd565ad9a",
+          "reflexes": [
+            "p",
+            "p",
+            "ʔ"
+          ],
+          "proto_segment": "p",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.9,
+          "rationale": "Coda *-p.",
+          "directionality_rationale": "Final *-p is preserved in Achang, Xiandao, and outgroups (Atsi, Lashi); debuccalized to glottal stop ʔ in Rangoon."
+        },
+        {
+          "set_id": "cs-3cb0286fa183",
+          "reflexes": [
+            "ŋ",
+            null,
+            null
+          ],
+          "proto_segment": "ŋ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.9,
+          "rationale": "Coda *-ŋ in Achang.",
+          "directionality_rationale": "Final *-ŋ is preserved in Achang and outgroups (Bola, Maru, Atsi, Lashi); lost in Xiandao and Rangoon."
+        },
+        {
+          "set_id": "cs-506016af7c67",
+          "reflexes": [
+            "ŋ",
+            "ŋ",
+            "ŋ"
+          ],
+          "proto_segment": "ŋ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 3,
+          "confidence": 0.95,
+          "rationale": "Initial velar nasal *ŋ.",
+          "directionality_rationale": "Initial velar nasal *ŋ preserved across all children."
+        },
+        {
+          "set_id": "cs-b34987303505",
+          "reflexes": [
+            null,
+            "a",
+            "ɑ"
+          ],
+          "proto_segment": "a",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Vowel *a in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Vowel *a in 2-way Xiandao-Rangoon cognates; Xiandao preserves a, Rangoon backed to ɑ."
+        },
+        {
+          "set_id": "cs-5d35f6e3fd18",
+          "reflexes": [
+            null,
+            "p",
+            "ʔ"
+          ],
+          "proto_segment": "p",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Coda *-p in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Final *-p in 2-way Xiandao-Rangoon cognates; Xiandao preserves p, Rangoon debuccalized to ʔ."
+        },
+        {
+          "set_id": "cs-a2b83ce3d518",
+          "reflexes": [
+            null,
+            "³¹",
+            "⁵³"
+          ],
+          "proto_segment": "³¹",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Tone *31 in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Tone *31 in 2-way Xiandao-Rangoon cognates; Xiandao preserves 31, Rangoon shifted to 53."
+        },
+        {
+          "set_id": "cs-c2b628b7fb9d",
+          "reflexes": [
+            null,
+            "ɔ",
+            "ɑ"
+          ],
+          "proto_segment": "ɔ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Back vowel *ɔ in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Back vowel *ɔ in 2-way Xiandao-Rangoon cognates; Xiandao preserves ɔ, Rangoon unrounded to ɑ."
+        },
+        {
+          "set_id": "cs-43fc22246b2e",
+          "reflexes": [
+            null,
+            "ʔ",
+            null
+          ],
+          "proto_segment": null,
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.8,
+          "rationale": "Xiandao secondary glottal stop.",
+          "directionality_rationale": "Secondary non-etymological glottal stop insertion in Xiandao; not present in proto-language."
+        },
+        {
+          "set_id": "cs-af27571b59c2",
+          "reflexes": [
+            null,
+            "ʔ",
+            "ʔ"
+          ],
+          "proto_segment": "ʔ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Final *-ʔ in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Final *-ʔ in 2-way Xiandao-Rangoon cognates; preserved in both daughters."
+        },
+        {
+          "set_id": "cs-cb2739cc6701",
+          "reflexes": [
+            null,
+            "⁵⁵",
+            "²²"
+          ],
+          "proto_segment": "⁵⁵",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Tone *55 in 2-way Xiandao-Rangoon cognates.",
+          "directionality_rationale": "Tone *55 in 2-way Xiandao-Rangoon cognates; Xiandao preserves 55, Rangoon shifted to 22."
+        },
+        {
+          "set_id": "cs-134965c1c82b",
+          "reflexes": [
+            "a",
+            "a",
+            "ĩ"
+          ],
+          "proto_segment": "a",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Vowel *a with nasal reflex.",
+          "directionality_rationale": "Vowel *a before nasal coda in 2-way/3-way cognates; Achang/Xiandao preserve a, Rangoon shows nasal vowel ĩ."
+        },
+        {
+          "set_id": "cs-fdf22237e07a",
+          "reflexes": [
+            "e",
+            "ɔ",
+            "ɑ"
+          ],
+          "proto_segment": "e",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Front vowel *e.",
+          "directionality_rationale": "Front vowel *e preserved in Achang; backed to ɔ in Xiandao and ɑ in Rangoon."
+        },
+        {
+          "set_id": "cs-839bcae89270",
+          "reflexes": [
+            "i",
+            "i",
+            "e"
+          ],
+          "proto_segment": "i",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.95,
+          "rationale": "High front vowel *i.",
+          "directionality_rationale": "High front vowel *i preserved in Achang and Xiandao; lowered to e in Rangoon."
+        },
+        {
+          "set_id": "cs-2a2d25d1d60d",
+          "reflexes": [
+            "n",
+            "n",
+            "n"
+          ],
+          "proto_segment": "n",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.95,
+          "rationale": "Alveolar nasal *n.",
+          "directionality_rationale": "Alveolar nasal *n preserved across all children."
+        },
+        {
+          "set_id": "cs-72f2dd76aaea",
+          "reflexes": [
+            "o",
+            "o",
+            "ɑ"
+          ],
+          "proto_segment": "o",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Back vowel *o.",
+          "directionality_rationale": "Back vowel *o preserved in Achang and Xiandao; unrounded to ɑ in Rangoon."
+        },
+        {
+          "set_id": "cs-71174ead4fb3",
+          "reflexes": [
+            "t",
+            "t",
+            "t"
+          ],
+          "proto_segment": "t",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.95,
+          "rationale": "Alveolar stop *t.",
+          "directionality_rationale": "Alveolar stop *t preserved across all children."
+        },
+        {
+          "set_id": "cs-51f90c5eea7d",
+          "reflexes": [
+            "ts",
+            "m",
+            "m"
+          ],
+          "proto_segment": "ts",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Initial affricate *ts.",
+          "directionality_rationale": "Initial *ts affricate preserved in Achang and outgroups; shifted to m in Xiandao and Rangoon."
+        },
+        {
+          "set_id": "cs-375d51a87f47",
+          "reflexes": [
+            "x",
+            "x",
+            "kʰ"
+          ],
+          "proto_segment": "kʰ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.95,
+          "rationale": "Aspirated velar stop *kʰ.",
+          "directionality_rationale": "Aspirated velar stop *kʰ preserved in Rangoon and outgroups; spirantized to x in Achang and Xiandao."
+        },
+        {
+          "set_id": "cs-c31077285aad",
+          "reflexes": [
+            "³⁵",
+            "³¹",
+            "⁵³"
+          ],
+          "proto_segment": "³¹",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Tone *31 in compound morphemes.",
+          "directionality_rationale": "Tone *31 in compound morphemes; Xiandao preserves 31, Achang shifted to 35, Rangoon to 53."
+        },
+        {
+          "set_id": "cs-9577f7272c37",
+          "reflexes": [
+            "³⁵",
+            "³⁵",
+            "⁵³"
+          ],
+          "proto_segment": "⁵³",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Tone *53 (Tone *3).",
+          "directionality_rationale": "Tone *53 (Tone 3) preserved in Rangoon; shifted to 35 in Achang and Xiandao."
+        },
+        {
+          "set_id": "cs-80cbe3cc430c",
+          "reflexes": [
+            "ȵ",
+            "ɲ",
+            "m"
+          ],
+          "proto_segment": "m",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Initial *m before medial glide.",
+          "directionality_rationale": "Initial *m before medial *j preserved in Rangoon and outgroups; palatalized to ȵ in Achang and ɲ in Xiandao."
+        },
+        {
+          "set_id": "cs-35f9f6c886f5",
+          "reflexes": [
+            "ɔ",
+            "ɔ",
+            "ɑ"
+          ],
+          "proto_segment": "ɔ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.95,
+          "rationale": "Back vowel *ɔ.",
+          "directionality_rationale": "Back vowel *ɔ preserved in Achang and Xiandao; unrounded to ɑ in Rangoon."
+        },
+        {
+          "set_id": "cs-7f32b5776b70",
+          "reflexes": [
+            "ɔ",
+            "ɔ",
+            "ɛ"
+          ],
+          "proto_segment": "ɔ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Back vowel *ɔ before stop/glottal.",
+          "directionality_rationale": "Back vowel *ɔ before stop/glottal preserved in Achang and Xiandao; fronted to ɛ in Rangoon."
+        },
+        {
+          "set_id": "cs-64691b948832",
+          "reflexes": [
+            "ʐ",
+            "ʐ",
+            null
+          ],
+          "proto_segment": "ʐ",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Initial retroflex fricative *ʐ.",
+          "directionality_rationale": "Initial retroflex fricative *ʐ preserved in Achang and Xiandao; deleted in Rangoon."
+        },
+        {
+          "set_id": "cs-e55144fca4f8",
+          "reflexes": [
+            "ʐ",
+            "ʐ",
+            "j"
+          ],
+          "proto_segment": "j",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.9,
+          "rationale": "Initial glide *j.",
+          "directionality_rationale": "Initial glide *j preserved in Rangoon and outgroups; hardened to ʐ in Achang and Xiandao."
+        },
+        {
+          "set_id": "cs-5064521abafb",
+          "reflexes": [
+            "⁵⁵",
+            "⁵⁵",
+            "⁵⁵"
+          ],
+          "proto_segment": "⁵⁵",
+          "conditioning": null,
+          "merges_with_set_id": null,
+          "support": 2,
+          "confidence": 0.95,
+          "rationale": "High tone *55 across all children.",
+          "directionality_rationale": "High tone *55 preserved across all children."
+        }
+      ],
+      "residue_policy": "retain_from_witness",
+      "residue_witness_child_id": "hillburmish:AchangLongchuan",
+      "residue_dispositions": [],
+      "restorations": [],
+      "node_id": "burmic",
+      "segmentation_overlay_id": null,
+      "anomalies": [],
+      "summary": "Reconstruction of Proto-Burmic from Achang (Longchuan), Xiandao, and Rangoon Burmese. Proto-Burmic preserves the tonal categories (*31 / Tone 1, *55 / Tone 2, *53 / Tone 3, and checked *4 in stopped syllables), conserved initials (stops *t, *kʰ, nasals *m, *n, *ŋ, glides *j, *w, and sibilants/affricates *ts, *ʐ), oral and nasal codas (*-p, *-ʔ, *-m, *-n, *-ŋ), and vowels (*a, *i, *e, *o, *ɔ, *au). Rangoon Burmese exhibits regular nasalization/coda loss, debuccalization of final *-p to -ʔ, and tone shifts (*31 > 55, *55 > 22); Achang and Xiandao exhibit spirantization of *kʰ > x, glide hardening *j- > ʐ-, and loss/monophthongization of medial *-w-."
+    },
+    "proto_phonemes": [
+      "a",
+      "au",
+      "e",
+      "i",
+      "j",
+      "kʰ",
+      "m",
+      "n",
+      "o",
+      "p",
+      "t",
+      "ts",
+      "w",
+      "³¹",
+      "ŋ",
+      "ɔ",
+      "ʐ",
+      "ʔ",
+      "⁴",
+      "⁵³",
+      "⁵⁵"
+    ],
+    "derived_rules": [
+      {
+        "rule": {
+          "rule_id": "rule-92c6d3fd0cf6",
+          "source": "⁵⁵ > ⁴",
+          "target": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁴"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:AchangLongchuan"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-14dc12b0ff93",
+          "source": "x > kʰ",
+          "target": {
+            "tokens": [
+              "x"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "kʰ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:AchangLongchuan"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-977fcbeb703f",
+          "source": "³⁵ > ³¹",
+          "target": {
+            "tokens": [
+              "³⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "³¹"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:AchangLongchuan"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-20053bb1b85c",
+          "source": "³⁵ > ⁵³",
+          "target": {
+            "tokens": [
+              "³⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁵³"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:AchangLongchuan"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-df9d9d945b95",
+          "source": "ȵ > m",
+          "target": {
+            "tokens": [
+              "ȵ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "m"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:AchangLongchuan"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-f6a8a1f1cf01",
+          "source": "ʐ > j",
+          "target": {
+            "tokens": [
+              "ʐ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "j"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:AchangLongchuan"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-92c6d3fd0cf6",
+          "source": "⁵⁵ > ⁴",
+          "target": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁴"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-92c6d3fd0cf6",
+          "source": "⁵⁵ > ⁴",
+          "target": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁴"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-9fc3436b7bd5",
+          "source": "ʔ > Ø",
+          "target": {
+            "tokens": [
+              "ʔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.8
+      },
+      {
+        "rule": {
+          "rule_id": "rule-45fdf83ddb1c",
+          "source": "ɔ > e",
+          "target": {
+            "tokens": [
+              "ɔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "e"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-5b555629f812",
+          "source": "m > ts",
+          "target": {
+            "tokens": [
+              "m"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "ts"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-14dc12b0ff93",
+          "source": "x > kʰ",
+          "target": {
+            "tokens": [
+              "x"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "kʰ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-20053bb1b85c",
+          "source": "³⁵ > ⁵³",
+          "target": {
+            "tokens": [
+              "³⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁵³"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-8a22ef00095b",
+          "source": "ɲ > m",
+          "target": {
+            "tokens": [
+              "ɲ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "m"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-f6a8a1f1cf01",
+          "source": "ʐ > j",
+          "target": {
+            "tokens": [
+              "ʐ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "j"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Xiandao"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-1f7524816170",
+          "source": "⁵⁵ > ³¹",
+          "target": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "³¹"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-6d7bef10dede",
+          "source": "²² > ⁵⁵",
+          "target": {
+            "tokens": [
+              "²²"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-d42430ae2ef6",
+          "source": "ɑ > a",
+          "target": {
+            "tokens": [
+              "ɑ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "a"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-1f7524816170",
+          "source": "⁵⁵ > ³¹",
+          "target": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "³¹"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-e70c8e4d20ab",
+          "source": "ɑ̃ > a",
+          "target": {
+            "tokens": [
+              "ɑ̃"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "a"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-6267e12fbdb2",
+          "source": "o > au",
+          "target": {
+            "tokens": [
+              "o"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "au"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-815900be1ce5",
+          "source": "ʔ > p",
+          "target": {
+            "tokens": [
+              "ʔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "p"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-d42430ae2ef6",
+          "source": "ɑ > a",
+          "target": {
+            "tokens": [
+              "ɑ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "a"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-815900be1ce5",
+          "source": "ʔ > p",
+          "target": {
+            "tokens": [
+              "ʔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "p"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-eeac08a50f8d",
+          "source": "⁵³ > ³¹",
+          "target": {
+            "tokens": [
+              "⁵³"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "³¹"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-e247205ada57",
+          "source": "ɑ > ɔ",
+          "target": {
+            "tokens": [
+              "ɑ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "ɔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-6d7bef10dede",
+          "source": "²² > ⁵⁵",
+          "target": {
+            "tokens": [
+              "²²"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "⁵⁵"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-48ef5885a1e4",
+          "source": "ĩ > a",
+          "target": {
+            "tokens": [
+              "ĩ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "a"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-8d109717c667",
+          "source": "ɑ > e",
+          "target": {
+            "tokens": [
+              "ɑ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "e"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-e264ec6ac785",
+          "source": "e > i",
+          "target": {
+            "tokens": [
+              "e"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "i"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-ebc555fd2a26",
+          "source": "ɑ > o",
+          "target": {
+            "tokens": [
+              "ɑ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "o"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-5b555629f812",
+          "source": "m > ts",
+          "target": {
+            "tokens": [
+              "m"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "ts"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-eeac08a50f8d",
+          "source": "⁵³ > ³¹",
+          "target": {
+            "tokens": [
+              "⁵³"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "³¹"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      },
+      {
+        "rule": {
+          "rule_id": "rule-e247205ada57",
+          "source": "ɑ > ɔ",
+          "target": {
+            "tokens": [
+              "ɑ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "ɔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.95
+      },
+      {
+        "rule": {
+          "rule_id": "rule-9cc7fe3a57ef",
+          "source": "ɛ > ɔ",
+          "target": {
+            "tokens": [
+              "ɛ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "replacement": {
+            "tokens": [
+              "ɔ"
+            ],
+            "morphological_boundary_tokens": [
+              "+",
+              "-"
+            ]
+          },
+          "environment": {
+            "left": null,
+            "right": null,
+            "word_initial": false,
+            "word_final": false
+          }
+        },
+        "source_child_ids": [
+          "hillburmish:Rangoon"
+        ],
+        "confidence": 0.9
+      }
+    ],
+    "non_invertible_child_ids": [
+      "hillburmish:AchangLongchuan",
+      "hillburmish:Xiandao",
+      "hillburmish:Rangoon"
+    ]
+  },
+  "legacy_inputs": [
+    {
+      "node_id": "hillburmish:AchangLongchuan",
+      "distributions": [
+        {
+          "concept_id": "1382",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:AchangLongchuan:1382:5c52a2beedca",
+              "segments": [
+                "a",
+                "p",
+                "⁵⁵"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:AchangLongchuan:1382:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "concept_id": "239",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:AchangLongchuan:239:7e95e82f0267",
+              "segments": [
+                "k",
+                "ă",
+                "n",
+                "⁵⁵",
+                "+",
+                "t",
+                "a",
+                "m",
+                "³¹"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:AchangLongchuan:239:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "concept_id": "96",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:AchangLongchuan:96:6b88793f8fb7",
+              "segments": [
+                "t",
+                "o",
+                "³¹"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:AchangLongchuan:96:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "beam_width": 5,
+      "source_child_ids": null
+    },
+    {
+      "node_id": "hillburmish:Xiandao",
+      "distributions": [
+        {
+          "concept_id": "1382",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:Xiandao:1382:5c52a2beedca",
+              "segments": [
+                "a",
+                "p",
+                "⁵⁵"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:Xiandao:1382:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "concept_id": "239",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:Xiandao:239:1ca46b866f56",
+              "segments": [
+                "p",
+                "a",
+                "n",
+                "⁵⁵",
+                "+",
+                "t",
+                "a",
+                "m",
+                "³¹"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:Xiandao:239:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "concept_id": "96",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:Xiandao:96:6b88793f8fb7",
+              "segments": [
+                "t",
+                "o",
+                "³¹"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:Xiandao:96:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "beam_width": 5,
+      "source_child_ids": null
+    },
+    {
+      "node_id": "hillburmish:Rangoon",
+      "distributions": [
+        {
+          "concept_id": "1382",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:Rangoon:1382:2eb82a71c802",
+              "segments": [
+                "ɑ",
+                "ʔ",
+                "⁴"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:Rangoon:1382:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "concept_id": "239",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:Rangoon:239:44b1fba2157a",
+              "segments": [
+                "ɑ",
+                "⁵³",
+                "+",
+                "p",
+                "w",
+                "ĩ",
+                "⁵³"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:Rangoon:239:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "concept_id": "96",
+          "candidates": [
+            {
+              "candidate_id": "hillburmish:Rangoon:96:00fb5d901f51",
+              "segments": [
+                "t",
+                "w",
+                "ɑ",
+                "⁵⁵",
+                "+",
+                "tθ",
+                "w",
+                "ɑ",
+                "⁵⁵"
+              ],
+              "probability": 1.0,
+              "log_score": 0.0,
+              "derivations": [
+                {
+                  "derivation_id": "observed:hillburmish:Rangoon:96:0",
+                  "child_candidate_ids": [],
+                  "rule_ids": [],
+                  "alignment_ids": [],
+                  "supporting_child_ids": [],
+                  "note": "observed leaf form"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "beam_width": 5,
+      "source_child_ids": null
+    }
+  ],
+  "legacy_reports": [
+    {
+      "concept_id": "1382",
+      "alignment_id": "asm:burmic:1382:371b471f4a0e",
+      "assembled_segments": [
+        "a",
+        "p",
+        "⁴"
+      ],
+      "columns": [
+        {
+          "column_index": 0,
+          "reflexes": [
+            "a",
+            "a",
+            "ɑ"
+          ],
+          "set_id": "cs-055084c09d5c",
+          "proto_segment": "a",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 1,
+          "reflexes": [
+            "p",
+            "p",
+            "ʔ"
+          ],
+          "set_id": "cs-8b1dd565ad9a",
+          "proto_segment": "p",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 2,
+          "reflexes": [
+            "⁵⁵",
+            "⁵⁵",
+            "⁴"
+          ],
+          "set_id": "cs-3717ce164096",
+          "proto_segment": "⁴",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        }
+      ],
+      "unaccounted_column_count": 0,
+      "column_count": 3,
+      "matched_anchor_ids": [],
+      "cross_branch_assembled": false
+    },
+    {
+      "concept_id": "239",
+      "alignment_id": "asm:burmic:239:2e183f1b9171",
+      "assembled_segments": [
+        "k",
+        "ă",
+        "n",
+        "⁵⁵",
+        "+",
+        "t",
+        "w",
+        "a",
+        "m",
+        "³¹"
+      ],
+      "columns": [
+        {
+          "column_index": 0,
+          "reflexes": [
+            "k",
+            "p",
+            null
+          ],
+          "set_id": null,
+          "proto_segment": "k",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 1,
+          "reflexes": [
+            "ă",
+            "a",
+            "ɑ"
+          ],
+          "set_id": null,
+          "proto_segment": "ă",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 2,
+          "reflexes": [
+            "n",
+            "n",
+            null
+          ],
+          "set_id": "cs-dacccc0f7740",
+          "proto_segment": "n",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 3,
+          "reflexes": [
+            "⁵⁵",
+            "⁵⁵",
+            "⁵³"
+          ],
+          "set_id": null,
+          "proto_segment": "⁵⁵",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 4,
+          "reflexes": [
+            "+",
+            "+",
+            "+"
+          ],
+          "set_id": null,
+          "proto_segment": "+",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 5,
+          "reflexes": [
+            "t",
+            "t",
+            "p"
+          ],
+          "set_id": null,
+          "proto_segment": "t",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 6,
+          "reflexes": [
+            null,
+            null,
+            "w"
+          ],
+          "set_id": "cs-cbb77cd3026d",
+          "proto_segment": "w",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 7,
+          "reflexes": [
+            "a",
+            "a",
+            "ĩ"
+          ],
+          "set_id": "cs-134965c1c82b",
+          "proto_segment": "a",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 8,
+          "reflexes": [
+            "m",
+            "m",
+            null
+          ],
+          "set_id": "cs-0d99c7389c1d",
+          "proto_segment": "m",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 9,
+          "reflexes": [
+            "³¹",
+            "³¹",
+            "⁵³"
+          ],
+          "set_id": null,
+          "proto_segment": "³¹",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        }
+      ],
+      "unaccounted_column_count": 6,
+      "column_count": 10,
+      "matched_anchor_ids": [],
+      "cross_branch_assembled": true
+    },
+    {
+      "concept_id": "96",
+      "alignment_id": "asm:burmic:96:c3281776d929",
+      "assembled_segments": [
+        "w",
+        "t",
+        "w",
+        "o",
+        "³¹"
+      ],
+      "columns": [
+        {
+          "column_index": 0,
+          "reflexes": [
+            null,
+            null,
+            "t"
+          ],
+          "set_id": null,
+          "proto_segment": null,
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 1,
+          "reflexes": [
+            null,
+            null,
+            "w"
+          ],
+          "set_id": "cs-cbb77cd3026d",
+          "proto_segment": "w",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 2,
+          "reflexes": [
+            null,
+            null,
+            "ɑ"
+          ],
+          "set_id": null,
+          "proto_segment": null,
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 3,
+          "reflexes": [
+            null,
+            null,
+            "⁵⁵"
+          ],
+          "set_id": null,
+          "proto_segment": null,
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 4,
+          "reflexes": [
+            null,
+            null,
+            "+"
+          ],
+          "set_id": null,
+          "proto_segment": null,
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 5,
+          "reflexes": [
+            "t",
+            "t",
+            "tθ"
+          ],
+          "set_id": null,
+          "proto_segment": "t",
+          "resolved_by": "residue_policy",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 6,
+          "reflexes": [
+            null,
+            null,
+            "w"
+          ],
+          "set_id": "cs-cbb77cd3026d",
+          "proto_segment": "w",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 7,
+          "reflexes": [
+            "o",
+            "o",
+            "ɑ"
+          ],
+          "set_id": "cs-72f2dd76aaea",
+          "proto_segment": "o",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        },
+        {
+          "column_index": 8,
+          "reflexes": [
+            "³¹",
+            "³¹",
+            "⁵⁵"
+          ],
+          "set_id": "cs-fa51654cfe91",
+          "proto_segment": "³¹",
+          "resolved_by": "set",
+          "competing_set_ids": []
+        }
+      ],
+      "unaccounted_column_count": 5,
+      "column_count": 9,
+      "matched_anchor_ids": [],
+      "cross_branch_assembled": true
+    }
+  ]
+}

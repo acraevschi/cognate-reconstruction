@@ -17,13 +17,17 @@
       "source_variety_id": "hillburmish:ProtoBurmish",
       "node_id": "proto_burmish",
       "gold_evidence_kind": "reconstructed",
-      "source_reference": "Hill & Gong (2020), Materials for an Etymological Dictionary of Burmish: Proto-Burmish reconstructions held out as evaluation target"
+      "source_reference": "Hill & Gong (2020), Materials for an Etymological Dictionary of Burmish: Proto-Burmish reconstructions held out as evaluation target",
+      "target_validity": "validated_target",
+      "target_validity_note": "Published Proto-Burmish reconstruction at its declared root; agreement is not proof of historical truth."
     },
     {
       "source_variety_id": "hillburmish:OldBurmese",
       "node_id": "burmic",
       "gold_evidence_kind": "attested",
-      "source_reference": "Hill & Gong (2020) via Huang (1992): Old Burmese held out as evaluation target. TEMPORARY BINDING, see provenance.note"
+      "source_reference": "Hill & Gong (2020) via Huang (1992): Old Burmese held out as evaluation target. TEMPORARY BINDING, see provenance.note",
+      "target_validity": "provisional_proxy",
+      "target_validity_note": "Old Burmese is ancestral to Burmese only, not Achang or Xiandao. Raw scores retained; excluded from validated-target summaries."
     }
   ],
   "newick_path": "../examples/burmish_benchmark_tree.nwk",

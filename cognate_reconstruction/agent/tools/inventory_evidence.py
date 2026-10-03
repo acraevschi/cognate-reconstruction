@@ -22,6 +22,7 @@ is refused. Neither is a judgement about the linguistics.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.tools.errors import (
@@ -51,6 +52,9 @@ from cognate_reconstruction.schemas.inventory import (
 )
 from cognate_reconstruction.schemas.traversal import EvidenceRelation
 from cognate_reconstruction.traversal.assembler import build_plan, resolve_columns
+from cognate_reconstruction.alignment.units import evidence_map
+from cognate_reconstruction.schemas.evidence import ColumnBinding
+from cognate_reconstruction.alignment.correspondence_sets import unit_set_id
 
 MAX_REPORTED_UNKNOWN_SETS = 8
 """Near-miss sets listed in an `unknown-correspondence-set` remediation."""
@@ -62,6 +66,7 @@ def node_alignments(
     segmentation_overlay_id: str | None,
     alignment_overlay_id: str | None,
     concept_ids: Sequence[str] = (),
+    unit_orders: tuple = (),
 ) -> MultipleAlignmentMap:
     """The node's own n-way alignment, with any committed overrides applied.
 
@@ -69,39 +74,22 @@ def node_alignments(
     nothing else, so a session that repaired one compound is reasoning about
     SCA's output everywhere else.
     """
-    selected = set(concept_ids)
-    lexicons = []
-    for child_id in context.child_ids:
-        lexicon = context.lexicon(child_id, segmentation_overlay_id)
-        if selected:
-            lexicon = lexicon.model_copy(
-                update={
-                    "forms": tuple(
-                        form
-                        for form in lexicon.forms
-                        if form.concept_id in selected
-                    )
-                }
-            )
-        lexicons.append(lexicon)
+    lexicons = tuple(context.lexicon(child_id, segmentation_overlay_id)
+                     for child_id in context.child_ids)
     try:
-        alignment_map = context.aligner.align_multiple(
-            # The same reduction `summarize_correspondences` applies, and for
-            # the same reason: the IDs derived here have to be the IDs a model
-            # was handed there, and both have to be columns the assembler can
-            # reproduce from one candidate per child.
-            one_reading_per_node(lexicons),
-            correspondence_detail=CorrespondenceDetail.SUMMARY,
-        )
-    except ToolInputError:
-        raise
+        alignment_map, _work = evidence_map(lexicons, context.aligner,
+            unit_orders=unit_orders,
+            overrides=context.alignment_overrides(alignment_overlay_id),
+            overlay_ids=(segmentation_overlay_id, alignment_overlay_id),
+            cache=context.unit_alignment_cache)
     except ValueError as error:
-        raise ToolInputError(str(error), code="alignment-failed") from error
-    return apply_alignment_overrides(
-        alignment_map,
-        context.alignment_overrides(alignment_overlay_id),
-        context.child_ids,
-    )
+        raise ToolInputError(str(error), code="alignment-failed",
+            remediation="Re-survey with unit_orders for conflicting morphology, or realign the named unit; no analysis was inferred or discarded.") from error
+    if concept_ids:
+        selected = set(concept_ids)
+        alignment_map = alignment_map.model_copy(update={"alignments": tuple(
+            a for a in alignment_map.alignments if a.concept_id in selected)})
+    return alignment_map
 
 
 def apply_alignment_overrides(
@@ -153,6 +141,7 @@ def node_inventory(
     segmentation_overlay_id: str | None,
     alignment_overlay_id: str | None,
     concept_ids: Sequence[str] = (),
+    unit_orders: tuple = (),
 ) -> tuple[CorrespondenceInventory, MultipleAlignmentMap]:
     """The node's correspondence sets, with the alignment they came from."""
     alignment_map = node_alignments(
@@ -160,6 +149,7 @@ def node_inventory(
         segmentation_overlay_id=segmentation_overlay_id,
         alignment_overlay_id=alignment_overlay_id,
         concept_ids=concept_ids,
+        unit_orders=unit_orders,
     )
     inventory = build_correspondence_sets(
         alignment_map,
@@ -168,6 +158,18 @@ def node_inventory(
         alignment_overlay_id=alignment_overlay_id,
     )
     return inventory, alignment_map
+
+
+def column_bindings(alignment_map, child_ids):
+    bindings = {}
+    for alignment in alignment_map.alignments:
+        rows = _rows_for(alignment, {child: i for i, child in enumerate(child_ids)}, len(child_ids))
+        for index, column in enumerate(alignment.evidence_columns):
+            reflexes = tuple(row[index] for row in rows)
+            bindings[column.column_id] = ColumnBinding(column_id=column.column_id,
+                set_id=unit_set_id(reflexes, column.scope_id, tuple(child_ids), alignment_map.evidence_revision),
+                reflexes=reflexes)
+    return tuple(bindings.values())
 
 
 def verify_commitments(
@@ -319,6 +321,9 @@ def _describe_unknown_set(
         "Correspondence sets are named by their content, so a set_id is only "
         "valid for the exact reflex tuple, child order, and overlays it was "
         "derived under. A realign call invalidates every earlier set_id.",
+        "Re-run summarize_correspondences under the current overlays and "
+        "unit_orders, select the intended scope and column provenance, then "
+        "preview the exact hypothesis again. Equal tokens alone cannot select a set.",
     ]
     exact = [
         item
@@ -328,8 +333,8 @@ def _describe_unknown_set(
     if exact:
         lines.append(
             "This node does contain a set with exactly these reflexes, under a "
-            f"different ID: {exact[0].set_id!r} at support {exact[0].support}. "
-            "Cite that one."
+            "different ID. Re-run summarize_correspondences under the committed overlays "
+            "and unit_orders, copy all relevant scoped rows, then preview the exact hypothesis again."
         )
     else:
         near = [
@@ -397,6 +402,9 @@ def check_complementary_splits(
         residue_policy=residue_policy,
         residue_witness_child_id=residue_witness_child_id,
     )
+    if alignment_map.evidence_revision is not None:
+        plan = replace(plan, contract_version="units-v1",
+            column_bindings={b.column_id: b for b in column_bindings(alignment_map, context.child_ids)})
     for claim in claims:
         partners = by_id.get(claim.merges_with_set_id or "")
         if not partners:
@@ -454,7 +462,7 @@ def _check_one_split(
         rows = _rows_for(alignment, order, len(context.child_ids))
         if rows is None:
             continue
-        outcomes, _stats = resolve_columns(rows, alignment.concept_id, plan)
+        outcomes, _stats = resolve_columns(rows, alignment.concept_id, plan, evidence_columns=alignment.evidence_columns)
         decided = {
             outcome.resolution.column_index: outcome.reading
             for outcome in outcomes
@@ -463,6 +471,8 @@ def _check_one_split(
         for column in range(len(rows[0])):
             reflexes = tuple(row[column] for row in rows)
             for item, other in ((left, right), (right, left)):
+                if alignment.evidence_columns and plan.column_bindings[alignment.evidence_columns[column].column_id].set_id != item.set_id:
+                    continue
                 if reflexes != tuple(item.reflexes):
                     continue
                 if item.conditioning is None:

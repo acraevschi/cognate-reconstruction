@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
-from cognate_reconstruction.schemas.historical import GoldEvidenceKind
+from cognate_reconstruction.schemas.historical import GoldEvidenceKind, TargetValidity
 
 
 class ConceptSelection(StrEnum):
@@ -57,6 +57,8 @@ class BenchmarkTarget(WorkbenchModel):
     node_id: NonEmptyStr
     gold_evidence_kind: GoldEvidenceKind
     source_reference: NonEmptyStr | None = None
+    target_validity: TargetValidity | None = None
+    target_validity_note: NonEmptyStr | None = None
 
 
 class BenchmarkDefinition(WorkbenchModel):

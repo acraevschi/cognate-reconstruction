@@ -1,0 +1,1450 @@
+{
+  "evaluator_version": "task02-v1",
+  "date": "2026-10-02",
+  "live_model_calls": 0,
+  "banked_unchanged_concept_score_records": 364,
+  "panel_ids": [
+    "1382",
+    "81",
+    "1350",
+    "749",
+    "156",
+    "1209",
+    "96",
+    "239",
+    "272",
+    "406",
+    "208",
+    "254"
+  ],
+  "selection_provenance": {
+    "definition": "benchmarks/burmish.json",
+    "concept_selection": "fully_cognate_with_target",
+    "selection_source_variety_id": "hillburmish:ProtoBurmish",
+    "uses_target_cognacy": true,
+    "note": "Declared recipe metadata; frozen payload is not rebuilt or reselected."
+  },
+  "banked_burmish": [
+    {
+      "run_dir": "runs/sweeps/burmish-gemini-t36-r2/seed-00",
+      "result_sha256": "0afc28a9c013f1a3560122453486b558d96a169b19494e0cc92d1f6ba9146650",
+      "events_sha256": "c284cb399017ee9984b8540ada4c6626085551633a7fd35692038318f317d040",
+      "run_status": "finished_with_fallbacks",
+      "raw_summary": {
+        "planned_concepts": 91,
+        "available_outputs": 91,
+        "missing_outputs": 0,
+        "committed_node_concepts": 91,
+        "committed_outputs": 91,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.6930775573632715,
+        "conditional_committed_ned_count": 91,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "validated_summary": {
+        "planned_concepts": 54,
+        "available_outputs": 54,
+        "missing_outputs": 0,
+        "committed_node_concepts": 54,
+        "committed_outputs": 54,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.7072791406124738,
+        "conditional_committed_ned_count": 54,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "operational_nodes": [
+        {
+          "node_id": "burmic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "maruic",
+          "status": "identity_fallback",
+          "failure_kind": "model_protocol_failure",
+          "failure_error_type": "ProtocolStallError"
+        },
+        {
+          "node_id": "proto_burmish",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        }
+      ],
+      "targets": [
+        {
+          "node_id": "proto_burmish",
+          "target_validity": "validated_target",
+          "planned": 54,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 5,
+          "tone_token_disagreements": 54,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1055",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1651",
+              "1703",
+              "1710",
+              "2034",
+              "2070",
+              "208",
+              "2106",
+              "2378",
+              "239",
+              "254",
+              "272",
+              "2774",
+              "2905",
+              "3424",
+              "3549",
+              "406",
+              "496",
+              "586",
+              "688",
+              "749",
+              "759",
+              "81",
+              "863",
+              "879",
+              "887",
+              "937",
+              "938",
+              "96",
+              "hillburmish:1254_wearabracelet",
+              "hillburmish:1485_cry",
+              "hillburmish:1518_fullbefilledup",
+              "hillburmish:1539_climbupatree"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 54,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": [
+            "maruic"
+          ]
+        },
+        {
+          "node_id": "burmic",
+          "target_validity": "provisional_proxy",
+          "planned": 37,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 3,
+          "tone_token_disagreements": 37,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1703",
+              "1710",
+              "2034",
+              "208",
+              "2106",
+              "239",
+              "254",
+              "3549",
+              "688",
+              "749",
+              "759",
+              "879",
+              "887",
+              "937",
+              "96",
+              "hillburmish:1485_cry"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 37,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        }
+      ]
+    },
+    {
+      "run_dir": "runs/sweeps/burmish-gemini-t36-r2/seed-01",
+      "result_sha256": "7d3ef8e685eb696d24e326f4ac1b934f3ac583b8cc0eddd992442a5cce42b5a7",
+      "events_sha256": "5f64b8d173ee480e50d840f76f8ddaf1ed28af23e1ec9a9367e70d48f23a0e8d",
+      "run_status": "finished",
+      "raw_summary": {
+        "planned_concepts": 91,
+        "available_outputs": 91,
+        "missing_outputs": 0,
+        "committed_node_concepts": 91,
+        "committed_outputs": 91,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 1,
+        "output_top_hits": 1,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.01098901098901099,
+        "conditional_committed_mean_ned": 0.6903104831676258,
+        "conditional_committed_ned_count": 91,
+        "end_to_end_model_top_exact_rate": 0.01098901098901099,
+        "end_to_end_output_top_exact_rate": 0.01098901098901099,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "validated_summary": {
+        "planned_concepts": 54,
+        "available_outputs": 54,
+        "missing_outputs": 0,
+        "committed_node_concepts": 54,
+        "committed_outputs": 54,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.70652557319224,
+        "conditional_committed_ned_count": 54,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "operational_nodes": [
+        {
+          "node_id": "burmic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "maruic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "proto_burmish",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        }
+      ],
+      "targets": [
+        {
+          "node_id": "proto_burmish",
+          "target_validity": "validated_target",
+          "planned": 54,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 4,
+          "tone_token_disagreements": 54,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1055",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1651",
+              "1703",
+              "1710",
+              "2034",
+              "2070",
+              "208",
+              "2106",
+              "2378",
+              "239",
+              "254",
+              "272",
+              "2774",
+              "2905",
+              "3424",
+              "3549",
+              "406",
+              "496",
+              "586",
+              "688",
+              "749",
+              "759",
+              "81",
+              "863",
+              "879",
+              "887",
+              "937",
+              "938",
+              "96",
+              "hillburmish:1254_wearabracelet",
+              "hillburmish:1485_cry",
+              "hillburmish:1518_fullbefilledup",
+              "hillburmish:1539_climbupatree"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 54,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        },
+        {
+          "node_id": "burmic",
+          "target_validity": "provisional_proxy",
+          "planned": 37,
+          "top_exact": 1,
+          "beam_exact": 1,
+          "missing": 0,
+          "segment_only_top": 1,
+          "tone_token_disagreements": 30,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1703",
+              "1710",
+              "2034",
+              "208",
+              "2106",
+              "239",
+              "254",
+              "3549",
+              "688",
+              "749",
+              "759",
+              "879",
+              "887",
+              "937",
+              "96",
+              "hillburmish:1485_cry"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [
+              "1382"
+            ],
+            "outside_selection_beam_hit_ids": [
+              "1382"
+            ],
+            "eligible_concepts": 37,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 1,
+            "outside_selection_beam_hits": 1,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        }
+      ]
+    },
+    {
+      "run_dir": "runs/sweeps/burmish-gemini-t36-r3/seed-00",
+      "result_sha256": "4ee51929496981390e53a12da8e3eb5049cf07127de6a671854af67a395f6c16",
+      "events_sha256": "c7873bb50bb45d7a96200c1152022ea39eed086a6b9048b4435d4af59bfd33d1",
+      "run_status": "finished",
+      "raw_summary": {
+        "planned_concepts": 91,
+        "available_outputs": 91,
+        "missing_outputs": 0,
+        "committed_node_concepts": 91,
+        "committed_outputs": 91,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.7289456575170857,
+        "conditional_committed_ned_count": 91,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "validated_summary": {
+        "planned_concepts": 54,
+        "available_outputs": 54,
+        "missing_outputs": 0,
+        "committed_node_concepts": 54,
+        "committed_outputs": 54,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.7386083052749717,
+        "conditional_committed_ned_count": 54,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "operational_nodes": [
+        {
+          "node_id": "burmic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "maruic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "proto_burmish",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        }
+      ],
+      "targets": [
+        {
+          "node_id": "proto_burmish",
+          "target_validity": "validated_target",
+          "planned": 54,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 3,
+          "tone_token_disagreements": 54,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1055",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1651",
+              "1703",
+              "1710",
+              "2034",
+              "2070",
+              "208",
+              "2106",
+              "2378",
+              "239",
+              "254",
+              "272",
+              "2774",
+              "2905",
+              "3424",
+              "3549",
+              "406",
+              "496",
+              "586",
+              "688",
+              "749",
+              "759",
+              "81",
+              "863",
+              "879",
+              "887",
+              "937",
+              "938",
+              "96",
+              "hillburmish:1254_wearabracelet",
+              "hillburmish:1485_cry",
+              "hillburmish:1518_fullbefilledup",
+              "hillburmish:1539_climbupatree"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 54,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        },
+        {
+          "node_id": "burmic",
+          "target_validity": "provisional_proxy",
+          "planned": 37,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 1,
+          "tone_token_disagreements": 37,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1703",
+              "1710",
+              "2034",
+              "208",
+              "2106",
+              "239",
+              "254",
+              "3549",
+              "688",
+              "749",
+              "759",
+              "879",
+              "887",
+              "937",
+              "96",
+              "hillburmish:1485_cry"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 37,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        }
+      ]
+    },
+    {
+      "run_dir": "runs/sweeps/burmish-gemini-t36-r3/seed-01",
+      "result_sha256": "39ec6371f2a12a29fb11eb4d406d252fb154d57e1b08f6ed5c99672e285641e3",
+      "events_sha256": "302c2dfa35d1dcb1145340bdbf0d2cb87d8bf76e85937931f309119f946d601e",
+      "run_status": "finished",
+      "raw_summary": {
+        "planned_concepts": 91,
+        "available_outputs": 91,
+        "missing_outputs": 0,
+        "committed_node_concepts": 91,
+        "committed_outputs": 91,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.6866605616605613,
+        "conditional_committed_ned_count": 91,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "validated_summary": {
+        "planned_concepts": 54,
+        "available_outputs": 54,
+        "missing_outputs": 0,
+        "committed_node_concepts": 54,
+        "committed_outputs": 54,
+        "fallback_outputs": 0,
+        "unknown_commitment_outputs": 0,
+        "committed_top_hits": 0,
+        "output_top_hits": 0,
+        "fallback_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.6894694297472074,
+        "conditional_committed_ned_count": 54,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0,
+        "denominator_note": "Exact conditional: planned concepts at committed nodes, missing is a miss. NED conditional: available committed outputs only. End-to-end: all planned target concepts. Model hits exclude direct fallbacks and unknown commitments."
+      },
+      "operational_nodes": [
+        {
+          "node_id": "burmic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "maruic",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        },
+        {
+          "node_id": "proto_burmish",
+          "status": "committed",
+          "failure_kind": null,
+          "failure_error_type": null
+        }
+      ],
+      "targets": [
+        {
+          "node_id": "proto_burmish",
+          "target_validity": "validated_target",
+          "planned": 54,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 4,
+          "tone_token_disagreements": 54,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1055",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1651",
+              "1703",
+              "1710",
+              "2034",
+              "2070",
+              "208",
+              "2106",
+              "2378",
+              "239",
+              "254",
+              "272",
+              "2774",
+              "2905",
+              "3424",
+              "3549",
+              "406",
+              "496",
+              "586",
+              "688",
+              "749",
+              "759",
+              "81",
+              "863",
+              "879",
+              "887",
+              "937",
+              "938",
+              "96",
+              "hillburmish:1254_wearabracelet",
+              "hillburmish:1485_cry",
+              "hillburmish:1518_fullbefilledup",
+              "hillburmish:1539_climbupatree"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 54,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        },
+        {
+          "node_id": "burmic",
+          "target_validity": "provisional_proxy",
+          "planned": 37,
+          "top_exact": 0,
+          "beam_exact": 0,
+          "missing": 0,
+          "segment_only_top": 1,
+          "tone_token_disagreements": 37,
+          "selection": {
+            "eligible_concept_ids": [
+              "1007",
+              "1209",
+              "1221",
+              "1223",
+              "1225",
+              "1248",
+              "1252",
+              "1274",
+              "1309",
+              "1335",
+              "1350",
+              "1382",
+              "1392",
+              "1401",
+              "1402",
+              "1441",
+              "1442",
+              "1483",
+              "156",
+              "1571",
+              "1583",
+              "1703",
+              "1710",
+              "2034",
+              "208",
+              "2106",
+              "239",
+              "254",
+              "3549",
+              "688",
+              "749",
+              "759",
+              "879",
+              "887",
+              "937",
+              "96",
+              "hillburmish:1485_cry"
+            ],
+            "oracle_reachable_concept_ids": [],
+            "outside_selection_top_hit_ids": [],
+            "outside_selection_beam_hit_ids": [],
+            "eligible_concepts": 37,
+            "oracle_reachable_concepts": 0,
+            "outside_selection_top_hits": 0,
+            "outside_selection_beam_hits": 0,
+            "observation_scope": "observed_descendant_leaves",
+            "gold_assisted": true
+          },
+          "descendant_fallback_node_ids": []
+        }
+      ]
+    }
+  ],
+  "diagnostic_suite": {
+    "definition": "benchmarks/diagnostic/task02-v1.json",
+    "sha256": "4d339fa2f2885cc91098da3978000253d1147b71d2c87d692ffbb3d4e277b915",
+    "cases": [
+      {
+        "case_id": "retention",
+        "identifiability": "conditional_retention_test",
+        "controls": {
+          "identity": {
+            "top_hits": 0,
+            "planned": 6,
+            "validated_planned": 6,
+            "validated_exact_rate": 0.0,
+            "mean_ned": 0.3333333333333333,
+            "ned_count": 6
+          },
+          "perfect_fixture": {
+            "top_hits": 6,
+            "planned": 6,
+            "validated_planned": 6,
+            "validated_exact_rate": 1.0,
+            "mean_ned": 0.0,
+            "ned_count": 6
+          },
+          "wrong_fixture": {
+            "top_hits": 0,
+            "planned": 6,
+            "validated_planned": 6,
+            "validated_exact_rate": 0.0,
+            "mean_ned": 1.0,
+            "ned_count": 6
+          }
+        },
+        "by_node": [
+          {
+            "node_id": "p",
+            "exact": 0,
+            "planned": 6,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "oracle_reachable_concept_ids": [],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 6,
+              "oracle_reachable_concepts": 0,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          }
+        ],
+        "piece_control": null
+      },
+      {
+        "case_id": "conditioned",
+        "identifiability": "conditional_retention_test",
+        "controls": {
+          "identity": {
+            "top_hits": 4,
+            "planned": 6,
+            "validated_planned": 6,
+            "validated_exact_rate": 0.6666666666666666,
+            "mean_ned": 0.1111111111111111,
+            "ned_count": 6
+          },
+          "perfect_fixture": {
+            "top_hits": 6,
+            "planned": 6,
+            "validated_planned": 6,
+            "validated_exact_rate": 1.0,
+            "mean_ned": 0.0,
+            "ned_count": 6
+          },
+          "wrong_fixture": {
+            "top_hits": 0,
+            "planned": 6,
+            "validated_planned": 6,
+            "validated_exact_rate": 0.0,
+            "mean_ned": 1.0,
+            "ned_count": 6
+          }
+        },
+        "by_node": [
+          {
+            "node_id": "p",
+            "exact": 4,
+            "planned": 6,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "oracle_reachable_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 6,
+              "oracle_reachable_concepts": 6,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          }
+        ],
+        "piece_control": null
+      },
+      {
+        "case_id": "morphology",
+        "identifiability": "underdetermined",
+        "controls": {
+          "identity": {
+            "top_hits": 0,
+            "planned": 4,
+            "validated_planned": 0,
+            "validated_exact_rate": null,
+            "mean_ned": 0.65,
+            "ned_count": 4
+          },
+          "perfect_fixture": {
+            "top_hits": 4,
+            "planned": 4,
+            "validated_planned": 0,
+            "validated_exact_rate": null,
+            "mean_ned": 0.0,
+            "ned_count": 4
+          },
+          "wrong_fixture": {
+            "top_hits": 0,
+            "planned": 4,
+            "validated_planned": 0,
+            "validated_exact_rate": null,
+            "mean_ned": 1.0,
+            "ned_count": 4
+          }
+        },
+        "by_node": [
+          {
+            "node_id": "p",
+            "exact": 0,
+            "planned": 4,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004"
+              ],
+              "oracle_reachable_concept_ids": [],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 4,
+              "oracle_reachable_concepts": 0,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          }
+        ],
+        "piece_control": [
+          {
+            "concept_id": "c001",
+            "perfect": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u1"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            },
+            "reordered_extra": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u1"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "extra"
+              ],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            },
+            "wrong": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [],
+              "unit_exact_rate": 0.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          },
+          {
+            "concept_id": "c002",
+            "perfect": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            },
+            "reordered_extra": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "extra"
+              ],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            },
+            "wrong": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [],
+              "unit_exact_rate": 0.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          },
+          {
+            "concept_id": "c003",
+            "perfect": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1",
+                "u2"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            },
+            "reordered_extra": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1",
+                "u2"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "extra"
+              ],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            },
+            "wrong": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [],
+              "unit_exact_rate": 0.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          },
+          {
+            "concept_id": "c004",
+            "perfect": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            },
+            "reordered_extra": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "extra"
+              ],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            },
+            "wrong": {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [],
+              "unit_exact_rate": 0.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          }
+        ]
+      },
+      {
+        "case_id": "propagation",
+        "identifiability": "conditional_retention_test",
+        "controls": {
+          "identity": {
+            "top_hits": 3,
+            "planned": 18,
+            "validated_planned": 18,
+            "validated_exact_rate": 0.16666666666666666,
+            "mean_ned": 0.33333333333333326,
+            "ned_count": 18
+          },
+          "perfect_fixture": {
+            "top_hits": 18,
+            "planned": 18,
+            "validated_planned": 18,
+            "validated_exact_rate": 1.0,
+            "mean_ned": 0.0,
+            "ned_count": 18
+          },
+          "wrong_fixture": {
+            "top_hits": 0,
+            "planned": 18,
+            "validated_planned": 18,
+            "validated_exact_rate": 0.0,
+            "mean_ned": 1.0,
+            "ned_count": 18
+          }
+        },
+        "by_node": [
+          {
+            "node_id": "p",
+            "exact": 0,
+            "planned": 6,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "oracle_reachable_concept_ids": [
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 6,
+              "oracle_reachable_concepts": 3,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          },
+          {
+            "node_id": "x",
+            "exact": 3,
+            "planned": 6,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "oracle_reachable_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 6,
+              "oracle_reachable_concepts": 6,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          },
+          {
+            "node_id": "y",
+            "exact": 0,
+            "planned": 6,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "oracle_reachable_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004",
+                "c005",
+                "c006"
+              ],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 6,
+              "oracle_reachable_concepts": 6,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          }
+        ],
+        "piece_control": null
+      },
+      {
+        "case_id": "identity",
+        "identifiability": "conditional_retention_test",
+        "controls": {
+          "identity": {
+            "top_hits": 4,
+            "planned": 4,
+            "validated_planned": 4,
+            "validated_exact_rate": 1.0,
+            "mean_ned": 0.0,
+            "ned_count": 4
+          },
+          "perfect_fixture": {
+            "top_hits": 4,
+            "planned": 4,
+            "validated_planned": 4,
+            "validated_exact_rate": 1.0,
+            "mean_ned": 0.0,
+            "ned_count": 4
+          },
+          "wrong_fixture": {
+            "top_hits": 0,
+            "planned": 4,
+            "validated_planned": 4,
+            "validated_exact_rate": 0.0,
+            "mean_ned": 1.0,
+            "ned_count": 4
+          }
+        },
+        "by_node": [
+          {
+            "node_id": "p",
+            "exact": 4,
+            "planned": 4,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004"
+              ],
+              "oracle_reachable_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004"
+              ],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 4,
+              "oracle_reachable_concepts": 4,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          }
+        ],
+        "piece_control": null
+      },
+      {
+        "case_id": "lost_contrast",
+        "identifiability": "underdetermined",
+        "controls": {
+          "identity": {
+            "top_hits": 2,
+            "planned": 4,
+            "validated_planned": 0,
+            "validated_exact_rate": null,
+            "mean_ned": 0.25,
+            "ned_count": 4
+          },
+          "perfect_fixture": {
+            "top_hits": 4,
+            "planned": 4,
+            "validated_planned": 0,
+            "validated_exact_rate": null,
+            "mean_ned": 0.0,
+            "ned_count": 4
+          },
+          "wrong_fixture": {
+            "top_hits": 0,
+            "planned": 4,
+            "validated_planned": 0,
+            "validated_exact_rate": null,
+            "mean_ned": 1.0,
+            "ned_count": 4
+          }
+        },
+        "by_node": [
+          {
+            "node_id": "p",
+            "exact": 2,
+            "planned": 4,
+            "selection": {
+              "eligible_concept_ids": [
+                "c001",
+                "c002",
+                "c003",
+                "c004"
+              ],
+              "oracle_reachable_concept_ids": [
+                "c002",
+                "c004"
+              ],
+              "outside_selection_top_hit_ids": [],
+              "outside_selection_beam_hit_ids": [],
+              "eligible_concepts": 4,
+              "oracle_reachable_concepts": 2,
+              "outside_selection_top_hits": 0,
+              "outside_selection_beam_hits": 0,
+              "observation_scope": "observed_descendant_leaves",
+              "gold_assisted": true
+            }
+          }
+        ],
+        "piece_control": null
+      }
+    ]
+  },
+  "validation": {
+    "focused_passed": 106,
+    "portable_passed": 571,
+    "portable_deselected": 41,
+    "portable_seconds": 49.37,
+    "final_reporting_focused_passed": 38
+  },
+  "note": "Repeated concepts nested within runs and nodes. Perfect/wrong are scoring fixtures, identity is scripted. No model improvement measured.",
+  "code_state": {
+    "head": "25f8c9363755806722f6f951ee118ddb99094882",
+    "branch": "partial-cognacy-and-tool-use",
+    "dirty_code_manifest_sha256": "41ea5a8fc461fd32b2a94b062b7b1a4ca3e06d5b73ae126e03887e49fcf5131b",
+    "manifest_local_path": "/tmp/task02-code-manifest.json",
+    "includes": "Modified and untracked code, tests and benchmark definitions; inherited task 01 artifacts included."
+  }
+}

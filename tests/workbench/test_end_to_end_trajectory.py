@@ -214,10 +214,11 @@ def test_scripted_comparative_workflow_exports_complete_trajectory(
         and message.name == "test_sound_law"
         and message.content is not None
     )
-    assert set(sound_law_result["supporting_form_ids"]) == {
-        "B:fire",
-        "B:water",
-    }
+    # Tool form IDs now identify retained candidate analyses. Original source
+    # form IDs remain in each candidate's explicit piece provenance.
+    b_beam = next(b for b in result.snapshot.steps[0].input_beams if b.node_id == "B")
+    assert set(sound_law_result["supporting_form_ids"]) == {c.candidate_id for d in b_beam.distributions for c in d.candidates}
+    assert {s.form_id for d in b_beam.distributions for c in d.candidates for p in c.analysis.pieces for s in p.sources} == {"B:fire", "B:water"}
     examples = TrajectoryDatasetBuilder().build(
         trajectories,
         high_quality_only=True,

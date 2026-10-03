@@ -45,6 +45,7 @@ from cognate_reconstruction.agent.tools import ToolRegistry, default_tool_regist
 from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.agent.trajectory import (
     INVENTORY_SCHEMA_VERSION,
+    EVIDENCE_SCHEMA_VERSION,
     TRAJECTORY_SCHEMA_VERSION,
     AgentNodeMetrics,
     AgentRunResult,
@@ -1138,11 +1139,7 @@ class AgentOrchestrator:
             trajectory_schema_sha256=_sha256_json(
                 AgentTrajectory.model_json_schema()
             ),
-            schema_version=(
-                INVENTORY_SCHEMA_VERSION
-                if isinstance(context.commit, CommittedProtoInventory)
-                else TRAJECTORY_SCHEMA_VERSION
-            ),
+            schema_version=EVIDENCE_SCHEMA_VERSION,
             initial_payload=payload,
             tool_definitions=definitions,
             messages=tuple(messages),

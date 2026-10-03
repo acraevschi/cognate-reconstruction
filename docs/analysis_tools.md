@@ -1,5 +1,11 @@
 # Analysis tools
 
+Task 03 adds [source-unit controls](research/evidence_results.md) at
+`tools/evidence_contract_probe.py`. The banked `oracle_ceiling.py` modes explicitly
+retain their legacy whole-string reading; their width curves are unchanged.
+These are different readings and must not be pooled as one ceiling. Task02-v1
+evaluation is implemented; read its [contract](research/evaluation_contract.md).
+
 > **Interpretation updated 2026-09-15.** Read [current state](current_state.md)
 > and [experiment policy](experiment_policy.md) before planning runs. Named
 > oracle “ceilings” below are measurements of particular answer-key-assisted

@@ -639,8 +639,8 @@ is retrieved on demand.
 | `get_node_reconstruction` | The inventory or rules, anomalies, and summary committed at one already-reconstructed node; read-only, never scored, `set_id`s stripped because they name a tuple over another node's children. |
 | `get_alignments` | LingPy MSA held once, plus one pairwise correspondence view per node pair referencing it by ID. |
 | `segment_morphemes` | Immutable boundary-only overlay; phonetic tokens cannot change. |
-| `realign` | Immutable, session-local alignment overlay; rows must reproduce each child's own form, and a named `joins_set_id` must really gain the support claimed. |
-| `test_proto_assembly` | The parent forms a proposed inventory assembles, the unaccounted columns, the columns two sets both matched, and the per-branch cascade the inventory derives. |
+| `realign` | Immutable alignment overlay over an exact `unit_id`/candidate analysis for partial evidence; rows preserve that unit's tokens and a named join must gain support. |
+| `test_proto_assembly` | Shared units-v1 execution over retained analyses; compact unmatched unit/column IDs, full provenance on request, and validation of the exact hypothesis plus evidence revision. |
 | `test_sound_law` | Parsed literal DSL and exact per-form diff. |
 | `test_rule_cascade` | Ordered, branch-scoped full-cascade preview and final forms. |
 | `commit_reconstruction` | An `inventory` or a `rules` cascade, never both: exact validation references, scopes, support, anomalies, and the optional cascade check. |
@@ -744,6 +744,17 @@ B-Cubed F1, and the best NED any retained candidate reached, per concept and
 aggregated as distributions. An evaluation over a node the run walked over as an
 identity fallback is marked `failure_fallback`: it measures the fallback, not a
 reconstruction.
+
+New runs use trajectory schema 4.0 and checkpoint schema 2.0 under
+[units-v1](research/evidence_migration.md). Older 2.0/3.0 trajectories remain
+readable on their recorded execution interpretation. Checkpoint 1.0 is readable
+for audit but cannot resume into units-v1; the error names the missing inherited
+analysis/provenance. Start a new checkpoint or use the original checkout.
+Candidate form IDs now name retained analyses; original form IDs remain in piece
+provenance. Empty identity commitments and both commit shapes remain supported.
+Changing proto values, confidence, conditioning, unit analysis/order, residue
+choices, restorations or overlays requires previewing that exact hypothesis again.
+The following describes the historical 2.0 fields, which remain readable.
 
 Trajectory schema 2.0 contains run/configuration identifiers, instruction/tool/
 payload/schema hashes, provider response metadata, the complete validated

@@ -19,6 +19,7 @@ from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.traversal import NodeEvidence
 
 from cognate_reconstruction.schemas.inventory import AlignmentOverride
+from cognate_reconstruction.schemas.beam import NodeBeamState
 
 from .schemas import (
     CommittedHypothesis,
@@ -56,6 +57,8 @@ class AgentContext:
     assembly_validations: dict[str, TestProtoAssemblyResult] = field(
         default_factory=dict
     )
+    unit_alignment_cache: dict = field(default_factory=dict)
+    child_beams: tuple[NodeBeamState, ...] = ()
     commit: CommittedHypothesis | None = None
     held_out_share: float = DEFAULT_HELD_OUT_SHARE
     # Derived, never supplied: the split is a function of the node ID and the
@@ -153,7 +156,7 @@ class AgentContext:
         base = dict(self.overlays.get(base_overlay_id, {})) if base_overlay_id else {}
         base.update({form.form_id: form for form in forms})
         material = "\n".join(
-            f"{form_id}\t{' '.join(form.segments)}"
+            f"{form_id}\t{form.model_dump_json()}"
             for form_id, form in sorted(base.items())
         )
         overlay_id = f"seg-{hashlib.sha256(material.encode()).hexdigest()[:12]}"
@@ -198,15 +201,8 @@ class AgentContext:
                 f"unknown alignment overlay {base_overlay_id!r}",
                 code="unknown-overlay",
             )
-        base.update({override.concept_id: override for override in overrides})
-        material = "\n".join(
-            f"{concept_id}\t"
-            + "|".join(
-                " ".join("Ø" if segment is None else segment for segment in row)
-                for row in override.rows
-            )
-            for concept_id, override in sorted(base.items())
-        )
+        base.update({(override.concept_id, override.unit_id or ""): override for override in overrides})
+        material = "\n".join(override.model_dump_json() for _, override in sorted(base.items()))
         overlay_id = f"aln-{hashlib.sha256(material.encode()).hexdigest()[:12]}"
         self.alignment_overlays[overlay_id] = base
         return overlay_id

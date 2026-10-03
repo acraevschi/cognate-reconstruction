@@ -37,6 +37,10 @@ from cognate_reconstruction.schemas.historical import (
 )
 from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon
+from cognate_reconstruction.evaluation.targets import binding_validity
+from cognate_reconstruction.evaluation.diagnostics import diagnostic_text
+from cognate_reconstruction.evaluation.run import render_text as render_evaluation_text
+from cognate_reconstruction.schemas.evaluation import RunEvaluationReport
 
 RESULT_FILE = "result.json"
 TRAJECTORIES_FILE = "trajectories.jsonl"
@@ -714,6 +718,20 @@ def _gold_rows(
             ),
         )
     ]
+    validity, note = binding_validity(evaluation.node_id, evaluation.source_variety_id,
+                                    evaluation.target_validity, evaluation.target_validity_note)
+    rows.append(("gold binding", (validity.value if validity else "unknown validity")
+                 + (f": {note}" if note else "")))
+    rows.append(("gold token reading", diagnostic_text(evaluation)))
+    if evaluation.descendant_fallback_node_ids:
+        rows.append(("gold provenance", "committed ancestor consumes fallback node(s): "
+                     + ", ".join(evaluation.descendant_fallback_node_ids)))
+    if evaluation.selection:
+        s = evaluation.selection
+        rows.append(("gold selection", f"eligible {s.eligible_concepts}; gold-assisted daughter oracle "
+                     f"{s.oracle_reachable_concepts}; outside-selection top "
+                     f"{s.outside_selection_top_hits} {list(s.outside_selection_top_hit_ids)}; "
+                     f"beam {s.outside_selection_beam_hits} {list(s.outside_selection_beam_hit_ids)}"))
     if graded is not None and graded.top_normalized_edit_distance is not None:
         rows.append(
             (
@@ -740,7 +758,7 @@ def _gold_rows(
             rows.append(
                 (
                     "gold b-cubed",
-                    "structural agreement F1, higher is better — "
+                    "structural agreement F1, higher is better — per-word repetition only; "
                     f"{graded.top_bcubed_f1.compact()}",
                 )
             )
@@ -1125,10 +1143,30 @@ def _target_evaluations(
 ) -> tuple[HistoricalTargetEvaluation, ...]:
     if result is None:
         return ()
-    return tuple(
+    evaluations = tuple(
         _validated(HistoricalTargetEvaluation, raw)
         for raw in result.get("historical_target_evaluations", [])
     )
+    children = {s["parent_node_id"]: s.get("child_node_ids", ())
+                for s in (result.get("snapshot") or {}).get("steps", ())}
+    failed = _failure_fallback_node_ids(result)
+
+    def dependency_fallbacks(node, seen=frozenset()):
+        if node in seen:
+            return set()
+        below = set(children.get(node, ()))
+        for child in children.get(node, ()):
+            below |= dependency_fallbacks(child, seen | {node})
+        return below & failed
+
+    return tuple(e.model_copy(update={
+        "target_validity": binding_validity(e.node_id, e.source_variety_id,
+                                            e.target_validity, e.target_validity_note)[0],
+        "target_validity_note": binding_validity(e.node_id, e.source_variety_id,
+                                                 e.target_validity, e.target_validity_note)[1],
+        "descendant_fallback_node_ids": (e.descendant_fallback_node_ids if e.descendant_fallback_node_ids is not None
+                                          else tuple(sorted(dependency_fallbacks(e.node_id))) if children else None),
+    }) for e in evaluations)
 
 
 def _historical_lines(
@@ -1142,6 +1180,10 @@ def _historical_lines(
     """
     lines = []
     for evaluation in evaluations:
+        validity, validity_note = binding_validity(
+            evaluation.node_id, evaluation.source_variety_id,
+            evaluation.target_validity, evaluation.target_validity_note,
+        )
         line = (
             f"{evaluation.node_id} vs {evaluation.source_variety_id}"
             + (
@@ -1149,7 +1191,7 @@ def _historical_lines(
                 if (note := gold_kind_note(evaluation.gold_evidence_kind))
                 else ""
             )
-            + ": "
+            + f" [{validity.value if validity else 'unknown validity'}]: "
             f"{evaluation.top_exact_matches}/{evaluation.evaluated_concepts} exact "
             f"top matches ({evaluation.top_exact_rate:.2f}), "
             f"{evaluation.beam_exact_matches} in beam "
@@ -1183,7 +1225,13 @@ def _historical_lines(
                 "identity fallback the harness committed after the session "
                 "failed"
             )
+        if validity_note:
+            line += f". Binding: {validity_note}"
+        if evaluation.descendant_fallback_node_ids:
+            line += ". Descendant fallbacks: " + ", ".join(evaluation.descendant_fallback_node_ids)
         lines.append(line)
+        if evaluation.failure_fallback:
+            lines.append("THIS NODE WAS NOT RECONSTRUCTED: identity fallback output, not a model commitment.")
     return tuple(lines)
 
 
@@ -1290,12 +1338,17 @@ def build_report(
             "of model-loop time",
         ),
     )
+    evaluation_lines = ()
+    if artifacts.result and artifacts.result.get("evaluation_report"):
+        evaluation_lines = tuple(render_evaluation_text(
+            RunEvaluationReport.model_validate_json(json.dumps(artifacts.result["evaluation_report"]))
+        ).splitlines())
     return RunReport(
         run_dir=str(artifacts.run_dir),
         header=header,
         nodes=nodes,
         family=family,
-        historical=_historical_lines(evaluations),
+        historical=_historical_lines(evaluations) + evaluation_lines,
         observations=cross_node_observations(trajectories, artifacts.result),
         notes=artifacts.notes,
         fallback_nodes=fallback_nodes,

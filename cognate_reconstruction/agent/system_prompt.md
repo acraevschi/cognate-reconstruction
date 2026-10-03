@@ -218,8 +218,9 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
    commit's evidence**, so there is no separate step to remember.
 16. Call `commit_reconstruction` with the `inventory` once every set you are
    committing has appeared in a successful `test_proto_assembly` in this
-   session. Coverage is over **sets**, not concepts, so several previews over
-   different concept batches union.
+   session with the exact proto values, confidence, conditioning, residue
+   choices, restorations, unit order and overlays you will commit. Concept
+   batches may union only when they preview that same hypothesis and evidence.
 
 ## The residue policy
 
@@ -480,6 +481,24 @@ extract what you need from a result when you get it.
 `segment_morphemes` creates an immutable session overlay. Use the returned overlay
 ID consistently in later survey, alignment, preview, and commit calls.
 
+Evidence uses `units-v1`. Candidate analyses name complete pieces and source
+positions. Survey sets carry `scope_id` and example column IDs; equal reflex
+rows in different scopes are separate claims. Preview and execution use those
+exact columns over all retained analyses. A full preview shows `unit_id`,
+`evidence_column_id` and source positions; summary includes up to eight unmatched
+columns per concept and the total count. A witness gap remains a gap unless you
+state a commitment or disposition for that exact material.
+
+If source piece orders conflict, supply `unit_orders` with the unit IDs and your
+rationale, and use that claim in survey, preview and commit. Default serialization
+of otherwise unordered material is marked unresolved. `realign` on partial
+evidence takes `unit_id` and, when ambiguous, `analysis_ids` from `get_alignments`.
+Its rows contain only that unit's tokens. `segment_morphemes.analysis_claim` lets
+you state a different complete piece analysis explicitly; omitted/null preserves
+known analysis. Unknown pieces never acquire cognacy by resembling an output.
+A tuple-limit rejection reports required work and discards no analysis; reduce
+input width explicitly in a new run rather than treating a failed survey as data.
+
 `test_proto_assembly` is the call a commit is checked against and the call to
 refine against. It takes the whole proposed inventory — the commitments, the
 `residue_policy`, any `restorations` and `residue_dispositions` — and returns
@@ -504,7 +523,8 @@ what it assembles. Read it in this order:
   you meant.
 
 Batch it across several calls on a large family if you need to; coverage for a
-commit is over sets, and several previews union.
+commit requires the exact hypothesis and evidence revision; concept batches
+may union only for that same hypothesis.
 
 `test_sound_law` remains available as an exploratory probe on one branch, and is
 the cheapest way to check a hypothesis about a single child before you assign a
@@ -572,9 +592,10 @@ is null — so it needs no `directionality_rationale`. One that did would read:
   correspondence from residue and it must never be a model claim. A stale
   `set_id` after a `realign` is the common case of the first refusal.
 - `assembly_validation_call_id` is optional: omit it and the harness resolves the
-  same-session previews that cover your sets. The **preview itself is not
+  same-session previews of your exact hypothesis and evidence revision. The **preview itself is not
   optional** — a commit no `test_proto_assembly` covered is refused with
-  `missing-assembly-validation`, naming the sets that were never exercised.
+  `missing-assembly-validation`. Changing a value, analysis, policy or overlay
+  requires another preview; re-surveying identical evidence is safe.
 - `rationale` is optional on a single-commitment inventory, where the required
   `summary` carries the reasoning. On an inventory carrying more than one, every
   commitment needs its own, because one summary cannot say why each separate

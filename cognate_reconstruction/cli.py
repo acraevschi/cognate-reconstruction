@@ -31,6 +31,8 @@ from cognate_reconstruction.agent import (
     default_tool_registry,
 )
 from cognate_reconstruction.agent.instructions import load_agent_instructions
+from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
+from cognate_reconstruction.alignment.units import alignment_identity
 from cognate_reconstruction.benchmarks import (
     answer_key_path,
     available_definitions,
@@ -476,6 +478,7 @@ def _command_run_benchmark(args: argparse.Namespace) -> None:
                 run_dir,
                 completed.returncode,
                 stderr_tail=stderr_tail,
+                payload=WorkbenchPayload.model_validate_json(payload_path.read_text(encoding="utf-8")),
             )
         )
         status = "wrote result.json" if outcomes[-1].result_written else (
@@ -529,6 +532,7 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
     """
     definitions = default_tool_registry().definitions()
     return {
+        "the evidence/assembly contract": _hash_json(alignment_identity(LingPyAligner())),
         "the agent instructions": _hash_text(load_agent_instructions()),
         "the tool schemas": _hash_json(
             [definition.model_dump(mode="json") for definition in definitions]
@@ -748,6 +752,8 @@ def _resume_mismatches(
     the message names the ones that actually moved instead.
     """
     mismatches = []
+    if checkpoint.schema_version == "1.0":
+        mismatches.append("legacy checkpoint 1.0 lacks units-v1 evidence/analysis provenance; start a new run/checkpoint, or replay with the original checkout")
     if checkpoint.input_sha256 != input_sha256:
         mismatches.append("the input dataset")
     if checkpoint.normalized_tree_sha256 != tree_sha256:
@@ -1078,7 +1084,8 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
     # protocol friction says the session was a poor tool-use example.
     total_protocol_failures = sum(item.metrics.protocol_failures for item in trajectories)
     return {
-        "schema_version": "2.0",
+        "schema_version": "4.0",
+        "readable_trajectory_versions": ["2.0", "3.0", "4.0"],
         "current_trajectory_schema_sha256": _current_trajectory_schema_sha256(),
         "schema_variants": _schema_variants(trajectories),
         "trajectory_count": len(trajectories),

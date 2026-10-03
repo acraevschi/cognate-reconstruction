@@ -1,0 +1,315 @@
+{
+  "version": "task03-offline-v1",
+  "evidence_contract": "units-v1",
+  "evaluator_version": "task02-v1",
+  "head": "25f8c9363755806722f6f951ee118ddb99094882",
+  "delivery_code_manifest_sha256": "ac9b76bb4df9986810c39acf2d80815201e53c4a60b891a284a4fef01f067da1",
+  "legacy_replays": [
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r2/seed-00/result.json",
+        "sha256": "0afc28a9c013f1a3560122453486b558d96a169b19494e0cc92d1f6ba9146650"
+      },
+      "events_sha256": "c284cb399017ee9984b8540ada4c6626085551633a7fd35692038318f317d040",
+      "nodes": {
+        "burmic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    },
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r2/seed-01/result.json",
+        "sha256": "7d3ef8e685eb696d24e326f4ac1b934f3ac583b8cc0eddd992442a5cce42b5a7"
+      },
+      "events_sha256": "5f64b8d173ee480e50d840f76f8ddaf1ed28af23e1ec9a9367e70d48f23a0e8d",
+      "nodes": {
+        "maruic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "burmic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    },
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r3/seed-00/result.json",
+        "sha256": "4ee51929496981390e53a12da8e3eb5049cf07127de6a671854af67a395f6c16"
+      },
+      "events_sha256": "c7873bb50bb45d7a96200c1152022ea39eed086a6b9048b4435d4af59bfd33d1",
+      "nodes": {
+        "maruic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "burmic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    },
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r3/seed-01/result.json",
+        "sha256": "39ec6371f2a12a29fb11eb4d406d252fb154d57e1b08f6ed5c99672e285641e3"
+      },
+      "events_sha256": "302c2dfa35d1dcb1145340bdbf0d2cb87d8bf76e85937931f309119f946d601e",
+      "nodes": {
+        "maruic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "burmic": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    }
+  ],
+  "fixture_sha256": "ff34f3301de5fde24fd4e449042885163200dd9b2ad4bd00d036b547fe951822",
+  "source_unit_controls": [
+    {
+      "concept_id": "96",
+      "legacy_top": [
+        "w",
+        "t",
+        "w",
+        "o",
+        "³¹"
+      ],
+      "control_top": [
+        "t",
+        "w",
+        "o",
+        "³¹"
+      ],
+      "post_execution_reference": {
+        "node_id": "burmic",
+        "validity": "provisional_proxy",
+        "alternatives": [
+          [
+            "t",
+            "ʊ",
+            "⁵"
+          ]
+        ],
+        "readings": {
+          "legacy": {
+            "raw_exact": false,
+            "raw_ned": 0.8,
+            "segment_edit_distance": 3,
+            "segment_ned": 0.75
+          },
+          "unit_control": {
+            "raw_exact": false,
+            "raw_ned": 0.75,
+            "segment_edit_distance": 2,
+            "segment_ned": 0.6666666666666666
+          }
+        }
+      }
+    },
+    {
+      "concept_id": "239",
+      "legacy_top": [
+        "k",
+        "ă",
+        "n",
+        "⁵⁵",
+        "+",
+        "t",
+        "w",
+        "a",
+        "m",
+        "³¹"
+      ],
+      "control_top": [
+        "p",
+        "w",
+        "a",
+        "n",
+        "⁵⁵"
+      ],
+      "post_execution_reference": {
+        "node_id": "burmic",
+        "validity": "provisional_proxy",
+        "alternatives": [
+          [
+            "p",
+            "a",
+            "n",
+            "⁵"
+          ]
+        ],
+        "readings": {
+          "legacy": {
+            "raw_exact": false,
+            "raw_ned": 0.9,
+            "segment_edit_distance": 7,
+            "segment_ned": 0.875
+          },
+          "unit_control": {
+            "raw_exact": false,
+            "raw_ned": 0.4,
+            "segment_edit_distance": 1,
+            "segment_ned": 0.25
+          }
+        }
+      }
+    },
+    {
+      "concept_id": "1382",
+      "legacy_top": [
+        "a",
+        "p",
+        "⁴"
+      ],
+      "control_top": [
+        "a",
+        "p",
+        "⁴"
+      ],
+      "post_execution_reference": {
+        "node_id": "burmic",
+        "validity": "provisional_proxy",
+        "alternatives": [
+          [
+            "a",
+            "p",
+            "⁴"
+          ]
+        ],
+        "readings": {
+          "legacy": {
+            "raw_exact": true,
+            "raw_ned": 0.0,
+            "segment_edit_distance": 0,
+            "segment_ned": 0.0
+          },
+          "unit_control": {
+            "raw_exact": true,
+            "raw_ned": 0.0,
+            "segment_edit_distance": 0,
+            "segment_ned": 0.0
+          }
+        }
+      }
+    }
+  ],
+  "offline_cost": {
+    "survey_seconds": 0.01978358399355784,
+    "execution_seconds": 0.029428958019707352,
+    "peak_traced_bytes": 636752,
+    "set_count": 33,
+    "bindings": 33,
+    "assembly_work": {
+      "candidate_tuples": 3,
+      "alignment_calls": 0,
+      "cache_hits": 6,
+      "pruned_candidates": 0
+    }
+  },
+  "portable": {
+    "passed": 588,
+    "deselected": 41,
+    "seconds": 52.94
+  },
+  "final_focused": {
+    "passed": 41,
+    "seconds": 2.09
+  },
+  "legacy_oracle": {
+    "reading": "legacy_whole_string",
+    "top_exact": 39,
+    "beam_exact": 39,
+    "concepts": 46,
+    "historical_width_curves_preserved": true
+  },
+  "smoke": {
+    "run_dir": "runs/experiments/task03-interface-smoke-20261003",
+    "outcome": {
+      "status": "failed",
+      "error_type": "ProtocolStallError",
+      "error": "7 of the last 9 tool calls were rejected on protocol grounds even after a correction naming them (correspondence-reflex-mismatch, missing-rule-rationale, schema:<root>=value_error, schema:inventory.commitments[].proto_segment=missing, schema:inventory.commitments[].proto_segment_is_null=extra_forbidden,inventory.commitments[].reflexes=too_short); the model is cycling through malformed calls rather than adapting to the tool contract",
+      "elapsed_seconds": 597.3074360830069
+    },
+    "metrics": {
+      "started_at": "2026-10-03T12:05:01.129571Z",
+      "finished_at": "2026-10-03T12:14:58.432729Z",
+      "duration_seconds": 597.3032884169952,
+      "turn_count": 13,
+      "provider_attempts": 13,
+      "retry_count": 0,
+      "tool_call_count": 13,
+      "failed_tool_call_count": 7,
+      "protocol_failure_count": 7,
+      "tool_failures_by_type": {
+        "correspondence-reflex-mismatch": 1,
+        "missing-rule-rationale": 1,
+        "schema:<root>=value_error": 3,
+        "schema:inventory.commitments[].proto_segment=missing": 1,
+        "schema:inventory.commitments[].proto_segment_is_null=extra_forbidden,inventory.commitments[].reflexes=too_short": 1
+      },
+      "truncated_response_count": 0,
+      "forced_tool_choice_count": 0,
+      "truncation_backoff_applied": 0,
+      "compacted_tool_results": 0,
+      "inspection_tool_calls": 4,
+      "concepts_inspected": 3,
+      "concepts_available": 3,
+      "sound_law_tests": 0,
+      "cascade_tests": 0,
+      "assembly_tests": 2,
+      "input_tokens": 464341,
+      "output_tokens": 18190,
+      "total_tokens": 482531,
+      "cached_input_tokens": null,
+      "reasoning_output_tokens": 11201,
+      "cost_usd": null,
+      "committed_rule_count": 0,
+      "committed_anomaly_count": 0,
+      "held_out_concept_count": 1,
+      "held_out_convergence_rate": null,
+      "committed_without_inspection": false,
+      "identity_without_testing": false
+    },
+    "model": "google/gemma-4-26b-a4b",
+    "quantization": "6bit",
+    "context": 262144,
+    "runs": 1,
+    "paid_calls": 0,
+    "interpretation": "two valid assembly previews; no valid commit; incomplete interface evidence, no quality claim",
+    "code_note": "Smoke froze its own manifest before final legacy-report-only compatibility fix, order-only execution fix and view-label/contradictory-claim guards. No second smoke; final code received portable and focused checks."
+  }
+}

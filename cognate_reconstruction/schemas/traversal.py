@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.alignment import CorrespondenceMap
 from cognate_reconstruction.schemas.beam import NodeBeamState
+from cognate_reconstruction.schemas.evidence import AssemblyWork
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.inventory import ConceptAssemblyReport
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata, LanguageLexicon
@@ -89,6 +90,8 @@ class ReconstructionStep(WorkbenchModel):
 
 
 class ReconstructionDiagnostics(WorkbenchModel):
+    partial_states_pruned: int | None = Field(default=None, ge=0)
+    assembly_work: AssemblyWork | None = None
     """Transparent mechanical diagnostics, not a linguistic-correctness score."""
 
     rule_count: int = Field(ge=0)

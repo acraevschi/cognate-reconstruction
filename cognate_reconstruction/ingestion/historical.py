@@ -115,7 +115,8 @@ def materialize_historical_bindings(
                 lineage_relations=request.lineage_relations,
                 source_reference=request.source_reference,
                 gold_evidence_kind=request.gold_evidence_kind,
+                target_validity=request.target_validity,
+                target_validity_note=request.target_validity_note,
             )
         )
     return tuple(bindings)
-
