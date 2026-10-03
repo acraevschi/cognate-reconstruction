@@ -675,6 +675,8 @@ class AlignmentOverride(WorkbenchModel):
         widths = {len(row) for row in self.rows}
         if len(widths) != 1:
             raise ValueError("every override row must have the same width")
+        if self.analysis_ids and len(self.analysis_ids) != len(self.rows):
+            raise ValueError("analysis_ids must contain one entry per child row")
         return self
 
 

@@ -295,6 +295,34 @@ def test_explicit_model_analysis_never_comes_from_output_resemblance():
         evidence_map((lex("A", overlaid), lex("B", conflicting)), ctx.aligner)
 
 
+def test_boundary_edit_preserves_analysis_order_status_and_notes():
+    original = form("A", ("p", "a"), (("root", (0, 1)),))
+    analysis = original.analysis.model_copy(update={
+        "claim": "approved_assembly", "order_status": "model_claim",
+        "notes": ("Order was explicitly chosen by the model",),
+    })
+    original = original.model_copy(update={"analysis": analysis})
+    ctx = context(lex("A", original), lex("B", form("B", ("f", "a"), (("root", (0, 1)),))))
+    edited = call(ctx, "segment_morphemes", "boundary", segmentations=[{
+        "form_id": original.form_id, "segments": ["p", "+", "a"],
+    }], rationale="insert a boundary without changing the unit claim")
+    assert edited.ok, edited.error
+    updated = ctx.lexicon("A", edited.result["segmentation_overlay_id"]).forms[0]
+    assert updated.analysis.order_status == "model_claim"
+    assert updated.analysis.notes == analysis.notes
+    assert updated.analysis.claim == analysis.claim
+    assert updated.analysis.pieces[0].segment_indices == (0, 1, 2)
+    assert updated.analysis.pieces[0].sources == analysis.pieces[0].sources
+
+
+@pytest.mark.parametrize("analysis_ids", [("A-analysis",), ("A-analysis", "B-analysis", "extra")])
+def test_realignment_rejects_analysis_ids_without_one_entry_per_child(analysis_ids):
+    from cognate_reconstruction.schemas.inventory import AlignmentOverride
+    with pytest.raises(ValueError, match="analysis_ids.*one entry per.*row"):
+        AlignmentOverride(concept_id="word", rows=(("p",), ("f",)),
+            analysis_ids=analysis_ids, rationale="exact candidate analyses in child order")
+
+
 def test_frozen_real_defects_replay_and_source_unit_control_repairs_pairing():
     import importlib.util
     import sys

@@ -48,7 +48,9 @@ def remap_analysis(original, segments):
             pieces.append(previous.model_copy(update={"segment_indices": (*previous.segment_indices, index)}))
         else:
             pieces.append(piece.model_copy(update={"segment_indices": (index,)}))
-    return FormAnalysis(pieces=tuple(pieces), claim=original.analysis.claim)
+    return FormAnalysis.model_validate({
+        **original.analysis.model_dump(mode="python"), "pieces": tuple(pieces),
+    })
 
 
 def _remap_memberships(
