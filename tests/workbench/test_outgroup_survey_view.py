@@ -153,7 +153,7 @@ def test_a_node_whose_outside_is_all_descendants_says_so() -> None:
     assert "nothing lies outside" in note
 
 
-def test_turning_it_off_restores_the_narrow_result(): 
+def test_turning_it_off_restores_the_narrow_result():
     """The suppressing flag exists so the cost can be removed and measured.
 
     It is also what a paired sweep's control arm runs, so it must leave the rest
