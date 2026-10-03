@@ -520,11 +520,33 @@ Task 06 still awaits 04/05 or an explicit scope-out. User chooses the next sessi
 
 ### 2026-10-03 — independent review brief prepared
 
-At the owner's request, added the tracked
-[independent review brief](research/independent_review_brief.md), with a local
+At the owner's request, prepared the independent review brief
+(now `prompts/independent_review_brief.md`, local only), with a local
 launcher `prompts/review-after-task03.md` and prompt-index link. It supplies
 01–03 evidence, code/artifact and conversation pointers while leaving the reviewer
 free to challenge the diagnosis, implementation and remaining plan. The review
 itself has not been dispatched or completed; numbered task statuses are unchanged.
 Local links and whitespace checks pass. No runtime changes or inference were
 performed for this documentation follow-up. The owner chooses the review session.
+
+### 2026-10-03 — session work reviewed and committed
+
+Reviewed tasks 01–03 and verified the original branch's 16 post-PR-12 commits
+are unmerged. Preserved that branch at `25f8c93`; session implementation is on
+`burmish-audit-evaluation-units` (`b342cf0`, review repairs `43e6cf6`). The owner
+chose to leave the standalone task 01 audit local and uncommitted. Its eight
+files are unchanged; tasks 02/03 have independent fixtures. The owner moved
+the independent review brief to ignored `prompts/`; it is not committed.
+
+Two demonstrated edge defects were fixed: boundary edits retain analysis order
+status/notes; realignment analysis IDs must match child-row count. The separate
+source export passes 583 tests with local CLDF data supplied, 4 skipped and
+1 deselected; 57 focused checks pass. All eleven legacy beams/reports and 364
+raw score records reproduce unchanged. No inference ran. The original smoke's
+no-commit result remains a usability limit. The original delivery also passed
+588 portable checks, and the three added regression cases failed before repair.
+The source-export suite requires separately installed local CLDF datasets.
+
+The existing branch's PR decision remains with the owner; no PR was created
+and no unmerged branch was deleted. This review does not dispatch tasks 04–06
+or substitute for the independent scientific/architectural assessment.
