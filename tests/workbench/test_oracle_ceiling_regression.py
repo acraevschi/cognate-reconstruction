@@ -750,3 +750,87 @@ def test_the_ceiling_instrument_and_the_harness_align_the_same_columns(
     # And the number the design quotes is a number the implementation can reach.
     assert reached_instrument == reached_harness
     assert len(reached_instrument) == 44
+
+
+# §7.20's selection bar, and what every oracle here reaches past it.
+#
+# The bar is `selection_reachable`: concepts some daughter already attests
+# exactly, read the way `HistoricalTargetEvaluation` reads a hit. On this
+# fixture it is 38 of 46. What makes it worth pinning is not its size but the
+# intersection — the context-free oracle scores 27 and East Futuna copied whole
+# scores 27, and they are *not* the same 27 (20 shared, 7 each way), so equal
+# counts were never evidence that two measures were measuring one thing.
+#
+# The numbers below are the answer to the question §7.22 item 7 asks: how much
+# of an oracle's score survives the bar. Almost none of it does. Under the
+# architecture that is now permanent, a flawless hypothesis manager reaches
+# exactly three Polynesian concepts that no daughter attests.
+PINNED_SELECTION_BAR = 38
+PINNED_OUTSIDE_THE_BAR = {
+    "context_free": ("2098",),
+    "contextual": ("2098", "646"),
+    "assembly": ("1439", "2098", "646"),
+}
+
+
+def test_the_selection_bar_and_what_each_oracle_reaches_past_it(payload) -> None:
+    """A ceiling that lies inside the selection bar is not bounding much.
+
+    The failure this guards against is a change that raises an oracle's headline
+    while adding only concepts a daughter already had. That is a better
+    *selector*, and the accuracy assertions above would read it as a better
+    reconstructor.
+    """
+    module = _oracle_module()
+    binding = module.select_binding(payload, "proto_polynesian", None)
+    reachable = module.selection_reachable(payload, binding)
+    assert len(reachable) == PINNED_SELECTION_BAR
+
+    for oracle, expected_outside in PINNED_OUTSIDE_THE_BAR.items():
+        result = module.measure(payload, PINNED_BEAM_WIDTH, oracle=oracle)
+        hits = set(result.top_exact_concept_ids)
+        # The recorded hit ids must be the recorded hit count, or the
+        # intersection below is taken over a set that lost members silently.
+        assert len(hits) == result.top_exact == len(result.top_exact_concept_ids)
+        assert tuple(sorted(hits - reachable)) == expected_outside, (
+            f"the {oracle} oracle now reaches a different set of concepts "
+            f"outside the selection bar. This is the only part of its score "
+            f"that is evidence of reconstruction rather than of selection, so "
+            f"a change here matters more than a change in the headline."
+        )
+
+
+def test_east_futuna_and_the_context_free_oracle_score_the_same_and_differ(
+    payload,
+) -> None:
+    """27 = 27, and they are different 27s. Pinned because the coincidence misleads.
+
+    §7.22 item 7 asked whether the context-free oracle is measuring selection and
+    nothing else. It is not measuring *East Futuna* — but 26 of its 27 hits are
+    concepts some daughter attests, so it is measuring selection almost
+    entirely, which is the finding rather than the equality.
+    """
+    module = _oracle_module()
+    binding = module.select_binding(payload, "proto_polynesian", None)
+    gold: dict[str, set[tuple[str, ...]]] = {}
+    for form in binding.forms:
+        gold.setdefault(form.concept_id, set()).add(tuple(form.segments))
+
+    futuna = next(
+        lexicon
+        for lexicon in payload.lexicons
+        if lexicon.variety_id.endswith("EastFutuna")
+    )
+    copied = {
+        form.concept_id
+        for form in futuna.forms
+        if tuple(form.segments) in gold.get(form.concept_id, ())
+    }
+    result = module.measure(payload, PINNED_BEAM_WIDTH)
+    oracle_hits = set(result.top_exact_concept_ids)
+
+    assert len(copied) == len(oracle_hits) == 27
+    assert copied != oracle_hits
+    assert len(copied & oracle_hits) == 20
+    reachable = module.selection_reachable(payload, binding)
+    assert len(oracle_hits & reachable) == 26

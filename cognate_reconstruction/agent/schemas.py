@@ -35,6 +35,7 @@ from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.rules import (
     AnomalyReport,
     AnchorPolicy,
+    FormRuleResult,
     ParsedSoundRule,
     ReconstructionRule,
     RuleApplicationReport,
@@ -399,6 +400,16 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
             "this tool is the inventory over every concept at once."
         ),
     )
+    include_outgroup: bool = Field(
+        default=True,
+        description=(
+            "Report what nodes outside the active children show in each "
+            "returned set's columns. On by default: this is evidence about "
+            "directionality that you would otherwise have to ask for one "
+            "correspondence at a time. Set it false only to make the result "
+            "smaller."
+        ),
+    )
     min_support: int = Field(
         default=DEFAULT_MIN_CORRESPONDENCE_SUPPORT,
         ge=1,
@@ -457,6 +468,49 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
         return self
 
 
+class OutgroupReflex(WorkbenchModel):
+    """What one node outside the group shows where this correspondence occurs.
+
+    Presence only, and that asymmetry is the whole technique rather than a
+    simplification — `polarize`'s docstring records it, and
+    `tools/outgroup_probe.py` measured it: a node *showing* a segment puts that
+    segment outside the group under study, while a node *lacking* it has no
+    distinctive segment to attest, and scoring the empty set as trivially
+    supported drops the measured result below alphabetical tie-breaking.
+    """
+
+    segment: NonEmptyStr = Field(
+        description=(
+            "A segment attested outside the active children. Never a gap: a "
+            "node showing nothing attests nothing."
+        )
+    )
+    node_ids: tuple[NonEmptyStr, ...] = Field(
+        min_length=1,
+        description="The nodes outside the active children that show it.",
+    )
+    columns: int = Field(
+        ge=1,
+        description=(
+            "Aligned columns of this correspondence where it was seen, summed "
+            "over those nodes."
+        ),
+    )
+
+
+class SetOutgroupProfile(WorkbenchModel):
+    """One returned set's out-group reading, keyed by its own `set_id`.
+
+    Carried beside the sets rather than inside `CorrespondenceSet` because that
+    schema is shared with `tools/correspondence_inventory.py` and with every
+    record already written; a set built by anything but this tool has no
+    out-group to report and should not grow a field for one.
+    """
+
+    set_id: NonEmptyStr
+    reflexes: tuple[OutgroupReflex, ...] = ()
+
+
 class SummarizeCorrespondencesResult(WorkbenchModel):
     node_ids: tuple[NonEmptyStr, ...] = Field(
         description="Column order of every returned set's 'segments'."
@@ -493,6 +547,31 @@ class SummarizeCorrespondencesResult(WorkbenchModel):
             "The alignment overlay these sets were derived under, if any. It is "
             "part of every set_id, so a set cited under a different overlay is "
             "a set the harness cannot reproduce."
+        ),
+    )
+    outgroup_reflexes: tuple[SetOutgroupProfile, ...] = Field(
+        default=(),
+        description=(
+            "For each returned set, what every node outside the active "
+            "children shows in the same aligned columns. This is what "
+            "'polarize' answers for one correspondence, computed once for the "
+            "whole survey instead of one call at a time. Presence only: a node "
+            "that shows nothing is absent here, because absence is equally "
+            "consistent with independent loss and is not evidence. It bears on "
+            "directionality — a segment attested outside the group was there "
+            "before the group split — and on nothing else. These nodes are not "
+            "a reconstruction target, they never enter the assembled parent "
+            "form, and no residue policy has to explain them."
+        ),
+    )
+    outgroup_note: str = Field(
+        default="",
+        description=(
+            "Which nodes were read, and whether any of them can polarize "
+            "anything at all. At the root none can: nothing lies outside it, "
+            "so every available node is a descendant and shows what these "
+            "children became, which is the proposition under test rather than "
+            "evidence about it."
         ),
     )
     complementary_candidates: tuple[ComplementaryCandidate, ...] = Field(
@@ -1065,6 +1144,17 @@ class TestRuleCascadeArgs(WorkbenchModel):
     rules: tuple[CascadeRuleSpec, ...] = Field(min_length=1)
     concept_ids: tuple[NonEmptyStr, ...] = ()
     segmentation_overlay_id: NonEmptyStr | None = None
+    detail: AssemblyDetail = Field(
+        default=AssemblyDetail.SUMMARY,
+        description=(
+            "How much of the per-form working trace comes back. 'summary' "
+            "reports every rule's applied and exception counts with the "
+            "exceptions themselves, and omits the per-form record of the "
+            "applications that succeeded. 'full' returns every application. "
+            "Use 'full' when you need to see a specific form's derivation; the "
+            "summary already carries everything that did not apply."
+        ),
+    )
 
     @model_validator(mode="after")
     def validate_rule_ids(self) -> TestRuleCascadeArgs:
@@ -1079,11 +1169,64 @@ class CascadeFinalForm(WorkbenchModel):
     form: LexicalForm
 
 
+class CascadeRuleSummary(WorkbenchModel):
+    """One rule's effect, without the per-form record of what simply worked.
+
+    §7.22 item 4. `test_rule_cascade` was to be deleted at stage 4 and its
+    context cost was tolerated because it was leaving. It stays, so the cost is
+    now permanent and worth bounding. Measured on a banked Polynesian call:
+    208,268 characters, of which `reports[].results` is 78,480 and the
+    `exceptions` computed *from those same results* is another 62,494 — the
+    exceptions are re-serialized in full beside the results they are drawn
+    from, so two thirds of the call is one list and a copy of part of it.
+
+    This carries the counts and the exceptions and drops the rest. What is lost
+    is the per-form record of applications that succeeded, which is the part a
+    reader almost never reads: a preview is consulted for what did *not* work.
+    `detail="full"` still returns everything.
+    """
+
+    rule: ParsedSoundRule
+    words_applied: int = Field(ge=0)
+    anchors_matched: int = Field(ge=0)
+    forms_evaluated: int = Field(
+        ge=0,
+        description="Forms the rule was tried against, applied or not.",
+    )
+    exceptions: tuple[FormRuleResult, ...] = Field(
+        default=(),
+        description=(
+            "Every form the rule did not apply cleanly to. Not a sample: the "
+            "exceptions are the reason to read a preview, so they are complete "
+            "even in the summary."
+        ),
+    )
+    applied_form_ids: tuple[NonEmptyStr, ...] = Field(
+        default=(),
+        description=(
+            "Forms this rule actually changed. The IDs alone, not the results."
+        ),
+    )
+    """Kept because the harness needs it, not because a reader does.
+
+    `commit_reconstruction` resolves a cascade's `supporting_form_ids` by
+    walking `reports[].results` for the entries that recorded a location. Drop
+    the applied results without carrying their IDs and a commit validated
+    against a summary preview silently records no supporting forms — the suite
+    caught exactly that. So the summary drops the *results* and keeps the one
+    thing computed from them.
+    """
+
+
 class TestRuleCascadeResult(WorkbenchModel):
     validation_call_id: NonEmptyStr
     rules: tuple[ReconstructionRule, ...]
     segmentation_overlay_id: NonEmptyStr | None = None
     reports: tuple[RuleApplicationReport, ...]
+    # Defaulted, and populated instead of `reports` under detail="summary".
+    # Additive rather than a replacement so every cascade result recorded before
+    # 2026-08-31 still loads, and so `detail="full"` is unchanged byte for byte.
+    report_summaries: tuple[CascadeRuleSummary, ...] = ()
     final_forms: tuple[CascadeFinalForm, ...]
     # Defaulted so cascade results recorded before convergence was reported stay
     # loadable inside older trajectories.
@@ -1595,9 +1738,11 @@ COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
     "This node's hypothesis is committed as an 'inventory' — one proto_segment "
     "per correspondence set, plus the residue_policy for columns no set "
     "explains — or as a 'rules' cascade. Never both; a call carrying both is "
-    "refused. Prefer the inventory: a rule rewrites one child's own segments, "
+    "refused. Neither is preferred: a rule rewrites one child's own segments, "
     "so a parent segment no single child preserves cannot be produced by any "
-    "cascade.",
+    "cascade, and correspondence sets carry no order, so a change that only "
+    "makes sense after another change cannot be stated as an inventory. The "
+    "evidence at this node decides which fits it.",
     "Every commitment copies back the set_id, the reflexes and the support "
     "exactly as the harness reported them. The inventory is re-derived from "
     "this node's own forms at commit time: a set the data does not contain is "

@@ -1,6 +1,19 @@
 # Reconstructing per correspondence set
 
-> Design document. Nothing here is implemented. Written 2026-08-21 against
+> **Historical design and experiment notebook — status clarified 2026-09-15.**
+> Read [current state](current_state.md), [research plan](research_plan.md), and
+> [experiment policy](experiment_policy.md) for active work. Stages 1–3 landed;
+> stage 4 was cancelled on 2026-08-30, superseding §11's original approval.
+> The latest experiments are in §7.29. Earlier “not implemented,” “next,” and
+> “untested” statements describe their dated entries, not this checkout.
+> Original falsification thresholds are preserved as history, not current gates.
+> In particular, outside-selection hits show more than literal selection, not
+> proof of historical reasoning; Old Burmese at `burmic` is a provisional proxy.
+> Claims that cascades cannot emit unattested segments are superseded: the DSL
+> permits novel replacement symbols. The September plan corrects runtime wording
+> separately. Old source-prompt files were removed in the September reset.
+
+> Original design snapshot (implementation followed). Written 2026-08-21 against
 > commit `ce52d87`, suite at **320 passing**
 > (`pytest -q -k "not local_run_artifacts"`).
 >
@@ -662,14 +675,12 @@ class ResiduePolicy(StrEnum):
     the exact error `polarize` exists to prevent.
     """
 
-
 class ResidueDisposition(WorkbenchModel):
     """One named exception to the policy, for a column the model has looked at."""
     concept_id: NonEmptyStr
     column_index: int = Field(ge=0)
     proto_segment: NonEmptyStr | None
     explanation: NonEmptyStr
-
 
 class CommitProtoInventoryArgs(WorkbenchModel):
     node_id: NonEmptyStr
@@ -970,7 +981,6 @@ class CorrespondenceSet(WorkbenchModel):
     concept_count: int = Field(ge=1)
     example_concept_ids: tuple[NonEmptyStr, ...] = ()
 
-
 class ComplementaryCandidate(WorkbenchModel):
     """Two sets whose occurrences never share an environment. A report."""
     set_ids: tuple[NonEmptyStr, NonEmptyStr]
@@ -982,11 +992,9 @@ class ComplementaryCandidate(WorkbenchModel):
     left_context_tokens: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
     right_context_tokens: tuple[tuple[str, ...], tuple[str, ...]] = ((), ())
 
-
 class AssemblyDetail(StrEnum):
     SUMMARY = "summary"     # assembled forms and counts; the default
     FULL = "full"           # plus per-column resolutions and alignment rows
-
 
 class TestProtoAssemblyArgs(WorkbenchModel):
     commitments: tuple[CorrespondenceCommitment, ...]
@@ -999,7 +1007,6 @@ class TestProtoAssemblyArgs(WorkbenchModel):
     alignment_overlay_id: NonEmptyStr | None = None
     detail: AssemblyDetail = AssemblyDetail.SUMMARY
 
-
 class ColumnResolution(WorkbenchModel):
     column_index: int = Field(ge=0)
     reflexes: tuple[str | None, ...]
@@ -1008,7 +1015,6 @@ class ColumnResolution(WorkbenchModel):
     resolved_by: Literal["set", "conditioned_set", "residue_policy",
                          "residue_disposition", "restoration"]
 
-
 class ConceptAssemblyReport(WorkbenchModel):
     concept_id: NonEmptyStr
     alignment_id: NonEmptyStr
@@ -1016,7 +1022,6 @@ class ConceptAssemblyReport(WorkbenchModel):
     columns: tuple[ColumnResolution, ...] = ()     # detail="full" only
     unaccounted_column_count: int = Field(ge=0)
     matched_anchor_ids: tuple[NonEmptyStr, ...] = ()
-
 
 class TestProtoAssemblyResult(WorkbenchModel):
     # --- the part a commit is checked against; never compactable, tiny ---
@@ -1030,13 +1035,11 @@ class TestProtoAssemblyResult(WorkbenchModel):
     derived_rules: tuple[ReconstructionRule, ...] = ()
     non_invertible_child_ids: tuple[NonEmptyStr, ...] = ()
 
-
 class RealignArgs(WorkbenchModel):
     overrides: tuple[AlignmentOverride, ...] = Field(min_length=1)
     base_alignment_overlay_id: NonEmptyStr | None = None
     segmentation_overlay_id: NonEmptyStr | None = None
     rationale: NonEmptyStr
-
 
 class RealignResult(WorkbenchModel):
     alignment_overlay_id: NonEmptyStr
@@ -2020,6 +2023,7 @@ measurement of the unbuilt thing. The "stop" column is the part that binds.
 | 5 | `score-synthetic` on `synthetic_hard`, 5 seeds | rule precision not lower and `misdirected_rule_count` not higher than the same seeds under the rule commit shape | either worsens — **right forms via worse-attributed changes is a worse result, not a better one** |
 | 6 | `run-benchmark --seeds 5`, live, both benchmarks | top-1 up with non-overlapping spread | spreads overlap — one seed is not evidence and neither is five that disagree |
 | 7 | suite | green at every stage | any stage leaves it red |
+| 11 | `oracle_ceiling.py --selection-overlap`, and the same reading applied to any live figure | **at least one** concept reached that no daughter attests, and the count of them reported beside the headline | **zero concepts outside the selection bar** — every form the system got right was already sitting in a daughter's lexicon, so the figure is evidence of selection and says nothing about reconstruction |
 
 Condition 3 is the mechanism check and is the one that cannot be satisfied by
 accident. Conditions 1 and 2 together are the shape check: **top-1 up and
@@ -2033,6 +2037,76 @@ fewer correct answers than the old one?* — is unchanged, and the honest form o
 it is "not below 40", with expect and stop adjacent because "reachability not
 down" is exactly a floor. It is not a demanding condition and was never meant to
 be; condition 1 is where the demand lives.
+
+**Condition 11 is adopted, and not in the form §7.22 item 7 proposed it.** The
+proposal was a threshold: *a figure is evidence of reconstruction only above the
+selection bar, which is 38/46 on Polynesian*. Measuring it showed that a
+threshold on the total does not do the job it was written for. The assembly
+oracle scores **39/46 on Polynesian and clears 38/46** — and 36 of those 39
+concepts are ones a daughter attests verbatim. A count-based condition would
+have called that figure evidence of reconstruction, when it is three concepts of
+reconstruction carried on thirty-six of selection.
+
+So the condition is stated over **sets, not counts**: intersect the concepts the
+system got exactly right with the concepts some daughter already attests
+exactly, and report what is left. On the three families this repository ships:
+
+| gold node | selection bar | assembly oracle | of its hits, outside the bar |
+| --- | --- | --- | --- |
+| `polynesian` / `proto_polynesian` | 38/46 (0.826) | 39/46 (0.848) | **3** — `646`, `1439`, `2098` |
+| `burmish` / `proto_burmish` | **0/54 (0.000)** | 42/54 (0.778) | **42**, all of them |
+| `burmish` / `burmic` | **0/37 (0.000)** | 25/37 (0.676) | **25**, all of them |
+| `synthetic_hard` / `proto` | 21/25 (0.840) | 25/25 (1.000) | 4 |
+| `synthetic_hard` / `east` | **25/25 (1.000)** | 22/25 (0.880) | **0** |
+| `synthetic_hard` / `west` | **25/25 (1.000)** | 25/25 (1.000) | **0** |
+
+Read the bottom two rows first, because they are what the condition is for.
+At `east` and `west` on `synthetic_hard` **every gold form is attested verbatim
+by some daughter**, so the bar is 25/25 and no score at those nodes — oracle or
+live, now or ever — can be evidence of reconstruction. §7.20 said `synthetic_hard`
+"is solved by selection at two of its three gold nodes"; the set reading says
+something stronger, that those two nodes cannot pose the question at all.
+
+Burmish is the opposite pole and the reason the condition is worth having rather
+than merely true. Its bar is **zero at both gold nodes** — not one of the 54 and
+37 gold forms is attested by any daughter — so every one of the assembly
+oracle's 42 and 25 hits is a form no copy could produce. Burmish is the only
+family here where the headline and the evidence-of-reconstruction number are the
+same number.
+
+**Conditions 1 and 2 are not raised.** Their thresholds stay where they are, and
+that is deliberate: moving them would be choosing a number to pass, which is the
+failure §7.22 item 7 named. What changes is that the bar is now printed beside
+them. Condition 1's stop is top-1 below 33/46 on Polynesian and the selection bar
+is 38/46, so **a system that only picks the closest existing word still passes
+condition 1** — that remains true and is now stated rather than implied.
+Condition 11 is what a figure has to answer to on top of them, and it is
+answerable at any threshold, including zero.
+
+**Applied to live figures for the first time on 2026-08-31, it trips almost
+everywhere.** All ten scored Polynesian seeds across three models reached
+**zero** concepts outside the selection bar: Qwen 0.565 and 0.500, Gemma 0.543
+and 0.348, and `gemini-3.7-flash` at 0.630 ± 0.022 (§7.26), which clears the
+copy baseline and is still zero.
+
+**It has been beaten exactly once.** On 2026-09-01 a Burmish seed reconstructed
+one concept at `burmic` that no daughter attests, by cross-branch assembly
+(§7.29) — and **three further seeds at the same settings did not reproduce it**,
+putting the rate at 1 seed in 4 and 1 of 148 scored concept evaluations. That
+single form is the whole of the positive evidence this repository holds. It is
+enough to make the condition a rate question rather than a possibility question,
+and the rate is very low. Every form any
+live run on this family has ever got right was a form some daughter already
+attested. §7.24 has the table. The condition is not stuck at zero: the same
+reading returns 3 for the assembly oracle here, 42 and 25 on Burmish, and 4 at
+`synthetic_hard:proto`.
+
+**Where condition 11 cannot be evaluated, it says so rather than passing.** It
+needs the gold binding and the daughter lexicons, so it is computable for every
+oracle figure and every live figure this repository records. It is not a
+mechanism check and cannot be satisfied by accident in the direction that
+matters: a change that adds only concepts a daughter already had moves the
+headline and leaves this number flat.
 
 **Condition 4's 0.080 is kept deliberately.** It was never derived from the
 stale instrument: it was set as a target *below* the context-sensitive oracle's
@@ -2096,6 +2170,17 @@ patch:
 - The `synthetic_hard` oracle figure as currently published (§0.5).
 - Beam-exact under the new architecture compared against beam-exact under the
   old one without saying that the two beams contain different kinds of thing.
+- **Any accuracy on `synthetic_hard` at `east` or `west`.** The selection bar is
+  25/25 at both — every gold form is attested verbatim by some daughter — so a
+  figure there cannot separate reconstruction from selection at any value,
+  including 1.000. Measured 2026-08-30; §7.1 condition 11.
+- **Any figure quoted without the count of concepts it reached outside the
+  selection bar.** On Polynesian the assembly ceiling of 39/46 is 36 concepts a
+  daughter already attests and 3 it does not, and the totals do not show that.
+  The context-free oracle's 27/46 is 26 and 1 — so it is not, as its equality
+  with East Futuna's 27/46 suggested, measuring selection and *nothing* else;
+  it is measuring selection and one concept. Neither reading is available from
+  the headline.
 
 ### 7.4 Which concepts condition 3 names, and why those five
 
@@ -3626,7 +3711,6 @@ reading of it changes.
 - **The remaining stall modes are untouched**, and the by-design rationale
   requirement is one of the codes that filled `marquesic`'s window.
 
-
 ### 7.16 A third-party division by zero ended a whole seed
 
 *Found live on 2026-08-29. Made survivable the same day. The trigger was then
@@ -3748,11 +3832,26 @@ first, as the prompt asked, and the decision sits beside the morpheme reading:
 if a morpheme reading changes what a boundary is, it changes this too, and the
 two should be decided together.
 
-
 ### 7.17 Three tools built for §7.13, used once in a thousand calls
 
 *Prompt edited 2026-08-29. The "before" counts are banked. The "after" counts
 need a live sweep and are not in this document yet.*
+
+> **Scope correction, 2026-08-31.** Every count in this subsection is
+> `google/gemma-4-26b-a4b`, and the conclusion drawn from them — that naming a
+> tool in the workflow does not make it get called — is a fact about that model
+> and not about the instructions. §7.24 ran the same instructions on
+> `qwen3.6-35b-a3b`: the three browsing tools go from **3.8% to 14.2%** of all
+> calls, `search_forms` from 8 calls to 39, and the share of non-root nodes
+> using any of them from **5 of 18 to 16 of 18**. Reaching for out-group
+> material is a model property, and a strong one.
+>
+> Two things that correction does *not* license. It does not show the tools were
+> well designed — §7.25 measures that per correspondence rather than per call,
+> and Qwen still commits three sets for every one it polarizes. And it does not
+> show that reaching more helps: Qwen browsed four times as much, doubled
+> out-group coverage, and produced the same **zero** concepts outside the
+> selection bar that Gemma did (§7.24).
 
 #### The before measurement
 
@@ -3862,7 +3961,6 @@ bet than a reading the data already carries.
   against six of nine in the banked post-flip sweeps. Three seeds is too few,
   and too much changed between the two, to read that as an effect.
 - **Nothing about a larger model.** One model on one benchmark.
-
 
 ### 7.18 The morpheme reading: what it already is, and what it actually costs
 
@@ -4355,6 +4453,16 @@ reconstruction.
   shallow nodes the pre-flip arm mostly failed. Converting a failure into a copy
   is not the same as converting a reconstruction into a copy, and these data
   cannot separate the two.
+- **~~It is one model, and nothing here separates "the inventory commit shape
+  produces copies" from "Gemma produces copies".~~ Removed 2026-08-31.** §7.24
+  ran three Polynesian seeds on `qwen3.6-35b-a3b` under the same instructions:
+  **3 copies in 17 committed nodes against Gemma's 4 in 16, Fisher two-sided
+  p = 0.688.** The two models copy at rates this design cannot tell apart, so
+  the copying is **not** a property of Gemma. Pooling Qwen into the inventory
+  arm leaves the headline comparison standing at 0 of 18 against 19 of 67,
+  one-sided p = 0.0057. The arm now pools two models as well as five instruction
+  hashes, which is one caveat worse than it was, and the confound this bullet
+  named is gone.
 - **It does establish that no live figure in this document is interpretable
   without its copy baseline beside it**, and that none of them has ever been
   published that way. That is a defect in how results were reported here, and it
@@ -4719,11 +4827,983 @@ clears, which means neither can distinguish reconstruction from selection.
 the same number. Whether they are the same 27 concepts was not measured, and the
 claim here rests only on the totals.*
 
-The repair is not to raise the thresholds, which would be choosing a number to
-pass. It is to state a condition against **the selection bar** — a live or
-oracle figure is evidence of reconstruction only above 38/46 on this family —
-and to publish that bar with every ceiling on the page. Proposed as **condition
-11**, beside the originals, and not adopted here.
+**Measured 2026-08-30. They are not the same 27.** The two sets share 20
+concepts and differ by 7 in each direction, so the equality of the totals was a
+coincidence and carried no information. `tools/oracle_ceiling.py
+--selection-overlap` computes this now, and
+`tests/workbench/test_oracle_ceiling_regression.py` pins both sets.
+
+**And the answer to the question underneath it is worse than the question.**
+The context-free oracle is not measuring East Futuna — but **26 of its 27 hits
+are concepts that some daughter attests exactly.** It reaches exactly one form
+(`2098`) that no copy could reach. The same reading applied to the other two
+oracles:
+
+| oracle | top-1 | of those, inside the selection bar | outside it |
+| --- | --- | --- | --- |
+| `context_free` | 27/46 | 26 | 1 — `2098` |
+| `contextual` | 33/46 | 31 | 2 — `2098`, `646` |
+| `assembly` | 39/46 | 36 | **3** — `646`, `1439`, `2098` |
+
+The selection bar on this family is 38/46. So the architecture that is now
+permanent, handed a flawless hypothesis manager reading the answer key, reaches
+**three** Polynesian concepts that no daughter attests. Everything else in the
+0.848 ceiling is a form that was already in the data.
+
+That result changes the shape of the repair rather than confirming it. The
+proposal was a threshold — *evidence of reconstruction only above 38/46* — and
+the assembly oracle's 39/46 clears it while being 36 parts selection. **A
+threshold on the total cannot separate the two, because the bar and the ceiling
+are within one concept of each other on this family.** The condition has to be
+stated over sets: intersect the hits with the bar and report what is left.
+
+**Adopted in that form as condition 11**, in §7.1, where the table and the
+per-family numbers now live. Conditions 1 and 2 keep their thresholds — raising
+them would be choosing a number to pass — and the bar is printed beside them
+instead. `docs/analysis_tools.md` carries the bar with every ceiling.
+
+This also resolves what §7.3 should say about the context-free oracle, and it is
+not that the oracle "measures selection and nothing else": it measures selection
+and one concept. The distinction matters because the same reading applied to
+Burmish returns 42 of 42 and 25 of 25 outside the bar — the instrument does
+separate the two things, and it is Polynesian that has almost nothing to
+separate.
+
+---
+
+### 7.23 §7.22's audit, decided
+
+*2026-08-30. Each of §7.22's six items is taken or refused here, with the
+reason. Items touching `system_prompt.md`, the tool schemas, or the trajectory
+metrics were held until the Qwen sweep of §7.24 finished, because a tree that
+moves between arms makes seeds incomparable and that has cost this repository
+two full sweeps.*
+
+#### Item 1 — "Prefer the inventory" is gone. **Taken, in the third form.**
+
+The preference was right while the cascade was scheduled for deletion. §7.22
+offered three options and favoured the third, and that is what landed: **both
+shapes are stated, neither is preferred, and the asymmetry is given in both
+directions** rather than as a ranking.
+
+`system_prompt.md` and `COMMIT_REQUIREMENT_NOTES` now say the same thing — a rule
+rewrites one child's own segments, so a parent segment no single child preserves
+cannot be produced by any cascade; and correspondence sets carry no order, so a
+change that only makes sense as the consequence of another change cannot be
+stated as an inventory. Where both fit, either is a complete answer.
+
+**This changes the instruction hash**, so §7.24's Qwen sweep and every sweep
+before it are the *before* for any comparison that follows. That is deliberate
+and it is the reason the change was held until that sweep finished. Nothing here
+predicts the effect: the preference pointed at the shape that copies, and
+removing it may change the mix of shapes committed, the copy rate, both, or
+neither. It is a paired sweep's question and it has not been run.
+
+#### Item 2 — the diagnostics are shape-specific, and the summary now says which. **Taken.**
+
+§9.1's table already carries the correction §7.22 asked for. The part that was
+still wrong was in the numbers, not the prose: `summarize-trajectories` reported
+one pooled `committed_rules`, and §12.2 fixed `committed_rule_count` to mean
+`len(commitments)` under an inventory and rewrite rules under a cascade. **Over
+a mixed corpus that total added correspondence sets to rewrite rules and called
+the result "committed rules".**
+
+Two repairs, both additive because removing a key from a summary breaks a
+consumer silently:
+
+- `committed_units_by_shape` splits the total by the shape that gives it a unit.
+  It is the one to quote.
+- `trajectories_the_no_op_check_applies_to` gives `committed_no_op_rules` its
+  denominator. That counter is 0 for an inventory *by decision* (§12.2), so a
+  pooled 0 read as "no no-op rules were committed" when it may mean the check
+  had no subject. On the Qwen sweep the denominator is 0 of 6; on
+  `burmish-before` it is 3 of 3, and only the second 0 is a finding.
+
+#### Item 3 — the gate keeps its asymmetry. **Refused as stated, and the consequence repaired.**
+
+Making `high_quality` symmetric would mean adding a condition to the inventory
+branch or removing one from the cascade branch. Both are choosing a number, and
+the asymmetry is *per-condition correct*: `test_rule_cascade` previews an order,
+correspondence sets have none, so that condition has no subject under an
+inventory. §12.2 already made both branches real checks rather than fallbacks
+that evaluate to "no problem".
+
+**What was genuinely defective is downstream.** `export-trajectories
+--high-quality-only` selected a corpus filtered at two strictnesses and said
+nothing, and a selection cannot be un-made later. It now prints the mix with the
+selection:
+
+```
+--high-quality-only applies a different number of workflow conditions per commit
+shape (2 to 'rules', 1 to 'inventory'), so this corpus is filtered at two
+strictnesses:
+    inventory    5 of 6 completed trajectories passed
+```
+
+That is the honest treatment: the gate is not a linguistic grade and never was,
+and a filter whose strictness varies is usable as long as it is not silent.
+
+#### Item 4 — the cascade preview is bounded. **Taken, and it was worse than §7.22 recorded.**
+
+§9.1 quotes 399 KB across three calls at one node. Broken down on the largest
+banked call — 208,268 characters — the cost is not where it looks:
+
+| component | characters | |
+| --- | --- | --- |
+| `reports[].results` | 78,480 | every form the rules were tried against |
+| `reports[].exceptions` | 62,494 | **a computed re-serialization of a subset of the above** |
+| `final_forms` | 77,200 | of which **34,496 is an all-null `provenance` block**, repeated 105 times |
+
+**Two thirds of the call is one list plus a copy of part of it.** `exceptions`
+is a `@computed_field` over `results`, so every failure is serialized twice.
+
+`test_rule_cascade` now takes the same `detail` knob `test_proto_assembly` has,
+defaulting to `summary`. The summary keeps every exception — a preview is
+consulted for what did *not* work — with the per-rule counts, and drops the
+per-form record of the applications that succeeded. Replaying the recorded call
+through it costs **140,940 against 211,248, a 33% saving**. `detail="full"`
+returns the old payload unchanged, so nothing became unreachable.
+
+**One trap, found by the suite rather than by reading.** `commit_reconstruction`
+resolves a cascade's `supporting_form_ids` by walking `reports[].results` for
+entries that recorded a location. Dropping those results without carrying their
+IDs leaves a summary-validated commit with no supporting forms **and no error** —
+a silent loss of provenance. `CascadeRuleSummary.applied_form_ids` carries
+exactly that, and a test pins that both details resolve identically.
+
+**The 34,496 characters of null provenance are measured and not fixed.** The
+obvious global repair — serializing tool results with `exclude_none` — is
+refused rather than deferred: `proto_segment` and a commitment's `reflexes` use
+an explicit null to mean *reconstructs nothing* and *this child shows nothing*,
+and `COMMIT_REQUIREMENT_NOTES` states in as many words that null and absent are
+different claims there. Stripping nulls globally would erase a distinction the
+commit contract rests on to save 17% of one tool's output.
+
+#### Item 5 — leave `oracle_ceiling.py`'s default alone. **Confirmed, no change.**
+
+Recorded first because it is the one that needs nothing, and §7.22 wrote it down
+precisely so that a later reader would not "repair" it. `context_free` remains
+the default oracle. Every recorded baseline in this repository was measured with
+it, and stage 4 — which would have promoted `assembly` — is not being put.
+
+Checked rather than assumed: `--selection-overlap` was added to that script on
+2026-08-30 and the default was not touched. `--oracle` still defaults to
+`CONTEXT_FREE` and the regression test still asserts
+`result.oracle == "context_free"` for a call that passes no oracle.
+
+#### Item 6 — §7 asks a question that is no longer the question. **Taken, and the answer is that nothing replaces it.**
+
+Conditions 1, 2 and 4 compare the assembly ceiling against the branch-cascade
+ceilings, and their stop clauses are written as a decision procedure — condition
+1 stops "if the change bought nothing an `--oracle contextual` flag would not
+have shown". With both shapes permanent there is no change to buy anything, and
+no replacement to authorise.
+
+**They stay, unedited, as characterisations of a ceiling.** A ceiling is a fact
+about an architecture and does not stop being one because the architectures now
+coexist. What they no longer are is a procedure that outputs a decision, and
+editing the thresholds would not restore that — it would only hide that the
+output is no longer used.
+
+**And the live question — when does each shape win — has no instrument in this
+repository.** That is the honest state, and inventing a criterion to fill the
+gap would be worse than naming it. What is measured about the two shapes, all
+of it:
+
+| | branch cascade | inventory |
+| --- | --- | --- |
+| verbatim copies among committed nodes | **0 of 18** | **16 of 50** (§7.20; indicative, p = 0.0034, three stated caveats) |
+| Polynesian oracle ceiling | 27/46, 33/46 | 39/46 |
+| …of which outside the selection bar | 1, **2** | **3** (§7.1 condition 11) |
+| live accuracy | not better | not better |
+| nodes committed, speed | fewer, slower | more, faster |
+
+**Read the third row against the second.** The assembly ceiling beats the
+context-sensitive cascade ceiling by six concepts on Polynesian, which is the
+gap the architecture was argued from. Net of the selection bar, the advantage is
+**one concept** — `1439` — because four of the six were forms a daughter already
+attested and the cascade oracle reaches the other two as well. The ceiling
+argument for the architecture is not wrong; it is one concept wide on this
+family, and it was never stated that way because the bar did not exist yet.
+
+None of that chooses a shape at a node, and it is not supposed to. What it does
+is set the price of building an instrument that would: a per-node criterion has
+to separate two architectures whose ceilings, read the only way §7.1 now permits
+them to be read, differ by one concept on the family this repository measures
+most.
+
+---
+
+### 7.24 A second model, and the first live reading of condition 11
+
+*Run 2026-08-30/31. Three seeds, Polynesian, current instructions,
+`qwen3.6-35b-a3b` — the `unsloth/Qwen3.6-35B-A3B-UD-MLX-4bit` build, 21.66 GB,
+served at a context of 262,144. Every observation in §7.20 came from
+`google/gemma-4-26b-a4b`, and nothing distinguished "the inventory commit shape
+produces copies" from "Gemma produces copies". This removes that confound.*
+
+#### The sampler, stated because a figure whose sampling is not stated cannot be compared
+
+`runs/sweeps/gemma-sampling.json` holds **Gemma's** published values, so it was
+not reused. This MLX conversion ships no `generation_config.json`, so a Qwen file
+was written from the Qwen family's published sampling instead: `top_k 20`,
+`top_p 0.95`, `min_p 0.0`, `repeat_penalty 1.0`. Temperature 1.0 by flag, as
+every sweep since 2026-08-24 pins it.
+
+Both files are now tracked at `examples/sampling/`, with the provenance of each
+value. Until 2026-08-31 they existed only under the gitignored `runs/` tree,
+which meant every live figure in this document was published while the sampler
+that produced it was not in the repository at all.
+
+**Verified rather than assumed.** LM Studio applies its own panel to anything
+the client omits and `configuration_sha256` cannot see it, so all four
+parameters were read back out of the server's own request log:
+
+```
+"temperature": 1  "top_p": 0.95  "top_k": 20  "min_p": 0  "repeat_penalty": 1
+```
+
+**One deviation, recorded rather than buried.** The Qwen family publishes
+temperature 0.6 for thinking mode; this ran at 1.0 because the sweep protocol
+pins it and a temperature above zero is what makes `--provider-seed-base` buy
+independent draws at all. Gemma's published temperature *is* 1.0, so the pin
+coincided with its recommendation and does not here. A comparison of the two
+models is therefore a comparison at one sampler, not at each model's own.
+
+#### What it did
+
+| | Qwen | Gemma (`polynesian-after-toolstep`) |
+| --- | --- | --- |
+| seeds finished / abandoned | 3 / 0 | 3 / 0 |
+| nodes committed, of 7 | **5.67 ± 0.58** | 5.33 ± 0.58 |
+| identity fallbacks per seed | 1.33 ± 0.58 | 1.67 ± 0.58 |
+| failure taxonomy | 4 × `AgentLoopLimitError` | 5 × `ProtocolStallError` |
+| commit shape | **17 of 17 inventory** | inventory |
+| wall clock | ~8.1 h | ~3.7 h |
+
+The two models commit at the same rate and fail differently: Qwen never trips a
+stall condition and instead runs out of turns — all four failures are a node
+still exploring at turn 24 of 24. Gemma's five were protocol stalls. That is a
+difference in how a session ends, not in how often it ends badly.
+
+#### Accuracy, at the one gold node, never pooled
+
+`proto_polynesian` is Polynesian's only gold node. **2 of 3 seeds scored**; the
+third's root was an identity fallback and is excluded, as it must be.
+
+| | value |
+| --- | --- |
+| top-1 exact | **0.533 ± 0.046** (n=2, range 0.500–0.565) |
+| beam exact | 0.663 ± 0.046 |
+| mean top NED | 0.180 ± 0.027 |
+| **copy one whole daughter** | **0.587** (East Futuna) |
+| **best attested form per concept** | **0.826** |
+| assembly oracle ceiling | 0.848 |
+| best Gemma figure ever recorded | 0.543 |
+
+**0.533 is below the copy baseline and 0.293 below the selection bar.** It is
+also statistically indistinguishable from Gemma's 0.543. A second model, a
+different family of tokenizer, a different sampler, four times the reasoning
+tokens — and the same place on the scale.
+
+**The excluded fallback is the number to sit with.** Seed 0's root fell back to
+the harness's identity commit, and that commit would have scored **0.609** —
+above both scored seeds and above the copy baseline. The one node where the
+model contributed nothing outscored the two where it committed. It is excluded
+from the headline for the right reason, and reporting the headline without it
+would be reporting the better half of a result.
+
+#### Condition 11, applied to a live figure for the first time
+
+§7.1's condition 11 asks how many of the concepts a system got right are ones no
+daughter attests. Applied to every live Polynesian figure this repository holds,
+across both models and all four scored seeds:
+
+| seed | top-1 | hits | inside the selection bar | **outside it** |
+| --- | --- | --- | --- | --- |
+| Qwen seed-01 | 0.565 | 26 | 26 | **0** |
+| Qwen seed-02 | 0.500 | 23 | 23 | **0** |
+| Gemma seed-00 | 0.543 | 25 | 25 | **0** |
+| Gemma seed-01 | 0.348 | 16 | 16 | **0** |
+
+**Zero, four times out of four. Condition 11 trips on its first application, on
+every live figure ever recorded on this family.** Not one live run has produced
+a correct Polynesian proto-form that no daughter already attests.
+
+The instrument is not stuck at zero: the same reading returns 3 for the assembly
+oracle on this family, 42 and 25 on Burmish, and 4 at `synthetic_hard:proto`. It
+discriminates, and here it discriminates a zero.
+
+That is the sharpest statement this repository can currently make about live
+performance, and it is sharper than the headline it sits beside. 0.533 against a
+bar of 0.826 says the figure was beaten by picking existing words. The table
+above says something stronger: **every form these runs got right was an existing
+word.** The comparative step, live, has not yet produced one correct form that
+selection could not.
+
+#### The copy rate, and the confound this sweep existed to remove
+
+The reading was fixed before the run, so it cannot be chosen afterwards: *near
+Gemma's rate → the commit shape causes it; rare → the finding is about Gemma.*
+
+| | committed nodes | verbatim copies | rate |
+| --- | --- | --- | --- |
+| Qwen, Polynesian, 3 seeds | 17 | **3** | 17.6% |
+| Gemma, Polynesian, 3 seeds | 16 | **4** | 25.0% |
+
+Fisher's exact, two-sided: **p = 0.688.** The two models copy at rates this
+design cannot distinguish. **The first branch fires: the copying is not a Gemma
+property.**
+
+§7.20's headline comparison survives the addition, slightly weakened and in the
+direction honesty requires — the cascade arm against the inventory arm with
+Qwen's nodes pooled in is **0 of 18 against 19 of 67, one-sided p = 0.0057**,
+where it was 0.0034 on Gemma alone. Every caveat §7.20 attached to it still
+applies and one is now worse: the inventory arm pools two models as well as five
+instruction hashes.
+
+**What Qwen copies is not what Gemma copies**, and the difference is worth more
+than the rates. Gemma's four were all *leaf* copies — a node reproducing an
+attested daughter. Qwen's three are one leaf copy (`futunic` ≡ East Futuna) and
+**two node copies that are the same pair**: at seed 2, `central_eastern` and
+`nuclear_polynesian` are byte-identical to each other. That is a parent
+reproducing its own reconstructed child, which is condition 6's question
+answered in the least interesting way, and it is the shape §7.21's Burmish sweep
+was built to look for and could not see at a floor of 0.000.
+
+**Consequence, per the pre-registered reading: proposal 10's option C becomes
+the urgent one.** Option B — publish the rate, gate nothing — is already
+decided and stays. Option C, warning the model inside the session and letting it
+commit anyway, was left open "as an experiment with its own paired sweep". With
+the confound removed, that experiment is now about the commit shape rather than
+about one model, which is what it needed to be worth running.
+
+#### What Qwen does differently, and it is the thing §7.17 measured
+
+§7.17 and §7.19 measured that the three browsing tools are ~2% of all calls and
+concluded that naming a tool in the workflow does not make it get called. That
+conclusion was drawn from one model.
+
+| | Qwen | Gemma |
+| --- | --- | --- |
+| total tool calls, 3 seeds | 409 | 264 |
+| `polarize` | **25.9%** | 14.0% |
+| browsing tools | **14.2%** | 3.8% |
+| non-root nodes using a browsing tool | **16 of 18** | 5 of 18 |
+| out-group coverage per committed set | **24.8%** | 11.0% |
+
+**Qwen reaches for out-group material at roughly four times Gemma's rate and
+doubles the share of committed sets that had anything outside the group
+retrieved for them.** `search_forms` alone goes from 8 calls to 39.
+
+So §7.17's finding needs its scope narrowed in its own text: *this* model did
+not reach for the browsing tools. Reaching for them is a model property, and a
+strong one. **It is also not enough.** Qwen doubled the coverage and produced
+zero concepts outside the selection bar — the same zero as the model that
+browsed a quarter as much. Whatever is limiting these runs is not the rate at
+which sibling evidence is fetched, and §7.25's change should be priced against
+that fact rather than against the hope behind it.
+
+#### Cost, measured
+
+| | Qwen | Gemma |
+| --- | --- | --- |
+| first-call prompt, every node | **22,960** | 13,760 |
+| peak prompt in a node | 118,873 | 129,263 |
+| reasoning share of output | **77%** | not reported |
+| total node time, 3 seeds | 8.06 h | ~3.7 h |
+
+The first-call prompt is **67% larger for identical content** — same
+instructions, same tool schemas, same payload, different tokenizer. Any
+per-node payload cost quoted in this document is therefore a Gemma figure, and a
+budget derived from it understates Qwen by about two thirds. The 77% reasoning
+share is the whole explanation of the wall clock: Qwen is not slower per token,
+it emits four tokens of thinking per token of answer.
+
+**Memory was a non-issue and the prediction behind the worry was wrong.** Swap
+sat at ~3.5 GB of its total for the entire 8 hours, unchanged from before the
+run, and the backend held ~23 GB against a 21.66 GB model — about 1.3 GB of
+cache at a 119K-token peak, where Gemma held roughly 15 GB at 116K. Qwen 3.6's
+hybrid linear attention keeps the cache an order of magnitude smaller, so the
+guess that "Qwen's is probably larger per token" was backwards. A 64 GB machine
+has considerably more headroom for this model than for the one measured before
+it.
+
+#### What this does not establish
+
+- **n = 2 scored evaluations.** The accuracy is two numbers with a spread, on
+  one family, at one gold node. It is quoted with its spread and it should not
+  be quoted without it.
+- **One sampler, not each model's own.** Qwen ran 0.4 above its published
+  thinking temperature. Whether that costs it accuracy here is unmeasured, and a
+  paired sweep at 0.6 is the cheapest way to find out.
+- **The copy comparison is 17 nodes against 16.** p = 0.688 is a failure to
+  distinguish, not a demonstration of equality; a real difference smaller than
+  about 25 points would not have shown.
+- **Two models is not "models".** Both are 4-bit MLX quantisations of open
+  mid-size MoE models served by the same runtime. Nothing here reaches a hosted
+  frontier model, and the one claim that would most benefit from one is the
+  condition 11 zero.
+
+---
+
+### 7.25 Sibling evidence, and the ratio that was actually wrong
+
+*Built 2026-08-31, after §7.24's sweep, because it changes what a node is shown
+and landing it mid-sweep makes seeds incomparable.*
+
+#### The premise needed correcting before the change was worth making
+
+The request was that a node stay focused on its own node while being able to
+look outside its own monophyletic group for extra evidence, and §7.17's reading
+was that the model does not reach for it: the three browsing tools are ~2% of
+all calls. Measured properly with `tools/outgroup_coverage.py`, that reading is
+wrong in one direction and understated in the other.
+
+**Per node the reaching is complete.** Every one of the 18 non-root Polynesian
+nodes called `polarize`, and every one got an out-group back — on Gemma's sweep
+and on Qwen's. 18 of 18. The 14% in §7.17's table is a share of *calls* and was
+being read as a share of nodes.
+
+**Per correspondence it is thin, and that is the real gap:**
+
+| | polarize calls | committed sets | coverage |
+| --- | --- | --- | --- |
+| Polynesian, Gemma, inventory | 28 | 254 | **11.0%** |
+| Polynesian, Qwen, inventory | 82 | 330 | **24.8%** |
+| Burmish, Gemma, inventory | 12 | 78 | 15.4% |
+| Burmish, Gemma, **cascade** | 6 | 12 | **50.0%** |
+
+A call covers one correspondence and a node commits fifteen to thirty sets. The
+model is not failing to look outside; **it looks outside once and commits
+fifteen times.** The cascade/inventory split in the last two rows is mechanical
+rather than behavioural — the inventory commits six times as many units per node
+for twice the calls — and it sits beside §7.20's copy rates, which split the
+same way on the same sweeps, without either explaining the other at this n.
+
+#### The change
+
+`summarize_correspondences` now carries, per returned set, what every node
+outside the active children shows in that set's own aligned columns. It is
+`polarize`'s answer computed once for the survey instead of once per call, and
+**it is on by default**: §7.17 and §7.19 both measured that naming a tool in the
+workflow does not make it get called, and a flag the model has to set is the
+same experiment a third time.
+
+It imports `matching_column` and `outside_nodes` from `polarize` rather than
+reimplementing them, so the two cannot disagree about which columns show a
+correspondence — a test pins that the survey's presences are a subset of what
+`polarize` returns for the same set.
+
+**Two constraints held.** The out-group nodes are evidence and never a second
+reconstruction target: they do not enter the assembled parent form and no
+residue policy accounts for them. And the root is not allowed to look as though
+it had evidence — `outgroup_note` says in as many words that every available
+node there is a descendant, which is `polarize._witnesses`' distinction in the
+same words.
+
+#### The price, measured rather than estimated
+
+Evidence is rationed here, so the addition is priced on the real benchmarks at a
+real node:
+
+| | narrow | wide | |
+| --- | --- | --- | --- |
+| Polynesian `tongic` | 10,653 chars | **16,002** | 1.50× |
+| Burmish `maruic` | 11,347 chars | **18,410** | 1.62× |
+
+Two design decisions did that, and both are properties of the question rather
+than truncations:
+
+- **Only sets whose children disagree are profiled.** A set where every child
+  shows the same segment has no competing value to choose between. This alone
+  took Polynesian from **3.9× to 1.8×**.
+- **Gaps are never reported.** A node showing nothing attests nothing, and
+  `tools/outgroup_probe.py` measured that scoring absence lands *below*
+  alphabetical tie-breaking. It is also the widest row when kept, since a gap is
+  usually shown by every outside node at once: dropping it took 1.8× to 1.5×.
+
+**In context that is close to cost-neutral against what it displaces.**
+`summarize_correspondences` runs ~1.7 times per node, so this adds ~9,100
+characters to a node's conversation. Qwen made 5 `polarize` calls per node at
+~3,465 characters each — ~17,000 characters — to cover five correspondences. The
+survey covers 16 of 30 sets for about half that.
+
+**A caution on the token figures.** All character counts here convert to tokens
+at Gemma's rate. §7.24 measured that identical content costs Qwen **67% more
+tokens**, so a budget taken from this table understates that model by about two
+thirds.
+
+#### What this has not been measured to do, and it is the whole question
+
+**No paired sweep has been run, and none of the numbers above is an effect.**
+They are a price and a coverage mechanism. What the change has to be judged on
+is a paired sweep, per gold node, with the selection bar and the copy rate
+published beside every number — and §7.24 sharpened what to expect from it:
+
+- **Qwen already browsed four times as much as Gemma, doubled out-group coverage
+  from 11% to 24.8%, and produced the same zero concepts outside the selection
+  bar.** More sibling evidence, on the one comparison available, did not convert
+  into reconstruction that selection could not do. That is the prior this change
+  runs against, and it is not a favourable one.
+- **The copy rate and the identity probe matter more here than the accuracy.**
+  This is exactly the kind of change that can raise a score by handing the model
+  more of the answer's neighbourhood, and §7.20's instruments are what would
+  catch that.
+- **The root cannot benefit**, and an effect appearing there is an instrument
+  fault rather than a finding. On Polynesian the root is the only gold node, so
+  **the family whose live figures this repository has the most of is the one
+  where this change can least show up.** Burmish carries gold at `burmic`, which
+  is below the root, and is the better arm for it despite scoring 0.000.
+- **`item 1` landed first and also moves the instruction hash.** A sweep run now
+  differs from §7.24's by two changes, not one. Any paired measurement of *this*
+  change must run both arms under the current instructions, toggling only
+  `include_outgroup`, which is exactly what that flag is for.
+
+---
+
+### 7.26 A frontier model clears the copy baseline, and condition 11 still returns zero
+
+*Run 2026-08-31 on `gemini-3.7-flash`, hosted, three Polynesian seeds,
+`--reasoning-effort medium`, current instructions. §7.24 left one reading open:
+whether condition 11's zero was a property of this harness or of two similar
+4-bit MoE quantisations served by one runtime. This settles it.*
+
+#### Configuration, and two deliberate omissions
+
+`--temperature 1.0`, beam width 5, 24 turns, 48 tool calls, 3 max failed nodes —
+identical to §7.24's Qwen sweep, so the two are comparable. Reasoning effort is
+hashed and `run-benchmark` forwards it to every repetition, so it is constant
+across the three seeds.
+
+**No `--provider-config`**, which is a real difference from every local sweep
+rather than an oversight: those files exist because LM Studio's Inference panel
+silently supplies anything the client omits, and the hosted API has no such
+panel. **No `--provider-seed-base`**, because Gemini has no seed and the harness
+refuses one up front; the seeds differ by provider nondeterminism, which the
+aggregate reports as spread.
+
+**Nothing could reach Google Search**, checked three ways rather than assumed:
+the provider sends only `model`, `messages`, the typed `tools`, `tool_choice`
+and the options dict; the preset adds only `reasoning_effort` and the key; and
+`provider_config.py` refuses grounding options by name, with
+`test_grounding_is_refused_however_deeply_it_is_buried` covering nested
+attempts. A grounded model could retrieve a published Proto-Polynesian
+reconstruction instead of deriving one and the trajectory would look identical,
+so this is a precondition of the measurement rather than hygiene.
+
+#### The headline moved. It is the first live figure here that ever has.
+
+| | value |
+| --- | --- |
+| top-1 exact | **0.630 ± 0.022** (n=3, range 0.609–0.652) |
+| beam exact | 0.667 ± 0.045 |
+| mean top NED | 0.163 ± 0.014 |
+| **copy one whole daughter** | 0.587 |
+| **best attested form per concept** | **0.826** |
+| Qwen (§7.24) | 0.533 ± 0.046 |
+| Gemma, best seed ever | 0.543 |
+
+**All three seeds scored — no root fell back**, which no previous Polynesian
+sweep managed. And 0.630 sits **3.5 standard errors above the 0.587 copy
+baseline**: the first live figure in this repository to clear the bar that
+§7.20 measured every earlier one against. It also passes the context-free
+oracle's 27/46 outright, which is a live model beating a ceiling that reads the
+answer key.
+
+#### And condition 11 returns zero anyway
+
+| seed | top-1 | hits | inside the bar | **outside it** |
+| --- | --- | --- | --- | --- |
+| seed-00 | 0.630 | 29 | 29 | **0** |
+| seed-01 | 0.652 | 30 | 30 | **0** |
+| seed-02 | 0.609 | 28 | 28 | **0** |
+
+**Three models, ten scored seeds, zero every time.** Gemini reconstructed 87
+correct Polynesian proto-forms across three seeds and **not one of them was a
+form that no daughter attests.** The selection bar is 15.8 standard errors above
+its mean, so this is not a near miss.
+
+This is the reading §7.24 asked for and could not give. The zero is **not an
+artifact of small quantised models.** A frontier model, better on the headline
+by a margin that is real rather than noise, and better than a gold-reading
+oracle, still produced nothing that selection among the daughters could not
+have produced. Whatever bounds these runs is a property of the harness, the
+benchmark, or the task as posed — and it is now the largest open question in
+this document.
+
+**One thing this does not license.** It does not show that the model reconstructs
+nothing: 0.630 against 0.587 is 2 concepts of real improvement over copying the
+best daughter, and improvement inside the bar is still improvement. What it
+shows is that the improvement is *within the space selection already spans*.
+
+#### The copy rate keeps falling, and the trend is not significant
+
+| | committed nodes | copies | rate |
+| --- | --- | --- | --- |
+| Gemma | 16 | 4 | 25.0% |
+| Qwen | 17 | 3 | 17.6% |
+| **Gemini** | **13** | **1** | **7.7%** |
+
+Monotone with model strength, and **Fisher two-sided p = 0.343 against Gemma,
+p = 0.613 against Qwen.** At these n a real halving would not show, so the trend
+is worth watching and is not a finding. Gemini's single copy is a leaf copy
+(`tongic` ≡ Tongan at seed 0) and it produced **no node copies at all**, unlike
+Qwen's mutual `central_eastern`/`nuclear_polynesian` pair.
+
+#### The commit rate is the weakest number, and it is a budget artifact
+
+4.33 ± 0.58 of 7 nodes, against Qwen's 5.67 and Gemma's 5.33 — the lowest of the
+three. **Every one of the 8 failures is `AgentLoopLimitError` at exactly 24 turns
+of 24.** Not one stall, not one protocol collapse.
+
+| | turns/node | input tokens/node |
+| --- | --- | --- |
+| Gemini | **21.9** | 2,061,468 |
+| Qwen | 18.5 | 1,013,359 |
+| Gemma | 12.7 | 461,010 |
+
+Gemini explores for nearly the whole budget and is cut off mid-session. Holding
+the budget fixed is the right choice for comparing three models, and it means
+**this sweep understates what Gemini would commit with room** — the honest
+reading of 4.33 is "at 24 turns", not "this model commits less". `--max-turns` is
+hashed, so testing that needs a fresh sweep rather than a resume.
+
+Note what it does *not* contaminate: the gold node committed in all three seeds,
+so the accuracy and the condition 11 zero rest on scored roots, not on fallbacks.
+
+#### Tool use, which completes §7.17's correction
+
+| | browsing tools, share of calls | non-root nodes using one | out-group coverage per set |
+| --- | --- | --- | --- |
+| Gemma | 3.8% | 5 of 18 | 11.0% |
+| Qwen | 14.2% | 16 of 18 | 24.8% |
+| **Gemini** | **18.9%** | **18 of 18** | 18.1% |
+
+**Every non-root node reached for material outside its group.** §7.17's finding
+that "naming a tool in the workflow does not make it get called" is now
+comprehensively a fact about `gemma-4-26b-a4b` and about nothing else.
+
+And it strengthens §7.25's caution against its own change: the model that browsed
+most produced the same zero as the model that browsed least. Sibling evidence
+being fetched more often has now failed to convert into reconstruction beyond
+selection across a 5× range in browsing rate.
+
+#### Cost, measured
+
+**$8.42** for the sweep: 43,488,832 input tokens at **91% cached**, 642,449
+output at 54% reasoning. The harness's cost figure was verified against the
+published rates by hand on a check node and matches to the cent, cached discount
+included.
+
+The 91% cache rate is what made this affordable — the same sweep at full input
+price is about $28. It works because the cacheable prefix is byte-identical
+across runs, verified by hashing: the system prompt is 38,166 characters and the
+node payload follows it, both far above the 4,096-token minimum, with only the
+turn-by-turn delta appended after. **Anything that puts a varying token near the
+front of the prompt would quadruple the cost of a hosted sweep**, which is worth
+knowing before something innocuous like a timestamp is added to the payload.
+
+---
+
+### 7.27 The same frontier model on Burmish scores nothing at all
+
+*Run 2026-08-31, `gemini-3.7-flash`, three seeds, `--reasoning-effort medium`,
+budgets identical to §7.21's Gemma arms so the two are directly comparable.
+$5.81, 24.3M input tokens at 87% cached.*
+
+§7.26 established that a frontier model clears the copy baseline on Polynesian
+and still reaches zero concepts outside the selection bar. The obvious objection
+is that Polynesian cannot show otherwise: **the assembly oracle itself reaches
+only 3 concepts outside the bar there**, so the entire headroom is 3 of 46 and a
+live zero is nearly forced. Burmish has no such excuse — its selection bar is
+**0/54 and 0/37**, every correct form is outside it, and the assembly oracle
+reaches **42 and 25**.
+
+#### The result
+
+| | value |
+| --- | --- |
+| top-1 at `proto_burmish` | **0.000 ± 0.000** (n=2 scored, 4 excluded as fallbacks) |
+| beam exact | **0.000 ± 0.000** |
+| mean top NED | **0.708 ± 0.015** |
+| best attested form per concept, mean NED | **0.604** |
+| assembly oracle | 42/54 (0.778) |
+| Gemma, §7.21, both arms | 0.000 ± 0.000 |
+| `burmic` | **no live figure — it never committed in any seed** |
+
+**Zero, on the one family where copying earns nothing.** And the graded measure
+is worse than the ungraded one suggests: at **mean top NED 0.708 the
+reconstruction is further from the gold than simply picking the closest attested
+daughter form, which sits at 0.604.** On this family the model is not merely
+failing to beat selection; on the distance measure it is beaten by it.
+
+Read with §7.26 the pair is stark. Where selection can reach the answer, the
+model reaches it and improves on copying — 0.630 against 0.587. Where selection
+cannot reach the answer, the model reaches nothing. **Across two families,
+three models and twelve scored seeds, this repository has never recorded a
+single correct proto-form that no daughter attests.**
+
+#### The confound is now unavoidable, and it changes what to do next
+
+5 of the 6 node failures are `AgentLoopLimitError` at exactly 24 of 24 turns.
+The commit rate is **1.0 ± 1.0 of 3 nodes** — seed 2 committed nothing at all —
+and `burmic`, the second gold node, never committed in any seed.
+
+On Polynesian the turn budget was a confound that could not touch the finding,
+because the headroom there is 3 concepts however long the model runs. **On
+Burmish that argument does not hold.** The headroom is 42 concepts, the model is
+being cut off mid-session in 5 of 6 failures, and one of the two gold nodes has
+no live figure at all. So the honest statement of this result is:
+
+> A frontier model produced 0.000 on Burmish **at a 24-turn budget it hit in
+> almost every failure**, and the second gold node was never reached.
+
+That is still a real finding — a model that needed more turns did not produce a
+*partially* correct form either, and beam-exact is also 0.000, so nothing
+correct was computed and then discarded. But it is not the clean statement
+§7.26 makes, and it should not be quoted as one.
+
+**One 429 on a paid key.** `seed-00 maruic` died on
+`litellm.RateLimitError` after 17 turns rather than on the turn limit. Paid Tier
+1 carries a spend-rate limit as well as RPM/TPM, so a dense sweep can trip it;
+it is a provider limit rather than a quota exhaustion, and the harness
+classified it transient and retried before giving up.
+
+#### What this does and does not establish
+
+- **It establishes that the bound is not the model.** Three models, one of them
+  frontier and markedly stronger on Polynesian, all produce zero outside the
+  selection bar. Whatever limits these runs is the harness, the benchmark, or
+  the task as posed to the model.
+- **It does not establish that Burmish is unreachable**, because the budget was
+  binding. Raising `--max-turns` on Burmish is now the one cheap experiment that
+  could still move condition 11 off zero, and §7.26's argument against raising
+  it applies only to Polynesian.
+- **`burmic` remains unmeasured live**, on any model, which is worth stating
+  plainly: §7.21 scored it 0.000 on Gemma, and here it never committed.
+
+---
+
+### 7.28 A void run, and the retry gap that made it void in forty seconds
+
+*2026-08-31. `runs/sweeps/burmish-gemini-t36` is **not a measurement** and its
+aggregate must not be quoted. This subsection exists so that nobody later reads
+the `0.000` sitting in that directory as a result.*
+
+#### What it was meant to test, and why it did not
+
+§7.27 left the Burmish zero confounded by the turn budget: 5 of 6 failures were
+`AgentLoopLimitError` at exactly 24 of 24 turns. The measurements in §7.27 said
+why — Gemini reaches its first `commit_reconstruction` attempt at call **19** and
+needs about **4** more to satisfy the contract, against a budget of 24, so it
+arrives at the commit with no slack. Gemma commits at call 7.9. The 24-turn
+budget was calibrated on a model that needs 12 turns and handed to one that needs
+23.
+
+Two seeds at `--max-turns 36`, one variable changed. It never got near the cap:
+
+| | value |
+| --- | --- |
+| turns/node | **6.5 mean, 19 max, against a cap of 36** |
+| nodes failed on `RateLimitError` | **5 of 6** — four of them **at turn 1** |
+| scored evaluations | 1, which is not a measurement |
+| cost | $1.16, against $5.81 for the 24-turn arm |
+
+The error is a quota 429, not a capacity spike:
+
+```
+429  "You exceeded your current quota, please check your plan and billing details."
+```
+
+#### The harness observation, which is the part worth keeping
+
+`_is_transient_error` classifies `litellm.RateLimitError` as transient, and the
+orchestrator retries it on the same exponential backoff it uses for a capacity
+503: `retry_backoff_seconds * 2**retry_index`, twice. **A quota 429 therefore
+consumes its entire retry budget in about three seconds** and fails the node.
+With `--max-failed-nodes 3` the seed is then abandoned almost immediately, and
+with two seeds queued the whole sweep is gone inside a minute.
+
+That backoff is right for the failure it was written for. §7.19's note records a
+503 "high demand" recovering on its own after a retry, and the Polynesian sweep
+of §7.26 rode out exactly that. **It is wrong for quota**, where the window is
+minutes to hours and no number of seconds-scale retries will help.
+
+The consequences are worse than a lost run, because the artifacts lie:
+
+- A node killed by quota is written as `node_failed` and walked over with an
+  identity fallback, which is the same treatment a node that genuinely could not
+  converge receives.
+- The aggregate then reports a `top_exact_rate` over whatever survived — here
+  **n=1** — with nothing marking it as a run that never happened.
+- `runs/sweeps/burmish-gemini-t36/` contains a well-formed `aggregate.json`
+  reading `0.000`, and it is indistinguishable at a glance from §7.27's real
+  0.000.
+
+**Two changes this argues for, neither implemented here.** Separate quota 429
+from capacity 429/503 and treat the first as fatal to the *run* rather than
+transient to the *node*, since continuing only converts the rest of the tree into
+fallbacks. And record the reason a node fell back in the aggregate, so a sweep
+whose evaluations were lost to a provider limit cannot be read as a sweep whose
+model failed to reconstruct.
+
+#### The retry fix worked, and the second attempt died of something else
+
+*Added later the same day.* The limit was identified from the account's own
+dashboard: **TPM, peak 2.21M against a 2M ceiling**, with RPM at 14/1K and RPD
+at 699/10K nowhere near. Reconstructing the sweeps' own traffic from event
+timestamps agrees — calendar-minute peaks of 1.73M, 1.86M and 1.59M input
+tokens, which a sliding 60-second window would push over 2M. So the run died of
+a per-minute rate ceiling, not of quota exhaustion and not of the balance.
+
+**Cached tokens count toward TPM, and that asymmetry is the thing to remember.**
+91% of this sweep's input was cache hits. Had they been exempt the effective
+rate would have been a tenth of the above and nothing would have been limited.
+Caching cut the *bill* tenfold and did *nothing* for the *rate*, which is why
+the void run was simultaneously the cheapest and the most thoroughly limited.
+
+Re-run as `burmish-gemini-t36b` with `--retry-backoff-seconds 30 --max-retries
+4`, giving waits of 30/60/120/240s against the ~60s a TPM window needs. **The
+backoff worked exactly as designed and the run still failed**, because the
+failure was no longer the same one: all six nodes died at turn 1 on a provider
+**503 "This model is currently experiencing high demand"**, over a 47-minute
+window with all 24 retries spent. Verified outside the harness — a bare
+`generateContent` request to `gemini-3.7-flash` returned the same 503 while the
+models endpoint returned 200. Zero tokens, zero cost.
+
+**A correction to §7.26's account of the morning.** The first two smoke attempts
+that day 503'd on an unbilled key, and enabling billing coincided with them
+working, so the failure was attributed to the tier. The same 503 now appears on
+a paid key. That attribution is not supported: `gemini-3.7-flash` has
+intermittent capacity problems, and the morning's recovery was a coincidence
+rather than a tier effect.
+
+**A third change this argues for.** `--max-retries` and
+`--retry-backoff-seconds` are in the hashed configuration, while every other
+give-up threshold — `--max-failed-nodes`, `--fail-fast`, the truncation-backoff
+flags — is deliberately not. They are the same kind of setting, and the
+inconsistency has a concrete cost: a run killed by a provider limit cannot be
+made more patient and resumed, which is exactly the repair the situation calls
+for.
+
+#### What is still true, and what is not
+
+- §7.27's Burmish 0.000 **stands as recorded**, with the turn-budget confound it
+  already states. Nothing here changes it.
+- **The turn-budget hypothesis remains untested.** It is neither supported nor
+  refuted, and §7.27's caveat is unresolved rather than closed.
+- `burmic` still has no live figure on any model.
+
+---
+
+### 7.29 The turn budget was binding, and the first form no daughter attests
+
+*2026-09-01, `gemini-3.7-flash`, Burmish, two seeds at `--max-turns 36`.
+`runs/sweeps/burmish-gemini-t36-r2`. $5.03. One experimental variable against
+§7.27's arm; retries were also loosened to `--max-retries 6
+--retry-backoff-seconds 20` after §7.28, which is operational rather than a
+second variable — a run that hits no provider failure is identical either way.*
+
+#### The confound is resolved: the budget was binding
+
+| | 24 turns (§7.27) | **36 turns** |
+| --- | --- | --- |
+| nodes committed, of 3 | 1.0 ± 1.0 | **2.5 ± 0.7 (2/3 and 3/3)** |
+| turns/node | 22.2, hitting the 24 cap | **23.0, max 29, cap never reached** |
+| failures | 5 of 6 `AgentLoopLimitError` at 24/24 | **1 of 6, and it is a `ProtocolStallError`** |
+| `burmic` committed | never, on any model | **both seeds** |
+
+**Not one node failed on the turn limit.** The single failure is `maruic` at
+seed 0 stalling on rejected calls, which is a different problem. §7.27's caveat
+is closed: its 0.000 was measured under a budget the model was hitting in almost
+every failure, and with room the model commits.
+
+The prediction from §7.27's measurements held exactly. First commit attempt at
+call 18.0, about 4 calls to clear the contract, so ~22 needed against a 24-turn
+budget — no slack. At 36 the mean lands at 23.0 and the cap is never reached.
+
+#### And condition 11 returns a non-zero for the first time
+
+| gold node | selection bar | seed 0 | seed 1 |
+| --- | --- | --- | --- |
+| `burmic` | **0/37** | 0.000 — 0 outside | **0.027 — 1 outside** |
+| `proto_burmish` | **0/54** | 0.000 — 0 outside | 0.000 — 0 outside |
+
+At `burmic`, seed 1 reconstructed concept `1382` (NEEDLE) as **`a p ⁴`**, which
+is the gold exactly. The bar there is 0/37, so **no daughter attests it**. It is
+the first concept outside the selection bar that any live run in this repository
+has produced, across four models and roughly fourteen scored seeds.
+
+**And it is the intended mechanism, confirmed rather than inferred.** `burmic`'s
+three children are:
+
+```
+hillburmish:AchangLongchuan   a p ⁵⁵      segments right, tone wrong
+hillburmish:Xiandao           a p ⁵⁵      segments right, tone wrong
+hillburmish:Rangoon           ɑ ʔ ⁴       tone right, vowel and coda wrong
+                    gold      a p ⁴
+```
+
+The parent takes `a p` from one branch and `⁴` from another. That is exactly the
+form §7.20 said a branch cascade could never produce — *"a rule rewrites one
+child's own segments, so a parent segment no single child preserves cannot be
+produced by any cascade"* — and it is the case the proto-inventory architecture
+was built for. The diagnostic agrees with the reading:
+**`cross_branch_assembly_rate = 0.667`** at that node. §7.1's condition 3 asks
+for that rate to be non-zero at some node; here it is non-zero *and* it produced
+a correct form nothing else could reach.
+
+#### Two more seeds, and the rate is 1 in 4 rather than 1 in 2
+
+*Added 2026-09-01 from `runs/sweeps/burmish-gemini-t36-r3`, $3.73. Both seeds
+committed **3 of 3 nodes with zero fallbacks** — the first Burmish seeds on any
+model to do so — at 19.3 turns a node against the 36 cap.*
+
+| gold node | r2 seed 0 | r2 seed 1 | r3 seed 0 | r3 seed 1 | pooled |
+| --- | --- | --- | --- | --- | --- |
+| `burmic` | 0.000 | **0.027** | 0.000 | 0.000 | **0.007 ± 0.014**, 1 of 148 concept-evaluations |
+| `proto_burmish` | 0.000 | 0.000 | 0.000 | 0.000 | **0.000**, 0 of 216 |
+
+**Neither new seed reproduced the hit.** The rate at `burmic` is **1 seed in 4**,
+not 1 in 2, and the pooled mean of 0.007 ± 0.014 has a spread that comfortably
+includes zero.
+
+Two things make this a real update rather than noise about noise. The r3 seeds
+are the **cleanest Burmish data this repository holds** — every node committed,
+nothing fell back, and the turn budget was never approached — so the zero is not
+an artifact of a starved or truncated run. And it removes the obvious benign
+explanation: more commits did not mean more chances.
+
+**The four seeds are poolable on the semantics but not on the hash, and the
+distinction is worth stating.** `configuration_components` differ in exactly one
+place, "the provider and limit settings", because r2 ran with
+`--max-total-cost-usd 4.5` and r3 with `3`. The agent instructions, the tool
+schemas, the anchors and the give-up thresholds hash identically, and **neither
+cost ceiling was ever reached** (r2 spent ~$2.5 a seed, r3 ~$1.9). So what the
+model saw was identical and only a run-level spend ceiling differed. That is a
+defensible pooling and it is not the same as an identical configuration, which
+is why it is written down rather than glossed.
+
+#### How much this is worth, stated carefully
+
+It is **one concept, in one seed of four** — one of 148 scored concept
+evaluations at `burmic`. The pooled mean is **0.007 ± 0.014** and the spread
+includes zero. `proto_burmish` is 0.000 across all four seeds and 216
+evaluations, and the assembly oracle reaches 25/37 at `burmic` against this
+1/37. Nothing here overturns §7.26 or §7.27.
+
+What it does change is the standing of the zero. Before this run the honest
+summary was *"no live run has ever produced a correct form that no daughter
+attests"*, and that could have meant the architecture cannot. It can, the
+mechanism that does it is the one that was designed to, and it fired on the
+family where the measure has room. The finding is now a matter of **rate**
+rather than of possibility, which is a different and more tractable problem.
+
+`unaccounted_column_rate` at that node is **0.537**, well above the 0.3
+threshold §7.2 names — but Burmish's floor has never been measured the way
+§7.2 requires, so this is a number to measure against a floor rather than a
+threshold breach. It is recorded here and not read.
 
 ---
 
@@ -4868,7 +5948,7 @@ Both commit shapes still accepted. A regression is a revert of one document.
 > 18 committed nodes** against the inventory's **16 of 50**, so stage 4 would
 > delete the only commit shape without the pathology and the only control a
 > future comparison has. **§7.22 audits what earlier decisions were taken
-> because stage 4 was coming**, and every item there is now open. §9 below
+> because stage 4 was coming**; §7.23 records the subsequent resolutions. §9 below
 > describes a deletion that is not happening.
 
 - Delete what §9 lists.
@@ -5077,7 +6157,8 @@ inventory is **printed** — by `inspect-run`, in `result.json`, in
 
 ## 11. Decisions that need the research owner
 
-**1. Whether stage 4 happens at all — DECIDED: yes, proceed.** The decision was
+**1. Original approval — SUPERSEDED by the 2026-08-30 cancellation in §8.**
+The following records the earlier decision, not current authorization. The decision was
 taken on the division of labour rather than on the accuracy: **reading a
 correspondence set and naming the proto-phoneme that gave rise to it is the
 linguist's job, and it is the job this harness exists to have a model do.** The

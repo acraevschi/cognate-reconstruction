@@ -329,3 +329,71 @@ def test_the_other_gate_conditions_still_apply_to_an_inventory() -> None:
     reasons = inventory.high_quality_failure_reasons
     assert any("inspected no evidence" in reason for reason in reasons)
     assert any("protocol failures" in reason for reason in reasons)
+
+
+def test_the_summary_splits_committed_units_by_the_shape_that_gives_them_a_unit() -> (
+    None
+):
+    """"247 committed rules" over a mixed corpus is not a quantity.
+
+    §12.2 fixed `committed_rule_count` to mean `len(commitments)` under an
+    inventory and rewrite rules under a cascade, and kept the field name. That
+    was a transitional inaccuracy while one shape was scheduled to replace the
+    other. §7.22 item 2 records that both are permanent, so the pooled total is
+    permanently a sum over two units and the split is what a reader can quote.
+
+    The pooled key stays: removing a key from a summary breaks a consumer
+    silently, which is a worse failure than an ambiguous one that is documented.
+    """
+    from cognate_reconstruction.cli import _trajectory_summary
+
+    summary = _trajectory_summary(
+        [
+            _trajectory(
+                _rule_commit(),
+                _metrics(committed_rule_count=2, sound_law_tests=2, cascade_tests=1),
+            ),
+            _trajectory(
+                _inventory_commit(),
+                _metrics(committed_rule_count=5, assembly_tests=1),
+                schema_version=INVENTORY_SCHEMA_VERSION,
+            ),
+        ]
+    )
+    assert summary["committed_rules"] == 7
+    assert summary["committed_units_by_shape"] == {"rules": 2, "inventory": 5}
+    assert summary["commit_shapes"] == {"inventory": 1, "rules": 1}
+
+
+def test_the_no_op_count_carries_the_denominator_it_applies_to() -> None:
+    """0 no-op rules over a corpus of inventories is not a finding.
+
+    `committed_no_op_rule_count` is 0 for an inventory by decision — there is no
+    analogue of a rule that cannot change any token sequence. Pooled, that makes
+    "0 committed no-op rules" read as a clean corpus when it may mean the check
+    had no subject. The denominator distinguishes the two.
+    """
+    from cognate_reconstruction.cli import _trajectory_summary
+
+    inventories_only = _trajectory_summary(
+        [
+            _trajectory(
+                _inventory_commit(),
+                _metrics(committed_rule_count=5, assembly_tests=1),
+                schema_version=INVENTORY_SCHEMA_VERSION,
+            )
+        ]
+    )
+    assert inventories_only["committed_no_op_rules"] == 0
+    assert inventories_only["trajectories_the_no_op_check_applies_to"] == 0
+
+    with_a_cascade = _trajectory_summary(
+        [
+            _trajectory(
+                _rule_commit(),
+                _metrics(committed_rule_count=2, sound_law_tests=2, cascade_tests=1),
+            )
+        ]
+    )
+    assert with_a_cascade["committed_no_op_rules"] == 0
+    assert with_a_cascade["trajectories_the_no_op_check_applies_to"] == 1

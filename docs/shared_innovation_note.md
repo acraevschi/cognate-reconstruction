@@ -1,17 +1,16 @@
 # Shared innovations, and what the supplied tree does not encode
 
-> Design note. Nothing here is implemented. Written 2026-08-23 against commit
-> `76cdd0b`.
+> **Deferred historical proposal; not implemented as of 2026-09-15.**
+> The inventory infrastructure now exists, and both commit shapes remain supported.
+> Stage 4 was cancelled; the original sequencing/deletion argument below is obsolete.
+> This proposal is outside the immediate [research plan](research_plan.md).
+> Existing cross-node reports are not the three reports proposed here.
+> Before implementing, revisit the linguistic claim: a shared child-to-parent
+> rewrite is a model claim about a correspondence, not by itself evidence of a
+> shared historical innovation. Parallel changes, direction and conditioning need
+> consideration. Keep any such observation report-only.
 >
-> **It depends on the proto-inventory change and must not be built before it.**
-> Stages 1–2 of `docs/proto_inventory_design.md` are what make this cheap; built
-> against the branch-cascade commit path it would be a second implementation
-> thrown away at stage 4. Sequencing, not preference — see §6.
->
-> This note was extracted from an external architectural review that proposed a
-> `analyze_subgrouping_evidence` tool. Most of that review's proposals are
-> refused elsewhere in these docs for importing typology; this one is not, and
-> §5 says exactly why.
+> Written 2026-08-23 against `76cdd0b`; retained for its design discussion.
 
 ## 1. The question nothing in the harness answers
 
@@ -150,7 +149,7 @@ cladistically unjustified"* — is therefore accepted in its first half and
 rejected in its second. Print which edges carry no innovation. Do not conclude
 anything about the topology, and do not word the line as though the harness has.
 
-## 6. Why this waits for the proto-inventory change
+## 6. Original sequencing rationale (superseded)
 
 Under the branch-cascade path the committed rules are whole-string rewrites
 scoped to branches, and "which children share an innovation" is a question about

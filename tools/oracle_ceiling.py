@@ -1110,6 +1110,11 @@ class OracleMeasurement:
     misses: tuple[tuple[str, tuple[str, ...], tuple[str, ...]], ...] = field(
         default=()
     )
+    # The concepts the top-1 form got exactly right. `top_exact` is their count;
+    # the identities are what `selection_reachable` has to be intersected with,
+    # because an oracle can match the selection bar's count while getting a
+    # different set of concepts right.
+    top_exact_concept_ids: tuple[str, ...] = ()
 
     @property
     def top_exact_rate(self) -> float:
@@ -1170,6 +1175,35 @@ class OracleMeasurement:
                 self.nodes_with_cross_branch_assembly
             ),
         }
+
+
+def selection_reachable(payload: WorkbenchPayload, binding) -> set[str]:
+    """Concepts some daughter already attests exactly, in the gold's own reading.
+
+    This is the **selection bar** of `docs/proto_inventory_design.md` §7.20,
+    recomputed here rather than imported: the `tools/` scripts are independent
+    implementations, so the bar an oracle is checked against must not come from
+    the script that publishes the bar.
+
+    A concept is reachable when any attested daughter form equals any gold
+    alternative -- the same any/any reading `HistoricalTargetEvaluation` uses,
+    so a hit here and a hit in a live score mean the same thing.
+
+    The point of the set, rather than its size: an oracle can match the bar's
+    *count* while getting a different set of concepts right, and only the
+    intersection says whether the architecture reached anything selection
+    could not.
+    """
+    gold: dict[str, set[tuple[str, ...]]] = {}
+    for form in binding.forms:
+        gold.setdefault(form.concept_id, set()).add(tuple(form.segments))
+    reachable = set()
+    for lexicon in payload.lexicons:
+        for form in lexicon.forms:
+            targets = gold.get(form.concept_id)
+            if targets and tuple(form.segments) in targets:
+                reachable.add(form.concept_id)
+    return reachable
 
 
 def select_binding(payload: WorkbenchPayload, root_id: str, requested: str | None):
@@ -1323,6 +1357,7 @@ def measure(
     top_neds: list[float] = []
     beam_neds: list[float] = []
     bcubed_scores: list[float] = []
+    hit_ids: list[str] = []
     for distribution in scored_node.distributions:
         targets = gold_alternatives.get(distribution.concept_id)
         if targets is None:
@@ -1332,6 +1367,7 @@ def measure(
         top = compare_to_nearest(candidates[0], targets)
         if candidates[0] in targets:
             top_hits += 1
+            hit_ids.append(distribution.concept_id)
         else:
             # The alternative the score was computed against, not the last one
             # written down: printing a different gold from the one that graded
@@ -1389,6 +1425,7 @@ def measure(
             else None
         ),
         misses=tuple(misses),
+        top_exact_concept_ids=tuple(hit_ids),
     )
 
 
@@ -1399,6 +1436,7 @@ def run(
     as_json: bool = False,
     oracle: str = CONTEXT_FREE,
     gold_node_id: str | None = None,
+    selection_overlap: bool = False,
 ) -> int:
     payload = WorkbenchPayload.model_validate_json(
         payload_path.read_text(encoding="utf-8")
@@ -1406,12 +1444,28 @@ def run(
     result = measure(
         payload, beam_width, oracle=oracle, gold_node_id=gold_node_id
     )
+    overlap = None
+    if selection_overlap:
+        binding = select_binding(
+            payload, result.root_node_id, gold_node_id or result.gold_node_id
+        )
+        reachable = selection_reachable(payload, binding)
+        hits = set(result.top_exact_concept_ids)
+        overlap = {
+            "selection_bar": len(reachable),
+            "selection_bar_rate": (
+                len(reachable) / result.evaluated if result.evaluated else 0.0
+            ),
+            "top_exact_inside_bar": len(hits & reachable),
+            "top_exact_outside_bar": sorted(hits - reachable),
+        }
     if as_json:
         _bootstrap.emit_json(
             {
                 **_bootstrap.measurement_envelope(payload_path),
                 "measurement": "oracle_ceiling",
                 **result.as_dict(),
+                **({"selection_overlap": overlap} if overlap else {}),
             }
         )
         return 0
@@ -1487,6 +1541,26 @@ def run(
             "    residue policy       "
             + ", ".join(result.residue_policy_choices)
         )
+    if overlap is not None:
+        outside = overlap["top_exact_outside_bar"]
+        print()
+        print("  against the selection bar (§7.20; nothing here is a gate):")
+        print(
+            f"    selection bar  {overlap['selection_bar']:>3}/{result.evaluated}  "
+            f"{overlap['selection_bar_rate']:6.1%}   "
+            "concepts some daughter already attests exactly"
+        )
+        print(
+            f"    inside it      {overlap['top_exact_inside_bar']:>3}"
+            f"/{result.top_exact}          "
+            "of this oracle's hits, a daughter had the form already"
+        )
+        print(
+            f"    outside it     {len(outside):>3}"
+            f"/{result.top_exact}          "
+            "reached with no daughter attesting it: "
+            + (", ".join(outside) if outside else "none")
+        )
     print()
     print("first 12 misses (reported | gold):")
     for concept_id, got, want in result.misses[:12]:
@@ -1523,6 +1597,17 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--selection-overlap",
+        action="store_true",
+        help=(
+            "Also report how many of this oracle's hits are concepts some "
+            "daughter already attests exactly. An oracle can match the "
+            "selection bar's count on a different set of concepts, so the "
+            "intersection is the part that says whether the architecture "
+            "reached anything selection could not."
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         help="Emit one machine-readable object, including the measured source.",
@@ -1534,6 +1619,7 @@ def main() -> int:
         as_json=args.json,
         oracle=args.oracle,
         gold_node_id=args.gold_node,
+        selection_overlap=args.selection_overlap,
     )
 
 

@@ -1043,6 +1043,22 @@ def _schema_variants(trajectories) -> list[dict[str, Any]]:
     ]
 
 
+def reduce_units(pairs) -> dict[str, int]:
+    """Sum committed units per commit shape.
+
+    `committed_rule_count` means correspondence sets under an inventory and
+    rewrite rules under a cascade — §12.2 fixed the meaning and deliberately
+    kept the field name. While one shape was scheduled to replace the other,
+    pooling the two was a transitional inaccuracy. §7.22 item 2 records that
+    both shapes are permanent, so the pooled total is now permanently a sum
+    over two units, and the split is what a reader can actually quote.
+    """
+    totals: dict[str, int] = {}
+    for shape, count in pairs:
+        totals[shape] = totals.get(shape, 0) + count
+    return totals
+
+
 def _trajectory_summary(trajectories) -> dict[str, Any]:
     completed = [item for item in trajectories if item.completed]
     models = Counter(item.model_id or "unknown" for item in trajectories)
@@ -1099,8 +1115,25 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
             item.metrics.compacted_tool_results for item in trajectories
         ),
         "total_retries": sum(item.metrics.retry_count for item in trajectories),
+        # Kept, because records and readers predate the split below, and
+        # removing a key from a summary breaks a consumer silently. Read it as
+        # a node count's worth of units and nothing finer: §12.2 fixed
+        # `committed_rule_count` to mean `len(commitments)` under an inventory
+        # and rules under a cascade, so with both shapes permanent (§7.22 item
+        # 2) this sum adds correspondence sets to rewrite rules.
         "committed_rules": sum(
             item.metrics.committed_rule_count for item in completed
+        ),
+        # The same total, split by the shape that gives it its unit. This is
+        # the one to quote: "247 committed rules" over a mixed corpus is not a
+        # quantity, and until 2026-08-31 it was the only number offered.
+        "committed_units_by_shape": dict(
+            sorted(
+                reduce_units(
+                    (item.commit_shape or "none", item.metrics.committed_rule_count)
+                    for item in completed
+                ).items()
+            )
         ),
         # How many nodes this build has committed under each protocol. The
         # migration's daily progress signal, out of data every record already
@@ -1112,8 +1145,14 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
                 ).items()
             )
         ),
+        # 0 under an inventory by decision rather than by absence (§12.2), so
+        # the denominator is stated: a pooled count of 0 over a mixed corpus
+        # cannot be read as "no no-op rules were committed".
         "committed_no_op_rules": sum(
             item.committed_no_op_rule_count for item in completed
+        ),
+        "trajectories_the_no_op_check_applies_to": sum(
+            item.commit_shape == "rules" for item in completed
         ),
         "trajectories_with_no_op_rules": sum(
             item.committed_no_op_rule_count > 0 for item in completed
@@ -1488,6 +1527,34 @@ def _command_export_trajectories(args: argparse.Namespace) -> None:
         f"wrote {len(examples)} generic tool-use examples to {args.output}",
         file=sys.stderr,
     )
+    if args.high_quality_only:
+        # §7.22 item 3. The gate applies two workflow conditions to a cascade
+        # and one to an inventory, and both branches are correct: correspondence
+        # sets have no order, so `test_rule_cascade`'s condition has no subject
+        # there. What was missing is that a corpus selected under it mixes
+        # sessions filtered at two strictnesses with nothing saying so, and a
+        # selection cannot be un-made later. So the mix is printed with the
+        # selection rather than the asymmetry being argued away.
+        passed = Counter(
+            item.commit_shape or "none"
+            for item in trajectories
+            if item.completed and item.high_quality
+        )
+        offered = Counter(
+            item.commit_shape or "none" for item in trajectories if item.completed
+        )
+        print(
+            "  --high-quality-only applies a different number of workflow "
+            "conditions per commit shape (2 to 'rules', 1 to 'inventory'), so "
+            "this corpus is filtered at two strictnesses:",
+            file=sys.stderr,
+        )
+        for shape in sorted(offered):
+            print(
+                f"    {shape:<12} {passed.get(shape, 0)} of {offered[shape]} "
+                "completed trajectories passed",
+                file=sys.stderr,
+            )
 
 
 def _parser() -> argparse.ArgumentParser:

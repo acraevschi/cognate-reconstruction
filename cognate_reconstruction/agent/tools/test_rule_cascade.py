@@ -5,6 +5,7 @@ from __future__ import annotations
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import (
     CascadeFinalForm,
+    CascadeRuleSummary,
     TestRuleCascadeArgs,
     TestRuleCascadeResult,
 )
@@ -18,6 +19,7 @@ from cognate_reconstruction.agent.tools.errors import (
 )
 from cognate_reconstruction.agent.tools.heldout import held_out_evaluation
 from cognate_reconstruction.schemas.common import WorkbenchModel
+from cognate_reconstruction.schemas.inventory import AssemblyDetail
 from cognate_reconstruction.schemas.rules import ReconstructionRule
 
 
@@ -87,11 +89,32 @@ def test_rule_cascade(
             "no forms matched the requested cascade scope",
             code="empty-scope",
         )
+    # §7.22 item 4. Under `summary` the per-form record of applications that
+    # succeeded is dropped and the counts and every exception are kept. That is
+    # two thirds of this call's characters on the measured Polynesian case, and
+    # the reason it is that large is worth stating: `exceptions` is a computed
+    # field over `results`, so the failures are serialized twice — once inside
+    # the results and once again beside them.
+    summaries = tuple(
+        CascadeRuleSummary(
+            rule=report.rule,
+            words_applied=report.words_applied,
+            anchors_matched=report.anchors_matched,
+            forms_evaluated=len(report.results),
+            exceptions=report.exceptions,
+            applied_form_ids=tuple(
+                result.form_id for result in report.results if result.locations
+            ),
+        )
+        for report in reports
+    )
+    full = arguments.detail is AssemblyDetail.FULL
     result = TestRuleCascadeResult(
         validation_call_id=call_id,
         rules=parsed,
         segmentation_overlay_id=arguments.segmentation_overlay_id,
-        reports=tuple(reports),
+        reports=tuple(reports) if full else (),
+        report_summaries=() if full else summaries,
         final_forms=tuple(final_forms),
     )
     # Whether the branches now agree on a parent is the point of the cascade, and

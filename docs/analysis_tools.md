@@ -1,6 +1,14 @@
 # Analysis tools
 
-Six standalone scripts under `tools/`. None needs a model, a provider, or the network:
+> **Interpretation updated 2026-09-15.** Read [current state](current_state.md)
+> and [experiment policy](experiment_policy.md) before planning runs. Named
+> oracle “ceilings” below are measurements of particular answer-key-assisted
+> procedures, not universal impossibility proofs or expected model scores.
+> Outside-selection hits exceed literal selection; they do not prove historical
+> inference, and correct reconstructions may equal conservative daughter forms.
+> The September evaluation work is planned, not implemented by this doc edit.
+
+Standalone research scripts under `tools/`. None needs a model, a provider, or the network:
 they exercise the deterministic layer directly, so they run in seconds and can be pointed at
 any prepared benchmark input.
 
@@ -43,12 +51,13 @@ around that subcommand, kept because the documented invocation references it. Th
 logic it used to hold is `cognate_reconstruction/benchmarks/builder.py`, driven by a
 declarative file, so a second family is a definition rather than a second script.
 
-## `oracle_ceiling.py` — what a flawless model would score
+## `oracle_ceiling.py` — answer-key-assisted reconstruction probes
 
-Gives every branch the best child-to-parent rule set an oracle can write, computed directly
-against the withheld gold, then runs the real `RuleBasedReconstructor` bottom-up. Whatever it
-reports is the accuracy no model can beat under the current architecture *and that oracle*,
-because the model's only job — choosing rules — has been done perfectly.
+Constructs child-to-parent rule sets using the withheld gold, then runs the
+real `RuleBasedReconstructor` bottom-up. The assembly mode exercises the other
+commit path. These are strong diagnostic constructions under stated search and
+alignment assumptions, not exhaustive proofs of the best result any possible
+model or valid rule set could achieve.
 
 It prints three exact numbers — the third is the point — and the graded distances beside
 them:
@@ -68,6 +77,21 @@ graded, against the same gold (lower is better for NED):
 The graded row exists because the exact counts move in steps of 1/46. A change that leaves
 every concept in the same match/miss bucket while making the misses worse would not move
 them at all, and normalized edit distance would.
+
+**`--selection-overlap` adds the block condition 11 reads**, and no ceiling on this page
+should be quoted without it:
+
+```
+against the selection bar (§7.20; nothing here is a gate):
+  selection bar   38/46   82.6%   concepts some daughter already attests exactly
+  inside it       26/27          of this oracle's hits, a daughter had the form already
+  outside it       1/27          reached with no daughter attesting it: 2098
+```
+
+The bar is recomputed here from the payload rather than imported from
+`identity_commit_probe.py`, per the `tools/` convention: the bar an oracle is checked against
+must not come from the script that publishes the bar. **The last row counts exact hits unavailable through literal daughter-form
+selection**, and it is small on this family — see the table under "the bar beside every ceiling" below.
 
 **The selection gap is the headline.** The deterministic layer holds the correct proto-form
 far more often than it reports one, which means accuracy is being lost after the model has
@@ -681,11 +705,49 @@ anything, and `east`, which no live seed ever committed, is one of them.
 Burmish is the only family here where the hard bar is zero, and its mean NED of
 0.6 says why: no daughter form is ever the gold, or close to it.
 
+### The bar beside every ceiling
+
+Condition 11 (`docs/proto_inventory_design.md` §7.1) reads a ceiling and the bar
+together, over sets rather than totals, because on Polynesian they are within one
+concept of each other and a comparison of the totals says nothing. Measured
+2026-08-30 with `oracle_ceiling.py --selection-overlap`:
+
+| gold node | selection bar | assembly ceiling | of the ceiling's hits, outside the bar |
+| --- | --- | --- | --- |
+| `proto_polynesian` | 38/46 (0.826) | 39/46 (0.848) | **3** — `646`, `1439`, `2098` |
+| `synthetic_hard:proto` | 21/25 (0.840) | 25/25 (1.000) | 4 |
+| `synthetic_hard:east` | **25/25 (1.000)** | 22/25 (0.880) | **0** |
+| `synthetic_hard:west` | **25/25 (1.000)** | 25/25 (1.000) | **0** |
+| `burmish:proto_burmish` | **0/54 (0.000)** | 42/54 (0.778) | **42** — all of them |
+| `burmish:burmic` | **0/37 (0.000)** | 25/37 (0.676) | **25** — all of them |
+
+The two branch-cascade oracles on Polynesian read the same way: `context_free`
+reaches 27/46 with **1** outside the bar, `contextual` 33/46 with **2**.
+
+Three readings, in the order they matter:
+
+- **`synthetic_hard` at `east` and `west` cannot test output beyond selection.**
+  Every gold form is attested by some daughter, so outside-selection exact hits
+  are necessarily zero. These nodes can still test justified retention, rules
+  and other behavior; this one diagnostic has no eligible concepts.
+- **Polynesian's assembly oracle has 36 daughter-attested hits and 3 unattested
+  hits.** This describes the outputs, not the procedure or reasoning that
+  produced the first 36.
+- **Burmish has no gold exact hits reachable by literal selection.** Every
+  exact hit there is outside the selection bar. This does not resolve the
+  provisional intermediate target or other evaluation caveats.
+
+The bar in this table and the `best form per concept` column above are computed by
+two independent implementations — `selection_reachable` in `oracle_ceiling.py`
+and `best_form_baseline` in `identity_commit_probe.py` — and agree on all six
+rows. That agreement is the check, not a redundancy to remove.
+
 **Read the first row against the live table in [benchmarks](benchmarks.md).**
-Every live Polynesian figure recorded in this repository is below 0.587. The
-last two rows are why Burmish is worth keeping despite scoring zero live: a copy
-earns nothing there, so a non-zero figure is reconstruction rather than
-resemblance.
+Gemini later scored 0.630 ± 0.022 on Polynesian, above the 0.587
+single-daughter baseline but with zero outside-selection hits. Burmish later
+produced one such hit at the provisional `burmic` proxy and none at its root;
+see the current-state summary. Novel exact combinations alone do not establish
+historical validity or the source of the model's knowledge.
 
 The two modes are independent computations — the baseline never reads a run, the
 probe never reads the baseline — and on the banked sweeps every identity commit
@@ -726,7 +788,7 @@ selection does to this comparison.
   `--oracle` beside the number; the same benchmark gives 37, 39 or 40 depending on them.
 - **Any new benchmark definition, or any change to one** → `identity_commit_probe.py
   --baseline`, before any live number is quoted from it. A benchmark whose copy baseline is
-  unknown cannot say whether a live figure is reconstruction or resemblance.
+  unknown cannot say how much a live figure exceeds literal selection.
 - **Any live sweep** → `identity_commit_probe.py` over its seed directories, and publish the
   copy count beside the accuracy. Never filter on it.
 - **Any change to benchmark selection or preparation** → rebuild both definitions with

@@ -22,12 +22,17 @@ harness does the string work. That is the comparative method's own object: a
 correspondence set is the unit of evidence, and a proto-phoneme is what you
 reconstruct from one.
 
-An older protocol is still accepted, in which you commit an ordered cascade of
+A second protocol is equally accepted, in which you commit an ordered cascade of
 child-to-parent rewrite rules instead. Both shapes reach the same tools and the
 same commit call; `commit_reconstruction` takes `inventory` **or** `rules` and
-refuses a call carrying both. **Prefer the inventory.** The rule cascade cannot
-express a parent segment no single child preserves, and its section below is
-kept for the cases where you deliberately want the older shape.
+refuses a call carrying both.
+
+**Neither shape is preferred. They express different things, and the evidence at
+this node decides which fits it.** A rule rewrites one child's own segments, so
+a parent segment that no single child preserves cannot be produced by any
+cascade. Correspondence sets, on the other hand, are independent and carry no
+order, so a change that only makes sense as the consequence of another change
+cannot be stated as an inventory. Where both fit, either is a complete answer.
 
 ## Comparative method
 
@@ -400,6 +405,22 @@ any one batch of alignments. `total_set_count`, `matched_set_count`, and
 you were given. The `set_id` is derived from the reflex tuple, the child column
 order and the overlays in force, so it is reproducible outside the session and
 the harness re-derives it rather than trusting your citation.
+
+Each returned set whose children **disagree** also carries `outgroup_reflexes`:
+the segments attested by nodes outside the active children in that set's own
+aligned columns, with which nodes show each. You do not have to ask for it. A
+segment attested outside the group was present before the group split, so this
+is the evidence that says which child innovated — the same reading `polarize`
+gives for one correspondence, computed once for the whole survey. Three things
+to know about it. Only *presence* is listed: a node showing nothing attests
+nothing, and absence is equally consistent with independent loss. Sets whose
+children already agree are omitted, because there is no competing value to
+choose between. And `outgroup_note` says whether any true out-group was read at
+all — at the root none can be, since nothing lies outside it and every available
+node is a descendant showing what these children became.
+
+**These nodes are evidence, not a second reconstruction target.** They never
+enter the assembled parent form, and no residue policy has to account for them.
 
 `list_concepts` returns readable concept metadata with pagination. `search_forms`
 can retrieve forms such as every item with word-initial `n` without loading the

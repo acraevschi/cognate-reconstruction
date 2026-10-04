@@ -170,6 +170,16 @@ def _session_validations(context: AgentContext) -> tuple[_ValidationRecord, ...]
                     supporting.setdefault(report.rule.rule_id, []).append(
                         result.form_id
                     )
+        # A preview taken at detail="summary" carries no `reports` — it drops
+        # the per-form results and keeps the IDs computed from them, because
+        # those IDs are what this resolution actually needs. Reading only
+        # `reports` would leave a summary-validated commit with no supporting
+        # forms and no error, which is the quiet failure §7.22 item 4's change
+        # had to avoid.
+        for summary in cascade.report_summaries:
+            supporting.setdefault(summary.rule.rule_id, []).extend(
+                summary.applied_form_ids
+            )
         records.extend(
             _ValidationRecord(
                 call_id=call_id,
