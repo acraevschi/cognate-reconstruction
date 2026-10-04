@@ -146,6 +146,7 @@ def with_unit_diagnostics(diagnostics, top, targets):
     comparisons = tuple(dict(compare_cognate_units(predicted, annotated_units(target))) for target in targets)
     scored = [c for c in comparisons if c["status"] == "explicit_units"]
     return diagnostics.model_copy(update={
+        "unit_evaluator_version": "task04-units-v1",
         "morphology_status": "explicit_output_units_target_unknown" if not scored else "explicit_cognate_units",
         "cognate_unit_comparisons": comparisons,
         "cognate_unit_exact": (any(c["unit_exact_rate"] == 1 and not c["extra_unit_ids"] for c in scored)

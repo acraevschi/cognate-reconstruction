@@ -61,7 +61,7 @@ For implementation smoke checks: one representative node/fixture, one run,
 caps, not targets or promises that a run completes. Start smaller when sufficient.
 The optional reminder experiment must distinguish the turn cap from the call cap.
 
-For prompt 06: begin with one baseline and one candidate run on the same small
+For prompt 07: begin with one baseline and one candidate run on the same small
 fixture. Plan at most **two hours total local inference** for the first pilot
 batch, serially. Only use remaining time for a prespecified replication if it
 can answer the question. A larger study requires a concrete expanded plan with
@@ -79,7 +79,7 @@ The user permits sparing Gemini Flash use; do not demand approval again merely
 because a task uses a paid API within this scope. It is not a test-suite dependency
 or the automatic fallback when local inference is inconvenient.
 
-Only prompt 06 (or an explicitly authorized later experiment) should spend API
+Only prompt 07 (or an explicitly authorized later experiment) should spend API
 money under this plan, after offline/local evidence identifies a specific question
 that a stronger/different model could resolve. Default ceiling: **one small pilot,
 up to US$2 total across requests and retries**, with a 30-minute wall-clock cap.

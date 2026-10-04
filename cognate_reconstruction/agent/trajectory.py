@@ -238,12 +238,12 @@ class AgentNodeMetrics(WorkbenchModel):
         return self.protocol_failures / self.tool_call_count
 
 
-EVIDENCE_SCHEMA_VERSION = "4.0"
+EVIDENCE_SCHEMA_VERSION = "5.0"
 
 
 class AgentTrajectory(WorkbenchModel):
     trajectory_id: NonEmptyStr
-    schema_version: Literal["2.0", "3.0", "4.0"] = EVIDENCE_SCHEMA_VERSION
+    schema_version: Literal["2.0", "3.0", "4.0", "5.0"] = EVIDENCE_SCHEMA_VERSION
     run_id: NonEmptyStr
     configuration_sha256: NonEmptyStr
     node_id: NonEmptyStr
@@ -441,7 +441,7 @@ class JsonlTrajectorySink:
 
 class TrainingExample(WorkbenchModel):
     example_id: NonEmptyStr
-    schema_version: Literal["2.0", "3.0", "4.0"] = EVIDENCE_SCHEMA_VERSION
+    schema_version: Literal["2.0", "3.0", "4.0", "5.0"] = EVIDENCE_SCHEMA_VERSION
     run_id: NonEmptyStr
     node_id: NonEmptyStr
     messages: tuple[LLMMessage, ...]

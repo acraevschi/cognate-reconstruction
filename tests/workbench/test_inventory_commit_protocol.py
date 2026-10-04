@@ -104,7 +104,7 @@ def _call(registry, context, name, call_id, **arguments):
 
 def _survey(registry, context, **arguments) -> dict:
     result = _call(
-        registry, context, "summarize_correspondences", "survey", min_support=1,
+        registry, context, "summarize_correspondences", "survey", min_support=1, reading="local",
         **arguments,
     )
     assert result.ok, result.error
@@ -885,7 +885,7 @@ def test_every_set_the_survey_names_is_one_the_assembler_matches() -> None:
             context,
             "summarize_correspondences",
             f"survey-{offset}",
-            min_support=1,
+            min_support=1, reading="local",
             limit=200,
             offset=offset,
         )

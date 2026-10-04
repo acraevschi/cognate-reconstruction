@@ -84,3 +84,43 @@ express exact column/unit restrictions, so it is an approximation rather than
 an executable substitute for the approved assembly. Rule commits remain executable.
 
 Runtime and migration details: [evidence migration](evidence_migration.md).
+
+## Current amendment — task04 units-v2, 2026-10-04
+
+The task03 design above is historical. Current implementation/result:
+[evidence repair](evidence_repair.md), [machine results](evidence_repair_results.json).
+Exact local scopes and column bindings remain; whole-form/full-span simplex units
+now have equivalent geometry/local scoping. Default surveys return descriptive
+`reading="recurrence"` rows with `csp-*` IDs and explicit local `member_set_ids`.
+Use `reading="local", min_support=1` for individual `csu-*` commitments. Recurrence
+rows do not declare cognacy or automatically authorize execution.
+
+`shared_claims` explicitly selects a pattern's local members and one proto
+value/null, confidence, rationale and optional conditioning/directionality. Only
+those members expand into ordinary local commitments. Stored expanded requests
+and `approved_shared_claims` retain both execution and approval provenance.
+Different member collections/choices require exact re-preview; exceptions are
+excluded and committed locally, and competing conditioned values remain supported.
+
+Count semantics `independent-etyma-v1`: support is distinct supplied etyma plus
+separately reported unresolved concept/unit opportunities. `etymon_count`,
+`unresolved_unit_count`, `concept_count`, distinct positioned source combinations
+(`source_column_count`) and alternative execution columns (`occurrence_count`)
+are separate. A supplied etymon ID is not source attestation or proof of historical
+independence. Repeated columns/alternatives do not add independent support. Sparse
+values can be explicitly committed; the filter is not a linguistic prohibition.
+Realignment joins verify source-column gain, reporting that and independent-support
+gain separately. Contrast checks require actual reflex-tuple distinctions.
+
+Local outgroup profiles/scoped polarize retain concept/unit/column/source pointers;
+recurrence evidence is labelled separately. Counts are complete, witness examples
+bounded with explicit truncation; absence remains diagnostic, not a positive witness.
+Partial restorations require the named unit in the cited outgroup. Targets stay
+scorer-only. Normal diagnostic target layouts and reconstructed parent pieces reach
+ordinary serialized run evaluation, preserving task02-v1 raw scores and the
+underdetermined order/lost-contrast readings. Piece diagnostics record
+`task04-units-v1` where measured.
+
+Trajectories/checkpoints now write 5.0/3.0. Earlier records remain audit-readable;
+old checkpoints and units-v1 execution require their original semantics/checkout.
+The piece representation stays units-v1. Legacy whole-string replay is unchanged.

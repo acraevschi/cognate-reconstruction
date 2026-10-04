@@ -1,7 +1,10 @@
 # Current state
 
-Updated 2026-10-03 with task 03 units-v1 implementation; final smoke accounting
+Updated 2026-10-04 with task 04 units-v2 repair; task 03 final smoke accounting
 is in [evidence results](research/evidence_results.md).
+Prompt numbering was updated on 2026-10-04; this entry document uses the current
+01–08 sequence. Dated research reports and conversations retain their original
+numbering; the shared handoff contains the translation.
 The September baseline was
 read from the checkout, Claude conversation ending 2026-09-02, and saved experiments.
 The audit changes no reconstruction behavior. Task 02 adds report-only binding
@@ -32,7 +35,7 @@ Typed tools expose alignments, correspondence patterns, outgroup witnesses,
 previous hypotheses, segmentation/realignment overlays, and hypothesis previews.
 The model commits either child-to-parent rules or a proto-inventory; deterministic
 execution creates parent beams. Both paths are supported, with strict validation,
-versioned trajectories (new 4.0, with 2.0/3.0 readable), reports, and completed-node resume.
+versioned trajectories (new 5.0, with 2.0/3.0/4.0 readable), reports, and completed-node resume.
 No mid-node resume or training backend exists.
 
 Ingestion supports supplied Newick trees, native polytomies, historical targets
@@ -105,7 +108,7 @@ provisional proxy. Saved proxy gold already normalizes grapheme/phoneme slash
 tokens, so the older unnormalized-source warning does not explain these scores.
 
 Next priorities are 02's evaluation/notation contract, a bounded 03 repair for
-traced unit/provenance defects, and 04's explicit sparse/polarity instructions.
+traced unit/provenance defects, and 05's explicit sparse/polarity instructions.
 These are proposals, not implemented improvements. No largest whole-benchmark
 causal effect is established. Read the handoff amendments before downstream work.
 
@@ -147,7 +150,7 @@ perfect/wrong controls are score fixtures, not live-model performance.
 Old synthetic definitions are untouched. Focused checks: 106 passed; portable
 suite: 571 passed, 41 deselected, one run. Zero live/paid calls or downloads.
 
-Task 03 is ready under this contract; 04/05 have independent work, and 06 awaits
+Task 03 is ready under this contract; 05/06 have independent work, and 07 awaits
 those interventions before a frozen comparison. See tracked handoff amendments.
 
 ## Task 03 evidence, verified 2026-10-03
@@ -161,7 +164,34 @@ repair CRAWL/FLOWER pairing but do not increase three-concept proxy exact (1/3).
 Exactly one local Gemma smoke had two accepted previews and no valid commit,
 ending on ProtocolStallError after 597.3 s. No broad quality improvement is claimed.
 Partial scopes can lower support/pooling and increase tool costs; compare these
-readings explicitly in 06. Task 04 has concrete malformed-call examples to repair.
+readings explicitly in 07. Task 05 has concrete malformed-call examples to repair.
+
+## Task 04 evidence repair, verified 2026-10-04
+
+[Evidence repair](research/evidence_repair.md) and
+[machine results](research/evidence_repair_results.json) reproduce all review
+counterexamples and repair independent-support counts, false mergers, local witnesses
+and normal morphology scoring. Exact local scopes remain; default descriptive
+recurrence rows support explicit `shared_claims` collections, with local exceptions
+and competing conditioned values. No tuple silently assigns cognacy.
+
+Count semantics are `independent-etyma-v1`: supplied etyma, unresolved concept/unit
+opportunities, concepts, positioned source combinations and alternative execution
+occurrences are distinct. Whole/full-span simplex annotation geometry is equivalent.
+Burmic/Maruic retain 543/738 local sets and expose 210/320 patterns. Default filters
+cover all 54 concepts but only 437/567 and 1033/1340 alternative occurrences. Sparse
+material remains inspectable/committable; these counts are not a quality estimate.
+
+The normal scorer receives hidden target layouts and actual approved parent pieces
+through JSONL; correct/wrong/extra/missing/reordered scripted controls pass. Raw
+scores and underdetermined order/lost contrast are retained. Trajectories/checkpoints
+write 5.0/3.0; old records remain readable, but old checkpoints and units-v1
+execution are explicitly refused under current semantics. Both commit shapes and
+legacy replay remain. Final portable suite: 607 passed/41 deselected. All 364 banked
+scores, eleven beams/reports and four result/event hash pairs reproduce unchanged.
+No live inference/provider/model operations occurred. Task 05 owns the next live
+smoke and broader protocol/guidance. 07 needs final usability, instrument/cap/manifest
+checks and another independent review after 04/05 and relevant 06 work.
 
 ## How to interpret earlier Polynesian results
 
@@ -189,7 +219,7 @@ node, input, width and alignment reading whenever quoting them.
 3. **Old Burmese at `burmic` is a provisional proxy.** The benchmark explicitly
    says it is not the ancestor of all that node's descendants. Preserve old
    scores for provenance, but do not treat this as validated intermediate gold.
-4. **New inventories share units-v1 evidence and execution.** Source/model-approved
+4. **New inventories share units-v2 evidence and execution.** Source/model-approved
    pieces and exact column bindings survive into parent beams. Unknown analysis
    stays unknown; compatible claims merge provenance and incompatible claims stay
    separate. Legacy artifacts keep their whole-string interpretation. See the
@@ -215,9 +245,18 @@ node, input, width and alignment reading whenever quoting them.
 ## What is next
 
 Tasks 01–03 provide offline diagnosis, task02-v1 interpretation and units-v1
-mechanics. Task 04 should start from the revised tool/validation contract and
-actual smoke rejections, retaining its separate instruction-effect scope.
-Task 05 can proceed with provider accounting and checkpoint compatibility.
-Task 06 still needs those interventions or an explicit scope-out before a frozen
-comparison. Forward prediction remains deferred. No broad reconstruction gain
-has been established by task 03's source-unit controls or interface smoke.
+mechanics. The 2026-10-04 independent review reproduced false merger requirements
+on identical scoped retention mappings, cross-etymon mixing in scoped outgroup
+profiles, alternative-dependent support, and missing target-piece integration in
+normal morphology evaluation. Full-span simplex annotations also receive local
+scopes, obscuring cross-word recurrence. Existing focused tests and legacy replay
+pass; they do not cover those counterexamples. See the shared handoff for evidence.
+
+Task 04 has delivered the bounded offline repair and verified instruments
+described above. Task 05 is ready under the units-v2 contract and prioritizes
+reliable preview-to-commit use, with protocol and linguistic guidance identifiable.
+Task 06 remains independent. Task 07 requires an instrument/interface gate, usable
+frozen arms and a focused manifest review unless the owner scopes that review out;
+06 can be explicitly scoped out for a bounded single-node pilot with demonstrated
+interruption/missing-outcome handling. Forward prediction remains deferred.
+No broad reconstruction gain has been established by the controls or smoke.

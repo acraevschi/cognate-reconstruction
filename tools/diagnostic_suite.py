@@ -13,6 +13,7 @@ from cognate_reconstruction.agent.reconstructor import AgenticNodeReconstructor
 from cognate_reconstruction.agent.schemas import LLMMessage, LLMToolCall, MessageRole
 from cognate_reconstruction.agent.service import ReconstructionService
 from cognate_reconstruction.evaluation.diagnostics import compare_cognate_units, pieces
+from cognate_reconstruction.alignment.units import source_analyses
 from cognate_reconstruction.evaluation.run import evaluate_run
 from cognate_reconstruction.ingestion import ingest_payload
 from cognate_reconstruction.schemas.beam import (
@@ -56,6 +57,7 @@ def score_controls(built):
                     candidate_id=f"fixture:{label}:{form.form_id}",
                     segments=form.segments if label == "perfect_fixture" else ("WRONG",),
                     probability=1.0, log_score=0.0, derivations=(),
+                    analysis=source_analyses(form)[0] if label == "perfect_fixture" else None,
                 ),),
             ) for form in binding.forms)
             steps.append(step.model_copy(update={"output_beam": NodeBeamState(
@@ -97,6 +99,10 @@ def main():
                                for t in report.targets],
                } for label, report in controls.items()}}
         if "target_unit_layouts" in case:
+            from evidence_repair_controls import run_controls
+            from tempfile import TemporaryDirectory
+            with TemporaryDirectory(prefix="task04-normal-morphology-") as control_dir:
+                row["normal_unit_controls"] = run_controls(control_dir)
             row["piece_control"] = []
             binding = built.payload.historical_form_bindings[0]
             for form in binding.forms:

@@ -52,6 +52,8 @@ def spec_for(ctx, values, **kwargs):
 
 
 def call(ctx, name, cid, **args):
+    if name == "summarize_correspondences":
+        args.setdefault("reading", "local")
     return default_tool_registry().execute(LLMToolCall(call_id=cid, name=name, arguments=args), ctx)
 
 

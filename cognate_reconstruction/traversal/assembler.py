@@ -438,7 +438,7 @@ def inventory_contrast_reductions(
 
     Read straight off the inventory rather than inferred from a mapping, which
     is both more direct than applying a cascade and better evidence: it sees the
-    merger *as* a merger. Two sets carrying one `proto_segment` whose
+    merger *as* a merger. Sets with distinct reflex tuples carrying one `proto_segment` whose
     conditionings are not both present are a merger — a distinction some child
     makes that the parent does not; a non-null reflex against a null
     `proto_segment` is a deletion.
@@ -460,6 +460,8 @@ def inventory_contrast_reductions(
         # it, so an unconditioned member is what makes this a lost distinction.
         unconditioned = [item for item in items if item.conditioning is None]
         if len(unconditioned) < 2:
+            continue
+        if len({item.reflexes for item in unconditioned}) < 2:
             continue
         for item in unconditioned:
             merged_ids[item.set_id] = (
@@ -1046,7 +1048,7 @@ class ProtoInventoryAssembler:
                 rows: tuple[tuple[str | None, ...], ...] = ()
                 column_mass = 0.0
             else:
-                if plan.contract_version == "units-v1":
+                if plan.contract_version == "units-v2":
                     forms = tuple(LexicalForm(form_id=candidate_id, variety_id=child_id,
                         concept_id=concept_id, segments=segments, analysis=analyses_by_id[candidate_id])
                         for child_id, candidate_id, segments, _ in candidate_tuple)
@@ -1066,7 +1068,7 @@ class ProtoInventoryAssembler:
                     RESTORATION_LOG_MASS
                     * len(active_restorations)
                 )
-            if plan.contract_version == "units-v1" and assembled:
+            if plan.contract_version == "units-v2" and assembled:
                 if pass_through:
                     analysis = analyses_by_id[candidate_tuple[0][1]]
                 else:
@@ -1130,7 +1132,7 @@ class ProtoInventoryAssembler:
             report = ConceptAssemblyReport(
                 unit_ids=tuple(dict.fromkeys(c.unit_id for c in evidence_columns)),
                 unmatched_columns=tuple(o.resolution for o in outcomes
-                    if o.resolution.resolved_by == "residue_policy")[:8] if plan.contract_version == "units-v1" else (),
+                    if o.resolution.resolved_by == "residue_policy")[:8] if plan.contract_version == "units-v2" else (),
                 concept_id=concept_id,
                 alignment_id=_assembly_alignment_id(
                     parent_node_id, concept_id, segments_by_child, plan
@@ -1181,6 +1183,8 @@ class ProtoInventoryAssembler:
         if len(set(child_ids)) != len(child_ids):
             raise ValueError("child beam node IDs must be unique")
         request = inventory.request
+        if inventory.evidence_contract_version == "units-v1":
+            raise ValueError("units-v1 execution requires the original checkout; units-v2 count/scope semantics cannot replay it safely")
         verification_cache = {} if self.semantic_cache is None else self.semantic_cache
         verification_work = AssemblyWork()
         if tuple(request.child_node_ids) != child_ids:
@@ -1189,12 +1193,12 @@ class ProtoInventoryAssembler:
                 f"child beams: {list(request.child_node_ids)} against "
                 f"{list(child_ids)}"
             )
-        if inventory.evidence_contract_version == "units-v1":
+        if inventory.evidence_contract_version == "units-v2":
             reading, verification_work = evidence_map(tuple(beam_to_lexicon(beam) for beam in child_beams), self.aligner,
                 unit_orders=request.unit_orders, overrides=overrides,
                 overlay_ids=(request.segmentation_overlay_id, request.alignment_overlay_id), cache=verification_cache)
             if reading.evidence_revision != inventory.evidence_revision:
-                raise ValueError("units-v1 evidence changed since preview; re-survey and preview these exact candidate analyses/overlays")
+                raise ValueError("units-v2 evidence changed since preview; re-survey and preview these exact candidate analyses/overlays")
         plan = build_plan(
             child_ids,
             request.commitments,
@@ -1205,7 +1209,7 @@ class ProtoInventoryAssembler:
             overrides=overrides,
             inventory=inventory,
         )
-        self.work_counts = {"candidate_tuples": 0, "alignment_calls": verification_work.alignment_calls,
+        self.work_counts = {"projected_columns": verification_work.projected_columns, "candidate_tuples": 0, "alignment_calls": verification_work.alignment_calls,
                             "cache_hits": verification_work.cache_hits}
         pruned_candidates = 0
         if plan.asserts_nothing:
@@ -1310,7 +1314,7 @@ class ProtoInventoryAssembler:
             )
         )
         diagnostics = ReconstructionDiagnostics(
-            assembly_work=AssemblyWork(**self.work_counts, pruned_candidates=pruned_candidates) if inventory.evidence_contract_version == "units-v1" else None,
+            assembly_work=AssemblyWork(**self.work_counts, pruned_candidates=pruned_candidates) if inventory.evidence_contract_version == "units-v2" else None,
             # Every rule counter below is zero because an inventory commits no
             # rules. The cascade it *derives* lives on the commit, where
             # `inspect-run` reads it; putting derived-rule counts here would

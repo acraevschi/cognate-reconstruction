@@ -100,24 +100,26 @@ semantic mismatches, possible loans, segmentation problems, or data errors.
 
 ## Required workflow
 
-1. Call `summarize_correspondences` first, with no arguments. It surveys **every
-   cognate set at once** and returns the correspondence sets across the active
-   children — the n-tuple of aligned segments, with the count of aligned columns
-   showing it and the `set_id` you will cite — ordered by support. This is the
-   object the comparative method reasons from, and one call over the whole
-   evidence set costs less than alignments for a handful of concepts.
-2. Read it by support. A set attested many times is a correspondence; **a set
-   with support 1 is residue, not evidence** — a compound boundary, a loan, a
-   segmentation artefact — which is why `min_support` defaults to 2 and the tail
-   is reported as `suppressed_below_min_support` instead of being returned. Never
-   commit a value whose only support is a single column.
+1. Call `summarize_correspondences` first, with no arguments. The default
+   `reading="recurrence"` describes compatible reflex patterns across local units;
+   it does not declare them historically equivalent. `member_set_ids` lists the
+   exact local sets. Use `reading="local"` for individual values. Approve
+   a collection explicitly through `shared_claims` or commit local values.
+2. `support` counts distinct supplied etyma plus separately reported unresolved
+   concept/unit opportunities. `concept_count`, `etymon_count`,
+   `unresolved_unit_count`, `source_column_count` and `occurrence_count` separate
+   the denominators. Alternatives are execution possibilities, not independent
+   recurrence. `min_support=2` is an inspection filter; use 1 to inspect sparse
+   material. A justified support-1 value is allowed. Local exceptions and
+   competing conditioned values require their own explicit selections.
 3. Narrow the survey where a specific change is at stake: `segment` with
    `segment_node_id` returns every set in which one child shows one segment,
    which is how you polarize a merger. Use `Ø` for an alignment gap. Raise
    `offset` to see the tail rather than assuming the first page is all of it.
 4. **Decide which branch changed, before you assign a value.** For every
    correspondence where the children disagree, call `polarize` with those
-   children and the segment each shows — a row of the survey pasted back,
+   children, the segment each shows, and its `set_id` under the same overlays
+   and `unit_orders` — a row of the survey pasted back,
    including its `null`s, which is how the survey writes a child that shows
    nothing there. It returns what every node outside the active children shows
    in the same columns, with counts, marked observed or reconstructed. This step is required
@@ -584,12 +586,14 @@ is null — so it needs no `directionality_rationale`. One that did would read:
       "directionality_rationale": "language_a and both outgroups keep initial ʔ; language_b lost it, a regular debuccalisation-then-loss. Not the reverse: nothing conditions inserting ʔ."
     }
 
-- `set_id`, `reflexes` and `support` are copied back from the survey or from a
+- Local `set_id`, `reflexes` and `support` are copied back from `reading="local"` or from a
   preview, exactly. The harness re-derives the inventory from this node's own
   forms and refuses a commitment whose set it cannot reproduce
   (`unknown-correspondence-set`) or whose support you altered
-  (`correspondence-support-mismatch`). Support is the one number separating a
-  correspondence from residue and it must never be a model claim. A stale
+  (`correspondence-support-mismatch`). Support is measured under the named count
+  semantics and must never be a model claim. A recurrence pattern requires
+  `shared_claims` naming its chosen local `member_set_ids`; its pattern ID alone
+  cannot be used as a local commitment. A stale
   `set_id` after a `realign` is the common case of the first refusal.
 - `assembly_validation_call_id` is optional: omit it and the harness resolves the
   same-session previews of your exact hypothesis and evidence revision. The **preview itself is not

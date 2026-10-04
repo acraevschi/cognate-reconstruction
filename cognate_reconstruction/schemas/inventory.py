@@ -207,9 +207,9 @@ class CorrespondenceCommitment(WorkbenchModel):
     support: int = Field(
         ge=1,
         description=(
-            "Aligned columns showing this set, copied from the harness's own "
+            "Measured local support, copied from the harness's own "
             "inventory. Re-derived and refused on mismatch: it is the one "
-            "number separating a correspondence from residue and it must not "
+            "count of supplied etyma plus unresolved concept/unit opportunities in units-v2; it must not "
             "be a model claim."
         ),
     )
@@ -243,7 +243,7 @@ class CorrespondenceCommitment(WorkbenchModel):
         description=(
             "Which branch innovated, and why you believe it. Required on any "
             "commitment that discards material — a non-null reflex against a "
-            "null proto_segment, or two sets sharing one proto_segment without "
+            "null proto_segment, or distinct reflex tuples sharing one proto_segment without "
             "complementary conditioning. The harness detects those "
             "mechanically and never judges what you write; it records that you "
             "wrote it."
@@ -351,6 +351,28 @@ class SegmentRestoration(WorkbenchModel):
     )
 
 
+class SharedCorrespondenceClaim(WorkbenchModel):
+    """One model-approved value over an explicit collection of local sets.
+
+    A descriptive pattern is a retrieval handle, never automatic equivalence.
+    Exclude local exceptions or provide different conditioned values. Counts and
+    reflexes are re-derived for each member, rather than retranscribed.
+    """
+    pattern_id: NonEmptyStr
+    member_set_ids: tuple[NonEmptyStr, ...] = Field(min_length=1)
+    proto_segment: NonEmptyStr | None
+    confidence: float = Field(gt=0.0, le=1.0)
+    rationale: NonEmptyStr
+    directionality_rationale: NonEmptyStr | None = None
+    conditioning: RuleEnvironment | None = None
+
+    @model_validator(mode="after")
+    def unique_members(self):
+        if len(set(self.member_set_ids)) != len(self.member_set_ids):
+            raise ValueError("shared claim must name each local set once")
+        return self
+
+
 class ProtoInventorySpec(WorkbenchModel):
     """The inventory a `commit_reconstruction` call carries, as the model sends it.
 
@@ -385,6 +407,7 @@ class ProtoInventorySpec(WorkbenchModel):
             "is not optional."
         ),
     )
+    shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
     commitments: tuple[CorrespondenceCommitment, ...] = Field(
         description=(
             "This node's correspondence-set commitments. Order carries no "
@@ -504,10 +527,11 @@ class CommittedProtoInventory(WorkbenchModel):
     present.
     """
 
-    evidence_contract_version: Literal["legacy", "units-v1"] = "legacy"
+    evidence_contract_version: Literal["legacy", "units-v1", "units-v2"] = "legacy"
     derived_rules_scope: Literal["global", "unscoped_view"] = "global"
     evidence_revision: NonEmptyStr | None = None
     column_bindings: tuple[ColumnBinding, ...] = ()
+    approved_shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
 
     commit_shape: Literal["inventory"] = "inventory"
     request: CommitProtoInventoryArgs
@@ -532,8 +556,17 @@ class CommittedProtoInventory(WorkbenchModel):
 
     @model_validator(mode="after")
     def validate_evidence_contract(self):
-        if self.evidence_contract_version == "units-v1" and self.evidence_revision is None:
-            raise ValueError("units-v1 inventory requires its evidence revision")
+        if self.evidence_contract_version != "legacy" and self.evidence_revision is None:
+            raise ValueError("unit inventory requires its evidence revision")
+        if self.evidence_contract_version == "units-v2" and self.request.shared_claims:
+            raise ValueError("persisted units-v2 request must contain expanded local commitments")
+        for claim in self.approved_shared_claims:
+            for set_id in claim.member_set_ids:
+                if not any(c.set_id == set_id and c.proto_segment == claim.proto_segment
+                           and c.confidence == claim.confidence and c.conditioning == claim.conditioning
+                           and c.rationale == claim.rationale and c.directionality_rationale == claim.directionality_rationale
+                           for c in self.request.commitments):
+                    raise ValueError("approved shared claim must match its expanded local commitments")
         ids = [binding.column_id for binding in self.column_bindings]
         if len(set(ids)) != len(ids):
             raise ValueError("column bindings must name each evidence column once")

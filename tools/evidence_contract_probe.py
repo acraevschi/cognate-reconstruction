@@ -89,7 +89,7 @@ def run_probe(path=DEFAULT_FIXTURE):
                                    "segment_edit_distance": stripped.edit_distance, "segment_ned": stripped.normalized_edit_distance}
             row["post_execution_reference_reading"] = {"node_id": references["node_id"],
                 "validity": references["validity"], "alternatives": alternatives, "readings": readings}
-    return {"version": "task03-offline-v1", "evidence_contract": "units-v1", "evaluator_version": "task02-v1",
+    return {"version": "task04-source-controls-v1", "evidence_contract": "units-v2", "evaluator_version": "task02-v1",
         "fixture_sha256": hashlib.sha256(text.encode()).hexdigest(), "source_sha256": fixture["source_sha256"],
         "live_model_calls": 0, "note": "Legacy replay is exact. New outputs are explicit source-unit controls, with old values transferred only within the selected core and witness values elsewhere in that core. No gold enters contexts; no historical quality claim.",
         "cost": {"survey_seconds": survey_seconds, "execution_seconds": execution_seconds,

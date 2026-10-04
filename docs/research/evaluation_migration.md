@@ -98,3 +98,14 @@ this can grade real morpheme reconstructions.
 Do not tune against these development cases and call them held-out results.
 Fit/freeze any later learned normalization on separate development material.
 No category-to-contour, phonation or corpus mapping score is licensed here.
+
+## Task04 diagnostic update — 2026-10-04
+
+`build_case` now attaches scorer-only supplied target layouts to binding forms;
+observed payloads, target tokens and task02-v1 raw score definitions are unchanged.
+`TokenEvaluationDiagnostics.unit_evaluator_version` defaults to null for historical
+records and is `task04-units-v1` for explicit output comparisons. `diagnostic_suite`
+adds `normal_unit_controls`, using scripted assembly/serialization/normal evaluation
+for correct, wrong, extra, missing and reordered pieces. Standalone piece controls
+remain available but are no longer the only verification. See
+[evidence repair](evidence_repair.md) for measured results and compatibility.

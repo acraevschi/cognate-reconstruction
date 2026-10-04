@@ -28,7 +28,7 @@ from cognate_reconstruction.schemas.alignment import (
 )
 from cognate_reconstruction.schemas.inventory import derive_set_id
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon
-from cognate_reconstruction.schemas.evidence import digest
+from cognate_reconstruction.schemas.evidence import digest, COUNT_SEMANTICS_VERSION
 
 MAX_COMPLEMENTARY_CANDIDATES = 20
 """Complementary pairs one report carries before it is truncated.
@@ -197,25 +197,53 @@ def unit_set_id(reflexes, scope_id, child_ids, revision):
 
 
 def _unit_sets(alignment_map, columns, limit):
+    # Keep local execution scopes and descriptive recurrence separate. A column
+    # ID includes a complete candidate tuple; that is an execution possibility,
+    # not an independent etymon. Source signatures deduplicate its repetitions.
     occurrences = {}
     for alignment in alignment_map.alignments:
         rows = _column_rows(alignment, columns)
         if rows is None:
             continue
+        readings = observed_readings(rows)
         for index, evidence in enumerate(alignment.evidence_columns):
             reflexes = tuple(row[index] for row in rows)
+            if all(t is None for t in reflexes):
+                continue
+            left, right = context_tokens(readings, index)
             key = (reflexes, evidence.scope_id)
-            # Alternative tuples can include exactly the same evidence column.
-            occurrences.setdefault(key, {})[evidence.column_id] = alignment.concept_id
+            occurrences.setdefault(key, {})[evidence.column_id] = (
+                alignment.concept_id, evidence, left, right)
+
+    def make_set(reflexes, scope, records, set_id, members=()):
+        concepts = tuple(dict.fromkeys(c for c, _, _, _ in records.values()))
+        etyma = {e.etymon_id for _, e, _, _ in records.values() if e.etymon_id is not None}
+        unresolved = {(c, e.unit_id) for c, e, _, _ in records.values() if e.etymon_id is None}
+        source_columns = {digest([e.unit_id, [source.model_dump(mode="json") for source in e.sources]]) for _, e, _, _ in records.values()}
+        return CorrespondenceSet(set_id=set_id, segments=reflexes, scope_id=scope,
+            support=len(etyma) + len(unresolved), etymon_count=len(etyma),
+            unresolved_unit_count=len(unresolved), count_semantics=COUNT_SEMANTICS_VERSION,
+            source_column_count=len(source_columns), occurrence_count=len(records),
+            concept_count=len(concepts), example_concept_ids=concepts[:limit],
+            example_column_ids=tuple(records)[:limit], member_set_ids=members,
+            left_context_tokens=tuple(sorted({t for _, _, left, _ in records.values() for t in left})),
+            right_context_tokens=tuple(sorted({t for _, _, _, right in records.values() for t in right})))
+
     sets = []
-    for (reflexes, scope), found in occurrences.items():
-        concepts = tuple(dict.fromkeys(found.values()))
-        sets.append(CorrespondenceSet(set_id=unit_set_id(reflexes, scope, columns,
-                                     alignment_map.evidence_revision), segments=reflexes,
-            scope_id=scope, support=len(found), concept_count=len(concepts),
-            example_concept_ids=concepts[:limit], example_column_ids=tuple(found)[:limit]))
+    aggregates = {}
+    for (reflexes, scope), records in occurrences.items():
+        item = make_set(reflexes, scope, records,
+            unit_set_id(reflexes, scope, columns, alignment_map.evidence_revision))
+        sets.append(item)
+        category = "boundary" if all(e.kind == "boundary" for _, e, _, _ in records.values()) else "material"
+        entry = aggregates.setdefault((reflexes, category), ({}, []))
+        entry[0].update(records)
+        entry[1].append(item.set_id)
+    patterns = tuple(make_set(reflexes, None, records,
+        "csp-" + digest([reflexes, category, columns, alignment_map.evidence_revision]),
+        tuple(sorted(members))) for (reflexes, category), (records, members) in aggregates.items())
     return CorrespondenceInventory(node_ids=columns, alignment_count=len(alignment_map.alignments),
-                                   sets=tuple(sorted(sets, key=_sort_key)))
+        sets=tuple(sorted(sets, key=_sort_key)), recurrence_patterns=tuple(sorted(patterns, key=_sort_key)))
 
 
 def _set_contexts(
@@ -278,6 +306,9 @@ def complementary_candidates(
         raise ValueError("limit must be non-negative")
     columns = tuple(node_ids)
     contexts = _set_contexts(alignment_map, columns)
+    for item in sets:
+        if item.member_set_ids:
+            contexts[(item.segments, item.scope_id)] = (set(item.left_context_tokens), set(item.right_context_tokens))
     scored: list[tuple[tuple[int, str, str], ComplementaryCandidate]] = []
     for index, left_set in enumerate(sets):
         for right_set in sets[index + 1 :]:

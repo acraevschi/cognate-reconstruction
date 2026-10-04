@@ -15,7 +15,7 @@ from cognate_reconstruction.schemas.alignment import (
     CorrespondenceSet,
     MultipleAlignmentMap,
 )
-from cognate_reconstruction.schemas.evidence import UnitOrderClaim, AssemblyWork, PieceAnalysisClaim
+from cognate_reconstruction.schemas.evidence import UnitOrderClaim, AssemblyWork, PieceAnalysisClaim, PieceSource
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
@@ -24,7 +24,7 @@ from cognate_reconstruction.schemas.inventory import (
     CommitProtoInventoryArgs,
     CommittedProtoInventory,
     ConceptAssemblyReport,
-    CorrespondenceCommitment,
+    CorrespondenceCommitment, SharedCorrespondenceClaim,
     ProtoInventorySpec,
     ResidueDisposition,
     ResiduePolicy,
@@ -259,6 +259,8 @@ class GetAlignmentsArgs(WorkbenchModel):
     """
 
     unit_orders: tuple[UnitOrderClaim, ...] = ()
+    reading: Literal["local", "recurrence"] = Field(default="recurrence",
+        description="Descriptive recurrence patterns by default; reading=local retrieves exact executable scopes; local returns exact executable sets. Patterns do not assert historical equivalence. Use shared_claims with explicit member_set_ids to approve a collection.")
 
     node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     concept_ids: tuple[NonEmptyStr, ...] = Field(
@@ -388,6 +390,8 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
     """
 
     unit_orders: tuple[UnitOrderClaim, ...] = ()
+    reading: Literal["local", "recurrence"] = Field(default="recurrence",
+        description="Descriptive recurrence patterns by default; reading=local retrieves exact executable scopes; local returns exact executable sets. Patterns do not assert historical equivalence. Use shared_claims with explicit member_set_ids to approve a collection.")
 
     node_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
@@ -419,9 +423,9 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
         default=DEFAULT_MIN_CORRESPONDENCE_SUPPORT,
         ge=1,
         description=(
-            "Least number of aligned columns a set must show to be returned. "
+            "Least measured support a row must show to be returned. units-v2 separates supplied etyma and unresolved concept/unit opportunities from source columns and alternatives. "
             "Sets below it are counted in 'suppressed_below_min_support' rather "
-            "than dropped silently. Use 1 only to inspect residue."
+            "than dropped silently. Use 1 to inspect sparse material, which may be committed with justification."
         ),
     )
     segment: NonEmptyStr | None = Field(
@@ -503,6 +507,15 @@ class OutgroupReflex(WorkbenchModel):
     )
 
 
+class LocalOutgroupWitness(WorkbenchModel):
+    concept_id: NonEmptyStr
+    unit_id: NonEmptyStr
+    evidence_column_id: NonEmptyStr
+    node_id: NonEmptyStr
+    segment: NonEmptyStr
+    source_positions: tuple[PieceSource, ...] = ()
+
+
 class SetOutgroupProfile(WorkbenchModel):
     """One returned set's out-group reading, keyed by its own `set_id`.
 
@@ -513,10 +526,19 @@ class SetOutgroupProfile(WorkbenchModel):
     """
 
     set_id: NonEmptyStr
+    reading: Literal["local", "recurrence", "legacy"] = "legacy"
+    scope_id: NonEmptyStr | None = None
+    witnesses: tuple[LocalOutgroupWitness, ...] = ()
+    witness_count: int = Field(default=0, ge=0)
+    witnesses_truncated: bool = False
     reflexes: tuple[OutgroupReflex, ...] = ()
 
 
 class SummarizeCorrespondencesResult(WorkbenchModel):
+    reading: Literal["local", "recurrence", "legacy"] = "legacy"
+    count_semantics: str | None = None
+    local_set_count: int | None = None
+    recurrence_pattern_count: int | None = None
     evidence_revision: NonEmptyStr | None = None
     work: AssemblyWork | None = None
     node_ids: tuple[NonEmptyStr, ...] = Field(
@@ -534,7 +556,7 @@ class SummarizeCorrespondencesResult(WorkbenchModel):
         ge=0,
         description=(
             "Sets that passed the segment filter but fell below min_support. "
-            "Residue rather than evidence, counted so it is never silent."
+            "Counted inspection filtering; sparse support is not proof of innovation."
         ),
     )
     matched_set_count: int = Field(
@@ -571,6 +593,7 @@ class SummarizeCorrespondencesResult(WorkbenchModel):
             "form, and no residue policy has to explain them."
         ),
     )
+    outgroup_work: dict[str, int] | None = None
     outgroup_note: str = Field(
         default="",
         description=(
@@ -635,6 +658,9 @@ class ColumnPosition(StrEnum):
 
 
 class PolarizeArgs(WorkbenchModel):
+    set_id: NonEmptyStr | None = Field(default=None, description="Local set ID or descriptive recurrence pattern ID under these overlays and unit_orders. Omit for a labelled tuple aggregate.")
+    alignment_overlay_id: NonEmptyStr | None = None
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
     """Ask what the rest of the tree shows where the active children disagree.
 
     Not a prior and not a verdict: this is data retrieval. The evidence that
@@ -789,6 +815,11 @@ class PolarizeCandidateSummary(WorkbenchModel):
 
 
 class PolarizeResult(WorkbenchModel):
+    reading: Literal["local", "recurrence", "legacy"] = "legacy"
+    set_id: NonEmptyStr | None = None
+    witnesses: tuple[LocalOutgroupWitness, ...] = ()
+    witness_count: int = Field(default=0, ge=0)
+    witnesses_truncated: bool = False
     """A distributional summary, deliberately without a verdict.
 
     Nothing here says which value is original. That judgement is yours, it
@@ -1251,6 +1282,7 @@ class TestProtoAssemblyArgs(WorkbenchModel):
 
     unit_orders: tuple[UnitOrderClaim, ...] = ()
 
+    shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
     commitments: tuple[CorrespondenceCommitment, ...] = Field(
         description=(
             "The correspondence-set commitments to preview. Order carries no "
@@ -1376,6 +1408,8 @@ class RealignArgs(WorkbenchModel):
 
 
 class RealignResult(WorkbenchModel):
+    count_semantics: str | None = None
+    joined_source_column_delta: dict[str, int] = Field(default_factory=dict)
     alignment_overlay_id: NonEmptyStr
     joined_set_support_delta: dict[str, int] = Field(
         default_factory=dict,
@@ -1761,12 +1795,13 @@ COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
     "cascade, and correspondence sets carry no order, so a change that only "
     "makes sense after another change cannot be stated as an inventory. The "
     "evidence at this node decides which fits it.",
-    "Every commitment copies back the set_id, the reflexes and the support "
+    "Every local commitment copies back the set_id, the reflexes and the support "
     "exactly as the harness reported them. The inventory is re-derived from "
     "this node's own forms at commit time: a set the data does not contain is "
     "refused as 'unknown-correspondence-set', and an altered support as "
-    "'correspondence-support-mismatch'. Support is the one number separating a "
-    "correspondence from residue and it is never a model claim. A realign "
+    "'correspondence-support-mismatch'. Support is measured under the named count semantics, "
+    "never a model claim. Descriptive recurrence rows require shared_claims with "
+    "explicit pattern_id/member_set_ids; sparse local values are allowed. A realign "
     "invalidates every set_id derived under the previous alignment.",
     "Every committed correspondence set needs a successful same-session "
     "test_proto_assembly for the exact values, conditioning, confidence, residue "
@@ -1791,7 +1826,7 @@ COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
     "of the identical rule, child scope, and segmentation overlay.",
     "Anything that discards material needs a 'directionality_rationale' naming "
     "which branch innovated and why: under 'inventory', a non-null reflex "
-    "against a null proto_segment, or two sets sharing one proto_segment "
+    "against a null proto_segment, or distinct reflex tuples sharing one proto_segment "
     "without complementary conditioning; under 'rules', a rule that deletes a "
     "segment or merges two into one. The harness detects those mechanically "
     "and rejects a commit that omits it, naming the exact sets or rule_ids; it "

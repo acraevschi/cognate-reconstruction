@@ -9,7 +9,8 @@ from pydantic import Field, model_validator
 
 from .common import NonEmptyStr, WorkbenchModel
 
-EVIDENCE_CONTRACT_VERSION = "units-v1"
+EVIDENCE_CONTRACT_VERSION = "units-v2"
+COUNT_SEMANTICS_VERSION = "independent-etyma-v1"
 
 
 def digest(value: object) -> str:
@@ -43,7 +44,7 @@ class EvidencePiece(WorkbenchModel):
 
 
 class FormAnalysis(WorkbenchModel):
-    version: Literal["units-v1"] = EVIDENCE_CONTRACT_VERSION
+    version: Literal["units-v1"] = "units-v1"  # Piece representation is unchanged.
     pieces: tuple[EvidencePiece, ...] = Field(min_length=1)
     order_status: Literal["source", "model_claim", "unresolved"] = "source"
     notes: tuple[NonEmptyStr, ...] = ()
@@ -103,6 +104,8 @@ class EvidenceColumn(WorkbenchModel):
     column_id: NonEmptyStr
     unit_id: NonEmptyStr
     scope_id: NonEmptyStr
+    etymon_id: NonEmptyStr | None = None
+    kind: Literal["whole", "cognate", "unknown", "boundary", "restoration"] = "unknown"
     sources: tuple[PieceSource, ...] = ()
 
 
@@ -113,6 +116,7 @@ class ColumnBinding(WorkbenchModel):
 
 
 class AssemblyWork(WorkbenchModel):
+    projected_columns: int = Field(default=0, ge=0)
     candidate_tuples: int = Field(default=0, ge=0)
     alignment_calls: int = Field(default=0, ge=0)
     cache_hits: int = Field(default=0, ge=0)

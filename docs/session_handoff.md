@@ -1,7 +1,7 @@
 # Shared session handoff
 
 Use this file to carry implementation context between chats, agents, and resumed
-sessions. Task numbers refer to work packages 01–07, not individual chats. Keep
+sessions. Task numbers refer to work packages 01–08, not individual chats. Keep
 the live summary short; link detailed evidence in each task's result document.
 
 The [current state](current_state.md) describes accepted findings and implemented
@@ -12,6 +12,23 @@ Latest direct user instructions take precedence. Evidence-backed amendments can
 refine a brief within the accepted plan; proposals to expand scope or resources
 remain proposals until the user authorizes them. Code and artifacts establish
 what actually exists, even when a status entry is out of date.
+
+## Numbering — updated 2026-10-04
+
+The owner requested consecutive numbering after the repair brief was added.
+Active instructions and task rows below use the current 01–08 sequence.
+Dated research reports, saved runs, conversation references and the historical
+session entries retain the numbers used when they were written. Artifact/schema
+labels such as task02-v1, units-v1 and task03-* have not changed.
+
+| Previous number | Current number | Work |
+| --- | --- | --- |
+| 01–03 | 01–03 | Delivered audit, evaluation and evidence/assembly |
+| 03.5 | 04 | Evidence-contract repair |
+| 04 | 05 | Model instructions and protocol |
+| 05 | 06 | Provider interruption and resume |
+| 06 | 07 | Controlled local comparisons |
+| 07 | 08 | Deferred forward prediction |
 
 ## Availability of task 01 material
 
@@ -66,8 +83,9 @@ an implementation. Local inference remains serial under the experiment policy.
 
 ## Live task state
 
-Updated 2026-10-03 after tasks 01–03. Other statuses carry forward the September
-prompt index; amendments do not complete downstream implementation tasks.
+Updated 2026-10-04 after task 04 offline repair. Tasks 01–04 are delivered;
+05–07 remain unstarted. The completion amendment supersedes earlier interface
+versions/defaults. The task03 smoke remains incomplete live interface evidence.
 
 Active session: none.
 
@@ -85,10 +103,11 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | 01 — Failure audit | complete | Fixed 12-concept panel, fresh counts, traces and deterministic replay delivered | Task 01 completion below |
 | 02 — Evaluation | complete | task02-v1 contract, evaluator, six small cases, migration and offline results delivered | Task 02 completion below |
 | 03 — Evidence/assembly | complete | units-v1 repair and offline checks delivered; single smoke stalled on malformed commits | Task 03 completion below |
-| 04 — Instructions/protocol | not started | Ready from 01/02; sparse decisions, null/tuple friction and licensed tone reading; coordinate 03 | Task 02 amendment |
-| 05 — Provider recovery | not started | Ready independently; reuse 02's operational-node/fallback view and preserve unknown legacy causes | Task 02 amendment |
-| 06 — Local comparisons | not started | 02 complete; await 03–05 or explicit scope-out; freeze task02-v1 and separate arms | Task 02 amendment |
-| 07 — Forward prediction | deferred | 06's recommendation and the user's decision to take up the study | — |
+| 04 — Evidence repair | complete | units-v2 counts/shared collections, local witnesses and normal piece evaluator verified offline; 607 portable checks pass | Task 04 completion below |
+| 05 — Instructions/protocol | not started | Ready: consume units-v2 contract; revise protocol/guidance and own the next bounded live smoke | Task 04 completion amendment |
+| 06 — Provider recovery | not started | Ready independently: preserve checkpoint 3.0/trajectory 5.0 guards and task02-v1 outcome semantics | Task 04 completion amendment |
+| 07 — Local comparisons | not started | 04 instrument/caps verified; await 05 usability, relevant 06 or explicit scope-out, and final independent review | Task 04 completion amendment |
+| 08 — Forward prediction | deferred | 07's recommendation and the user's decision to take up the study | — |
 
 ## Amendments for downstream tasks
 
@@ -155,14 +174,14 @@ Requires: task01-v1 audit CLI and banked artifact paths for reproduction;
 artifacts are local only; portable extraction fixtures are checked in. No
 reconstruction interface changed in 01. Receiving session records its resolution.
 
-### For task 04 — sparse decisions and protocol evidence
+### For task 05 — sparse decisions and protocol evidence
 
 Status: applied to local brief; pending verification by receiving session.
 From: task 01, 2026-10-02, chat `01a0fda6-d530-7c61-9d8c-57a7ceb5b257`.
 Evidence: failure audit (`docs/research/failure_audit.md`, local only),
 trace appendix (`docs/research/failure_audit_traces.md`, local only).
 
-Instruction (also in `prompts/04-model-instructions-and-protocol.md`):
+Instruction (also in `prompts/05-model-instructions-and-protocol.md`):
 
 Read the audit/trace appendix before editing. r2/00 Maruic has the only valid-run
 node failure (ProtocolStallError); 35 rejected tool results across the four runs
@@ -182,14 +201,14 @@ Requires: task01-v1 audit CLI and banked artifact paths for reproduction;
 artifacts are local only; portable extraction fixtures are checked in. No
 reconstruction interface changed in 01. Receiving session records its resolution.
 
-### For task 05 — node versus ancestor failures
+### For task 06 — node versus ancestor failures
 
 Status: applied to local brief; pending verification by receiving session.
 From: task 01, 2026-10-02, chat `01a0fda6-d530-7c61-9d8c-57a7ceb5b257`.
 Evidence: failure audit (`docs/research/failure_audit.md`, local only),
 trace appendix (`docs/research/failure_audit_traces.md`, local only).
 
-Instruction (also in `prompts/05-provider-interruption-and-resume.md`):
+Instruction (also in `prompts/06-provider-interruption-and-resume.md`):
 
 Read the fresh run table in `docs/research/failure_audit.md`. Keep t36/t36b void
 provider examples excluded from linguistic quality, even t36/01's root beam hit.
@@ -205,17 +224,18 @@ Requires: task01-v1 audit CLI and banked artifact paths for reproduction;
 artifacts are local only; portable extraction fixtures are checked in. No
 reconstruction interface changed in 01. Receiving session records its resolution.
 
-### For task 06 — frozen development cases and falsifiers
+### For task 07 — frozen development cases and falsifiers
 
 Status: applied to local brief; pending verification by receiving session.
 From: task 01, 2026-10-02, chat `01a0fda6-d530-7c61-9d8c-57a7ceb5b257`.
 Evidence: failure audit (`docs/research/failure_audit.md`, local only),
 trace appendix (`docs/research/failure_audit_traces.md`, local only).
 
-Instruction (also in `prompts/06-controlled-local-experiments.md`):
+Instruction (also in `prompts/07-controlled-local-experiments.md`):
 
 Read `docs/research/failure_audit.md` and its appendix. Freeze task 02's official
-and licensed diagnostic readings, then compare 03 and 04 separately. Use CRAWL,
+and licensed diagnostic readings, then compare 03 and 05 separately where usable
+arms permit isolation. Use CRAWL,
 FLOWER and NEEDLE to test unit/provenance/material retention, with FATHOM/MONKEY
 controls and I/SNOT/STICKING for independent phonological decisions. Preserve
 recurrent lexicon evidence; extracting one word alone need not identify its
@@ -261,7 +281,7 @@ Their keys/identifiability notes are scorer-only; morphology order and lost cont
 are not uniquely identified. Regressions: `test_evaluation_contract.py`,
 `test_diagnostic_suite.py`, existing partial-cognacy/assembly/serialization tests.
 
-### For task 04 — retain the licensed tone reading
+### For task 05 — retain the licensed tone reading
 
 Status: applied to local brief; receiving session verifies.
 From: task 02, same session/date. Evidence: [contract](research/evaluation_contract.md).
@@ -272,7 +292,7 @@ NEEDLE alternate-gold/child-hit/root-miss fixtures in `test_evaluation_contract.
 Prompt changes remain a separate arm from task 03; target annotations/diagnostics
 must stay outside initial contexts and tool evidence. Sentinel tests cover this.
 
-### For task 05 — preserve task02-v1 outcome semantics
+### For task 06 — preserve task02-v1 outcome semantics
 
 Status: applied to local brief; receiving session verifies.
 From: task 02, same session/date. Evidence: [migration](research/evaluation_migration.md).
@@ -284,12 +304,13 @@ target concepts. Prospective structured causes may improve `failure_kind`, but
 do not parse legacy provider prose or rewrite unknown/unspecified causes. Keep
 provider recovery separate from exact/NED, validated-target and selection readings.
 
-### For task 06 — freeze task02-v1 and compare valid units
+### For task 07 — preserve historical readings and compare valid units
 
 Status: applied to local brief; receiving session verifies.
 From: task 02, same session/date. Evidence: [results](research/evaluation_results.md),
 [compact counts](research/evaluation_offline_results.json).
-Freeze evaluator task02-v1 plus definition/input hashes in the manifest. Use the
+Freeze the final evaluator version delivered by 04/05 plus definition/input hashes
+in the manifest, preserving historical task02-v1 readings separately. Use the
 evaluate-run and diagnostic-suite commands in the task 03 amendment. Preserve the
 old raw score next to new interpretations, and publish committed-node quality,
 end-to-end planned outcomes, fallback/dependency counts and outside-selection IDs.
@@ -302,17 +323,18 @@ No source-backed tone/phonation map or corpus consistency score is licensed.
 Report raw tone and task01-v1 partition separately. Morphology needs independent
 unit IDs; do not use substrings. Lost contrast and morphology order are explicitly
 underdetermined. Perfect/wrong offline fixtures test scores, not model ability.
-Compare 03 and 04 separately after their required checks; 05 remains a prerequisite
-or explicitly scoped-out operational limitation. Commit counts alone are no gain.
+Compare 03 and 05 separately where usable arms permit isolation after their required
+checks. Require 04/05; only 06 may be scoped out under the documented bounded
+exception. Commit counts alone are no gain.
 
-### For tasks 04–06 — task 03 units-v1 implementation
+### For tasks 05–07 — task 03 units-v1 implementation
 
 Status: mirrored in local briefs; receiving sessions verify the delivered checkout.
 From: task 03, 2026-10-03, current chat. Evidence:
 [contract](research/evidence_contract.md), [migration](research/evidence_migration.md),
 [results](research/evidence_results.md), [compact result](research/evidence_offline_results.json).
 
-**04:** Read those documents and changed runtime/tool schemas before revising
+**05:** Read those documents and changed runtime/tool schemas before revising
 instructions. New correspondence sets bind exact scoped columns over every retained
 analysis. Source histories merge only for compatible unit claims; unknown pieces
 stay unknown. Preview validation is exact to values/confidence/conditioning,
@@ -333,14 +355,16 @@ shortened tuples. Do not relax validation or call this a quality result. The
 inventory-only smoke instruction is recorded; preserve its distinct hash.
 No second task 03 smoke ran. Your own pilot remains subject to the shared policy.
 
-**05:** New trajectories write 4.0 (2.0/3.0 readable); checkpoints write 2.0.
+**06:** New trajectories write 4.0 (2.0/3.0 readable); checkpoints write 2.0.
 Checkpoint 1.0 reads for audit but `infer --resume` explicitly refuses missing
 unit provenance. The evidence contract and LingPy backend/version are behavioral
 hash inputs. Do not relax them as retry settings. Retain unknown legacy causes,
 completed-node boundaries and task02-v1 outcomes. This smoke is a structured
 protocol failure, not provider exhaustion; never relabel it from prose.
 
-**06:** Freeze units-v1 plus task02-v1 and all input/instruction/schema hashes.
+**07:** Freeze the final evidence/evaluator versions delivered by 04/05 and their
+hashes, preserving historical readings separately. Include all input/instruction/
+schema hashes.
 Task 03's compact controls use explicit operator hypotheses on three development
 concepts, not actual banked-model approvals. They remove CRAWL's duplicate glide
 and correct FLOWER's piece pairing, but proxy exact remains 1/3 and tone/glide
@@ -349,10 +373,165 @@ old raw scores stay intact. `oracle_ceiling.py` retains labelled legacy whole-st
 oracles; source-unit controls are a separate reading. Partial scopes separate
 etyma and the tuple cap can refuse wide inputs; record costs/coverage and do not
 silently reduce an arm. Use the migration's commands and existing fixtures/tests.
-The smoke supplies incomplete interface evidence only. Await 04/05 or explicitly
-scope them out before a frozen comparative run; no broad improvement is established.
+The smoke supplies incomplete interface evidence only. Require 04/05 before a
+frozen comparative run; only 06 may be scoped out under the documented bounded
+exception. No broad improvement is established.
+
+### Independent-review amendments — 2026-10-04
+
+Status: owner requested prompt updates and new task 04; mirrored in local briefs.
+Implementation is not started. These amendments supersede conflicting earlier
+next-task/dependency instructions; dated delivery entries remain historical.
+Reviewed snapshot: `burmish-session-evaluation-units` at
+`cb16374461e4a3e5be38e5ca32e90b9d08e8ad4d`, plus local untracked task 01
+material and ignored prompts/runs. Recheck the actual checkout when starting.
+The review ran 126 focused passing checks, reproduced 364 score records and
+all eleven old beams/reports, and confirmed the four result/event hash pairs.
+No runtime changes or inference occurred. The full review is in the conversation;
+former local review brief/launcher files are unavailable in this checkout.
+
+**04 — scope and evidence:** Reproduce these offline counterexamples:
+(a) full-span simplex slices become etymon-scoped sets; on the frozen 54-concept
+Burmish payload the review counted Burmic legacy/units sets 130/543 (519 singleton,
+4 multi-concept), Maruic 150/738 (576 singleton, 0 multi-concept); counts include
+alternatives/additional material and are not a pure pooling ablation;
+(b) A=`p k`, B=`p t`, with identified core/extra pieces: adding B's `p s`
+alternative doubles unchanged core `p:p` support from 1 to 2;
+(c) two independent A=`p`, B=`p` units reconstructing `p` preview successfully
+but commit demands a merger directionality rationale despite no daughter contrast;
+(d) two scoped etyma with A=`p`, B=`f`, O=`p` in one and O=`t` in the other
+receive both O tokens in each local profile;
+(e) the four generated morphology targets have no usable annotated units even
+though `target_unit_layouts` exists and standalone piece controls pass.
+
+Entry points: `alignment/units.py::source_analyses/align_tuple/evidence_map`,
+`alignment/correspondence_sets.py::_unit_sets`,
+`traversal/assembler.py::inventory_contrast_reductions`,
+`agent/tools/correspondences.py::_outgroup_profiles`, `polarize.py`, restoration
+checks in `inventory_evidence.py`, `synthesis/diagnostics.py::build_case`,
+`evaluation/diagnostics.py::annotated_units/with_unit_diagnostics` and
+`tools/diagnostic_suite.py` (package paths are under `cognate_reconstruction/`).
+Reproduce before choosing the smallest repair. Separate exact occurrence identity
+from recurrence/grouping, expose independent-etymon and alternative-dependent
+counts, and permit explicit model-approved shared claims with local exceptions.
+Repair false contrast detection and local witnesses; audit polarize/restorations
+for the same assumption. Wire scorer-only morphology pieces into ordinary run
+evaluation without leaking them to model evidence. Keep source/unknown/competing
+analysis, exact bindings and parent propagation; retain CRAWL/FLOWER controls.
+
+Deliver `docs/research/evidence_repair.md`, regressions, measured counts/payload/work,
+and contract/migration updates. Test true contrast/deletion, scoped witnesses,
+equivalent whole/full-span annotation, unrelated alternatives, and scripted parent
+propagation/serialization/normal evaluation. Run focused then one portable suite;
+check available historical replay and version altered semantics. Offline only:
+no inference/provider calls/model operations. Broad reconstruction-quality gain
+is not a completion requirement. The local prompt is
+`prompts/04-evidence-contract-repair.md`; these instructions survive its absence.
+
+**05:** Start from 04's verified result. Reduce retranscription of reflex/support
+and validated hypothesis data. Prefer immutable stored-hypothesis commitment or a
+smaller justified equivalent, with executable versus commit-ready previews and
+missing explanations visible before commit. Require explicit proto values/nulls,
+confidence and linguistic choices; changed claims/evidence need exact revalidation.
+Preserve practical full-payload compatibility and strict checks. Keep protocol
+changes separate from linguistic guidance; correct cascade/singleton/outgroup
+claims using actual counts. Reproduce the saved malformed-call classes offline,
+then use at most one bounded local smoke to test commitment on final code.
+Check model availability when ready for that smoke. If unavailable, complete the
+offline work and report the smoke as pending; availability does not block offline
+implementation. No countdown absent new evidence. Report cumulative tokens separately from
+maximum request/context size. Output remains `research/protocol_revision.md`.
+
+**06:** Remains independent with shared-file/version/hash coordination. For a
+bounded single-node 07 pilot it may be explicitly scoped out if interruption and
+missing-outcome handling are demonstrated and recorded. This does not complete 06.
+
+**07:** Require repaired invariants, scripted normal-evaluator measurement of the
+primary outcome, final local commit usability and actual input/work-cap coverage.
+Freeze usable arms with a declared question: evidence mechanics, protocol ergonomics,
+linguistic wording or a necessary package. If interface/semantic adaptations make
+an assembly-only arm unusable, label the package and limit attribution. No silent
+input/beam narrowing. The visible internal concept split is a diagnostic partition;
+claim generalization only from an explicitly withheld observation/tuning design.
+Keep development cases, proxy/notation/scope limits, synthetic retention assumptions
+and missing outcomes explicit. Arrange a focused independent review of the final
+interface/manifest before comparative inference unless the owner scopes it out.
+Task 08 remains deferred. No implementation or inference is dispatched by this entry.
+
+### Task 04 interface decision — 2026-10-04, now verified
+
+Read [evidence repair](research/evidence_repair.md). The implementation uses
+units-v2: separate local scopes and default descriptive recurrence rows, with explicit
+`shared_claims` selections over `member_set_ids`. Counts distinguish supplied etyma,
+unresolved concept/unit opportunities, concepts, source columns and alternative
+occurrences. New trajectories/checkpoints write 5.0/3.0; old records remain readable,
+but old checkpoints and units-v1 execution require the original checkout.
+Task 05 must use the delivered interfaces/counts; keep
+broader guidance and live smoke deferred until then. Task 06 must preserve the
+new semantic resume refusal; task 07 must freeze final count/evidence versions.
+Final verification and measured costs are in the completion amendment/result below.
+
+
+### Task 04 completion amendment — 2026-10-04
+
+Read `docs/research/evidence_repair.md`, `evidence_repair_results.json`, and the
+current amendments in evidence/evaluation contracts and migration. Delivered
+units-v2 / count semantics independent-etyma-v1; trajectory 5.0, checkpoint 3.0,
+unchanged piece representation units-v1 and raw evaluator task02-v1; explicit
+piece diagnostics task04-units-v1. Verify the actual checkout/schema hashes.
+
+05: default `summarize_correspondences` is descriptive `reading="recurrence"`.
+`csp-*` rows list complete local `member_set_ids`; they cannot be committed as
+local IDs. Use `shared_claims` with explicit pattern/member selection and required
+value/null, confidence/rationale, optional conditioning/directionality, alongside
+`commitments` (supply [] when all choices are shared). `reading="local",
+min_support=1` gives individual `csu-*` values. Expanded persisted requests retain
+`approved_shared_claims`. Changing a collection or choices requires exact preview.
+The default filter is inspection, not a support-1 prohibition. Distinguish supplied
+etyma/unresolved units/concepts/source columns/alternative occurrences. Scoped
+polarize must preserve set_id, unit_orders and overlays; outgroup pointers are
+bounded with explicit full counts/truncation. Realignment joins verify source-column
+gain and report independent-support gain separately. Partial restorations need a
+named unit. Reuse the saved task03 malformed-call classes; broader guidance,
+stored-preview ergonomics and next bounded live commit smoke remain yours.
+
+06: retain trajectory 2.0/3.0/4.0 readers and checkpoint 1.0/2.0 audit reading;
+refuse unsafe old resumes under units-v2. Old units-v1 inventory execution requires
+its original checkout. Do not relax evidence/instruction/schema hashes as retry
+settings. The post-commit unit_orders propagation is repaired. Unknown legacy
+provider causes and task02-v1 outcome/fallback readings are unchanged.
+
+07: run the normal instrument control with
+`conda run -n llm_reconstruction python tools/evidence_repair_controls.py --output-dir /tmp/task04-controls-new`.
+It executes correct/wrong/extra/missing/reordered hypotheses through two levels,
+JSONL and evaluate_run; it is operator-controlled, not live quality. Freeze
+units-v2/count/task02-v1/task04-units-v1 and both submitted and expanded choices.
+The minimum runtime wording needed for counts/shared IDs/scoping changed in 04;
+an assembly-only arm cannot assume unchanged instruction hashes. Label any
+necessary evidence/instruction package and limit attribution.
+
+The full 54-concept frozen leaf input fits caps: Burmic 57 tuples/926 projected
+columns, Maruic 91/2460. Default recurrence filters cover 437/567 and 1033/1340
+alternative occurrences. The preserved three-concept input has 3 tuples,
+33 local sets/28 patterns; default filter covers 9/33 occurrences. Declare sparse
+inspection explicitly; never silently narrow input/beams. Retained historical
+r2/01 root inputs fit at 65 tuples; future candidate root beams are not measured
+by that legacy reading and must be preflighted. Flat all-leaf Polynesian still
+refuses 32,768 tuples for concept 1212 against 4,096. Cost command:
+`conda run -n llm_reconstruction python tools/evidence_repair_probe.py --payload FROZEN_PAYLOAD`.
+
+Require final 05 local commit usability and normal-evaluator/cap/manifest checks,
+plus relevant 06 completion or bounded explicit scope-out. Recommend another
+independent review after 04/05 and relevant 06 work before comparative inference.
+No downstream task or inference is dispatched; the owner chooses when to start.
 
 ## Session handoffs
+
+Entries below through the prompt-revision handoff use the numbering in effect
+at that time. Use the translation above for current tasks; quoted historical
+filenames may have been renamed. The renumbering entry at the end uses current
+numbers and records the change without rewriting earlier history.
+
 
 Append the following at a meaningful handoff, keeping detailed logs in the result
 document. For partial work, make the next action specific enough to execute.
@@ -550,3 +729,92 @@ The source-export suite requires separately installed local CLDF datasets.
 The existing branch's PR decision remains with the owner; no PR was created
 and no unmerged branch was deleted. This review does not dispatch tasks 04–06
 or substitute for the independent scientific/architectural assessment.
+
+### 2026-10-04 — independent review and prompt revision
+
+The owner requested the review's proposed prompt changes and new task 03.5.
+Prepared `prompts/03.5-evidence-contract-repair.md`; amended 04–06, the original
+03's follow-up pointer, prompt index, tracked plan and current-state next action.
+The actionable scope and self-contained counterexamples are mirrored above.
+Task 03.5 precedes 04; 05 stays independent; 06 needs verified instruments,
+usable frozen arms and focused interface/manifest review or owner scope-out.
+No reconstruction code, tests, Git history, models or runs were changed. Validation
+for this revision is document links, whitespace, sequence and cross-file consistency.
+The user chooses when to start implementation; no task was dispatched.
+
+### 2026-10-04 — consecutive prompt numbering
+
+At the owner's request, renamed the pending repair from 03.5 to 04 and shifted
+instructions/protocol to 05, provider recovery to 06, local comparisons to 07,
+and deferred forward prediction to 08. Tasks 01–03 retain their numbers.
+Updated every active brief, prompt-index link, tracked plan/current-state reference,
+experiment-policy task number and live handoff amendment/dependency. The translation
+above preserves interpretation of dated reports and earlier conversation/history.
+The next implementation is 04, followed by 05; 06 remains independent and 07 is
+subject to its instrument/interface and manifest-review prerequisites. Task 08
+remains deferred. Content scope, implementation status, resource limits, artifact
+versions and run names are unchanged. Document links, whitespace, filename/title
+sequence and old-name references were checked. No implementation or inference ran.
+
+### 2026-10-04 — wording cleanup after renumbering
+
+Applied the owner's two corrections: task 07 freezes the final evidence/evaluator
+versions delivered by 04/05 while preserving historical readings, requires 04/05,
+and permits only the documented bounded 06 exception. Intervention isolation is
+qualified by usable arms. Task 05 checks model availability when ready for its
+live smoke; unavailable models leave that smoke pending while offline work proceeds.
+Matching live handoff instructions were updated; dated history remains intact.
+Document checks pass. No implementation or inference ran.
+
+### 2026-10-04 — task 04 — complete
+
+Session: chat `01a10868-6d4a-7732-b08c-cca58dddc59b`, task 04.
+Checkout: `/Users/acraev/Work/cognate-reconstruction`, branch
+`burmish-session-evaluation-units`, HEAD
+`cb16374461e4a3e5be38e5ca32e90b9d08e8ad4d`; implementation is uncommitted.
+Inherited local task 01 reports/CLI/tests/fixtures and prior entry-document work
+are preserved. Ignored prompts/runs stay local. Result:
+`docs/research/evidence_repair.md`, `evidence_repair_results.json`,
+`evidence_repair_manifest.json`; new offline measurement/control tools and sixteen
+behavioral repair regressions. Tested code manifest SHA-256:
+`0271e055a434dc5256aacda0fea563429d2bbd978d69d1bc4e5c21dbcd66df59`.
+
+Decisions/interfaces: units-v2, independent-etyma-v1, trajectories/checkpoints
+5.0/3.0; exact local bindings plus explicit shared collections over descriptive
+recurrence; actual-reflex contrast checks; scoped outgroup/restoration evidence;
+hidden target layouts and actual serialized parent pieces through normal scoring.
+Only necessary runtime count/shared-ID/scoping wording changed; broad instructions
+and preview-to-commit usability remain 05's work.
+
+Validation/resources: four original counterexample failures reproduced before
+repair. 162 focused checks passed; first portable 605 passed/two failures/41
+excluded, then diagnostic-gap/vocabulary repairs received 78 focused passes.
+Final portable: 607 passed/41 excluded, 56.03 s. Two full runs were made because
+the first failed; no further repetition. All 364 saved score records, eleven
+beams/reports and four result/event hash pairs reproduce. Source-unit CRAWL/FLOWER
+controls and NEEDLE/proxy 1/3 interpretation persist. Five scripted normal-evaluator
+controls commit at both levels, preserving underdetermined readings and raw scores.
+Frozen full/panel costs and the flat Polynesian refusal are recorded; no narrowing.
+Zero inference/provider/model operations or downloads.
+
+Downstream: current contracts/migration/current state and 05–07 briefs amended.
+The full actionable amendment is tracked above because prompts are ignored.
+Remaining limits: no live commit/quality claim, source notation/OLD MAN remain open,
+real target piece analysis may be unavailable, future generated root beams need
+preflight, old semantic resumes/execution require original code. Another independent
+review is recommended after 04/05 and relevant 06 work, before comparisons.
+Next: 05 is ready; read the repair/contracts and verify actual schemas, then reproduce
+malformed calls offline before the next bounded live interface smoke. The owner
+chooses when to start; no task was dispatched.
+
+### 2026-10-05 — task 04 saved as a separate commit
+
+At the owner's request, record task 04 in a new commit on
+`burmish-session-evaluation-units`, preserving the earlier task 02/03 commits.
+Include the repair, its contracts/results/tests and the reviewed 01–08 workflow
+numbering and prerequisites needed to interpret it. The tested code manifest is
+unchanged since the final 607-pass suite; the earlier delivery HEAD/dirty-state
+records remain historical provenance. The standalone task 01 audit and optional
+PBEBench/CFR assessment/note remain local and uncommitted. Prompts remain ignored;
+the task 05–07 interface amendments are present in this tracked handoff.
+No push, PR or downstream task is part of this follow-up.

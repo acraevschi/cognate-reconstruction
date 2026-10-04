@@ -15,7 +15,7 @@ from itertools import product
 from cognate_reconstruction.schemas.common import MORPHOLOGICAL_BOUNDARY_TOKENS
 from cognate_reconstruction.schemas.evidence import (
     AssemblyWork, EvidenceColumn, EvidencePiece, FormAnalysis, PieceSource,
-    UnitOrderClaim, digest,
+    UnitOrderClaim, digest, EVIDENCE_CONTRACT_VERSION,
 )
 from cognate_reconstruction.schemas.alignment import (
     AlignmentMember, AlignmentResult, CorrespondenceDetail, MultipleAlignmentMap,
@@ -33,7 +33,7 @@ def lingpy_version():
 
 
 def alignment_identity(aligner):
-    return ["units-v1", type(aligner).__module__, type(aligner).__qualname__,
+    return [EVIDENCE_CONTRACT_VERSION, type(aligner).__module__, type(aligner).__qualname__,
             getattr(aligner, "method", "sca"), getattr(aligner, "mode", "global"), lingpy_version()]
 
 
@@ -62,6 +62,17 @@ def source_analyses(form: LexicalForm) -> tuple[FormAnalysis, ...]:
                                  cognate_set_id=item.cognate_set_id,
                                  segment_indices=tuple(range(len(form.segments)))),),
         ),), claim="source") for item in whole)
+    # A single full-span slice has the same geometry as a whole membership.
+    # Retain its original membership/source identity; do not infer cognacy.
+    if (len(memberships) == 1 and memberships[0].segment_indices == tuple(range(len(form.segments)))
+            and not any(t in MORPHOLOGICAL_BOUNDARY_TOKENS for t in form.segments)):
+        item = memberships[0]
+        return (FormAnalysis(claim="source", pieces=(EvidencePiece(
+            unit_id="cog:" + item.cognate_set_id, cognate_set_id=item.cognate_set_id,
+            kind="whole", segment_indices=item.segment_indices,
+            sources=(PieceSource(form_id=form.form_id, membership_id=item.membership_id,
+                cognate_set_id=item.cognate_set_id, segment_indices=item.segment_indices),),
+        ),)),)
     if not memberships:
         return (FormAnalysis(pieces=(EvidencePiece(
             unit_id="cog:" + form.cognate_set_id if form.cognate_set_id else "whole:unknown",
@@ -179,7 +190,7 @@ def align_tuple(forms, child_ids, aligner, *, unit_order=None, overrides=(),
         if len({piece.cognate_set_id for _, piece in present.values()}) > 1 and unit != "whole:unknown":
             raise ValueError(f"unit {unit!r} carries conflicting cognate claims in concept {forms[0].concept_id}; "
                              "supply a consistent explicit analysis_claim or keep separate unknown units")
-        scope = "whole" if all(piece.kind == "whole" for _, piece in present.values()) else unit
+        scope = unit  # Occurrence/cognacy scope never stands for phonological recurrence.
         selected_override = next((item for item in overrides if item.concept_id == forms[0].concept_id
                                   and (item.unit_id == unit or (item.unit_id is None and len(order) == 1))
                                   and (not item.analysis_ids or all(
@@ -219,7 +230,9 @@ def align_tuple(forms, child_ids, aligner, *, unit_order=None, overrides=(),
                                                membership_id=next((source.membership_id for source in piece.sources if source.form_id == form.form_id), None),
                                                segment_indices=(position,)))
             columns.append(EvidenceColumn(column_id="col-" + digest([key, unit, column]),
-                                          unit_id=unit, scope_id=scope, sources=tuple(sources)))
+                                          unit_id=unit, scope_id=scope,
+                                          etymon_id=next((p.cognate_set_id for _, p in present.values()), None) if not unknown_whole else None,
+                                          kind=next(iter(present.values()))[1].kind, sources=tuple(sources)))
     # A whole-word override on several units cannot silently erase their labels.
     if any(item.unit_id is None for item in overrides) and len(order) > 1:
         raise ValueError("partial evidence requires realign.unit_id; survey/preview names each unit")
@@ -260,7 +273,7 @@ def evidence_map(lexicons, aligner, *, unit_orders=(), overrides=(), overlay_ids
     if len({claim.concept_id for claim in unit_orders}) != len(unit_orders):
         raise ValueError("unit_orders may name each concept only once")
     orders = {claim.concept_id: claim for claim in unit_orders}
-    counters = {"candidate_tuples": 0, "alignment_calls": 0, "cache_hits": 0}
+    counters = {"projected_columns": projected, "candidate_tuples": 0, "alignment_calls": 0, "cache_hits": 0}
     alignments = []
     cache = {} if cache is None else cache
     for concept, children in sorted(by_concept.items()):

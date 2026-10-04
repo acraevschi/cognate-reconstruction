@@ -187,7 +187,7 @@ def realign(
         alignment_overlay_id=overlay_id,
         unit_orders=arguments.unit_orders,
     )
-    delta = _verify_joins(arguments.overrides, before, after, context, overlay_id)
+    delta, source_delta = _verify_joins(arguments.overrides, before, after, context, overlay_id)
 
     invalidated = tuple(
         item.set_id
@@ -199,6 +199,8 @@ def realign(
     return RealignResult(
         alignment_overlay_id=overlay_id,
         joined_set_support_delta=delta,
+        joined_source_column_delta=source_delta,
+        count_semantics="independent-etyma-v1",
         invalidated_set_ids=invalidated,
         override_concept_count=len(overrides),
         node_concept_count=node_concepts,
@@ -215,32 +217,37 @@ def _verify_joins(
     after,
     context: AgentContext,
     overlay_id: str,
-) -> dict[str, int]:
+) -> tuple[dict[str, int], dict[str, int]]:
     """Constraint 3: a named set must actually gain support.
 
     Refused rather than reported, because this is the check that separates a
     repair from a fit. The overlay is discarded on refusal — an overlay a commit
     could cite while its own claim was refuted would be worse than no overlay.
     """
-    support_before = {item.set_id: item.support for item in before.sets}
-    support_after = {item.set_id: item.support for item in after.sets}
-    old_sets = {item.set_id: item for item in before.sets}
+    before_rows = (*before.sets, *before.recurrence_patterns)
+    after_rows = (*after.sets, *after.recurrence_patterns)
+    support_before = {item.set_id: item.support for item in before_rows}
+    support_after = {item.set_id: item.support for item in after_rows}
+    old_sets = {item.set_id: item for item in before_rows}
     delta: dict[str, int] = {}
+    source_delta: dict[str, int] = {}
     for override in overrides:
         named = override.joins_set_id
         if named is None:
             continue
         known = old_sets.get(named)
-        equivalent = next((item for item in after.sets if known is not None
+        equivalent = next((item for item in after_rows if known is not None
             and item.segments == known.segments and item.scope_id == known.scope_id), None)
         gained = (equivalent.support if equivalent else 0) - support_before.get(named, 0)
         delta[named] = gained
-        if gained > 0:
+        source_gained = ((equivalent.source_column_count or equivalent.support) if equivalent else 0) - ((known.source_column_count or known.support) if known else 0)
+        source_delta[named] = source_gained
+        if source_gained > 0:
             continue
         del context.alignment_overlays[overlay_id]
         raise ToolInputError(
             f"the realignment of concept {override.concept_id!r} claims to join "
-            f"set {named!r}, which gained {gained} column(s) of support",
+            f"set {named!r}, which gained {source_gained} source column(s) and {gained} independent support",
             code="realignment-does-not-join-set",
             remediation=(
                 "A realignment that joins a set moves a column into a "
@@ -260,7 +267,7 @@ def _verify_joins(
                 )
             ),
         )
-    return delta
+    return delta, source_delta
 
 
 def _advisory(overrides: int, node_concepts: int, invalidated: int) -> str:

@@ -47,7 +47,7 @@ from cognate_reconstruction.agent.tools.inventory_evidence import (
     node_inventory,
     verify_commitments,
     verify_restorations,
-    column_bindings,
+    column_bindings, expand_shared_claims,
 )
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.inventory import (
@@ -62,7 +62,7 @@ from cognate_reconstruction.traversal.assembler import (
     derive_branch_rules,
 )
 from cognate_reconstruction.traversal.beam import make_leaf_beam
-from cognate_reconstruction.schemas.evidence import digest
+from cognate_reconstruction.schemas.evidence import digest, EVIDENCE_CONTRACT_VERSION
 
 
 def _validate_residue_policy(
@@ -135,6 +135,8 @@ def assemble_node(
         alignment_overlay_id=spec.alignment_overlay_id,
         unit_orders=spec.unit_orders,
     )
+    submitted_shared = spec.shared_claims
+    spec = expand_shared_claims(spec, inventory_sets)
     verify_commitments(context, spec.commitments, inventory_sets)
     check_complementary_splits(
         context,
@@ -143,12 +145,13 @@ def assemble_node(
         residue_policy=spec.residue_policy,
         residue_witness_child_id=spec.residue_witness_child_id,
     )
-    verify_restorations(context, spec.restorations, alignment_map)
+    verify_restorations(context, spec.restorations, alignment_map, segmentation_overlay_id)
     verify_positions(spec, alignment_map)
 
     derived = derive_branch_rules(spec.commitments, context.child_ids)
     committed = CommittedProtoInventory(
-        evidence_contract_version="units-v1",
+        evidence_contract_version=EVIDENCE_CONTRACT_VERSION,
+        approved_shared_claims=submitted_shared,
         derived_rules_scope="unscoped_view",
         evidence_revision=alignment_map.evidence_revision,
         column_bindings=column_bindings(alignment_map, context.child_ids),
@@ -228,7 +231,7 @@ def held_out_unaccounted_column_rate(
     inventory is meant to *look* poor here, not to be forbidden.
     """
     held_out = context.concept_split.held_out_concept_ids
-    if not held_out or not spec.commitments:
+    if not held_out or not (spec.commitments or spec.shared_claims):
         return None
     step, _committed = assemble_node(
         context,
@@ -250,7 +253,7 @@ def assembly_result(
     segmentation_overlay_id: str | None,
     detail: AssemblyDetail,
 ) -> TestProtoAssemblyResult:
-    derived = derive_branch_rules(spec.commitments, tuple(spec.child_node_ids))
+    derived = derive_branch_rules(committed.request.commitments, tuple(spec.child_node_ids))
     reports = step.assembly_reports
     if detail is AssemblyDetail.SUMMARY:
         reports = tuple(
@@ -264,7 +267,7 @@ def assembly_result(
         work=step.diagnostics.assembly_work,
         validation_call_id=call_id,
         covered_set_ids=tuple(
-            dict.fromkeys(item.set_id for item in spec.commitments)
+            dict.fromkeys(item.set_id for item in committed.request.commitments)
         ),
         unaccounted_column_rate=diagnostics.unaccounted_column_rate or 0.0,
         cross_branch_assembly_rate=diagnostics.cross_branch_assembly_rate or 0.0,
@@ -311,6 +314,7 @@ def test_proto_assembly(
         child_node_ids=context.child_ids,
         alignment_overlay_id=arguments.alignment_overlay_id,
         commitments=arguments.commitments,
+        shared_claims=arguments.shared_claims,
         residue_policy=arguments.residue_policy,
         residue_witness_child_id=arguments.residue_witness_child_id,
         residue_dispositions=arguments.residue_dispositions,
@@ -337,11 +341,14 @@ def test_proto_assembly(
 
 
 def hypothesis_digest(spec, segmentation_overlay_id):
-    fields = ("commitments", "residue_policy", "residue_witness_child_id",
+    fields = ("shared_claims", "commitments", "residue_policy", "residue_witness_child_id",
               "residue_dispositions", "restorations", "unit_orders", "alignment_overlay_id")
     value = spec.model_dump(mode="json", include=set(fields))
     # Commitment order has no linguistic meaning; freeze the actual claims.
     value["commitments"] = sorted(value["commitments"], key=digest)
+    for claim in value["shared_claims"]:
+        claim["member_set_ids"] = sorted(claim["member_set_ids"])
+    value["shared_claims"] = sorted(value["shared_claims"], key=digest)
     return digest([value, segmentation_overlay_id])
 
 

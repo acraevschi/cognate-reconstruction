@@ -673,7 +673,7 @@ def _resolve_assembly_validation(
     from cognate_reconstruction.agent.tools.inventory_evidence import node_inventory
     # Empty/identity remains usable without a preview. Dispositions and
     # restorations are claims even when the set list is empty.
-    if not (spec.commitments or spec.residue_dispositions or spec.restorations or spec.unit_orders):
+    if not (spec.commitments or spec.shared_claims or spec.residue_dispositions or spec.restorations or spec.unit_orders):
         return spec.assembly_validation_call_id or ""
     _inventory, reading = node_inventory(context,
         segmentation_overlay_id=segmentation_overlay_id,
@@ -685,7 +685,7 @@ def _resolve_assembly_validation(
     named = spec.assembly_validation_call_id
     if named is not None:
         matching = [(call_id, preview) for call_id, preview in matching if call_id == named]
-    required = {item.set_id for item in spec.commitments}
+    required = {item.set_id for item in spec.commitments} | {sid for claim in spec.shared_claims for sid in claim.member_set_ids}
     covered = set().union(*(set(preview.covered_set_ids) for _, preview in matching))
     if not matching or not required <= covered:
         raise ToolInputError("no current assembly preview validates this exact hypothesis and evidence",
@@ -738,10 +738,14 @@ def _commit_inventory(
     if spec.alignment_overlay_id is not None:
         # Raises unknown-overlay for a stale or fabricated ID.
         context.alignment_overrides(spec.alignment_overlay_id)
-    _require_rationales_on_multi_set_commits(spec.commitments)
+    from cognate_reconstruction.agent.tools.inventory_evidence import node_inventory, expand_shared_claims
+    sets, _ = node_inventory(context, segmentation_overlay_id=arguments.segmentation_overlay_id,
+        alignment_overlay_id=spec.alignment_overlay_id, unit_orders=spec.unit_orders)
+    expanded = expand_shared_claims(spec, sets)
+    _require_rationales_on_multi_set_commits(expanded.commitments)
     validation_call_id = _resolve_assembly_validation(context, spec, arguments.segmentation_overlay_id)
-    reductions = inventory_contrast_reductions(spec.commitments)
-    _require_directionality_on_reducing_sets(spec.commitments, reductions)
+    reductions = inventory_contrast_reductions(expanded.commitments)
+    _require_directionality_on_reducing_sets(expanded.commitments, reductions)
 
     resolved = spec.model_copy(
         update={"assembly_validation_call_id": validation_call_id or None}

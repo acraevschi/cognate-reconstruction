@@ -64,6 +64,13 @@ def build_case(case: dict) -> SyntheticBuildResult:
         payload = payload.model_copy(update={"lexicons": tuple(lexicons)})
     validity = (TargetValidity.UNDERDETERMINED if case["identifiability"] == "underdetermined"
                 else TargetValidity.VALIDATED)
+    # Scorer-only layouts are attached only to hidden target bindings. They
+    # never participate in source analysis, tools or parent evidence.
+    if "target_unit_layouts" in case:
+        payload = payload.model_copy(update={"historical_form_bindings": tuple(
+            binding.model_copy(update={"forms": tuple(_target_layout(form,
+                case["target_unit_layouts"][form.concept_id]) for form in binding.forms)})
+            for binding in payload.historical_form_bindings)})
     bindings = tuple(b.model_copy(update={
         "target_validity": validity,
         "target_validity_note": case["independent_evidence"] + " " + case["equivalent_solutions"],
@@ -78,3 +85,23 @@ def build_case(case: dict) -> SyntheticBuildResult:
         })
     return SyntheticBuildResult(payload=payload.model_copy(update={"historical_form_bindings": bindings}),
                                 answer_key=key)
+
+
+
+def _target_layout(form, layout):
+    indices = [[]]
+    for index, token in enumerate(form.segments):
+        if token in {"+", "-"}:
+            indices.append([])
+        else:
+            indices[-1].append(index)
+    if len(layout) != len(indices) or any(not ix for ix in indices) or len(set(layout)) != len(layout):
+        raise ValueError("scorer-only target unit layout must name complete nonempty distinct pieces")
+    memberships = tuple(CognateMembership(membership_id=f"target-layout:{form.form_id}:{i}",
+        cognate_set_id=unit, scope=CognateMembershipScope.SEGMENT_SLICE,
+        interpretation=CognateMembershipInterpretation.PARTIAL_COGNATE,
+        segment_indices=tuple(ix), slice_unit="morpheme", provenance=CognateMembershipProvenance(
+            source_table="CognateTable", source_row=i+1, source_cognateset_id=unit,
+            source_reference="task04 scorer-only supplied diagnostic layout; never model evidence"))
+        for i, (unit, ix) in enumerate(zip(layout, indices, strict=True)))
+    return form.model_copy(update={"cognate_set_id": None, "cognate_memberships": memberships})

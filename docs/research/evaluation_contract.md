@@ -99,3 +99,19 @@ and generator behavior are unchanged.
 Verification covers perfect/scripted output, wrong output, identity, direct and
 descendant fallbacks, model protocol failure, infrastructure/unknown cause, abandoned
 salvage, missing concepts, alternatives, proxy annotation and payload isolation.
+
+## Task04 scorer-layout amendment — 2026-10-04
+
+Raw task02-v1 readings and target tokens are unchanged. The existing generated
+morphology `target_unit_layouts` now become complete memberships only in hidden
+historical target binding forms. No answer-key/layout metadata enters model
+contexts or tools. Normal evaluation can compare actual assembled/serialized
+pieces and records `unit_evaluator_version=task04-units-v1` when output analysis
+is explicit. Extra/missing/wrong pieces and order remain separate. Reordered
+complete pieces can score exact in the piece reading while raw whole-word exact
+is false. Ancestral-order and lost-contrast validity stay underdetermined.
+
+The five [scripted controls](evidence_repair.md) use actual preview/commit, parent
+propagation, JSONL and `evaluate_run`; their success verifies the measurement
+instrument, not linguistic/model improvement. Real unannotated targets and
+OLD MAN's unresolved scope still have unknown piece quality.

@@ -11,11 +11,11 @@ from pydantic import Field, model_validator
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.traversal import ReconstructionStep
 
-CHECKPOINT_SCHEMA_VERSION = "2.0"
+CHECKPOINT_SCHEMA_VERSION = "3.0"
 
 
 class FamilyCheckpoint(WorkbenchModel):
-    schema_version: Literal["1.0", "2.0"] = CHECKPOINT_SCHEMA_VERSION
+    schema_version: Literal["1.0", "2.0", "3.0"] = CHECKPOINT_SCHEMA_VERSION
     run_id: NonEmptyStr
     input_sha256: NonEmptyStr
     configuration_sha256: NonEmptyStr

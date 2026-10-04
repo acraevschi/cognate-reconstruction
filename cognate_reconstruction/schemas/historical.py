@@ -52,6 +52,7 @@ class TargetValidity(StrEnum):
 
 
 class TokenEvaluationDiagnostics(WorkbenchModel):
+    unit_evaluator_version: NonEmptyStr | None = None
     cognate_unit_comparisons: tuple[dict[str, object], ...] = ()
     normalization_version: Literal["task01-v1"] = "task01-v1"
     analysis_status: NonEmptyStr

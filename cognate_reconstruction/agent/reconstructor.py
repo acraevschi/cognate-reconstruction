@@ -488,6 +488,7 @@ def _held_out_unaccounted_rate(
         residue_witness_child_id=committed.request.residue_witness_child_id,
         residue_dispositions=committed.request.residue_dispositions,
         restorations=committed.request.restorations,
+        unit_orders=committed.request.unit_orders,
     )
     return held_out_unaccounted_column_rate(
         context,

@@ -1,0 +1,1310 @@
+{
+  "version": "task04-offline-v1",
+  "head": "cb16374461e4a3e5be38e5ca32e90b9d08e8ad4d",
+  "branch": "burmish-session-evaluation-units",
+  "tested_code_manifest_sha256": "0271e055a434dc5256aacda0fea563429d2bbd978d69d1bc4e5c21dbcd66df59",
+  "evidence_contract": "units-v2",
+  "count_semantics": "independent-etyma-v1",
+  "piece_representation": "units-v1",
+  "trajectory_version": "5.0",
+  "checkpoint_version": "3.0",
+  "evaluator_version": "task02-v1",
+  "unit_evaluator_version": "task04-units-v1",
+  "live_model_calls": 0,
+  "provider_calls": 0,
+  "downloads": 0,
+  "preserved_files": [
+    "docs/research/failure_audit.md",
+    "docs/research/failure_audit_traces.md",
+    "docs/research/pbebench_cfr_assessment.md",
+    "tools/failure_audit.py",
+    "docs/research/evaluation_results.md",
+    "docs/research/evaluation_offline_results.json",
+    "docs/research/evidence_results.md",
+    "docs/research/evidence_offline_results.json"
+  ],
+  "reproduced_before": {
+    "core_support_with_unrelated_alternative": [
+      1,
+      2
+    ],
+    "repeated_retention_commit_error": "missing-directionality-rationale",
+    "local_outgroup_tokens": {
+      "one": [
+        "p",
+        "t"
+      ],
+      "two": [
+        "p",
+        "t"
+      ]
+    },
+    "morphology_targets_without_units": 4
+  },
+  "before": {
+    "version": "task04-measurement-v1",
+    "evidence_contract": "units-v1",
+    "payload": "runs/benchmarks/burmish.json",
+    "payload_sha256": "2febdd6da0ca44fe37dbc72af8627d92677807d05c3c84fadb6594cf9e51ace2",
+    "concepts": 54,
+    "live_model_calls": 0,
+    "nodes": [
+      {
+        "node_id": "maruic",
+        "legacy_sets": 150,
+        "local_sets": 738,
+        "support1": 576,
+        "multiconcept": 0,
+        "default_matched": 162,
+        "default_page_bytes": 16364,
+        "local_inventory_bytes": 176648,
+        "work": {
+          "candidate_tuples": 91,
+          "alignment_calls": 106,
+          "cache_hits": 0,
+          "pruned_candidates": 0
+        },
+        "seconds": 0.105330624995986
+      },
+      {
+        "node_id": "burmic",
+        "legacy_sets": 130,
+        "local_sets": 543,
+        "support1": 519,
+        "multiconcept": 4,
+        "default_matched": 24,
+        "default_page_bytes": 12880,
+        "local_inventory_bytes": 121772,
+        "work": {
+          "candidate_tuples": 57,
+          "alignment_calls": 62,
+          "cache_hits": 0,
+          "pruned_candidates": 0
+        },
+        "seconds": 0.04716700001154095
+      }
+    ]
+  },
+  "after": {
+    "version": "task04-measurement-v1",
+    "evidence_contract": "units-v2",
+    "payload": "runs/benchmarks/burmish.json",
+    "payload_sha256": "2febdd6da0ca44fe37dbc72af8627d92677807d05c3c84fadb6594cf9e51ace2",
+    "concepts": 54,
+    "live_model_calls": 0,
+    "nodes": [
+      {
+        "node_id": "maruic",
+        "legacy_sets": 150,
+        "local_sets": 738,
+        "support1": 738,
+        "multiconcept": 0,
+        "default_matched": 113,
+        "default_page_bytes": 36785,
+        "full_inventory_bytes": 502424,
+        "work": {
+          "projected_columns": 2460,
+          "candidate_tuples": 91,
+          "alignment_calls": 106,
+          "cache_hits": 0,
+          "pruned_candidates": 0
+        },
+        "seconds": 0.13189170899568126,
+        "recurrence_patterns": 320,
+        "recurrence_support1": 207,
+        "default_local_matched": 0,
+        "recurrence_bytes": 187807,
+        "local_sets_bytes": 358212,
+        "default_covered_local_sets": 531,
+        "local_sets_total": 738,
+        "default_covered_occurrences": 1033,
+        "total_occurrences": 1340,
+        "default_concept_count": 54,
+        "individual_claim_bytes": 192859,
+        "shared_claim_bytes": 89009,
+        "individual_claim_count": 738,
+        "shared_claim_count": 320,
+        "outgroup_default": {
+          "page_bytes": 73311,
+          "work": {
+            "unit_form_pairs": 116,
+            "projected_columns": 1710,
+            "alignment_calls": 63
+          },
+          "profiles": 7
+        }
+      },
+      {
+        "node_id": "burmic",
+        "legacy_sets": 130,
+        "local_sets": 543,
+        "support1": 543,
+        "multiconcept": 4,
+        "default_matched": 90,
+        "default_page_bytes": 36135,
+        "full_inventory_bytes": 348269,
+        "work": {
+          "projected_columns": 926,
+          "candidate_tuples": 57,
+          "alignment_calls": 62,
+          "cache_hits": 0,
+          "pruned_candidates": 0
+        },
+        "seconds": 0.0765520419809036,
+        "recurrence_patterns": 210,
+        "recurrence_support1": 120,
+        "default_local_matched": 0,
+        "recurrence_bytes": 123149,
+        "local_sets_bytes": 254304,
+        "default_covered_local_sets": 423,
+        "local_sets_total": 543,
+        "default_covered_occurrences": 437,
+        "total_occurrences": 567,
+        "default_concept_count": 54,
+        "individual_claim_bytes": 138622,
+        "shared_claim_bytes": 60272,
+        "individual_claim_count": 543,
+        "shared_claim_count": 210,
+        "outgroup_default": {
+          "page_bytes": 98034,
+          "work": {
+            "unit_form_pairs": 189,
+            "projected_columns": 2484,
+            "alignment_calls": 177
+          },
+          "profiles": 18
+        }
+      }
+    ],
+    "root_note": "Initial internal child beams do not yet exist; use --banked-inputs for separately labelled retained historical root inputs. This does not estimate an unknown future model beam.",
+    "banked_input_reading": {
+      "reading": "historical retained beams under current mechanics; legacy analyses stay unknown, not a prospective candidate arm",
+      "path": "runs/sweeps/burmish-gemini-t36-r2/seed-01/trajectories.jsonl",
+      "sha256": "b07d5f9a011cd935f4f94e13e34948cd0a1a030eb563a79fd66ff0e912ac4115",
+      "nodes": [
+        {
+          "node_id": "maruic",
+          "concepts": 54,
+          "local_sets": 298,
+          "recurrence_patterns": 298,
+          "work": {
+            "projected_columns": 2460,
+            "candidate_tuples": 91,
+            "alignment_calls": 91,
+            "cache_hits": 0,
+            "pruned_candidates": 0
+          }
+        },
+        {
+          "node_id": "burmic",
+          "concepts": 54,
+          "local_sets": 171,
+          "recurrence_patterns": 171,
+          "work": {
+            "projected_columns": 926,
+            "candidate_tuples": 57,
+            "alignment_calls": 57,
+            "cache_hits": 0,
+            "pruned_candidates": 0
+          }
+        },
+        {
+          "node_id": "proto_burmish",
+          "concepts": 54,
+          "local_sets": 135,
+          "recurrence_patterns": 135,
+          "work": {
+            "projected_columns": 785,
+            "candidate_tuples": 65,
+            "alignment_calls": 65,
+            "cache_hits": 0,
+            "pruned_candidates": 0
+          }
+        }
+      ]
+    }
+  },
+  "intended_three_concept_input": {
+    "version": "task04-measurement-v1",
+    "evidence_contract": "units-v2",
+    "payload": "runs/experiments/task03-interface-smoke-20261003/input.json",
+    "payload_sha256": "44c08e488d907ad9ec5e9cedef89ebd282606f220d47f410c3f75c517e7ed97e",
+    "concepts": 3,
+    "live_model_calls": 0,
+    "nodes": [
+      {
+        "node_id": "burmic",
+        "legacy_sets": 11,
+        "local_sets": 33,
+        "support1": 33,
+        "multiconcept": 0,
+        "default_matched": 4,
+        "default_page_bytes": 4902,
+        "full_inventory_bytes": 27105,
+        "work": {
+          "projected_columns": 49,
+          "candidate_tuples": 3,
+          "alignment_calls": 3,
+          "cache_hits": 0,
+          "pruned_candidates": 0
+        },
+        "seconds": 0.004308542003855109,
+        "recurrence_patterns": 28,
+        "recurrence_support1": 24,
+        "default_local_matched": 0,
+        "recurrence_bytes": 13973,
+        "local_sets_bytes": 15288,
+        "default_covered_local_sets": 9,
+        "local_sets_total": 33,
+        "default_covered_occurrences": 9,
+        "total_occurrences": 33,
+        "default_concept_count": 3,
+        "individual_claim_bytes": 8399,
+        "shared_claim_bytes": 6777,
+        "individual_claim_count": 33,
+        "shared_claim_count": 28,
+        "outgroup_default": {
+          "page_bytes": 5003,
+          "work": null,
+          "profiles": 0
+        }
+      }
+    ],
+    "root_note": "Initial internal child beams do not yet exist; use --banked-inputs for separately labelled retained historical root inputs. This does not estimate an unknown future model beam."
+  },
+  "polynesian_cap_control": {
+    "refused": "concept 1212 requires 32768 candidate-analysis tuples; limit 4096. Reduce the input beam explicitly or select forms with get_alignments; no analysis was discarded"
+  },
+  "polynesian_native_leaf_costs": [
+    {
+      "node_id": "tongic",
+      "legacy_sets": 58,
+      "local_sets": 287,
+      "support1": 287,
+      "multiconcept": 0,
+      "default_matched": 39,
+      "default_page_bytes": 32624,
+      "full_inventory_bytes": 164626,
+      "work": {
+        "projected_columns": 611,
+        "candidate_tuples": 61,
+        "alignment_calls": 52,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "seconds": 0.035397542000282556,
+      "recurrence_patterns": 67,
+      "recurrence_support1": 28,
+      "default_local_matched": 0,
+      "recurrence_bytes": 42531,
+      "local_sets_bytes": 133971,
+      "default_covered_local_sets": 259,
+      "local_sets_total": 287,
+      "default_covered_occurrences": 358,
+      "total_occurrences": 388,
+      "default_concept_count": 46,
+      "individual_claim_bytes": 70505,
+      "shared_claim_bytes": 22800,
+      "individual_claim_count": 287,
+      "shared_claim_count": 67,
+      "outgroup_default": {
+        "page_bytes": 122619,
+        "work": {
+          "unit_form_pairs": 342,
+          "projected_columns": 4866,
+          "alignment_calls": 320
+        },
+        "profiles": 17
+      }
+    },
+    {
+      "node_id": "futunic",
+      "legacy_sets": 50,
+      "local_sets": 299,
+      "support1": 299,
+      "multiconcept": 0,
+      "default_matched": 46,
+      "default_page_bytes": 32803,
+      "full_inventory_bytes": 168047,
+      "work": {
+        "projected_columns": 552,
+        "candidate_tuples": 63,
+        "alignment_calls": 50,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "seconds": 0.04573308301041834,
+      "recurrence_patterns": 65,
+      "recurrence_support1": 19,
+      "default_local_matched": 0,
+      "recurrence_bytes": 42794,
+      "local_sets_bytes": 137488,
+      "default_covered_local_sets": 280,
+      "local_sets_total": 299,
+      "default_covered_occurrences": 307,
+      "total_occurrences": 329,
+      "default_concept_count": 46,
+      "individual_claim_bytes": 73494,
+      "shared_claim_bytes": 22784,
+      "individual_claim_count": 299,
+      "shared_claim_count": 65,
+      "outgroup_default": {
+        "page_bytes": 120814,
+        "work": {
+          "unit_form_pairs": 219,
+          "projected_columns": 2453,
+          "alignment_calls": 219
+        },
+        "profiles": 17
+      }
+    },
+    {
+      "node_id": "marquesic",
+      "legacy_sets": 42,
+      "local_sets": 256,
+      "support1": 256,
+      "multiconcept": 0,
+      "default_matched": 41,
+      "default_page_bytes": 31854,
+      "full_inventory_bytes": 147920,
+      "work": {
+        "projected_columns": 651,
+        "candidate_tuples": 68,
+        "alignment_calls": 57,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "seconds": 0.03485445800470188,
+      "recurrence_patterns": 59,
+      "recurrence_support1": 18,
+      "default_local_matched": 0,
+      "recurrence_bytes": 38089,
+      "local_sets_bytes": 120521,
+      "default_covered_local_sets": 238,
+      "local_sets_total": 256,
+      "default_covered_occurrences": 367,
+      "total_occurrences": 389,
+      "default_concept_count": 46,
+      "individual_claim_bytes": 62894,
+      "shared_claim_bytes": 20186,
+      "individual_claim_count": 256,
+      "shared_claim_count": 59,
+      "outgroup_default": {
+        "page_bytes": 144750,
+        "work": {
+          "unit_form_pairs": 541,
+          "projected_columns": 7223,
+          "alignment_calls": 461
+        },
+        "profiles": 20
+      }
+    },
+    {
+      "node_id": "tahitic",
+      "legacy_sets": 82,
+      "local_sets": 415,
+      "support1": 415,
+      "multiconcept": 0,
+      "default_matched": 87,
+      "default_page_bytes": 33572,
+      "full_inventory_bytes": 258427,
+      "work": {
+        "projected_columns": 1443,
+        "candidate_tuples": 91,
+        "alignment_calls": 91,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "seconds": 0.06387216699658893,
+      "recurrence_patterns": 128,
+      "recurrence_support1": 41,
+      "default_local_matched": 0,
+      "recurrence_bytes": 77970,
+      "local_sets_bytes": 199629,
+      "default_covered_local_sets": 374,
+      "local_sets_total": 415,
+      "default_covered_occurrences": 666,
+      "total_occurrences": 721,
+      "default_concept_count": 45,
+      "individual_claim_bytes": 104332,
+      "shared_claim_bytes": 39293,
+      "individual_claim_count": 415,
+      "shared_claim_count": 128,
+      "outgroup_default": {
+        "page_bytes": 140519,
+        "work": {
+          "unit_form_pairs": 544,
+          "projected_columns": 8395,
+          "alignment_calls": 415
+        },
+        "profiles": 20
+      }
+    }
+  ],
+  "work_caps": {
+    "candidate_tuples_per_concept": 4096,
+    "candidate_tuples_per_node": 65536,
+    "projected_columns": 250000,
+    "rule_combinations": 4096
+  },
+  "scripted_normal_evaluator_controls": [
+    {
+      "mode": "correct",
+      "raw_exact": 4,
+      "raw_ned": 0.0,
+      "validated_planned": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "intermediate_units": [
+        [
+          "cog:u0",
+          "boundary:u0:u1:+",
+          "cog:u1"
+        ],
+        [
+          "cog:u0",
+          "boundary:u0:u3:+",
+          "cog:u3"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u1:+",
+          "cog:u1"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u3:+",
+          "cog:u3"
+        ]
+      ],
+      "concepts": [
+        {
+          "concept_id": "c001",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u1"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            }
+          ]
+        },
+        {
+          "concept_id": "c002",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            }
+          ]
+        },
+        {
+          "concept_id": "c003",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1",
+                "u2"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            }
+          ]
+        },
+        {
+          "concept_id": "c004",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "wrong",
+      "raw_exact": 0,
+      "raw_ned": 0.5,
+      "validated_planned": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "intermediate_units": [
+        [
+          "cog:u0",
+          "boundary:u0:u1:+",
+          "cog:u1"
+        ],
+        [
+          "cog:u0",
+          "boundary:u0:u3:+",
+          "cog:u3"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u1:+",
+          "cog:u1"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u3:+",
+          "cog:u3"
+        ]
+      ],
+      "concepts": [
+        {
+          "concept_id": "c001",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c002",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u3"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c003",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c004",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u3"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "extra",
+      "raw_exact": 0,
+      "raw_ned": 0.375,
+      "validated_planned": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "intermediate_units": [
+        [
+          "cog:u0",
+          "boundary:u0:u1:+",
+          "cog:u1",
+          "boundary:u1:u4:+",
+          "cog:u4"
+        ],
+        [
+          "cog:u0",
+          "boundary:u0:u3:+",
+          "cog:u3",
+          "boundary:u3:u4:+",
+          "cog:u4"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u1:+",
+          "cog:u1",
+          "boundary:u1:u4:+",
+          "cog:u4"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u3:+",
+          "cog:u3",
+          "boundary:u3:u4:+",
+          "cog:u4"
+        ]
+      ],
+      "concepts": [
+        {
+          "concept_id": "c001",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u1"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "u4"
+              ],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c002",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "u4"
+              ],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c003",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1",
+                "u2"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "u4"
+              ],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c004",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [
+                "u4"
+              ],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "missing",
+      "raw_exact": 0,
+      "raw_ned": 0.4,
+      "validated_planned": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "intermediate_units": [
+        [
+          "cog:u0",
+          "boundary:u0:u1:+"
+        ],
+        [
+          "cog:u0",
+          "boundary:u0:u3:+"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u1:+"
+        ],
+        [
+          "cog:u2",
+          "boundary:u2:u3:+"
+        ]
+      ],
+      "concepts": [
+        {
+          "concept_id": "c001",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [
+                "u1"
+              ],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c002",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [
+                "u3"
+              ],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c003",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [
+                "u1"
+              ],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c004",
+          "cognate_unit_exact": false,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2"
+              ],
+              "unit_exact_rate": 0.5,
+              "missing_unit_ids": [
+                "u3"
+              ],
+              "extra_unit_ids": [],
+              "shared_units_reordered": false,
+              "whole_analysis_exact": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "reordered",
+      "raw_exact": 0,
+      "raw_ned": 0.8,
+      "validated_planned": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "intermediate_units": [
+        [
+          "cog:u1",
+          "boundary:u0:u1:+",
+          "cog:u0"
+        ],
+        [
+          "cog:u3",
+          "boundary:u0:u3:+",
+          "cog:u0"
+        ],
+        [
+          "cog:u1",
+          "boundary:u2:u1:+",
+          "cog:u2"
+        ],
+        [
+          "cog:u3",
+          "boundary:u2:u3:+",
+          "cog:u2"
+        ]
+      ],
+      "concepts": [
+        {
+          "concept_id": "c001",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u1"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c002",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u0",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c003",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u1",
+                "u2"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            }
+          ]
+        },
+        {
+          "concept_id": "c004",
+          "cognate_unit_exact": true,
+          "comparisons": [
+            {
+              "status": "explicit_units",
+              "target_units": 2,
+              "exact_unit_ids": [
+                "u2",
+                "u3"
+              ],
+              "unit_exact_rate": 1.0,
+              "missing_unit_ids": [],
+              "extra_unit_ids": [],
+              "shared_units_reordered": true,
+              "whole_analysis_exact": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "source_unit_controls": {
+    "version": "task04-source-controls-v1",
+    "cost": {
+      "survey_seconds": 0.015317000012146309,
+      "execution_seconds": 0.021635582990711555,
+      "peak_traced_bytes": 767815,
+      "set_count": 33,
+      "bindings": 33,
+      "assembly_work": {
+        "projected_columns": 49,
+        "candidate_tuples": 3,
+        "alignment_calls": 0,
+        "cache_hits": 6,
+        "pruned_candidates": 0
+      }
+    },
+    "interpretation": "Legacy replay is exact. New outputs are explicit source-unit controls, with old values transferred only within the selected core and witness values elsewhere in that core. No gold enters contexts; no historical quality claim.",
+    "concepts": [
+      {
+        "concept_id": "96",
+        "legacy_top": [
+          "w",
+          "t",
+          "w",
+          "o",
+          "³¹"
+        ],
+        "units_control_top": [
+          "t",
+          "w",
+          "o",
+          "³¹"
+        ],
+        "post_execution_reference_reading": {
+          "node_id": "burmic",
+          "validity": "provisional_proxy",
+          "alternatives": [
+            [
+              "t",
+              "ʊ",
+              "⁵"
+            ]
+          ],
+          "readings": {
+            "legacy": {
+              "raw_exact": false,
+              "raw_ned": 0.8,
+              "segment_edit_distance": 3,
+              "segment_ned": 0.75
+            },
+            "unit_control": {
+              "raw_exact": false,
+              "raw_ned": 0.75,
+              "segment_edit_distance": 2,
+              "segment_ned": 0.6666666666666666
+            }
+          }
+        }
+      },
+      {
+        "concept_id": "239",
+        "legacy_top": [
+          "k",
+          "ă",
+          "n",
+          "⁵⁵",
+          "+",
+          "t",
+          "w",
+          "a",
+          "m",
+          "³¹"
+        ],
+        "units_control_top": [
+          "p",
+          "w",
+          "a",
+          "n",
+          "⁵⁵"
+        ],
+        "post_execution_reference_reading": {
+          "node_id": "burmic",
+          "validity": "provisional_proxy",
+          "alternatives": [
+            [
+              "p",
+              "a",
+              "n",
+              "⁵"
+            ]
+          ],
+          "readings": {
+            "legacy": {
+              "raw_exact": false,
+              "raw_ned": 0.9,
+              "segment_edit_distance": 7,
+              "segment_ned": 0.875
+            },
+            "unit_control": {
+              "raw_exact": false,
+              "raw_ned": 0.4,
+              "segment_edit_distance": 1,
+              "segment_ned": 0.25
+            }
+          }
+        }
+      },
+      {
+        "concept_id": "1382",
+        "legacy_top": [
+          "a",
+          "p",
+          "⁴"
+        ],
+        "units_control_top": [
+          "a",
+          "p",
+          "⁴"
+        ],
+        "post_execution_reference_reading": {
+          "node_id": "burmic",
+          "validity": "provisional_proxy",
+          "alternatives": [
+            [
+              "a",
+              "p",
+              "⁴"
+            ]
+          ],
+          "readings": {
+            "legacy": {
+              "raw_exact": true,
+              "raw_ned": 0.0,
+              "segment_edit_distance": 0,
+              "segment_ned": 0.0
+            },
+            "unit_control": {
+              "raw_exact": true,
+              "raw_ned": 0.0,
+              "segment_edit_distance": 0,
+              "segment_ned": 0.0
+            }
+          }
+        }
+      }
+    ]
+  },
+  "legacy_replay": [
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r2/seed-00/result.json",
+        "sha256": "0afc28a9c013f1a3560122453486b558d96a169b19494e0cc92d1f6ba9146650"
+      },
+      "events_sha256": "c284cb399017ee9984b8540ada4c6626085551633a7fd35692038318f317d040",
+      "scores_checked": 91,
+      "all_saved_scores_agree": true,
+      "nodes": {
+        "maruic": {
+          "status": "no committed inventory; fallback is saved, not replayed"
+        },
+        "burmic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    },
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r2/seed-01/result.json",
+        "sha256": "7d3ef8e685eb696d24e326f4ac1b934f3ac583b8cc0eddd992442a5cce42b5a7"
+      },
+      "events_sha256": "5f64b8d173ee480e50d840f76f8ddaf1ed28af23e1ec9a9367e70d48f23a0e8d",
+      "scores_checked": 91,
+      "all_saved_scores_agree": true,
+      "nodes": {
+        "maruic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "burmic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    },
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r3/seed-00/result.json",
+        "sha256": "4ee51929496981390e53a12da8e3eb5049cf07127de6a671854af67a395f6c16"
+      },
+      "events_sha256": "c7873bb50bb45d7a96200c1152022ea39eed086a6b9048b4435d4af59bfd33d1",
+      "scores_checked": 91,
+      "all_saved_scores_agree": true,
+      "nodes": {
+        "maruic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "burmic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    },
+    {
+      "artifact": {
+        "path": "runs/sweeps/burmish-gemini-t36-r3/seed-01/result.json",
+        "sha256": "39ec6371f2a12a29fb11eb4d406d252fb154d57e1b08f6ed5c99672e285641e3"
+      },
+      "events_sha256": "302c2dfa35d1dcb1145340bdbf0d2cb87d8bf76e85937931f309119f946d601e",
+      "scores_checked": 91,
+      "all_saved_scores_agree": true,
+      "nodes": {
+        "maruic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "burmic": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        },
+        "proto_burmish": {
+          "status": "replayed with current deterministic code",
+          "beam_agrees": true,
+          "reports_agree": true,
+          "commit_support_agrees": true
+        }
+      }
+    }
+  ],
+  "historical_score_records": 364,
+  "legacy_beams_reports": 11,
+  "tests": {
+    "focused": {
+      "passed": 162,
+      "seconds": 9.4
+    },
+    "first_portable": {
+      "passed": 605,
+      "failed": 2,
+      "deselected": 41,
+      "seconds": 56.32
+    },
+    "integration_fixes": {
+      "passed": 78,
+      "seconds": 2.17
+    },
+    "final_portable": {
+      "passed": 607,
+      "deselected": 41,
+      "seconds": 56.03
+    },
+    "portable_runs": 2,
+    "repeat_reason": "Initial portable failures exposed diagnostic gap reporting and missing rejection-code registration; repaired and rechecked."
+  },
+  "remaining_limits": [
+    "No reconstruction-quality or live-commit-usability claim.",
+    "Supplied etymon independence is not historically adjudicated; unresolved units are separate.",
+    "Some locally comparable outgroups lack supplied unit analysis and have no local witness.",
+    "Future generated root beams need cap preflight; retained historical root costs are not candidate forecasts.",
+    "Normal real-language morphology scores remain unknown without independent target analysis.",
+    "Old checkpoint resumes and units-v1 execution require original semantics.",
+    "Task05 broader linguistic instructions and preview/commit ergonomics remain pending."
+  ]
+}

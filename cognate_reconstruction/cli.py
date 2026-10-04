@@ -754,6 +754,8 @@ def _resume_mismatches(
     mismatches = []
     if checkpoint.schema_version == "1.0":
         mismatches.append("legacy checkpoint 1.0 lacks units-v1 evidence/analysis provenance; start a new run/checkpoint, or replay with the original checkout")
+    if checkpoint.schema_version == "2.0":
+        mismatches.append("checkpoint 2.0 uses units-v1 count/scope semantics; start a new units-v2 run or resume with the original checkout")
     if checkpoint.input_sha256 != input_sha256:
         mismatches.append("the input dataset")
     if checkpoint.normalized_tree_sha256 != tree_sha256:
@@ -1084,8 +1086,8 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
     # protocol friction says the session was a poor tool-use example.
     total_protocol_failures = sum(item.metrics.protocol_failures for item in trajectories)
     return {
-        "schema_version": "4.0",
-        "readable_trajectory_versions": ["2.0", "3.0", "4.0"],
+        "schema_version": "5.0",
+        "readable_trajectory_versions": ["2.0", "3.0", "4.0", "5.0"],
         "current_trajectory_schema_sha256": _current_trajectory_schema_sha256(),
         "schema_variants": _schema_variants(trajectories),
         "trajectory_count": len(trajectories),

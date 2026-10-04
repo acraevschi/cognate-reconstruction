@@ -225,6 +225,15 @@ class CorrespondenceSet(WorkbenchModel):
     this inventory is `get_alignments` or `search_forms` over those concepts.
     """
 
+    count_semantics: NonEmptyStr | None = None
+    etymon_count: int | None = Field(default=None, ge=0)
+    unresolved_unit_count: int | None = Field(default=None, ge=0)
+    source_column_count: int | None = Field(default=None, ge=1)
+    occurrence_count: int | None = Field(default=None, ge=1)
+    # Only recurrence rows carry members; these are descriptive, not cognacy.
+    member_set_ids: tuple[NonEmptyStr, ...] = ()
+    left_context_tokens: tuple[str, ...] = ()
+    right_context_tokens: tuple[str, ...] = ()
     scope_id: NonEmptyStr | None = None
     example_column_ids: tuple[NonEmptyStr, ...] = ()
 
@@ -245,7 +254,12 @@ class CorrespondenceSet(WorkbenchModel):
 
     @model_validator(mode="after")
     def validate_support(self) -> CorrespondenceSet:
-        if self.concept_count > self.support:
+        if self.count_semantics is not None:
+            if self.etymon_count is None or self.unresolved_unit_count is None or self.support != self.etymon_count + self.unresolved_unit_count:
+                raise ValueError("unit support must equal supplied etyma plus unresolved concept/unit opportunities")
+            if self.occurrence_count is None or self.source_column_count is None or self.source_column_count > self.occurrence_count:
+                raise ValueError("source columns must not exceed alternative-dependent occurrences")
+        if self.count_semantics is None and self.concept_count > self.support:
             raise ValueError(
                 "a correspondence set cannot occur in more concepts than columns"
             )
@@ -314,6 +328,7 @@ class CorrespondenceInventory(WorkbenchModel):
     node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     alignment_count: int = Field(ge=0)
     sets: tuple[CorrespondenceSet, ...] = ()
+    recurrence_patterns: tuple[CorrespondenceSet, ...] = ()
 
     @model_validator(mode="after")
     def validate_inventory(self) -> CorrespondenceInventory:

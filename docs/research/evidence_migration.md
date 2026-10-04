@@ -98,3 +98,62 @@ Source-unit controls and future units-v1 model runs have a different reading and
 need separate reports. Keys/targets are scorer-only. Independent complete target
 pieces permit `compare_cognate_units`; without them the result stays unknown.
 OLD MAN's lexical scope and source-backed tone/phonation equivalences remain open.
+
+## Current migration — units-v2 (task04, 2026-10-04)
+
+The preceding units-v1 migration is retained as history. Read
+[evidence repair](evidence_repair.md) before using the current runtime.
+
+- New trajectories: 5.0 (2.0/3.0/4.0 readable). New checkpoints: 3.0; 1.0/2.0
+  read for audit but `infer --resume` refuses them explicitly. Behavioral evidence
+  hashes include units-v2. Do not weaken these checks as retry policy.
+- New inventory artifacts: `evidence_contract_version=units-v2`. FormAnalysis
+  representation remains units-v1. Legacy inventories retain old replay; units-v1
+  inventories remain readable but cannot execute under changed scope/count IDs.
+- `summarize_correspondences()` now returns descriptive recurrence by default.
+  `total_set_count`/pagination/filter counts refer to the selected reading;
+  `local_set_count` and `recurrence_pattern_count` disclose both totals.
+  `reading="local", min_support=1` retains individual per-set workflows.
+- A `csp-*` pattern is not a local `csu-*` commitment. Use `shared_claims`:
+  `{pattern_id, member_set_ids, proto_segment, confidence, rationale,
+  conditioning?, directionality_rationale?}` with an explicitly chosen member
+  collection. Supply `commitments=[]` when all choices are shared. Use the identical
+  submitted spec for preview and commit. The persisted request expands local
+  commitments and stores the original collections in `approved_shared_claims`.
+- Changed count semantics are identified by `independent-etyma-v1`; do not copy
+  units-v1 support values into current commitments. Source columns, alternative
+  occurrences, concepts, supplied etyma and unresolved opportunities are distinct.
+  `min_support=1` inspection and justified sparse commitments are allowed.
+- `polarize` accepts `set_id`, `unit_orders`, and both overlay IDs. Local queries
+  stay local; pattern/tuple queries are labelled recurrence. Witness samples have
+  explicit full counts/truncation. Source/unknown witness absence stays visible.
+- `realign` accepts local or pattern join handles, verifies positioned source-column
+  gain, and reports `joined_source_column_delta` separately from
+  `joined_set_support_delta`. This is not new independent recurrence.
+- Partial restorations need `unit_id`; a segment in another piece of the same
+  outgroup word cannot serve as witness. Named alternative positions and selected
+  overlays are preserved. Lost-position historical interpretation stays a claim.
+- Diagnostic target layouts are now carried by hidden binding forms, not contexts.
+  Explicit unit scores identify `task04-units-v1`; raw evaluator remains task02-v1.
+  Underidentified order/lost contrast remain excluded from validated summaries.
+
+Reproduce current offline work in a fresh output directory:
+
+```sh
+conda run -n llm_reconstruction python tools/evidence_repair_probe.py \
+  --payload runs/benchmarks/burmish.json \
+  --banked-inputs runs/sweeps/burmish-gemini-t36-r2/seed-01/trajectories.jsonl
+conda run -n llm_reconstruction python tools/evidence_repair_probe.py \
+  --payload runs/experiments/task03-interface-smoke-20261003/input.json
+conda run -n llm_reconstruction python tools/evidence_repair_probe.py \
+  --payload runs/benchmarks/polynesian.json --flat-control
+conda run -n llm_reconstruction python tools/evidence_repair_controls.py \
+  --output-dir /tmp/task04-morphology-new
+conda run -n llm_reconstruction python tools/evidence_contract_probe.py --json
+```
+
+The last command now labels new source-unit controls `task04-source-controls-v1`;
+the frozen legacy beam/report and operator-control interpretation remain. Old
+compact task03 artifacts are not rewritten. The three-concept default filter
+covers 9/33 occurrences; full sparse inspection is a declared choice, not hidden
+input narrowing. Future generated root beams still require dynamic cap preflight.
