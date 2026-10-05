@@ -481,54 +481,65 @@ after the process exits.
 
 ## Retry, limits, and checkpoints
 
-Per-node defaults are 24 turns and 64 tool calls. Transient provider errors
-retry twice with exponential backoff. These are current defaults, not recommended
-budgets for every model. The valid 36-turn Burmish experiments show that 24 can
-be binding. Retry patience still participates in the compatibility hash; the
-planned recovery work has not changed that behavior yet.
-
-Relevant controls:
-
-```text
---max-turns
---max-tool-calls
---max-retries
---retry-backoff-seconds
---max-total-turns
---max-total-tool-calls
---max-run-seconds
---max-total-cost-usd
-```
-
-The cost budget is enforced only when response metadata reports a cost.
-
-The thresholds that decide when a stuck node gives up are also flags, and none
-of them is part of the checkpoint compatibility hash. They cannot change a
-committed rule or a beam, only how long the harness keeps trying, so they can
-be loosened on a `--resume` — which is exactly what a stall invites you to do.
-The resume prints a note saying they changed:
+Per-node defaults are 24 turns and 64 tool calls. Structured rejected provider
+requests retry up to six times, starting at 10 seconds with a 60-second backoff
+ceiling and a 300-second elapsed envelope. Retry-After may exceed that ceiling
+only within remaining request/run patience. Clock, sleep, jitter and cancellation
+are injectable. See [provider recovery](research/provider_recovery.md) for taxonomy,
+validation and the distinction between rejected requests and uncertain lost responses.
 
 ```text
---max-repeated-tool-failures    rejections sharing one (tool, error code)
-                                signature inside the window (default 3)
---stall-window-calls            trailing tool calls remembered, successes
-                                included (default 3x the above)
---max-truncated-responses       truncated responses carrying no tool call
-                                before the node stops (default 3)
---fail-fast                     end the run at the first failed node instead
-                                of falling back over it
---max-failed-nodes              failed nodes to fall back over before the run
-                                stops (default 3; 0 means --fail-fast)
+--max-turns / --max-tool-calls                 per node
+--max-retries / --retry-backoff-seconds        per request/retry sequence
+--max-retry-seconds / --retry-max-delay-seconds per request/retry sequence
+--timeout                                    per adapter request
+--max-total-turns / --max-total-tool-calls     per family/seed, across recorded resumes
+--max-run-seconds / --max-total-cost-usd       per family/seed, across recorded resumes
 ```
 
-### When a node fails
+The adapter bounds timeout by remaining patience and disables nested SDK retries.
+Transport failures with uncertain responses stop without automatic replay. Backoff
+checks cancellation/caps every 0.25 seconds. A synchronous in-flight call still
+requires the SDK/server to honor its timeout. Cost metadata is not a billing
+reservation: reserve one maximum-size response of headroom before paid work.
+Missing cost under a configured cap stops the run. Missing cumulative history
+refuses more calls under cumulative caps. Paused time between processes is excluded.
+Sweep flags are forwarded using repeated `--infer-arg=--FLAG=VALUE`; each seed gets
+those caps. The experiment-wide envelope remains the owner's launch-plan limit.
 
-By default the run does not end. The failure is recorded in `result.json` under
-`node_failures`, an identity fallback parent is committed so the walk continues,
-and the step is marked `diagnostics.failure_fallback`. The node and everything
-above it are left out of the checkpoint, so `--resume` re-runs them.
-`inspect-run` names the fallback nodes at the top of its report, and they are
-excluded from `high_quality` and from trajectory export.
+New checkpoint 3.0 files declare `operational-retry-v1`. The four retry controls
+can change on resume; original values/digests and `resume_settings_changed` events
+record the difference. Model-visible budgets, instructions/native schemas/node
+notes, inputs, tree, evidence/backend/version, anchors, model, sampler and token-
+backoff permission/ceiling remain strict. Unmarked old 3.0 checkpoints retain their
+original strict retry hash; no automatic migration is attempted. 1.0/2.0 remain
+readable for audit and unsafe for current resume. See the recovery report for the
+legacy composite-threshold refusal and JSONL-before-checkpoint receipt checks.
+
+The protocol give-up controls remain advisory on new checkpoints:
+
+```text
+--max-repeated-tool-failures   repeated rejection threshold (default 3)
+--stall-window-calls          trailing call window (default 3x the threshold)
+--max-truncated-responses     truncated no-tool responses (default 3)
+--fail-fast / --max-failed-nodes  protocol-fallback policy (default 3 failed nodes)
+```
+
+### When a node stops
+
+Protocol/loop failures can still produce a recorded identity fallback and continue
+under that policy. A direct fallback is not a model commitment; committed ancestors
+name failed descendants. Fallback nodes and their ancestors remain outside the
+checkpoint and restart on an explicitly invoked resume.
+
+Provider exhaustion, hard quota/authentication, cancellation and run budgets stop
+the family immediately. Completed nodes survive; the remaining tree is unattempted
+and has missing output coverage. `run_summary.json` is written atomically beside
+`--output`, including `complete=false`, interruption cause, planned/attempted/
+completed node IDs, unknown costs and full task02-v1 missing evaluations, even
+when result.json cannot be written. It overrides a stale pre-resume result in
+artifact readers. A resume skips completed nodes and starts the interrupted node
+from its initial context: no partial conversation or preview handle is resumed.
 
 ### Truncation recovery
 
@@ -605,7 +616,8 @@ Resuming also reads `--trajectories` back and restores the hypotheses committed
 at the nodes it is skipping, so `get_node_reconstruction` still returns them in
 the resumed process. A record is used only if it is completed with its commit
 present, belongs to a node in the checkpoint, and was written under both the
-same configuration hash **and** the same run ID; the count is printed. The run
+same configuration hash **and** the same run ID, with its saved step agreeing
+with the checkpoint; the count is printed. The run
 ID matters because two invocations over the same input with the same settings
 produce the same configuration hash, and `--trajectories` defaults to one file
 in the working directory — without it, one run's rules could be paired with
@@ -624,14 +636,16 @@ to `reconstruction_events.jsonl` unless `--no-events` is set. They include:
 - run and node IDs and timestamps;
 - provider adapter/model and response usage;
 - node start, model turns/responses, tool calls/results, commits, retries,
-  completion, and failure;
+  completion, failure, node/run interruption and changed resume settings;
 - duration, turn/tool/retry counts;
 - rules, structural rule complexity, anomalies, coverage, and output counts;
 - optional tokens and reported cost.
 
 Provider failures, malformed responses, run budgets, and loop limits append an
 incomplete trajectory before propagating the failure. Completed earlier nodes
-remain checkpointed.
+remain checkpointed. New nullable cause metadata remains distinct from unknown
+legacy causes. Sweeps retain planned coverage and exclude operator-marked VOID
+seeds from linguistic aggregates, even if an ancestor committed.
 
 ## Deterministic tools
 
@@ -754,11 +768,11 @@ aggregated as distributions. An evaluation over a node the run walked over as an
 identity fallback is marked `failure_fallback`: it measures the fallback, not a
 reconstruction.
 
-New runs use trajectory schema 4.0 and checkpoint schema 2.0 under
-[units-v1](research/evidence_migration.md). Older 2.0/3.0 trajectories remain
-readable on their recorded execution interpretation. Checkpoint 1.0 is readable
-for audit but cannot resume into units-v1; the error names the missing inherited
-analysis/provenance. Start a new checkpoint or use the original checkout.
+New runs use trajectory schema 5.0 and checkpoint schema 3.0 under
+[units-v2](research/evidence_migration.md). Older 2.0/3.0/4.0 trajectories remain
+readable on their recorded execution interpretation. Checkpoints 1.0/2.0 read
+for audit but cannot resume into units-v2; use their original checkout or a new
+run. New 3.0 retry compatibility is described above; unmarked 3.0 stays strict.
 Candidate form IDs now name retained analyses; original form IDs remain in piece
 provenance. Empty identity commitments and both commit shapes remain supported.
 Changing proto values, confidence, conditioning, unit analysis/order, residue

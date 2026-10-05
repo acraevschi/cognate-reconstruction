@@ -1,0 +1,61 @@
+{
+  "version": "provider-recovery-banked-redaction-v1",
+  "events": [
+    {
+      "source": "runs/sweeps/burmish-gemini-t36/seed-00/events.jsonl",
+      "source_sha256": "48a7e1dcf11c8cbe06789cc82134a4caca45ff7941eb00f2aa0c5e6b2d7957a2",
+      "line": 67,
+      "kind": "provider_retry",
+      "node_id": "maruic",
+      "details": {
+        "retry_index": 1,
+        "max_retries": 2,
+        "error_type": "RateLimitError"
+      },
+      "provider_cause": "unknown_legacy_structured_cause",
+      "redaction": "message, error prose, timestamps, run ids and provider identifiers omitted"
+    },
+    {
+      "source": "runs/sweeps/burmish-gemini-t36b/seed-00/events.jsonl",
+      "source_sha256": "493c7b84a7937f5badaf7231ba270ed3cfc3e2034eda67bee3d707532f00fe2d",
+      "line": 3,
+      "kind": "provider_retry",
+      "node_id": "maruic",
+      "details": {
+        "retry_index": 1,
+        "max_retries": 4,
+        "error_type": "ServiceUnavailableError"
+      },
+      "provider_cause": "unknown_legacy_structured_cause",
+      "redaction": "message, error prose, timestamps, run ids and provider identifiers omitted"
+    },
+    {
+      "source": "runs/sweeps/burmish-gemini-t36-r2/seed-00/events.jsonl",
+      "source_sha256": "c284cb399017ee9984b8540ada4c6626085551633a7fd35692038318f317d040",
+      "line": 39,
+      "kind": "provider_retry",
+      "node_id": "maruic",
+      "details": {
+        "retry_index": 1,
+        "max_retries": 6,
+        "error_type": "Timeout"
+      },
+      "provider_cause": "unknown_legacy_structured_cause",
+      "redaction": "message, error prose, timestamps, run ids and provider identifiers omitted"
+    },
+    {
+      "source": "runs/sweeps/burmish-gemini-t36-r2/seed-01/events.jsonl",
+      "source_sha256": "5f64b8d173ee480e50d840f76f8ddaf1ed28af23e1ec9a9367e70d48f23a0e8d",
+      "line": 43,
+      "kind": "provider_retry",
+      "node_id": "maruic",
+      "details": {
+        "retry_index": 1,
+        "max_retries": 6,
+        "error_type": "Timeout"
+      },
+      "provider_cause": "unknown_legacy_structured_cause",
+      "redaction": "message, error prose, timestamps, run ids and provider identifiers omitted"
+    }
+  ]
+}

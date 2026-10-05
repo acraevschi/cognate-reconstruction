@@ -173,3 +173,18 @@ protocol selection remain strict; --agent-instructions changes system text only.
 Submitted compact choices stay in trajectory preview calls; completed artifacts
 still carry full expanded requests and approved_shared_claims. Historical preview
 readiness null is unknown. No countdown or artifact rescoring was added.
+
+## Task06 operational recovery amendment — 2026-10-05
+
+Trajectory/checkpoint versions remain 5.0/3.0 with additive operational fields;
+2.0/3.0/4.0 trajectories and 1.0/2.0 audit checkpoints remain readable. New 3.0
+checkpoints declare operational-retry-v1; only retry patience can change with a
+recorded difference. Unmarked 3.0 retains its original strict retry digest and is
+not automatically migrated. Input/tree/instruction/native-schema/node-checklist/
+evidence/backend/model/sampler/model-visible-budget hashes stay strict. The new
+digest includes the named evidence component directly; token truncation permission/
+ceiling are strict. 1.0/2.0 resume and units-v1 execution refusals remain.
+Recovery reuses completed deterministic steps/expanded requests only; same-session
+inventory handles and partial node conversations restart. Read
+[provider recovery](provider_recovery.md) for exact receipt/subtree/chronology checks
+and task02-v1 missing/fallback/prospective-cause accounting.

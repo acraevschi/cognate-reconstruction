@@ -129,23 +129,19 @@ def load_run(run_dir: str | Path) -> RunArtifacts:
     else:
         notes.append(f"no {TRAJECTORIES_FILE}: session shape is unavailable")
 
-    result_path = directory / RESULT_FILE
-    result: Mapping[str, Any] | None = None
-    if result_path.exists():
-        # Read as plain JSON rather than through `FamilyReconstructionResult`.
-        # The file is written with computed fields included, which the model's
-        # own `extra="forbid"` then refuses on read-back, so validating it here
-        # would reject every real run. The parts this report needs are validated
-        # individually below, where the models do round-trip.
-        loaded = json.loads(result_path.read_text(encoding="utf-8"))
-        if not isinstance(loaded, dict):
-            raise ValueError(f"{result_path} is not a JSON object")
-        result = loaded
-    else:
-        notes.append(
-            f"no {RESULT_FILE}: reconstructed forms come from the trajectories"
-        )
-
+    from cognate_reconstruction.evaluation.run import load_result_or_summary
+    result = load_result_or_summary(directory)
+    if result is not None and not isinstance(result, dict):
+        raise ValueError("run result/summary must be a JSON object")
+    if result is None:
+        notes.append(f"no {RESULT_FILE}: reconstructed forms come from the trajectories")
+    if result and result.get("status") == "interrupted":
+        notes.append(f"INCOMPLETE RUN: {result.get('failure_kind') or 'unknown'}; "
+                     f"{result.get('interruption_reason') or 'unrecorded'}; "
+                     f"{result.get('missing_evaluation_outputs', 'unknown')} missing evaluation outputs")
+    artifact_run_id = (result or {}).get("run_id") or ((result or {}).get("lifecycle_summary") or {}).get("run_id")
+    if artifact_run_id:
+        trajectories = tuple(t for t in trajectories if t.run_id == artifact_run_id)
     if not trajectories and result is None:
         raise ValueError(
             f"{directory} contains neither {RESULT_FILE} nor {TRAJECTORIES_FILE}"
@@ -554,6 +550,8 @@ NOTABLE_EVENT_KINDS = (
     "truncation_recovery",
     "protocol_correction",
     "node_failed",
+    "node_interrupted",
+    "run_interrupted",
     "node_fallback",
 )
 
@@ -1241,6 +1239,8 @@ def build_report(
     form_limit: int | None = DEFAULT_FORM_LIMIT,
 ) -> RunReport:
     trajectories = artifacts.trajectories
+    active_ids = ((artifacts.result or {}).get("lifecycle_summary") or artifacts.result or {}).get("active_trajectory_ids")
+    current = tuple({t.node_id: t for t in trajectories if active_ids is None or t.trajectory_id in active_ids}.values())
     events = _event_counts(artifacts.events)
     fallbacks = _failure_fallback_node_ids(artifacts.result)
     evaluations = _target_evaluations(artifacts.result)
@@ -1256,7 +1256,7 @@ def build_report(
             failure_fallback=trajectory.node_id in fallbacks,
             evaluation=evaluations_by_node.get(trajectory.node_id),
         )
-        for trajectory in trajectories
+        for trajectory in current
     )
     fallback_nodes = tuple(
         sorted(fallbacks & {trajectory.node_id for trajectory in trajectories})
@@ -1277,7 +1277,7 @@ def build_report(
         (
             "artifacts",
             f"{len(trajectories)} trajectory record(s), "
-            f"{(len(artifacts.result.get('internal_nodes', [])) if artifacts.result else 0) - len(fallback_nodes)} "
+            f"{len((artifacts.result or {}).get('completed_node_ids', [])) if (artifacts.result or {}).get('status') == 'interrupted' else (len(artifacts.result.get('internal_nodes', [])) if artifacts.result else 0) - len(fallback_nodes)} "
             f"reconstructed internal node(s), {len(artifacts.events)} event(s)",
         ),
     )
@@ -1293,7 +1293,7 @@ def build_report(
                 "export.",
             ),
         )
-    completed = [item for item in trajectories if item.completed]
+    completed = [item for item in current if item.completed]
     total_calls = sum(item.metrics.tool_call_count for item in trajectories)
     total_failed = sum(item.metrics.failed_tool_call_count for item in trajectories)
     total_protocol = sum(item.metrics.protocol_failures for item in trajectories)
@@ -1303,8 +1303,8 @@ def build_report(
     family = (
         (
             "nodes",
-            f"{len(trajectories)} attempted, {len(completed)} completed, "
-            f"{len(trajectories) - len(completed)} failed"
+            f"{len(current)} attempted, {len(completed)} completed, "
+            f"{len(current) - len(completed)} failed"
             + (
                 f" ({len(fallback_nodes)} of them walked over as identity "
                 "fallbacks)"
@@ -1349,7 +1349,7 @@ def build_report(
         nodes=nodes,
         family=family,
         historical=_historical_lines(evaluations) + evaluation_lines,
-        observations=cross_node_observations(trajectories, artifacts.result),
+        observations=cross_node_observations(current, artifacts.result),
         notes=artifacts.notes,
         fallback_nodes=fallback_nodes,
     )

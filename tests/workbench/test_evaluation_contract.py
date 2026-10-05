@@ -195,13 +195,18 @@ def test_genuine_scripted_protocol_failure_and_fake_provider_interruption():
     assert not any(t.completed for t in failed.trajectories)
     assert all(n.failure_kind == "model_protocol_failure" for n in failed.evaluation_report.operational_nodes)
     assert failed.evaluation_report.raw_target_summary.committed_outputs == 0
+    from cognate_reconstruction.agent.providers import ProviderError
+    from cognate_reconstruction.schemas.evaluation import RunEvaluationReport
     interrupted = ReconstructionService(AgenticNodeReconstructor(AgentOrchestrator(
         CommitProvider(fail_at=("INNER",), error=TimeoutError), max_retries=0,
-    ))).reconstruct_family(ingest_payload(plan()))
-    report = interrupted.evaluation_report
-    assert report.targets[0].failure_kind == "infrastructure_interruption_cause_unspecified"
-    assert report.targets[1].evaluation.descendant_fallback_node_ids == ("INNER",)
-    assert report.targets[1].output_kind == "committed"
+    )))
+    with pytest.raises(ProviderError):
+        interrupted.reconstruct_family(ingest_payload(plan()))
+    report = RunEvaluationReport.model_validate_json(json.dumps(interrupted.last_run_summary["evaluation_report"]))
+    assert report.targets[0].failure_kind == "unknown_provider_failure"
+    assert report.targets[1].evaluation.descendant_fallback_node_ids == ()
+    assert report.targets[1].output_kind == "missing"
+    assert report.operational_nodes[1].status == "unvisited_or_missing"
 
 
 def test_proxy_scores_survive_json_text_and_html_but_not_validated_view():

@@ -48,6 +48,7 @@ class TreeTraverser:
         anchors_by_node: Mapping[str, Sequence[LexicalForm]] | None = None,
         resume_steps: Mapping[str, ReconstructionStep] | None = None,
         on_step_complete: Callable[[ReconstructionStep], None] | None = None,
+        on_step_recorded: Callable[[ReconstructionStep], None] | None = None,
     ) -> TraversalSnapshot:
         root = parse_newick(dataset.tree.newick)
         node_ids = assign_node_ids(root)
@@ -125,9 +126,12 @@ class TreeTraverser:
                         f"checkpoint children for {parent_id!r} do not match "
                         "the normalized classification tree"
                     )
-                if tuple(beam.node_id for beam in step.input_beams) != tuple(
-                    beam.node_id for beam in child_beams
-                ):
+                if step.diagnostics.failure_fallback:
+                    raise ValueError("checkpoint cannot resume a direct fallback")
+                if any(not child.is_leaf and child_id not in resumed
+                       for child, child_id in zip(children, active_child_ids)):
+                    raise ValueError("checkpoint lacks a completed internal child")
+                if step.input_beams != child_beams:
                     raise ValueError(
                         f"checkpoint inputs for {parent_id!r} are inconsistent "
                         "with completed child nodes"
@@ -154,6 +158,8 @@ class TreeTraverser:
             )
             steps.append(step)
             completed.append(parent_id)
+            if on_step_recorded is not None:
+                on_step_recorded(step)
         return TraversalSnapshot(
             root_node_id=node_ids[id(root)],
             completed_node_ids=tuple(completed),

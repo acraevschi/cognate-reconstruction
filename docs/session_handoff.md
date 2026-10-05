@@ -84,8 +84,8 @@ an implementation. Local inference remains serial under the experiment policy.
 ## Live task state
 
 Updated 2026-10-05. Tasks 01–04 are delivered; 05 is complete offline but partial
-at substantive local commit usability after its single failed smoke. 06–07 remain
-unstarted. The completion amendment supersedes earlier interface
+at substantive local commit usability after its single failed smoke. 06 is delivered
+offline; 07 remains unstarted. The completion amendment supersedes earlier interface
 versions/defaults. The task03 smoke remains incomplete live interface evidence.
 
 Active session: none.
@@ -106,7 +106,7 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | 03 — Evidence/assembly | complete | units-v1 repair and offline checks delivered; single smoke stalled on malformed commits | Task 03 completion below |
 | 04 — Evidence repair | complete | units-v2 counts/shared collections, local witnesses and normal piece evaluator verified offline; 607 portable checks pass | Task 04 completion below |
 | 05 — Instructions/protocol | partial | Offline repair/633 portable checks delivered; sole smoke failed; review final interface/manifest and choose a bounded usability follow-up before 07 | Task05 handoff below |
-| 06 — Provider recovery | not started | Ready independently: preserve checkpoint 3.0/trajectory 5.0 guards and task02-v1 outcome semantics | Task 04 completion amendment |
+| 06 — Provider recovery | complete | Offline recovery/206 focused/680 portable checks delivered; semantic hashes and task02-v1 preserved | Task06 completion below |
 | 07 — Local comparisons | not started | 04 instrument/caps verified; await 05 usability, relevant 06 or explicit scope-out, and final independent review | Task 04 completion amendment |
 | 08 — Forward prediction | deferred | 07's recommendation and the user's decision to take up the study | — |
 
@@ -204,7 +204,7 @@ reconstruction interface changed in 01. Receiving session records its resolution
 
 ### For task 06 — node versus ancestor failures
 
-Status: applied to local brief; pending verification by receiving session.
+Status: applied and verified by task06; redacted banked retries/void exclusions and fallback provenance retained.
 From: task 01, 2026-10-02, chat `01a0fda6-d530-7c61-9d8c-57a7ceb5b257`.
 Evidence: failure audit (`docs/research/failure_audit.md`, local only),
 trace appendix (`docs/research/failure_audit_traces.md`, local only).
@@ -295,7 +295,7 @@ must stay outside initial contexts and tool evidence. Sentinel tests cover this.
 
 ### For task 06 — preserve task02-v1 outcome semantics
 
-Status: applied to local brief; receiving session verifies.
+Status: applied and verified by task06; prospective causes/current outcomes added without legacy prose inference.
 From: task 02, same session/date. Evidence: [migration](research/evaluation_migration.md).
 Reuse `evaluation/run.py::evaluate_run`, `schemas/evaluation.py` and
 `read_seed(..., payload=...)`. Direct identity fallback is not a commitment;
@@ -575,6 +575,52 @@ installed `.claude` copies are stale and read-only in this session. preflight no
 reports installation divergence; catalogue IDs require separate loaded-state
 verification. CLI/driver expose time/timeout/retry/sampler controls without fixed
 test-count claims. Record actual model-specific sampling and hidden settings limits.
+
+### Task06 completion amendments — 2026-10-05
+
+Read [provider recovery](research/provider_recovery.md),
+[validation/hashes](research/provider_recovery_results.json) and the updated retry/
+checkpoint section of running_inference.md. Provider-recovery-v1 is delivered offline:
+206 focused passes and one portable run, 680 passed/41 deselected. No provider
+requests, model operations, downloads or downstream dispatch. Versions stay
+units-v2 / independent-etyma-v1 / units-v1 / 5.0 / 3.0 / task02-v1 / task04-units-v1.
+
+**02/shared readers:** Prospective trajectories have nullable failure_kind,
+failure_error_type, provider_failure and interruption_reason. Keep old null/unknown/
+unspecified causes; never classify saved provider prose. run_summary.json explicitly
+retains interrupted status and the full planned evaluation set. active_trajectory_ids
+identify current realized outcomes; do not salvage an earlier fallback-dependent
+ancestor after a resumed attempt stops earlier. JSONL keeps all effort/attempts;
+node totals and completed output use distinct current nodes. VOID.txt exclusions
+remove all t36/t36b linguistic quality, even root hits, while retaining raw audit
+records and all-run operational coverage. Conditional, end-to-end, direct fallback
+and committed-ancestor dependency readings remain task02-v1.
+
+**05/usability follow-up:** Model-facing system/native schemas/node checklist and
+stored/expanded commitment contracts remain at task05's final hashes. The four retry
+controls are operational only on new checkpoints; changing system instructions,
+inventory protocol, model/sampler, evidence/backend or model-visible budgets still
+requires a new run. Same-session inventory handles do not survive recovery. Your
+failed smoke remains protocol evidence with no substantive preview/commit; task06
+does not license a second smoke or establish a usable arm. Use the tracked driver/
+skill, which now forwards all retry controls and displays run interruption summaries.
+Installed .claude copies remain stale/read-only.
+
+**07/comparison manifest:** Relevant 06 work is complete on this checkout; freeze
+its actual code/schema and operational-retry-v1 policy alongside final 04/05 hashes.
+New defaults: max-retries=6, retry-backoff-seconds=10, max-retry-seconds=300,
+retry-max-delay-seconds=60; the tracked smoke driver intentionally defaults to zero
+retries. Set matched controls explicitly. Through run-benchmark use repeated
+--infer-arg=--FLAG=VALUE; caps are cumulative per seed across recorded resumes,
+not experiment-wide. Bound the whole batch separately. Missing cost/history cannot
+be treated as free spend; preserve one-response cost headroom. Provider/auth/quota/
+cancellation stop the tree without identity fallbacks. Resume only completed nodes;
+an interrupted node restarts its conversation/handles. Preserve incomplete summaries,
+missing evaluations, unknown legacy causes, void exclusions and ancestor flags.
+An unmarked old 3.0 checkpoint retains strict retry checks; 1.0/2.0 remains unsafe.
+Do not migrate hashes or mix arms merely to resume. Task05 substantive usability
+and the final independent interface/manifest/cap review still gate comparative
+inference; the owner chooses the next bounded follow-up. No inference is dispatched.
 
 ## Session handoffs
 
@@ -947,3 +993,49 @@ an automatic retry. Scientific benefit, source-backed tone mapping and OLD MAN
 scope remain unresolved.
 Next: 06 is independently ready; a focused read-only final interface/manifest review
 can prepare an owner-chosen bounded usability follow-up. 07 remains gated.
+
+### 2026-10-05 — task 06 — complete offline
+
+Session: current Codex chat. Checkout: /Users/acraev/Work/cognate-reconstruction,
+burmish-session-evaluation-units at 7356f6601b67aaaaf6e4d991d54927ab3cf315aa;
+task05's existing dirty work and local task01 audit preserved; task06 is uncommitted.
+Result: docs/research/provider_recovery.md and provider_recovery_results.json.
+Implemented structured conservative taxonomy/redacted metadata, bounded retry hints/
+cancellation, no lost-response replay, run suspension without provider fallbacks,
+completed-step recovery/idempotence, operational-retry-v1 versus strict old hashes,
+cumulative seed caps and atomic incomplete/current-outcome/sweep/void accounting.
+Linguistic hypotheses, task02-v1 scores and task05 model-facing hashes are unchanged.
+
+Validation/resources: final 206 focused passes (15.08 s); one portable run,
+680 passed/41 deselected (67.35 s). CLI/driver help, manifest and whitespace checks
+pass. Four banked retry examples were redacted with SHA/line provenance; raw artifacts
+are untouched. All lifecycle providers/time are fake; no live/paid provider calls,
+model discovery/switch/download, push or PR. The result ledger distinguishes retained
+semantic source hashes from changed operational/reporting code.
+
+Compatibility: trajectory 5.0/checkpoint 3.0 remain; old readers and 1.0/2.0 unsafe-
+resume refusal remain. New retry patience changes log differences; unmarked 3.0
+keeps its original checks without migration. Token overrides/model-visible budgets
+remain strict. Mid-node restart, synchronous timeout and one-response billing
+headroom limitations are explicit. Unrecorded history cannot silently reset caps.
+
+Downstream: concrete 02/shared-reader, 05 follow-up and 07 manifest amendments above
+are mirrored in their local ignored briefs. Current state, inference guide, research
+plan and migration docs updated. No task dispatched. Open uncertainty: no live
+recovery or model usability/accuracy demonstration is claimed or required by 06.
+Next: the owner may start the focused final interface/manifest review and choose
+Task05's bounded usability follow-up; Task07 remains gated on that work.
+
+### 2026-10-05 — tasks 05/06 — local commit packaging
+
+The owner requested committing both sessions and delegated the grouping decision.
+Task05 is commit `3ea4402` (Clarify reconstruction guidance and add immutable
+hypothesis commits); all 100 runtime/operator hashes match its saved delivery
+manifest. Shared files were staged at the verified Task05 boundary before the
+Task06 changes. The accompanying provider-recovery commit contains Task06's final
+implementation, tests/results and current status documentation. Its runtime stays
+at the previously tested 206 focused/680 portable-pass snapshot; no inference or
+new runtime change was introduced for packaging. The README now reflects delivery.
+Task01 audit/CLI/tests/fixtures, PBEBench assessment, raw runs and ignored prompts
+remain local. No push or PR was requested or performed. Task05 stays partial at
+substantive live usability; the task07 review/usability gate remains unchanged.

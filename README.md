@@ -8,8 +8,9 @@ validate commitments, assemble candidate proto-forms, and preserve an audit trai
 Tasks 01–04 delivered diagnosis, evaluation and evidence repairs; task05 delivered
 offline instruction/protocol changes but its local smoke failed. Substantive live
 commit usability and reliable historical reconstruction remain unverified.
-Review the final interface/manifest before comparative work; task06 provider
-recovery remains independently ready.
+Task06 provider recovery is delivered offline with completed-node resume and
+explicit interruption accounting. Review the final interface/manifest and verify
+substantive live usability before comparative work.
 
 ## Start here
 
@@ -55,6 +56,7 @@ explicit identity fallback, which must be distinguished from a model commitment.
 | [Evidence contract](docs/research/evidence_contract.md) | units-v2 counts/bindings and units-v1 inherited pieces |
 | [Evidence migration](docs/research/evidence_migration.md) | Current typed tools, trajectory 5.0 and checkpoint 3.0 compatibility |
 | [Protocol revision](docs/research/protocol_revision.md) | Task05 corrected guidance, commit readiness and immutable preview handles |
+| [Provider recovery](docs/research/provider_recovery.md) | Task06 bounded retries, safe resume and incomplete-outcome accounting |
 | [Report, reject, or score](docs/report_reject_or_score.md) | Separate mechanical validity, workflow quality, and linguistic judgment |
 | [Operator skill](skills/run-cognate-reconstruction/SKILL.md) | Operational recipes; use the experiment policy for current budgets and model preferences |
 | [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Corrected model instructions; measured and tested in task05 |

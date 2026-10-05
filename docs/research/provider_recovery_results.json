@@ -1,0 +1,99 @@
+{
+  "branch": "burmish-session-evaluation-units",
+  "changes": "uncommitted; inherited task05 and local task01 preserved",
+  "checkout": "/Users/acraev/Work/cognate-reconstruction",
+  "checkpoint_policy": "operational-retry-v1 (new); strict-v1 (unmarked legacy)",
+  "checkpoint_version": "3.0",
+  "code_manifest": "docs/research/provider_recovery_manifest.json",
+  "code_manifest_sha256": "b9e7a010e561e64d020524335870f5f569d47567e9fcbf2c4f81d37dceba486c",
+  "count_semantics": "independent-etyma-v1",
+  "date": "2026-10-05",
+  "downstream": "02 shared readers; 05 semantic boundaries/follow-up; 07 recovery/manifest accounting. No task or inference dispatched.",
+  "evaluator_version": "task02-v1",
+  "evidence_contract": "units-v2",
+  "head": "7356f6601b67aaaaf6e4d991d54927ab3cf315aa",
+  "limitations": [
+    "completed-node-only recovery; partial node conversation/handles restart",
+    "synchronous SDK/server must honor timeout",
+    "post-response cost cap needs one-response headroom; missing costs/history stop capped requests",
+    "no experiment-wide automatic cap",
+    "no linguistic accuracy or live usability demonstration"
+  ],
+  "model_visible_components": {
+    "full-payload": {
+      "the agent instructions": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d",
+      "the anchor file": "absent",
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "e6b794de02454541cc7e747fe0e0770a0bf60f70d2e7dd50e8d6cfa12077307d"
+    },
+    "stored-hypothesis": {
+      "the agent instructions": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d",
+      "the anchor file": "absent",
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "dd58d427b00f86da222b301a6bbebc1fcbe1d70f5a507dfa87b2dd5bfddba8a9"
+    }
+  },
+  "piece_representation": "units-v1",
+  "reporting": "prospective structured causes; unknown legacy causes unchanged; active outcomes and void exclusion retain task02-v1 score definitions",
+  "resources": {
+    "downloads": 0,
+    "fake_provider_only": true,
+    "live_provider_requests": 0,
+    "local_inference_runs": 0,
+    "model_operations": 0,
+    "paid_api_calls": 0
+  },
+  "schema_hashes": {
+    "checkpoint": "377d249c20e4ee54cddc08eed1759138a084cd9dc6a1e55a2eb2724133c67e5d",
+    "node_payload": "b93ae61280e349567bbadfdfbe8cb2421689960e1ad8559a1b6f9accaf996921",
+    "trajectory": "860209d255c3f0ac259cac13da2434f5baa345a96ae26860f58dd7fb1e576d5f"
+  },
+  "task05_hashes_verified": {
+    "explained_operational_report_changes": [
+      "cognate_reconstruction/agent/events.py",
+      "cognate_reconstruction/agent/orchestrator.py",
+      "cognate_reconstruction/agent/providers/__init__.py",
+      "cognate_reconstruction/agent/providers/litellm_provider.py",
+      "cognate_reconstruction/agent/reconstructor.py",
+      "cognate_reconstruction/agent/service.py",
+      "cognate_reconstruction/agent/trajectory.py",
+      "cognate_reconstruction/benchmarks/sweep.py",
+      "cognate_reconstruction/cli.py",
+      "cognate_reconstruction/evaluation/run.py",
+      "cognate_reconstruction/inspect_run.py",
+      "cognate_reconstruction/schemas/evaluation.py",
+      "cognate_reconstruction/traversal/checkpoint.py",
+      "cognate_reconstruction/traversal/traverser.py",
+      "skills/run-cognate-reconstruction/SKILL.md",
+      "skills/run-cognate-reconstruction/driver.py",
+      "tests/workbench/test_evaluation_contract.py",
+      "tools/evaluate_run.py"
+    ],
+    "instruction": true,
+    "manifest_unexplained_differences": [],
+    "missing_manifest_entries": [],
+    "native_schema": true,
+    "unchanged_existing_manifest_entries": 153
+  },
+  "trajectory_version": "5.0",
+  "unit_evaluator_version": "task04-units-v1",
+  "validation": {
+    "banked_event_hashes_unchanged": true,
+    "cli_and_tracked_driver_help": "pass",
+    "focused": {
+      "command": "conda run -n llm_reconstruction python -m pytest -q tests/workbench/test_provider_recovery.py tests/workbench/test_recovery_and_provider.py tests/workbench/test_gemini_provider.py tests/workbench/test_node_failure_fallback.py tests/workbench/test_resume_integrity.py tests/workbench/test_multi_node_targets_and_sweep.py tests/workbench/test_evaluation_contract.py tests/workbench/test_truncation_recovery.py tests/workbench/test_protocol_revision.py tests/workbench/test_inspect_run.py",
+      "passed": 206,
+      "seconds": 15.08
+    },
+    "portable": {
+      "command": "conda run -n llm_reconstruction python -m pytest -q -k 'not local_run_artifacts'",
+      "deselected": 41,
+      "passed": 680,
+      "runs": 1,
+      "seconds": 67.35
+    }
+  },
+  "version": "provider-recovery-offline-v1"
+}

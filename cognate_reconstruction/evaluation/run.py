@@ -4,6 +4,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 import json
 from typing import Any
+from pathlib import Path
 
 from cognate_reconstruction.evaluation.targets import _evaluate_target
 from cognate_reconstruction.evaluation.diagnostics import diagnostic_text
@@ -13,6 +14,16 @@ from cognate_reconstruction.schemas.evaluation import (
 from cognate_reconstruction.schemas.historical import HistoricalFormRole, TargetValidity
 from cognate_reconstruction.schemas.traversal import ReconstructionStep
 from cognate_reconstruction.tree import assign_node_ids, parse_newick
+
+
+def load_result_or_summary(run_dir: Path):
+    """The latest interruption summary overrides a stale pre-resume result."""
+    summary_path = run_dir / "run_summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else None
+    if summary and summary.get("status") == "interrupted":
+        return summary
+    result_path = run_dir / "result.json"
+    return json.loads(result_path.read_text(encoding="utf-8")) if result_path.exists() else summary
 
 
 def step_from_artifact(raw) -> ReconstructionStep:
@@ -100,6 +111,14 @@ def evaluate_run(
     No calls, step synthesis or artifact mutation. Completed trajectories may
     salvage absent results; failed trajectories never supply outputs.
     """
+    # Attempts remain in append-only JSONL; outcomes use the latest node record.
+    # A resumed ancestor can legitimately replace an earlier fallback-tainted one.
+    artifact_run_id = (result or {}).get("run_id") or ((result or {}).get("lifecycle_summary") or {}).get("run_id")
+    lifecycle = (result or {}).get("lifecycle_summary") or result or {}
+    active_ids = lifecycle.get("active_trajectory_ids")
+    trajectories = tuple({t.node_id: t for t in trajectories
+                          if (artifact_run_id is None or t.run_id == artifact_run_id)
+                          and (active_ids is None or t.trajectory_id in active_ids)}.values())
     steps = {}
     for raw in ((result or {}).get("snapshot") or {}).get("steps", ()):
         step = step_from_artifact(raw)
@@ -137,10 +156,17 @@ def evaluate_run(
         leaves[node_id] = leaf_set
 
     visit(root)
+    latest = {t.node_id: t for t in trajectories}
+    def cause_for(node):
+        record = failures.get(node, {})
+        trajectory = latest.get(node)
+        error_type = record.get("error_type") or (trajectory.failure_error_type if trajectory and not trajectory.completed else None)
+        cause = record.get("failure_kind") or (trajectory.failure_kind if trajectory and not trajectory.completed else None)
+        return error_type, cause or failure_kind(error_type)
     operational = []
     for node in sorted(n for n in descendants if descendants[n]):
         failed = any(t.node_id == node and not t.completed for t in trajectories)
-        error_type = failures.get(node, {}).get("error_type")
+        error_type, cause = cause_for(node)
         status = ("identity_fallback" if node in direct_fallbacks else
                   "committed" if node in completed and node in steps else
                   "committed_without_saved_output" if node in completed else
@@ -148,7 +174,7 @@ def evaluate_run(
                   "failed_no_output" if failed else "unvisited_or_missing")
         operational.append(OperationalNodeOutcome(
             node_id=node, status=status, failure_error_type=error_type,
-            failure_kind=failure_kind(error_type) or ("unknown" if failed or node in direct_fallbacks else None),
+            failure_kind=cause or ("unknown" if failed or node in direct_fallbacks else None),
         ))
     targets = []
     for binding in payload.historical_form_bindings:
@@ -169,9 +195,8 @@ def evaluate_run(
         )
         if node in direct_fallbacks and not e.failure_fallback:
             e = e.model_copy(update={"failure_fallback": True})
-        error_type = failures.get(node, {}).get("error_type")
+        error_type, cause = cause_for(node)
         failed_trajectory = any(t.node_id == node and not t.completed for t in trajectories)
-        cause = failure_kind(error_type)
         if cause is None and (failed_trajectory or node in direct_fallbacks):
             cause = "unknown"
         targets.append(NodeEvaluationOutcome(
@@ -184,9 +209,14 @@ def evaluate_run(
     status = ("abandoned_no_result" if result is None else "result_written_incomplete_or_unknown"
               if any(n.status not in {"committed", "identity_fallback"} for n in operational)
               else "finished_with_fallbacks" if direct_fallbacks else "finished")
-    if result is not None and exit_code not in (None, 0):
+    if (result or {}).get("status") == "interrupted":
+        status = "interrupted"
+    if result is not None and (result or {}).get("status") != "interrupted" and exit_code not in (None, 0):
         status = "result_written_nonzero_exit"
     return RunEvaluationReport(
+        attempted_node_ids=tuple(sorted(set(latest))),
+        completed_node_ids=tuple(sorted(completed & set(steps) - direct_fallbacks)),
+        interruption_reason=(result or {}).get("interruption_reason"),
         run_status=status, planned_node_ids=tuple(t.node_id for t in targets),
         targets=tuple(targets), raw_target_summary=summarize(targets),
         validated_target_summary=summarize(validated),
@@ -199,6 +229,8 @@ def evaluate_run(
 
 def render_text(report: RunEvaluationReport) -> str:
     lines = [f"Evaluation {report.evaluator_version}: {report.run_status}"]
+    if report.linguistic_exclusion_reason:
+        lines.append(f"Excluded from linguistic quality: {report.linguistic_exclusion_reason}; raw outcomes retained for audit")
     lines.append(f"Sample selection: {report.selection_provenance or 'not recorded; consult the frozen definition'}")
     for node in report.operational_nodes:
         lines.append(f"node {node.node_id}: {node.status}; cause {node.failure_kind or 'none recorded'}; "

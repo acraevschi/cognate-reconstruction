@@ -6,6 +6,9 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping, Sequence
 
 from cognate_reconstruction.agent.reconstructor import AgenticNodeReconstructor
+from cognate_reconstruction.agent.orchestrator import failed_node_trajectory, RunCancelled
+from cognate_reconstruction.agent.providers import ProviderError
+from cognate_reconstruction.agent.events import AgentEventKind
 from cognate_reconstruction.agent.trajectory import AgentTrajectory
 from cognate_reconstruction.evaluation.targets import _evaluate_target
 from cognate_reconstruction.evaluation.run import evaluate_run
@@ -47,6 +50,7 @@ class FamilyReconstructionResult(WorkbenchModel):
     reason and the failed trajectory's ID live.
     """
     evaluation_report: RunEvaluationReport | None = None
+    lifecycle_summary: dict | None = None
 
 
 def _best_lexicon(beam: NodeBeamState) -> LanguageLexicon:
@@ -113,6 +117,7 @@ class ReconstructionService:
     ) -> None:
         self.reconstructor = reconstructor
         self.beam_width = reconstructor.deterministic.beam_width
+        self.last_run_summary: dict | None = None
 
     def reconstruct_family(
         self,
@@ -126,6 +131,7 @@ class ReconstructionService:
         # Seeds are taken here rather than set by the caller beforehand:
         # `clear_run_results` wipes prior hypotheses, so anything seeded ahead
         # of this call would vanish without a trace.
+        self.last_run_summary = None
         self.reconstructor.clear_run_results()
         self.reconstructor.seed_prior_reconstructions(seed_trajectories)
         active_anchors = _merge_node_forms(
@@ -135,15 +141,45 @@ class ReconstructionService:
             ),
             anchors_by_node,
         )
-        snapshot = TreeTraverser(
-            beam_width=self.beam_width,
-            reconstructor=self.reconstructor,
-        ).traverse(
-            dataset,
-            anchors_by_node=active_anchors,
-            resume_steps=resume_steps,
-            on_step_complete=on_step_complete,
+        partial_steps = []
+        planned_payload = WorkbenchPayload(
+            lexicons=dataset.lexicons, newick=dataset.tree.newick,
+            historical_form_bindings=dataset.historical_form_bindings,
         )
+        try:
+            snapshot = TreeTraverser(
+                beam_width=self.beam_width, reconstructor=self.reconstructor,
+            ).traverse(
+                dataset, anchors_by_node=active_anchors,
+                resume_steps=resume_steps, on_step_complete=on_step_complete,
+                on_step_recorded=partial_steps.append,
+            )
+        except (Exception, KeyboardInterrupt) as caught:
+            error = RunCancelled("run cancelled by keyboard interrupt") if isinstance(caught, KeyboardInterrupt) else caught
+            failed = failed_node_trajectory(error)
+            trajectories = list(seed_trajectories) + self.reconstructor.trajectories
+            if failed is not None and failed not in trajectories:
+                trajectories.append(failed)
+            reason = error.stop_reason if isinstance(error, ProviderError) else str(error)
+            partial = {"status": "interrupted", "interruption_reason": reason,
+                       "snapshot": {"steps": partial_steps},
+                       "node_failures": [f.model_dump(mode="json") for f in self.reconstructor.node_failures]}
+            report = evaluate_run(planned_payload, partial, trajectories)
+            self.last_run_summary = self._lifecycle_summary(
+                report, trajectories, restored=resume_steps or {}, error=error,
+            )
+            # Preserve realized fallback outputs as such, too, without inventing
+            # a full result or steps for unattempted nodes.
+            self.last_run_summary["snapshot"] = {
+                "steps": [step.model_dump(mode="json", exclude_computed_fields=True) for step in partial_steps]
+            }
+            self.last_run_summary["node_failures"] = partial["node_failures"]
+            self.reconstructor.orchestrator._emit(
+                AgentEventKind.RUN_INTERRUPTED, failed.node_id if failed else "run",
+                "run interrupted; completed-node progress retained",
+                **{k: v for k, v in self.last_run_summary.items() if k not in {"snapshot", "evaluation_report"}},
+            )
+            raise error
         internal_nodes = tuple(
             InternalNodeVocabulary(
                 node_id=step.parent_node_id,
@@ -169,14 +205,51 @@ class ReconstructionService:
             ),
             {"snapshot": {"steps": snapshot.steps},
              "node_failures": [f.model_dump(mode="json") for f in node_failures]},
-            self.reconstructor.trajectories,
+            (*seed_trajectories, *self.reconstructor.trajectories),
         )
         target_evaluations = tuple(t.evaluation for t in evaluation_report.targets)
+        all_trajectories = tuple(seed_trajectories) + tuple(self.reconstructor.trajectories)
+        self.last_run_summary = self._lifecycle_summary(
+            evaluation_report, all_trajectories, restored=resume_steps or {},
+        )
         return FamilyReconstructionResult(
             snapshot=snapshot,
             internal_nodes=internal_nodes,
-            trajectories=tuple(self.reconstructor.trajectories),
+            trajectories=all_trajectories,
             historical_target_evaluations=target_evaluations,
             node_failures=node_failures,
             evaluation_report=evaluation_report,
+            lifecycle_summary=self.last_run_summary,
         )
+
+    def _lifecycle_summary(self, report, trajectories, *, restored, error=None):
+        orchestrator = self.reconstructor.orchestrator
+        metadata = error.metadata if isinstance(error, ProviderError) else None
+        attempted = sorted(set(report.attempted_node_ids) | set(restored))
+        return {
+            "recovery_version": "provider-recovery-v1", "run_id": orchestrator.run_id,
+            "configuration_sha256": orchestrator.configuration_sha256,
+            "status": "interrupted" if error else report.run_status,
+            "complete": error is None,
+            "failure_kind": metadata.kind.value if metadata else (getattr(error, "failure_kind", None) or "unknown") if error else None,
+            "failure_error_type": type(error).__name__ if error else None,
+            "interruption_reason": error.stop_reason if metadata else str(error) if error else None,
+            "provider_failure": metadata.model_dump(mode="json") if metadata else None,
+            "planned_node_ids": [n.node_id for n in report.operational_nodes],
+            "attempted_node_ids": attempted,
+            "active_trajectory_ids": [t.trajectory_id for t in trajectories],
+            "completed_node_ids": list(report.completed_node_ids),
+            "restored_node_ids": sorted(restored),
+            "unattempted_node_ids": sorted(set(n.node_id for n in report.operational_nodes) - set(attempted)),
+            "fallback_node_ids": [n.node_id for n in report.operational_nodes if n.status == "identity_fallback"],
+            "missing_evaluation_outputs": report.raw_target_summary.missing_outputs,
+            "evaluation_report": report.model_dump(mode="json"),
+            "usage": orchestrator.usage_snapshot(),
+            "retry_settings": {
+                "max_retries": orchestrator.max_retries,
+                "retry_backoff_seconds": orchestrator.retry_backoff_seconds,
+                "max_retry_seconds": orchestrator.max_retry_seconds,
+                "retry_max_delay_seconds": orchestrator.retry_max_delay_seconds,
+            },
+            "resume_boundary": "completed_nodes_only; interrupted node restarts from its initial context",
+        }

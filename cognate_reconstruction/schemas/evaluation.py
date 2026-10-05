@@ -59,3 +59,7 @@ class RunEvaluationReport(WorkbenchModel):
     operational_nodes: tuple[OperationalNodeOutcome, ...] = ()
     selection_provenance: dict[str, str | bool] | None = None
     notes: tuple[str, ...] = ()
+    attempted_node_ids: tuple[str, ...] = ()
+    completed_node_ids: tuple[str, ...] = ()
+    interruption_reason: str | None = None
+    linguistic_exclusion_reason: str | None = None

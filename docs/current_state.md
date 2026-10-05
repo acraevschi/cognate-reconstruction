@@ -1,7 +1,7 @@
 # Current state
 
-Updated 2026-10-05 with task 05 offline protocol/instruction repair; its single
-local smoke failed and substantive live usability remains unresolved.
+Updated 2026-10-05 with task 06 offline provider recovery and interruption accounting.
+Task05's single local smoke failed; substantive live usability remains unresolved.
 Task 04 units-v2 and task 03 final smoke accounting
 is in [evidence results](research/evidence_results.md).
 Prompt numbering was updated on 2026-10-04; this entry document uses the current
@@ -195,6 +195,37 @@ No live inference/provider/model operations occurred. Task 05 owns the next live
 smoke and broader protocol/guidance. 07 needs final usability, instrument/cap/manifest
 checks and another independent review after 04/05 and relevant 06 work.
 
+## Task 06 recovery, verified 2026-10-05
+
+[Provider recovery](research/provider_recovery.md) and
+[results/hashes](research/provider_recovery_results.json) deliver structured conservative
+causes, bounded attempts/elapsed time, Retry-After, cancellation during backoff and
+no automatic replay of uncertain transport responses. SDK retries are disabled.
+Exhaustion/auth/quota stop the tree; protocol identity fallback remains labelled.
+No linguistic hypotheses or score definitions changed, and no inference ran.
+
+Completed nodes survive interruption. Exact matching finalized JSONL receipts can
+close the checkpoint-write crash window; ancestor receipt chronology prevents
+laundering earlier fallback use. Resume does not repeat completed node calls/output
+or completion events. New 3.0 checkpoints declare operational-retry-v1 and log changed
+retry controls; unmarked 3.0 keeps strict retry hashes, and 1.0/2.0 remains unsafe.
+Instructions, schemas, node notes, evidence/backend/version, inputs, sampler/model
+and model-visible budgets remain strict. Truncation token overrides are semantic.
+
+Atomic run_summary.json reports incomplete status, structured reason, attempted/
+completed/unattempted nodes, cost coverage and full planned-set missing evaluations.
+Current trajectory IDs prevent stale fallback-dependent ancestor salvage after a
+resumed interruption. Sweeps separate interruption, direct fallback, ancestor
+provenance and conditional versus end-to-end task02-v1 views. VOID-marked t36/t36b
+quality is excluded even with a root commit; raw audit data remains readable.
+Caps are cumulative per seed across recorded resumes, not experiment-wide; missing
+cost/history cannot silently restart a capped seed's spend at zero. One synchronous
+request still needs timeout support and one-response cost headroom.
+
+Validation: 206 focused passes; one portable run, 680 passed/41 deselected.
+No provider/API calls, model operations or downloads. Task05's final interface
+hashes remain unchanged; its live usability gate and task07's final review remain.
+
 ## How to interpret earlier Polynesian results
 
 Copying the best single daughter scored 27/46 (58.7%). An oracle selecting the
@@ -230,9 +261,10 @@ node, input, width and alignment reading whenever quoting them.
    new literal tokens/sequences; empty targets remain forbidden. Task05 qualifies
    sparse/outgroup/morphology judgments and changes instruction/schema/checklist
    hashes separately from task04's evidence repair. Scientific benefit is untested.
-6. **Provider failures can contaminate interpretation.** Retry settings remain in
-   the compatibility hash; provider outages can become node fallbacks. Planned
-   recovery work must distinguish these from a model failing to solve a node.
+6. **Provider interruption is separate from model protocol failure.** Task06 stops
+   provider exhaustion/auth/quota/cancellation without walking identity fallbacks.
+   Completed-node-only resume preserves semantic hashes; new checkpoints permit
+   recorded retry-only changes. Old cause metadata stays unknown/unspecified.
 7. **Statistics are exploratory.** Small, nested samples and multiple changed
    settings do not establish causal effects of model or commit shape. Failure
    exclusions can bias comparisons. Task02-v1 reports conditional quality and
@@ -268,7 +300,7 @@ remediation and reference-word isolation clarifications are offline-tested only.
 Task05 is partial at the live usability gate; no second smoke ran. Cumulative
 input tokens were 631,609 versus a maximum request of 56,233; configured context
 was 262,144. A shorter static prompt did not establish lower cost or better science.
-Task 06 remains independent. Task 07 requires an instrument/interface gate, usable
+Task 06 is delivered offline with 680 portable passes. Task 07 requires an instrument/interface gate, usable
 frozen arms and a focused manifest review unless the owner scopes that review out;
 06 can be explicitly scoped out for a bounded single-node pilot with demonstrated
 interruption/missing-outcome handling. Forward prediction remains deferred.

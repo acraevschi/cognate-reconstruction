@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import subprocess
 import sys
 import uuid
@@ -30,6 +31,7 @@ from cognate_reconstruction.agent import (
     TrajectoryDatasetBuilder,
     default_tool_registry,
 )
+from cognate_reconstruction.agent.events import AgentEventKind
 from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.schemas import COMMIT_REQUIREMENT_NOTES
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
@@ -557,7 +559,8 @@ def _selected_instructions(args: argparse.Namespace) -> str:
 GIVE_UP_COMPONENT = "the give-up thresholds"
 """Name under which the give-up thresholds are recorded in a checkpoint."""
 
-ADVISORY_CONFIGURATION_COMPONENTS = frozenset({GIVE_UP_COMPONENT})
+RETRY_COMPONENT = "the operational retry settings"
+ADVISORY_CONFIGURATION_COMPONENTS = frozenset({GIVE_UP_COMPONENT, RETRY_COMPONENT})
 """Configuration components recorded in a checkpoint but *not* hashed into it.
 
 These decide when the harness stops trying, and nothing else: they cannot
@@ -603,6 +606,7 @@ def _resolved_temperature(requested: float | None, preset: str | None) -> float:
 
 def _provider_and_configuration(
     args: argparse.Namespace,
+    *, compatibility_policy: str = "operational-retry-v1",
 ) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
     options = load_provider_options(args.provider_config)
     preset = "lm-studio" if args.lm_studio else args.preset
@@ -695,14 +699,25 @@ def _provider_and_configuration(
         "anchor_match_factor": args.anchor_match_factor,
         "max_turns": args.max_turns,
         "max_tool_calls": args.max_tool_calls,
-        "max_retries": args.max_retries,
-        "retry_backoff_seconds": args.retry_backoff_seconds,
         "max_total_turns": args.max_total_turns,
         "max_total_tool_calls": args.max_total_tool_calls,
         "max_run_seconds": args.max_run_seconds,
         "max_total_cost_usd": args.max_total_cost_usd,
     }
+    retry_settings = {
+        "max_retries": args.max_retries,
+        "retry_backoff_seconds": args.retry_backoff_seconds,
+        "max_retry_seconds": args.max_retry_seconds,
+        "retry_max_delay_seconds": args.retry_max_delay_seconds,
+    }
     give_up_settings = _give_up_thresholds(args)
+    if compatibility_policy == "strict-v1":
+        # Reproduce the old digest exactly; no unverifiable migration.
+        settings.update({k: retry_settings[k] for k in ("max_retries", "retry_backoff_seconds")})
+    else:
+        # Token overrides are model-visible budgets, not recovery patience.
+        for key in ("allow_truncation_backoff", "truncation_max_tokens_ceiling"):
+            settings[key] = give_up_settings.pop(key)
     digests = _behavioural_input_digests(args)
     public = {
         **settings,
@@ -711,11 +726,16 @@ def _provider_and_configuration(
         "commit_requirements_sha256": digests["the node commit requirements"],
         "anchors_sha256": digests["the anchor file"],
     }
+    if compatibility_policy != "strict-v1":
+        public["behavioural_inputs"] = digests
+        public["compatibility_policy"] = compatibility_policy
     components = {
         **digests,
         "the provider and limit settings": _hash_json(settings),
         GIVE_UP_COMPONENT: _hash_json(give_up_settings),
     }
+    if compatibility_policy != "strict-v1":
+        components[RETRY_COMPONENT] = _hash_json(retry_settings)
     return provider, _hash_json(public), public, components
 
 
@@ -769,6 +789,11 @@ def _resume_mismatches(
         mismatches.append("the input dataset")
     if checkpoint.normalized_tree_sha256 != tree_sha256:
         mismatches.append("the normalized tree")
+    for name, digest in components.items():
+        if name not in ADVISORY_CONFIGURATION_COMPONENTS and name in checkpoint.configuration_components and checkpoint.configuration_components[name] != digest:
+            mismatches.append(name)
+    if checkpoint.compatibility_policy == "strict-v1" and checkpoint.configuration_components.get(GIVE_UP_COMPONENT, components.get(GIVE_UP_COMPONENT)) != components.get(GIVE_UP_COMPONENT):
+        mismatches.append("legacy give-up controls cannot be verified as non-semantic")
     if checkpoint.configuration_sha256 != configuration_sha256:
         # An older checkpoint recorded no components; `.get` then compares a
         # digest with itself and the message stays honestly generic.
@@ -779,7 +804,7 @@ def _resume_mismatches(
             and checkpoint.configuration_components.get(name, digest) != digest
         ]
         mismatches.extend(changed or ["the configuration"])
-    return mismatches
+    return list(dict.fromkeys(mismatches))
 
 
 def _changed_advisory_components(
@@ -854,6 +879,8 @@ def _seed_trajectories(
         if trajectory.completed
         and trajectory.committed_reconstruction is not None
         and trajectory.node_id in completed_nodes
+        and (trajectory.reconstruction_step is None or
+             trajectory.reconstruction_step == checkpoint.steps_by_node[trajectory.node_id])
         # The same compatibility notion the checkpoint itself uses: a
         # hypothesis produced under a different model or a different
         # instruction set must not leak into this run.
@@ -871,6 +898,71 @@ def _seed_trajectories(
     )
 
 
+def _write_run_summary(path: Path, summary: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    temporary.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(path)
+
+
+def _recover_finalized_steps(path, checkpoint, dataset, beam_width):
+    """Close the JSONL-before-checkpoint crash window with verified receipts.
+
+    Only the new operational policy permits this recovery. No commit/partial
+    session is executed. Exact child beams and a complete internal subtree must
+    match, besides the run/configuration/schema identity.
+    """
+    if checkpoint.compatibility_policy != "operational-retry-v1" or not Path(path).exists():
+        return checkpoint
+    from cognate_reconstruction.tree import parse_newick, assign_node_ids, postorder_groups
+    from cognate_reconstruction.traversal.beam import make_leaf_beam
+    try:
+        trajectories = TrajectoryDatasetBuilder.read_jsonl(path)
+    except OSError:
+        return checkpoint  # seeding emits the supported missing/unreadable warning
+    except ValueError as error:
+        raise ValueError(f"could not load prior hypotheses from {path}: {error}") from error
+    latest = {t.node_id: t for t in trajectories
+              if t.run_id == checkpoint.run_id and t.configuration_sha256 == checkpoint.configuration_sha256}
+    receipt_positions = {t.trajectory_id: index for index, t in enumerate(trajectories)}
+    root = parse_newick(dataset.tree.newick)
+    ids = assign_node_ids(root)
+    lexicons = {l.variety_id: l for l in dataset.lexicons}
+    beams = {ids[id(leaf)]: make_leaf_beam(lexicons[leaf.label], beam_width=beam_width)
+             for leaf in root.get_leaves()}
+    safe = set()
+    for children, parent in postorder_groups(root):
+        node = ids[id(parent)]
+        child_ids = tuple(ids[id(c)] for c in children)
+        if any(c not in beams for c in child_ids):
+            continue
+        existing = checkpoint.steps_by_node.get(node)
+        receipt = latest.get(node)
+        candidate = existing or (receipt.reconstruction_step if receipt and receipt.completed and receipt.committed_reconstruction is not None and receipt.schema_version == "5.0" else None)
+        if candidate is None or candidate.parent_node_id != node or candidate.diagnostics.failure_fallback:
+            continue
+        if any(not child.is_leaf and child_id not in safe for child, child_id in zip(children, child_ids)):
+            continue
+        if candidate.child_node_ids != child_ids or candidate.input_beams != tuple(beams[c] for c in child_ids):
+            if existing is not None:
+                raise ValueError(f"checkpoint inputs for {node!r} do not match the completed tree")
+            continue
+        if existing is None:
+            # A prior ancestor built on fallback must not be laundered merely
+            # because a later identity commit has an equal child beam.
+            if any(not child.is_leaf and (latest.get(child_id) is None or
+                   not latest[child_id].completed or
+                   latest[child_id].reconstruction_step != checkpoint.steps_by_node.get(child_id) or
+                   receipt_positions[latest[child_id].trajectory_id] >= receipt_positions[receipt.trajectory_id])
+                   for child, child_id in zip(children, child_ids)):
+                continue
+            checkpoint = checkpoint.with_step(candidate)
+            print(f"restored finalized node {node} from matching JSONL; no provider request replayed", file=sys.stderr)
+        safe.add(node)
+        beams[node] = candidate.output_beam
+    return checkpoint
+
+
 def _command_infer(args: argparse.Namespace) -> None:
     if args.allow_truncation_backoff and args.truncation_max_tokens_ceiling is None:
         raise ValueError(
@@ -883,14 +975,15 @@ def _command_infer(args: argparse.Namespace) -> None:
     payload = WorkbenchPayload.model_validate_json(input_text)
     dataset = ingest_payload(payload)
     anchors_by_node = _load_anchors(args.anchors, dataset)
-    provider, configuration_sha256, _, components = _provider_and_configuration(
-        args
-    )
-
     checkpoint_store = (
         CheckpointStore(args.checkpoint) if args.checkpoint else None
     )
     checkpoint: FamilyCheckpoint | None = None
+    if args.resume and checkpoint_store is not None:
+        checkpoint = checkpoint_store.load()
+    provider, configuration_sha256, _, components = _provider_and_configuration(
+        args, compatibility_policy=checkpoint.compatibility_policy if checkpoint else "operational-retry-v1",
+    )
     seed_trajectories: tuple[AgentTrajectory, ...] = ()
     input_sha256 = _hash_text(input_text)
     tree_sha256 = _hash_text(dataset.tree.newick)
@@ -920,6 +1013,10 @@ def _command_infer(args: argparse.Namespace) -> None:
                 "original run used.",
                 file=sys.stderr,
             )
+        recovered = _recover_finalized_steps(args.trajectories, checkpoint, dataset, args.beam_width)
+        if recovered != checkpoint:
+            checkpoint_store.save(recovered)
+            checkpoint = recovered
         run_id = checkpoint.run_id
         seed_trajectories = _seed_trajectories(
             args.trajectories, checkpoint, configuration_sha256
@@ -938,6 +1035,13 @@ def _command_infer(args: argparse.Namespace) -> None:
                 configuration_sha256=configuration_sha256,
                 normalized_tree_sha256=tree_sha256,
                 configuration_components=components,
+                compatibility_policy="operational-retry-v1",
+                operational_settings={
+                    "max_retries": args.max_retries,
+                    "retry_backoff_seconds": args.retry_backoff_seconds,
+                    "max_retry_seconds": args.max_retry_seconds,
+                    "retry_max_delay_seconds": args.retry_max_delay_seconds,
+                },
             )
             checkpoint_store.save(checkpoint)
 
@@ -949,6 +1053,8 @@ def _command_infer(args: argparse.Namespace) -> None:
         max_tool_calls=args.max_tool_calls,
         max_retries=args.max_retries,
         retry_backoff_seconds=args.retry_backoff_seconds,
+        max_retry_seconds=args.max_retry_seconds,
+        retry_max_delay_seconds=args.retry_max_delay_seconds,
         max_total_turns=args.max_total_turns,
         max_total_tool_calls=args.max_total_tool_calls,
         max_run_seconds=args.max_run_seconds,
@@ -993,14 +1099,59 @@ def _command_infer(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
 
-    result = service.reconstruct_family(
-        dataset,
-        anchors_by_node=anchors_by_node,
-        resume_steps=checkpoint.steps_by_node if checkpoint else None,
-        seed_trajectories=seed_trajectories,
-        on_step_complete=save_step,
-    )
+    summary_path = Path(args.output).expanduser().with_name("run_summary.json")
+    if args.resume:
+        for name in _changed_advisory_components(checkpoint, components):
+            orchestrator._emit(
+                AgentEventKind.RESUME_SETTINGS_CHANGED, "run", f"{name} changed on resume",
+                component=name, original_digest=checkpoint.configuration_components.get(name),
+                current_digest=components[name], original_retry_settings=checkpoint.operational_settings,
+                current_retry_settings={"max_retries": args.max_retries, "retry_backoff_seconds": args.retry_backoff_seconds,
+                                        "max_retry_seconds": args.max_retry_seconds, "retry_max_delay_seconds": args.retry_max_delay_seconds},
+            )
+        saved_usage = {}
+        if summary_path.exists():
+            saved_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            if saved_summary.get("run_id") != run_id or saved_summary.get("configuration_sha256") != configuration_sha256:
+                raise ValueError("resume summary belongs to another run/configuration")
+            saved_usage = saved_summary.get("usage", {})
+        # JSONL can be newer than the last summary after an abrupt exit. Retain
+        # all distinct attempts' effort, while outcomes count each node once.
+        try:
+            previous = tuple({t.trajectory_id: t for t in TrajectoryDatasetBuilder.read_jsonl(args.trajectories)
+                              if t.run_id == run_id and t.configuration_sha256 == configuration_sha256}.values()) if Path(args.trajectories).exists() else ()
+        except OSError:
+            previous = ()
+        recorded_usage = {
+            "turns": sum(t.metrics.turn_count for t in previous),
+            "tool_calls": sum(t.metrics.tool_call_count for t in previous),
+            "reported_cost_usd": sum(t.metrics.cost_usd or 0 for t in previous),
+            "responses_without_cost": sum(1 for t in previous for r in t.provider_responses if r.usage is None or r.usage.cost_usd is None)
+                + sum(t.provider_failure is not None and t.provider_failure.response_state == "unknown" and not t.provider_failure.retryable for t in previous),
+            "elapsed_seconds": sum(t.metrics.duration_seconds for t in previous),
+        }
+        for key in recorded_usage:
+            value = saved_usage.get(key, 0)
+            if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+                raise ValueError(f"invalid recorded run usage: {key}")
+        usage = {key: max(value, saved_usage.get(key, 0)) for key, value in recorded_usage.items()}
+        recorded_completed = {t.node_id for t in previous if t.completed and t.reconstruction_step is not None}
+        usage["history_complete"] = saved_usage.get("history_complete", True) and (
+            bool(saved_usage) or set(checkpoint.steps_by_node) <= recorded_completed)
+        orchestrator.restore_usage(usage)
+    try:
+        result = service.reconstruct_family(
+            dataset, anchors_by_node=anchors_by_node,
+            resume_steps=checkpoint.steps_by_node if checkpoint else None,
+            seed_trajectories=seed_trajectories, on_step_complete=save_step,
+        )
+    except (Exception, KeyboardInterrupt):
+        if service.last_run_summary is not None:
+            _write_run_summary(summary_path, service.last_run_summary)
+            print(f"INCOMPLETE RUN: progress and missing evaluations saved to {summary_path}", file=sys.stderr)
+        raise
     _write_json(args.output, result.model_dump_json(indent=2))
+    _write_run_summary(summary_path, service.last_run_summary)
     reconstructed = len(result.internal_nodes) - len(result.node_failures)
     print(
         f"wrote {args.output}: {reconstructed} reconstructed "
@@ -1017,7 +1168,7 @@ def _command_infer(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
     print(
-        f"appended {len(result.trajectories)} new trajectories to "
+        f"appended {len(service.reconstructor.trajectories)} new trajectories to "
         f"{args.trajectories}",
         file=sys.stderr,
     )
@@ -1738,8 +1889,10 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--agent-instructions", help="Explicit system-text arm; content is hashed. Default: packaged corrected instructions.")
     infer.add_argument("--inventory-protocol", choices=("full-payload", "stored-hypothesis"), default="stored-hypothesis", help="Independently select compact choices/immutable handles or full inventory payloads; both commit shapes remain supported.")
     infer.add_argument("--max-tool-calls", type=int, default=64)
-    infer.add_argument("--max-retries", type=int, default=2)
-    infer.add_argument("--retry-backoff-seconds", type=float, default=1.0)
+    infer.add_argument("--max-retries", type=int, default=6)
+    infer.add_argument("--retry-backoff-seconds", type=float, default=10.0)
+    infer.add_argument("--max-retry-seconds", type=float, default=300.0, help="Elapsed cap per rejected request, including attempts/backoff.")
+    infer.add_argument("--retry-max-delay-seconds", type=float, default=60.0, help="Exponential backoff ceiling; a longer Retry-After is honored only within remaining caps.")
     infer.add_argument("--max-total-turns", type=int)
     infer.add_argument("--max-total-tool-calls", type=int)
     infer.add_argument("--max-run-seconds", type=float)

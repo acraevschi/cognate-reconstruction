@@ -134,6 +134,14 @@ recipes with the current local model policy; keep historical sampling provenance
 
 ## 06 — Distinguish unavailable infrastructure from unsolved linguistics
 
+Delivered offline 2026-10-05: [provider recovery](research/provider_recovery.md).
+Structured conservative causes, bounded retry/Retry-After, completed-node-only
+recovery, operational-retry-v1 compatibility and incomplete/sweep accounting pass
+206 focused and 680 portable checks. No live requests or accuracy claim. Old
+checkpoints retain their strict checks; task05 semantic boundaries stay unchanged.
+Task07 remains gated on substantive task05 usability and final interface/manifest
+review. The retained scope below describes the delivered work.
+
 Classify structured provider errors conservatively, bound retry time, honor useful
 retry hints, and preserve checkpoint progress on infrastructure interruption.
 Propagate reasons to sweep summaries. Audit compatibility hash semantics before

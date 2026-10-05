@@ -319,6 +319,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         "--max-run-seconds", str(args.max_run_seconds),
         "--timeout", str(args.timeout),
         "--max-retries", str(args.max_retries),
+        "--retry-backoff-seconds", str(args.retry_backoff_seconds),
+        "--max-retry-seconds", str(args.max_retry_seconds),
+        "--retry-max-delay-seconds", str(args.retry_max_delay_seconds),
         "--inventory-protocol", args.inventory_protocol,
     )
     for flag, value in (("--provider-config", args.provider_config),
@@ -508,6 +511,14 @@ def triage(run_dir: Path) -> None:
             if not code.startswith("legacy:"):
                 print(f"        {examples[(name, code)]}")
 
+    interruptions = [e for e in events if e["kind"] == "run_interrupted"]
+    for event in interruptions:
+        details = event.get("details") or {}
+        print(f"\nINCOMPLETE RUN: {details.get('failure_kind') or 'unknown'}; "
+              f"{details.get('interruption_reason') or 'unrecorded'}")
+        print(f"  attempted {details.get('attempted_node_ids', [])}; "
+              f"completed {details.get('completed_node_ids', [])}; "
+              f"unattempted {details.get('unattempted_node_ids', [])}")
     # ---- artifacts ------------------------------------------------------
     # Committed rules, diagnostics, reconstructed forms and the high_quality
     # verdict all live in `cognate-reconstruct inspect-run`, which is the
@@ -580,6 +591,9 @@ def main() -> int:
     run.add_argument("--max-run-seconds", type=float, default=1800)
     run.add_argument("--timeout", type=float, default=300)
     run.add_argument("--max-retries", type=int, default=0)
+    run.add_argument("--retry-backoff-seconds", type=float, default=10.0)
+    run.add_argument("--max-retry-seconds", type=float, default=300.0)
+    run.add_argument("--retry-max-delay-seconds", type=float, default=60.0)
     run.add_argument("--max-total-cost-usd", type=float)
     run.add_argument("--provider-config")
     run.add_argument("--agent-instructions")

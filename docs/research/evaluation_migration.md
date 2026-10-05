@@ -109,3 +109,16 @@ adds `normal_unit_controls`, using scripted assembly/serialization/normal evalua
 for correct, wrong, extra, missing and reordered pieces. Standalone piece controls
 remain available but are no longer the only verification. See
 [evidence repair](evidence_repair.md) for measured results and compatibility.
+
+## Task06 interruption amendment — 2026-10-05
+
+Read [provider recovery](provider_recovery.md). task02-v1 metrics, proxy/selection
+and direct versus ancestor fallback readings are unchanged. Prospective trajectories
+add nullable structured failure_kind/failure_error_type/provider_failure and stop
+reason; old prose is never parsed. Atomic run_summary.json retains missing planned
+evaluations on interruption and overrides a stale result. Current active_trajectory_ids
+prevent old fallback-dependent ancestor salvage after a resumed attempt interrupts.
+JSONL retains all attempts; completed/node totals are distinct and effort is cumulative.
+VOID.txt marks explicit quality exclusions, including root commits; raw audit outcomes
+and all-run operational coverage remain. These changes do not relabel banked unknown
+causes or redefine old scores. New report fields are defaulted; old readers remain.

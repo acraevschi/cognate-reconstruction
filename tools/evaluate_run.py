@@ -9,7 +9,7 @@ from pathlib import Path
 import _bootstrap  # noqa: F401
 
 from cognate_reconstruction.agent.trajectory import AgentTrajectory, TrajectoryDatasetBuilder
-from cognate_reconstruction.evaluation.run import evaluate_run, render_text, trajectory_from_artifact
+from cognate_reconstruction.evaluation.run import load_result_or_summary, evaluate_run, render_text, trajectory_from_artifact
 from cognate_reconstruction.schemas.benchmark import BenchmarkDefinition
 from cognate_reconstruction.schemas.ingestion import WorkbenchPayload
 
@@ -46,7 +46,7 @@ def main():
         if run_dir.is_file():
             run_dir = run_dir.parent
         result_path = run_dir / "result.json"
-        result = json.loads(result_path.read_text()) if result_path.exists() else None
+        result = load_result_or_summary(run_dir)
         trajectories_path = run_dir / "trajectories.jsonl"
         trajectories = (tuple(TrajectoryDatasetBuilder.read_jsonl(trajectories_path))
                         if trajectories_path.exists() else tuple(
@@ -55,6 +55,8 @@ def main():
                             for t in (result or {}).get("trajectories", ())
                         ))
         report = evaluate_run(payload, result, trajectories, selection_provenance=selection_provenance)
+        if (run_dir / "VOID.txt").exists() or (run_dir.parent / "VOID.txt").exists():
+            report = report.model_copy(update={"linguistic_exclusion_reason": "operator_marked_void"})
         reports.append({"run_dir": str(run_dir), "report": report.model_dump(mode="json"),
                         "saved_historical_target_evaluations": (result or {}).get("historical_target_evaluations")})
         if not args.json:

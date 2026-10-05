@@ -10,6 +10,7 @@ from typing import Literal, Protocol
 
 from pydantic import Field, model_validator
 
+from cognate_reconstruction.agent.providers.errors import ProviderFailureMetadata
 from cognate_reconstruction.agent.schemas import (
     CommittedHypothesis,
     LLMMessage,
@@ -268,6 +269,10 @@ class AgentTrajectory(WorkbenchModel):
     reconstruction_step: ReconstructionStep | None = None
     completed: bool
     failure: NonEmptyStr | None = None
+    failure_error_type: str | None = None
+    failure_kind: str | None = None
+    provider_failure: ProviderFailureMetadata | None = None
+    interruption_reason: str | None = None
 
     @model_validator(mode="after")
     def validate_outcome(self) -> AgentTrajectory:

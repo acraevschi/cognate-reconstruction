@@ -97,9 +97,10 @@ conda run -n llm_reconstruction python -m cognate_reconstruction.cli run-benchma
 
 A smoke asks whether an interface works on one representative fixture. The default
 policy envelope is one node/run, at most 36 turns/80 calls and 1800 seconds; start
-smaller when sufficient. These are caps, not a promise of completion. Time/cost
-checks occur between requests and cannot interrupt a call in flight. State request
-timeout/retries and allow for provider-side retries. Do not launch repeated broad
+smaller when sufficient. These are caps, not a promise of completion. The adapter shortens timeout to remaining
+request/run patience; synchronous requests still need the SDK/server to honor it.
+Backoff checks cancellation and caps every 0.25 seconds. Nested SDK retries are
+disabled. State request timeout/retries and the one-response cost headroom. Do not launch repeated broad
 sweeps because one smoke fails.
 
 Freeze a manifest before inference: question, stopping/interpretation rules,
@@ -155,8 +156,17 @@ and note hashes. No countdown is implemented: task01 had no 36-turn failure.
 Instruction/schema/evidence/node-checklist hashes are strict resume boundaries.
 New trajectories remain 5.0 and checkpoints 3.0; old trajectory/checkpoint audit
 readers remain supported, but checkpoints 1.0/2.0 cannot resume under units-v2.
-Changing semantic arms needs a new checkpoint/run. Give-up thresholds may have
-separate advisory handling; they do not waive a validation or schema check.
+Changing semantic arms needs a new checkpoint/run. New 3.0 checkpoints declare
+operational-retry-v1: max-retries, retry-backoff-seconds, max-retry-seconds and
+retry-max-delay-seconds may change with recorded differences. Unmarked old 3.0
+checkpoints retain strict retry hashes; no automatic migration occurs. Token-
+backoff permission/ceiling stay semantic. See docs/research/provider_recovery.md.
+The tracked driver forwards all four controls; its smoke default is zero retries.
+Run caps include recorded effort across resumes and are per seed, not per experiment.
+Provider exhaustion/auth/quota/cancellation stop the tree and write incomplete
+run_summary.json; only protocol failures can fall back. Unknown/lost responses
+are not automatically replayed, and absent costs under a cost cap stop the run.
+Give-up thresholds do not waive validation or schema checks.
 
 ## Inspect and triage
 

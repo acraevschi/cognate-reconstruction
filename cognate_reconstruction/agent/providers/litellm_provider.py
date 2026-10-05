@@ -6,6 +6,9 @@ import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
+from cognate_reconstruction.agent.providers.errors import (
+    ProviderTransientError, ProviderError, ProviderFailureMetadata, ProviderFailureKind, normalized_provider_error,
+)
 from cognate_reconstruction.agent.schemas import (
     LLMMessage,
     LLMToolCall,
@@ -46,6 +49,8 @@ def _split_thought_signature(call_id: str) -> tuple[str, str | None]:
 class LiteLLMProvider:
     """Normalize LiteLLM's OpenAI-shaped native tool-calling response."""
 
+    supports_timeout_override = True
+
     def __init__(
         self,
         model: str,
@@ -58,6 +63,10 @@ class LiteLLMProvider:
         reserved = {"model", "messages", "tools", "tool_choice"}
         if overlap := sorted(reserved & self.completion_kwargs.keys()):
             raise ValueError(f"completion_kwargs contains reserved keys: {overlap}")
+        if any(self.completion_kwargs.get(key) for key in (
+            "num_retries", "max_retries", "retry_policy", "fallbacks", "context_window_fallback_dict",
+        )):
+            raise ValueError("provider-managed retries/fallbacks are unsupported; use the harness retry controls")
         self._completion_fn = completion_fn
         # Keyed by the short call ID the harness and the model see. Kept on the
         # adapter rather than on LLMToolCall so the audit artifacts stay free of
@@ -100,20 +109,30 @@ class LiteLLMProvider:
         *,
         tool_choice: str = "auto",
         max_tokens_override: int | None = None,
+        timeout_override: float | None = None,
     ) -> ProviderResponse:
         completion = self._completion_fn
         if completion is None:
             try:
+                import litellm
                 from litellm import completion
+                if litellm.num_retries:
+                    raise ProviderError("global LiteLLM retries must be disabled", metadata=ProviderFailureMetadata(kind=ProviderFailureKind.AUTH))
             except ImportError as error:  # pragma: no cover - environment dependent
-                raise RuntimeError(
-                    "LiteLLMProvider requires the optional 'agent' dependency"
+                raise ProviderError(
+                    "LiteLLMProvider requires the optional 'agent' dependency",
+                    metadata=ProviderFailureMetadata(kind=ProviderFailureKind.AUTH),
                 ) from error
         # Merged into a copy: the stored options are the user's, and an
         # override applies to this one request only.
         options = dict(self.completion_kwargs)
+        options["num_retries"] = 0
+        options["max_retries"] = 0
         if max_tokens_override is not None:
             options["max_tokens"] = max_tokens_override
+        if timeout_override is not None:
+            configured = options.get("timeout")
+            options["timeout"] = min(float(configured), timeout_override) if isinstance(configured, (int, float)) else timeout_override
         try:
             response = completion(
                 model=self.model,
@@ -133,9 +152,7 @@ class LiteLLMProvider:
                 **options,
             )
         except Exception as error:
-            if _is_transient_error(error):
-                raise ProviderTransientError(str(error)) from error
-            raise
+            raise normalized_provider_error(error) from error
         choices = _value(response, "choices")
         if not choices:
             raise ValueError("LLM provider returned no choices")
@@ -246,30 +263,3 @@ class LiteLLMProvider:
                 usage=usage,
             ),
         )
-
-
-class ProviderTransientError(RuntimeError):
-    """Normalized retryable provider or transport failure."""
-
-
-def _is_transient_error(error: Exception) -> bool:
-    if isinstance(error, (TimeoutError, ConnectionError)):
-        return True
-    status = (
-        getattr(error, "status_code", None)
-        or getattr(error, "http_status", None)
-        or getattr(error, "status", None)
-    )
-    if status in {408, 409, 425, 429, 500, 502, 503, 504}:
-        return True
-    name = type(error).__name__.lower()
-    return any(
-        marker in name
-        for marker in (
-            "timeout",
-            "ratelimit",
-            "serviceunavailable",
-            "connection",
-            "internalserver",
-        )
-    )

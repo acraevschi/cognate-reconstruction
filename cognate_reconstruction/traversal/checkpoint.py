@@ -16,6 +16,8 @@ CHECKPOINT_SCHEMA_VERSION = "3.0"
 
 class FamilyCheckpoint(WorkbenchModel):
     schema_version: Literal["1.0", "2.0", "3.0"] = CHECKPOINT_SCHEMA_VERSION
+    compatibility_policy: Literal["strict-v1", "operational-retry-v1"] = "strict-v1"
+    operational_settings: dict = Field(default_factory=dict)
     run_id: NonEmptyStr
     input_sha256: NonEmptyStr
     configuration_sha256: NonEmptyStr
