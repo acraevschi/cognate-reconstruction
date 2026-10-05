@@ -79,8 +79,8 @@ def _validate_residue_policy(
                 remediation=(
                     "Name the active child whose material is carried through "
                     "where no committed set explains a column. That is a "
-                    "claim — *this branch is the most conservative* — and it is "
-                    "recorded as one. Active children: "
+                    "qualified witness choice, not proof of conservatism. "
+                    "A witness gap emits nothing. Active children: "
                     + ", ".join(context.child_ids)
                 ),
             )
@@ -252,7 +252,10 @@ def assembly_result(
     *,
     segmentation_overlay_id: str | None,
     detail: AssemblyDetail,
+    context: AgentContext | None = None,
 ) -> TestProtoAssemblyResult:
+    from cognate_reconstruction.agent.tools.commit_reconstruction import inventory_commit_requirements
+    missing = inventory_commit_requirements(committed.request.commitments)
     derived = derive_branch_rules(committed.request.commitments, tuple(spec.child_node_ids))
     reports = step.assembly_reports
     if detail is AssemblyDetail.SUMMARY:
@@ -261,6 +264,10 @@ def assembly_result(
         )
     diagnostics = step.diagnostics
     return TestProtoAssemblyResult(
+        executable=True,
+        commit_ready=not missing,
+        missing_commit_requirements=missing,
+        witness_evidence_digest=context_evidence_digest(context) if context is not None else None,
         derived_rules_scope=committed.derived_rules_scope,
         evidence_revision=committed.evidence_revision,
         hypothesis_digest=hypothesis_digest(spec, segmentation_overlay_id),
@@ -335,6 +342,7 @@ def test_proto_assembly(
         spec,
         segmentation_overlay_id=arguments.segmentation_overlay_id,
         detail=arguments.detail,
+        context=context,
     )
     context.assembly_validations[call_id] = result
     return result
@@ -350,6 +358,13 @@ def hypothesis_digest(spec, segmentation_overlay_id):
         claim["member_set_ids"] = sorted(claim["member_set_ids"])
     value["shared_claims"] = sorted(value["shared_claims"], key=digest)
     return digest([value, segmentation_overlay_id])
+
+
+def context_evidence_digest(context):
+    """Freeze supplementary witnesses/anchors as well as the active-column revision."""
+    return digest([context.anchor_policy.value,
+        [item.model_dump(mode="json") for item in context.evidence],
+        [item.model_dump(mode="json") for item in context.active_anchors]])
 
 
 def verify_positions(spec, alignment_map):

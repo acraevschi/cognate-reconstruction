@@ -31,6 +31,7 @@ from cognate_reconstruction.agent import (
     default_tool_registry,
 )
 from cognate_reconstruction.agent.instructions import load_agent_instructions
+from cognate_reconstruction.agent.schemas import COMMIT_REQUIREMENT_NOTES
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.alignment.units import alignment_identity
 from cognate_reconstruction.benchmarks import (
@@ -530,10 +531,11 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
 
     Keys are the human-readable phrases used in the refused-resume message.
     """
-    definitions = default_tool_registry().definitions()
+    definitions = default_tool_registry(inventory_protocol=getattr(args, "inventory_protocol", "stored-hypothesis")).definitions()
     return {
         "the evidence/assembly contract": _hash_json(alignment_identity(LingPyAligner())),
-        "the agent instructions": _hash_text(load_agent_instructions()),
+        "the agent instructions": _hash_text(_selected_instructions(args)),
+        "the node commit requirements": _hash_json(COMMIT_REQUIREMENT_NOTES),
         "the tool schemas": _hash_json(
             [definition.model_dump(mode="json") for definition in definitions]
         ),
@@ -545,6 +547,11 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
             else ABSENT_COMPONENT_DIGEST
         ),
     }
+
+
+def _selected_instructions(args: argparse.Namespace) -> str:
+    path = getattr(args, "agent_instructions", None)
+    return Path(path).expanduser().read_text(encoding="utf-8") if path else load_agent_instructions()
 
 
 GIVE_UP_COMPONENT = "the give-up thresholds"
@@ -672,6 +679,7 @@ def _provider_and_configuration(
     options["timeout"] = args.timeout
     provider = LiteLLMProvider(model, completion_kwargs=options)
     settings = {
+        "inventory_protocol": getattr(args, "inventory_protocol", "stored-hypothesis"),
         "model": model,
         "preset": preset,
         "api_base": api_base,
@@ -700,6 +708,7 @@ def _provider_and_configuration(
         **settings,
         "instruction_sha256": digests["the agent instructions"],
         "tool_schema_sha256": digests["the tool schemas"],
+        "commit_requirements_sha256": digests["the node commit requirements"],
         "anchors_sha256": digests["the anchor file"],
     }
     components = {
@@ -934,6 +943,8 @@ def _command_infer(args: argparse.Namespace) -> None:
 
     orchestrator = AgentOrchestrator(
         provider,
+        instructions=_selected_instructions(args),
+        registry=default_tool_registry(inventory_protocol=getattr(args, "inventory_protocol", "stored-hypothesis")),
         max_turns=args.max_turns,
         max_tool_calls=args.max_tool_calls,
         max_retries=args.max_retries,
@@ -1724,6 +1735,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     infer.add_argument("--timeout", type=float, default=300.0)
     infer.add_argument("--max-turns", type=int, default=24)
+    infer.add_argument("--agent-instructions", help="Explicit system-text arm; content is hashed. Default: packaged corrected instructions.")
+    infer.add_argument("--inventory-protocol", choices=("full-payload", "stored-hypothesis"), default="stored-hypothesis", help="Independently select compact choices/immutable handles or full inventory payloads; both commit shapes remain supported.")
     infer.add_argument("--max-tool-calls", type=int, default=64)
     infer.add_argument("--max-retries", type=int, default=2)
     infer.add_argument("--retry-backoff-seconds", type=float, default=1.0)

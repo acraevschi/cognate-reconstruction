@@ -4,10 +4,12 @@ An experimental workbench for LLM-assisted historical language reconstruction.
 The model proposes linguistic hypotheses; deterministic tools expose evidence,
 validate commitments, assemble candidate proto-forms, and preserve an audit trail.
 
-**Status, 2026-09-15:** both rule cascades and proto-inventories are implemented.
-Reliable historical reconstruction has not been demonstrated. The last experiments
-improved completion with a larger turn budget but left Proto-Burmish exact match
-at zero. The next work is diagnosis and evaluation, followed by controlled changes.
+**Status, 2026-10-05:** both rule cascades and proto-inventories are implemented.
+Tasks 01–04 delivered diagnosis, evaluation and evidence repairs; task05 delivered
+offline instruction/protocol changes but its local smoke failed. Substantive live
+commit usability and reliable historical reconstruction remain unverified.
+Review the final interface/manifest before comparative work; task06 provider
+recovery remains independently ready.
 
 ## Start here
 
@@ -50,11 +52,12 @@ explicit identity fallback, which must be distinguished from a model commitment.
 | [Running inference](docs/running_inference.md) | CLI, inputs, tools, providers, checkpoints, reports |
 | [Benchmarks](docs/benchmarks.md) | Dataset definitions, metrics, recorded experiments |
 | [Analysis tools](docs/analysis_tools.md) | Offline probes, answer-key-assisted measurements, baselines |
-| [Evidence contract](docs/research/evidence_contract.md) | units-v1 pieces, exact column bindings and inherited analysis |
-| [Evidence migration](docs/research/evidence_migration.md) | Typed tool changes, trajectory 4.0 and checkpoint compatibility |
+| [Evidence contract](docs/research/evidence_contract.md) | units-v2 counts/bindings and units-v1 inherited pieces |
+| [Evidence migration](docs/research/evidence_migration.md) | Current typed tools, trajectory 5.0 and checkpoint 3.0 compatibility |
+| [Protocol revision](docs/research/protocol_revision.md) | Task05 corrected guidance, commit readiness and immutable preview handles |
 | [Report, reject, or score](docs/report_reject_or_score.md) | Separate mechanical validity, workflow quality, and linguistic judgment |
 | [Operator skill](skills/run-cognate-reconstruction/SKILL.md) | Operational recipes; use the experiment policy for current budgets and model preferences |
-| [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Instructions sent to models; units-v1 contract updated, broader task 04 corrections pending |
+| [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Corrected model instructions; measured and tested in task05 |
 | [Inventory design history](docs/proto_inventory_design.md) | Original design and dated experiment notebook; not the active task queue |
 | [Shared-innovation proposal](docs/shared_innovation_note.md) | Deferred report design, not an implemented feature |
 | [Previous README](docs/history/README-before-2026-09-15.md) | Preserved technical and decision history before this documentation reset |

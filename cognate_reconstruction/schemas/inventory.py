@@ -153,100 +153,55 @@ class CorrespondenceCommitment(WorkbenchModel):
 
     set_id: NonEmptyStr = Field(
         description=(
-            "The set_id of the correspondence set this commits a value for, "
-            "exactly as returned by summarize_correspondences or "
-            "test_proto_assembly. The harness re-derives the set from this "
-            "node's own forms and refuses a commitment whose cited set it "
-            "cannot reproduce. A realign call invalidates every set_id derived "
-            "under the previous alignment overlay."
+            'Exact local csu-* ID under this evidence/orders/overlays. Re-derived; stale or pattern IDs cannot authorize a local commitment.'
         ),
     )
     reflexes: tuple[str | None, ...] = Field(
         min_length=2,
         description=(
-            "The set's segments: exactly one entry per child in "
-            "child_node_ids, in that order, INCLUDING the children that show "
-            "nothing there — write those as null. A set only one child attests "
-            "is still ['ʔ', null] and never ['ʔ']. 'Ø' and '∅' are accepted "
-            "for a gap and mean the same as null. Required even though set_id "
-            "determines it: a commit a human cannot read without re-running a "
-            "tool is not an audit record."
+            'Required: exactly one entry per active child in child_node_ids order, including null gaps. Ø/∅ normalize to null. Full payloads must match the surveyed tuple.'
         ),
     )
     proto_segment: NonEmptyStr | None = Field(
         description=(
-            "Required, with no default: the proto-phoneme you reconstruct for "
-            "this set, or an explicit null for 'this set reconstructs "
-            "nothing' — every branch showing material here innovated it. There "
-            "is no default because those are different claims and omitting the "
-            "field would silently make the stronger one. It is deliberately "
-            "not restricted to the segments in 'reflexes': Proto-Polynesian *w "
-            "survives as v or as nothing in every daughter, and a schema that "
-            "could only emit an observed reflex would make it "
-            "unreconstructable."
+            'Required proto value or explicit null for no parent material; omission is refused. New output symbols are allowed; expressibility does not establish historical truth.'
         ),
     )
     conditioning: RuleEnvironment | None = Field(
         default=None,
         description=(
-            "The environment in which this commitment holds, in the DSL's own "
-            "left/right/word-edge vocabulary. Evaluated in *proto* terms: the "
-            "neighbouring proto-phonemes, not any one child's segments."
+            'Optional environment evaluated on reconstructed neighbours, using literal left/right/word-edge DSL vocabulary.'
         ),
     )
     merges_with_set_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "This set and that one are one phoneme in complementary "
-            "distribution. Both commitments must name the same proto_segment "
-            "and both must carry a conditioning; the harness checks the claim "
-            "against the node's own columns and refuses it if they share an "
-            "environment."
+            'Explicit complementary split claim. Both commitments need equal proto values and conditioning; overlapping environments are refused.'
         ),
     )
     support: int = Field(
         ge=1,
         description=(
-            "Measured local support, copied from the harness's own "
-            "inventory. Re-derived and refused on mismatch: it is the one "
-            "count of supplied etyma plus unresolved concept/unit opportunities in units-v2; it must not "
-            "be a model claim."
+            'Exact harness local count: supplied etyma plus unresolved concept/unit opportunities, under independent-etyma-v1. Refused on mismatch; not a model estimate.'
         ),
     )
     confidence: float = Field(
         gt=0.0,
         le=1.0,
         description=(
-            "Required on every commitment, with no default: your confidence "
-            "in this reconstruction, in (0, 1]. An inventory of thirty sets "
-            "carries thirty of these, and a single commitment omitting it "
-            "refuses the whole commit — a set written as {'set_id': …, "
-            "'reflexes': ['p', 'f'], 'proto_segment': 'p', 'support': 11} is "
-            "rejected for exactly that. There is no default because a "
-            "confidence you did not state is not 1.0: the deterministic "
-            "assembler consumes this as a score weight, so a default would "
-            "score an unstated guess above a stated doubt. Your own "
-            "judgement, and nothing checks it against the evidence."
+            'Required explicit confidence in (0,1], with no default; used as a score weight and never inferred.'
         ),
     )
     rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Set-specific justification. Optional on a single-commitment "
-            "inventory, where the required top-level 'summary' carries it; "
-            "required on every commitment of an inventory carrying more than "
-            "one."
+            'Required for every expanded local commitment when there is more than one. A single-set full inventory may use the final summary.'
         ),
     )
     directionality_rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Which branch innovated, and why you believe it. Required on any "
-            "commitment that discards material — a non-null reflex against a "
-            "null proto_segment, or distinct reflex tuples sharing one proto_segment without "
-            "complementary conditioning. The harness detects those "
-            "mechanically and never judges what you write; it records that you "
-            "wrote it."
+            'Required for null against non-null material or distinct reflex tuples sharing a value without complementary conditioning. State proposed history, evidence and uncertainty; repeated identical retention is not a merger. Presence is checked, historical truth is not.'
         ),
     )
 
@@ -275,28 +230,13 @@ class ResiduePolicy(StrEnum):
     """What happens to an alignment column no committed set explains."""
 
     RETAIN_FROM_WITNESS = "retain_from_witness"
-    """Carry through whatever `residue_witness_child_id` shows, unexplained.
+    """Use the named child on unexplained columns; its gaps emit nothing.
 
-    **An unaccounted column carries through; it does not vanish.** That is what
-    makes assembly monotonic: committing more sets refines a reconstruction and
-    committing none leaves it where the children are, with no cliff between the
-    two. Naming a witness is a linguistic claim — *this branch is the most
-    conservative* — made once, recorded, and readable by a reviewer.
+    This records a qualified witness choice, not proof of conservatism.
     """
 
     DROP = "drop"
-    """Treat unexplained material as branch-specific innovation.
-
-    The opt-in, not the default reading. A model choosing this asserts that
-    everything its inventory does not explain is innovation, which is a strong
-    claim and usually a wrong one on a partial inventory.
-
-    A `majority_reflex` option was drafted here and removed: "carry the segment
-    most children show" is a majority vote over daughters, and
-    `tools/outgroup_probe.py` measured that averaging over daughters scores
-    exactly what alphabetical order scores, because it degenerates into a vote
-    over shared innovations. See `docs/proto_inventory_design.md` §6.3.
-    """
+    """Contribute nothing on unexplained columns; record this omission claim."""
 
 
 class ResidueDisposition(WorkbenchModel):
@@ -310,15 +250,7 @@ class ResidueDisposition(WorkbenchModel):
 
 
 class SegmentRestoration(WorkbenchModel):
-    """A segment every active child lost, restored on cited out-group evidence.
-
-    Not a correspondence, and deliberately not routed through one: nothing
-    corresponds, which is the entire situation. `build_correspondence_sets`
-    skips all-gap columns outright, and retaining them would make `support`
-    count columns the model itself inserted — the one number that must never be
-    a model claim. So this is a per-position claim, beside `ResidueDisposition`
-    rather than among the commitments.
-    """
+    """A segment every active child lost, restored on cited out-group evidence."""
 
     concept_id: NonEmptyStr
     before_evidence_column_id: NonEmptyStr | None = None
@@ -374,13 +306,7 @@ class SharedCorrespondenceClaim(WorkbenchModel):
 
 
 class ProtoInventorySpec(WorkbenchModel):
-    """The inventory a `commit_reconstruction` call carries, as the model sends it.
-
-    Split from `CommitProtoInventoryArgs` — which adds the fields both commit
-    shapes share — so that one tool takes `rules` xor `inventory` without
-    duplicating `node_id`, `summary`, and `anomalies` into a second argument
-    model that could drift from the first.
-    """
+    """The inventory a `commit_reconstruction` call carries, as the model sends it."""
 
     unit_orders: tuple[UnitOrderClaim, ...] = ()
 
@@ -401,27 +327,18 @@ class ProtoInventorySpec(WorkbenchModel):
     assembly_validation_call_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "A successful test_proto_assembly call covering this inventory. "
-            "Optional only in the sense that the harness resolves it from the "
-            "session's previews when omitted; the same-session preview itself "
-            "is not optional."
+            'Optional exact same-session preview ID; omitted IDs resolve from previews of identical hypotheses/evidence. Nonempty/structural claims require validation.'
         ),
     )
     shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
     commitments: tuple[CorrespondenceCommitment, ...] = Field(
         description=(
-            "This node's correspondence-set commitments. Order carries no "
-            "meaning — sets are independent and nothing reads the sequence. An "
-            "empty inventory is an identity reconstruction, the same claim "
-            "rules=[] makes, with the same deterministic result."
+            'Local commitments; order has no meaning. Shared claims, structural decisions and residue policy also form part of the exact hypothesis.'
         ),
     )
     residue_policy: ResiduePolicy = Field(
         description=(
-            "Required, with no default. What happens to a column no committed "
-            "set explains: 'retain_from_witness' carries through whatever one "
-            "named child shows and marks it unexplained, 'drop' asserts the "
-            "material is branch-specific innovation and contributes nothing."
+            'Required: retain_from_witness uses the named child on unexplained columns (a witness gap emits nothing); drop contributes nothing. Unaccounted columns remain reported.'
         ),
     )
     residue_witness_child_id: NonEmptyStr | None = Field(
@@ -510,8 +427,7 @@ class CommitProtoInventoryArgs(ProtoInventorySpec):
     The spec the model sent, plus the fields `commit_reconstruction` takes for
     either commit shape. This is what `CommittedProtoInventory.request` holds,
     so a trajectory records one self-contained object rather than a fragment
-    that only makes sense beside the tool call it came from.
-    """
+    that only makes sense beside the tool call it came from."""
 
     node_id: NonEmptyStr
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -659,14 +575,7 @@ class ConceptAssemblyReport(WorkbenchModel):
 
 
 class AlignmentOverride(WorkbenchModel):
-    """One concept's alignment, re-laid by the model.
-
-    Session-local, immutable, ID'd, and never permanent: overrides never cross a
-    node boundary, never enter the checkpoint, and never persist into another
-    run. The rows must be the children's own forms — dropping the gaps from each
-    row must reproduce that child's form token for token — so material may be
-    moved between columns but never invented, deleted, or reordered.
-    """
+    """One concept's alignment, re-laid by the model."""
 
     analysis_ids: tuple[str | None, ...] = ()
     unit_id: NonEmptyStr | None = Field(default=None, description="Exact evidence unit to realign; required for partial evidence. Whole-form legacy edits omit this.")

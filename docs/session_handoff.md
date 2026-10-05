@@ -83,8 +83,9 @@ an implementation. Local inference remains serial under the experiment policy.
 
 ## Live task state
 
-Updated 2026-10-04 after task 04 offline repair. Tasks 01–04 are delivered;
-05–07 remain unstarted. The completion amendment supersedes earlier interface
+Updated 2026-10-05. Tasks 01–04 are delivered; 05 is complete offline but partial
+at substantive local commit usability after its single failed smoke. 06–07 remain
+unstarted. The completion amendment supersedes earlier interface
 versions/defaults. The task03 smoke remains incomplete live interface evidence.
 
 Active session: none.
@@ -104,7 +105,7 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | 02 — Evaluation | complete | task02-v1 contract, evaluator, six small cases, migration and offline results delivered | Task 02 completion below |
 | 03 — Evidence/assembly | complete | units-v1 repair and offline checks delivered; single smoke stalled on malformed commits | Task 03 completion below |
 | 04 — Evidence repair | complete | units-v2 counts/shared collections, local witnesses and normal piece evaluator verified offline; 607 portable checks pass | Task 04 completion below |
-| 05 — Instructions/protocol | not started | Ready: consume units-v2 contract; revise protocol/guidance and own the next bounded live smoke | Task 04 completion amendment |
+| 05 — Instructions/protocol | partial | Offline repair/633 portable checks delivered; sole smoke failed; review final interface/manifest and choose a bounded usability follow-up before 07 | Task05 handoff below |
 | 06 — Provider recovery | not started | Ready independently: preserve checkpoint 3.0/trajectory 5.0 guards and task02-v1 outcome semantics | Task 04 completion amendment |
 | 07 — Local comparisons | not started | 04 instrument/caps verified; await 05 usability, relevant 06 or explicit scope-out, and final independent review | Task 04 completion amendment |
 | 08 — Forward prediction | deferred | 07's recommendation and the user's decision to take up the study | — |
@@ -176,7 +177,7 @@ reconstruction interface changed in 01. Receiving session records its resolution
 
 ### For task 05 — sparse decisions and protocol evidence
 
-Status: applied to local brief; pending verification by receiving session.
+Status: applied and verified by task05; malformed fixtures and qualified guidance delivered.
 From: task 01, 2026-10-02, chat `01a0fda6-d530-7c61-9d8c-57a7ceb5b257`.
 Evidence: failure audit (`docs/research/failure_audit.md`, local only),
 trace appendix (`docs/research/failure_audit_traces.md`, local only).
@@ -283,7 +284,7 @@ are not uniquely identified. Regressions: `test_evaluation_contract.py`,
 
 ### For task 05 — retain the licensed tone reading
 
-Status: applied to local brief; receiving session verifies.
+Status: applied and verified by task05; evaluator regressions and final reference-word isolation pass.
 From: task 02, same session/date. Evidence: [contract](research/evaluation_contract.md).
 No category-to-contour or phonation mapping was established. Keep raw tone-token
 agreement beside task01-v1 partition diagnostics; notation disagreement does not
@@ -524,6 +525,56 @@ Require final 05 local commit usability and normal-evaluator/cap/manifest checks
 plus relevant 06 completion or bounded explicit scope-out. Recommend another
 independent review after 04/05 and relevant 06 work before comparative inference.
 No downstream task or inference is dispatched; the owner chooses when to start.
+
+### Task05 interface decision — 2026-10-05
+
+Read [protocol revision](research/protocol_revision.md) and
+[compact results](research/protocol_revision_results.json). Task04 hashes verified
+with zero runtime/test mismatches; final interface has 633 portable passes. Current evidence/counts,
+piece representation, trajectory/checkpoint and raw/unit evaluators remain
+units-v2 / independent-etyma-v1 / units-v1 / 5.0 / 3.0 / task02-v1 / task04-units-v1.
+The single authorized smoke failed: 15 turns/13 calls, seven rejections, two output
+truncations, one empty preview and no commit. Final explicit-list/flat-shape/isolation
+clarifications are offline-tested only; no second smoke was authorized or run.
+
+**06:** Preserve the new strict node-checklist component (`the node commit
+requirements`) alongside instruction/native-schema/evidence hashes. Selected
+system text comes from `--agent-instructions PATH`; selected native inventory
+schema comes from `--inventory-protocol full-payload|stored-hypothesis`. Neither
+is a retry setting. Inventory handles are immutable, same-session aliases, never
+checkpoint/mid-node state. Completed commitments still persist the full expanded
+request and exact validation ID. Historical null readiness means unknown; keep old
+readers and the 1.0/2.0 checkpoint resume refusal. Supplementary witness/anchor
+digests now guard both inventory paths. Preserve task02-v1 failure/fallback readings.
+
+**07:** Use the final runtime and both protocol profiles in offline preflight.
+The stored profile adds explicit local choices (values/nulls, confidence and
+reasoning) while deriving only reflexes/support; shared member selections remain
+explicit. Executable previews expose commit_ready/missing_commit_requirements;
+Final previews require an explicit collection, including [] for deliberate identity.
+Choices are flat token-correspondence rows, never whole-form/per-concept groups.
+ready hypothesis_id commits exactly that immutable inventory with final reporting.
+Changed decisions, explanations, collections, evidence or overlays require preview.
+Freeze submitted preview calls as well as full expanded requests/shared approvals.
+The ergonomic arm is compact choices plus handle commitment, including its schema
+descriptions; the full profile shares readiness and supplementary-validation guards.
+`--agent-instructions` can isolate system text while notes/descriptions stay common,
+not all linguistic guidance. Freeze a compatible control text and review its actual
+schemas before launching. An older evidence arm necessarily includes task04's
+count/shared-ID/scoping instruction package; do not label it pure assembly-only.
+No countdown exists: the audit gave no cap-failure reason. Keep evaluator/cap/normal
+parent-propagation checks, relevant 06 completion or bounded explicit exception,
+and independent final interface/manifest review as prerequisites. One smoke does
+not identify causes or establish reconstruction quality. No inference is dispatched.
+The live gate remains unresolved. Freeze the final clarified hashes, not the smoke's
+earlier snapshot. Review the failed calls and final interface before deciding a new
+bounded usability probe; do not launch comparative inference from offline success.
+
+Use the tracked `skills/run-cognate-reconstruction/driver.py` and SKILL.md; both
+installed `.claude` copies are stale and read-only in this session. preflight now
+reports installation divergence; catalogue IDs require separate loaded-state
+verification. CLI/driver expose time/timeout/retry/sampler controls without fixed
+test-count claims. Record actual model-specific sampling and hidden settings limits.
 
 ## Session handoffs
 
@@ -766,6 +817,23 @@ live smoke; unavailable models leave that smoke pending while offline work proce
 Matching live handoff instructions were updated; dated history remains intact.
 Document checks pass. No implementation or inference ran.
 
+### 2026-10-04 — optional PBEBench/CFR extension parked
+
+After the [literature assessment](research/pbebench_cfr_assessment.md), the owner
+requested a note in `prompts/` marking this as a possible future improvement.
+Added `prompts/future-pbebench-cfr-extension.md` and linked it from the prompt index
+and optional 08 brief. Finish and review 04–07 before revisiting these ideas;
+the existing bounded 06 exception is unchanged. Task 08 remains deferred and
+requires a later owner decision. No active deliverables or task states changed.
+
+Because `prompts/` is ignored, preserve this scope in other checkouts: potential
+reuse is a small PBEBench sequencing/induction diagnostic, DiaSim-inspired offline
+residual/context and rule-edit comparisons, and later explicit forward hypotheses
+tested on withheld daughter observations. These are proposals, not immediate
+features. Reuse existing machinery and the assessment's limitations; neither
+known-input PBE success nor forward fit establishes unique ancestral recovery.
+This update changed documentation only; no implementation or inference ran.
+
 ### 2026-10-04 — task 04 — complete
 
 Session: chat `01a10868-6d4a-7732-b08c-cca58dddc59b`, task 04.
@@ -818,3 +886,64 @@ records remain historical provenance. The standalone task 01 audit and optional
 PBEBench/CFR assessment/note remain local and uncommitted. Prompts remain ignored;
 the task 05–07 interface amendments are present in this tracked handoff.
 No push, PR or downstream task is part of this follow-up.
+
+
+### 2026-10-05 — task05 — partial at live usability
+
+Session: task05 chat `01a10b2c-434f-7ea1-ad62-aea808c4602f`.
+Checkout: /Users/acraev/Work/cognate-reconstruction, branch
+`burmish-session-evaluation-units`, HEAD `7356f6601b67aaaaf6e4d991d54927ab3cf315aa`.
+Task05 work remains uncommitted, separate from saved task04. Inherited local task01
+audit/fixtures and optional PBEBench assessment are preserved. Active session cleared.
+
+Result: docs/research/protocol_revision.md, protocol_revision_results.json and
+protocol_revision_manifest.json; stored-hypothesis adapter, explicit flat decisions,
+commit readiness, immutable aliases, exact active/supplementary evidence checks,
+corrected/shorter instructions, independent system/protocol switches, strict node-
+checklist hashes and current tracked operator skill/driver. Both full inventory and
+rules remain supported. No countdown, sound-change database or assembly/evaluator
+execution changes. Final code manifest SHA-256:
+`c4e3ad6fc0825382ba2cdc5a3ee30211a88b8d56d25abc2eb34a66aec41654c2`.
+
+Validation: task04 runtime/test hashes matched its manifest; 35 prerequisite passes.
+Saved task03 seven rejection classes replay with only explicitly rebound harness IDs;
+new task05 malformed calls remain rejected. Five stored-hypothesis controls commit
+at both levels and score through normal JSONL/evaluate_run, retaining underdetermined
+order. Pre-smoke portable 630/41 excluded after three description/install integration
+failures; final post-smoke interface 162 focused passes and portable 633/41 excluded
+(60.96 s). Operator catalogue/loaded/busy controls and classifier group: 52 passed.
+Only justified suite repetitions occurred; no fourth full run for operator-only work.
+Final local links, whitespace and manifest checks pass.
+
+Resource/outcome: one serial Gemma 4 26B A4B, 6-bit/262144 local run on the unchanged
+three-concept observed input. Manifest/sampling/settings/raw artifacts are in
+runs/experiments/task05-interface-smoke-20261005. It ended ProtocolStallError after
+1171.75 node seconds, 15 turns, 13 calls, seven rejections and two output truncations/
+forced-tool recoveries; one empty preview, no substantive preview or commit. Input
+631609/output37966 cumulative tokens; max request input56233/total57589 versus context
+262144. No provider retries, paid calls, switch, download, sweep or second smoke.
+No result.json; failed trajectory/checkpoint/events preserved.
+
+Final explicit-list/flat-shape rejection remediation and reference-word isolation
+were added after that failure, so they are offline-tested only. The frozen mechanical
+example coincided with the provisional NEEDLE reference; final runtime text uses
+abstract symbols. Do not call the frozen run target-isolated quality evidence.
+The snapshot-to-final distinction and hashes are recorded, not hidden. Both installed
+.claude copies remain stale/read-only; preflight reports this and verifies actual
+local loaded/idle status separately from the six-entry server catalogue.
+
+Downstream: actionable 06/07 interface/hash/profile/package amendments are above
+and mirrored in their ignored briefs; 05's own handoff also records the exhausted
+one-smoke allowance. Freeze final clarified hashes/explicit collections, retain both
+submitted and expanded choices, and keep normal evaluator/cap/manifest safeguards.
+No pure assembly-only attribution is licensed where task04 requires instruction/
+evidence/schema adaptations. Recommend a focused independent final interface and
+comparison-manifest review before 07. No downstream work was dispatched.
+
+Open work: substantive local survey/valid nonempty preview/immutable commit remains
+unverified. The sole smoke did not reach that path, and final clarifications have
+not had live confirmation. Further inference needs a later owner instruction, not
+an automatic retry. Scientific benefit, source-backed tone mapping and OLD MAN
+scope remain unresolved.
+Next: 06 is independently ready; a focused read-only final interface/manifest review
+can prepare an owner-chosen bounded usability follow-up. 07 remains gated.

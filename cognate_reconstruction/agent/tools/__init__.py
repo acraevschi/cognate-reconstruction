@@ -43,20 +43,20 @@ from cognate_reconstruction.agent.tools.test_sound_law import test_sound_law
 from cognate_reconstruction.agent.tools.test_rule_cascade import test_rule_cascade
 
 
-def default_tool_registry() -> ToolRegistry:
+def default_tool_registry(*, inventory_protocol: str = "stored-hypothesis") -> ToolRegistry:
+    if inventory_protocol not in {"full-payload", "stored-hypothesis"}:
+        raise ValueError("unknown inventory protocol")
+    from cognate_reconstruction.agent.tools.stored_hypothesis import (
+        StoredAssemblyArgs, StoredCommitArgs, test_stored_assembly, commit_stored_hypothesis,
+        describe_inventory_input,
+    )
+    stored = inventory_protocol == "stored-hypothesis"
     registry = ToolRegistry()
     registry.register(
         ToolSpec(
             name="summarize_correspondences",
             description=(
-                "Survey every recurring segment correspondence across the whole "
-                "evidence set at once: the n-tuple of aligned segments over the "
-                "selected nodes, its support count, and example concepts, "
-                "ordered by support. Start here. Filter with min_support "
-                "(default 2, because a correspondence attested once is residue) "
-                "or with segment/segment_node_id to ask which sets show one "
-                "segment in one node, then pull get_alignments for the concepts "
-                "a set names."
+                'Survey descriptive recurrence (csp-*), or exact local sets (csu-*). Start here; inspect filters/pagination. support counts supplied etyma plus unresolved units; alternatives/source columns are separate. min_support=2 is a filter, not a sparse-value prohibition; use 1 to inspect singleton material. shared_claims must explicitly select local pattern members.'
             ),
             args_model=SummarizeCorrespondencesArgs,
             handler=summarize_correspondences,
@@ -66,15 +66,7 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="get_alignments",
             description=(
-                "Align forms from any two or more available nodes and return an "
-                "n-way MSA plus derived pairwise correspondences. For specific "
-                "cognate sets, after summarize_correspondences has shown which "
-                "are worth looking at: this call needs an explicit selection of "
-                "at most 24 concept_ids or 48 form_ids, and never shows "
-                "recurrence across the whole evidence set. detail='summary' "
-                "(the default) returns correspondence counts with example "
-                "column references; detail='full' adds every column occurrence "
-                "with its contexts and is orders of magnitude larger."
+                'Inspect unit alignments and source positions for at most 24 concepts or 48 forms. Summary gives counts and column pointers; full adds contexts and occurrences. Select concepts from the survey or a specific evidence question.'
             ),
             args_model=GetAlignmentsArgs,
             handler=get_alignments,
@@ -103,26 +95,7 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="polarize",
             description=(
-                "Ask what the rest of the tree shows where the active children "
-                "disagree. Give it one correspondence — the children and the "
-                "segment each shows, a row of summarize_correspondences pasted "
-                "back — and it returns, for every node outside the active "
-                "children, what that node shows in the same aligned columns, "
-                "how often, and whether it is observed or reconstructed. Call "
-                "it before committing any rule whose direction the children "
-                "alone do not force. It reports a distribution and never says "
-                "which value is original: that judgement is yours and belongs "
-                "in the committed rule's directionality_rationale. Count "
-                "support per clade rather than per daughter, and read presence "
-                "as evidence and absence as nothing; the result fields say how. "
-                "A reconstructed node is a prior hypothesis, not attestation, "
-                "and carries no independent evidential weight. The argument is "
-                "only as good as the supplied classification and is circular if "
-                "that tree was induced from the same distance data. Only an "
-                "'outgroup' entry can polarize anything; a 'descendant' lies "
-                "inside this node's subtree and shows what these children "
-                "became. At the root every entry is a descendant, because "
-                "nothing lies outside the root."
+                'Describe witnesses for one scoped correspondence using set_id, overlays and unit_orders; tuple/pattern queries are recurrence summaries. It does not choose historical polarity. Read relation, observed/reconstructed status, full counts and truncation. Descendants are inside the subtree; the root has no outgroup. Missing witnesses or gaps do not establish innovation. Prior reconstructed nodes are hypotheses, not independent attestation.'
             ),
             args_model=PolarizeArgs,
             handler=polarize,
@@ -132,9 +105,7 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="list_available_nodes",
             description=(
-                "List observed and already reconstructed evidence nodes. "
-                "has_committed_hypothesis marks nodes whose committed rules "
-                "get_node_reconstruction can retrieve."
+                'List observed and completed reconstructed nodes, their relations and retrievable hypotheses.'
             ),
             args_model=ListAvailableNodesArgs,
             handler=list_available_nodes,
@@ -144,12 +115,7 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="get_node_reconstruction",
             description=(
-                "Return the rules, anomalies, and summary committed at one "
-                "node already reconstructed in this run. This is a previous "
-                "hypothesis, not attestation and not evidence: it does not "
-                "affect scoring and must not be cited as support. Use it to "
-                "check whether a correspondence you are proposing agrees with "
-                "one already claimed below this node."
+                "Retrieve one completed node's inventory or rules. This is a previous hypothesis, not independent attestation; use it to inspect consistency, not add support."
             ),
             args_model=GetNodeReconstructionArgs,
             handler=get_node_reconstruction,
@@ -159,9 +125,7 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="test_sound_law",
             description=(
-                "Parse and apply one child-to-parent DSL rule, returning exact "
-                "diffs. A rule must change its target; use an empty committed "
-                "rule set for identity reconstruction."
+                'Parse and execute one literal child-to-parent rule. Replacement tokens/sequences may be new. Empty targets and identity rules are refused; commit rules=[] for identity. Execution does not establish historical truth.'
             ),
             args_model=TestSoundLawArgs,
             handler=test_sound_law,
@@ -171,13 +135,7 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="test_rule_cascade",
             description=(
-                "Preview a complete ordered, branch-scoped sound-law cascade "
-                "and return every intermediate diff plus final forms. No-op "
-                "rules are invalid; an empty cascade represents identity. Each "
-                "rule takes only dsl and source_child_ids: this call is itself "
-                "the test, so a rule here carries no validation_call_id. The "
-                "result also reports, per concept, whether the children now "
-                "agree on one parent form, and lists those that do not."
+                'Preview at least one ordered, branch-scoped child-to-parent rule, intermediate effects and final forms. Each rule takes DSL and active source_child_ids; no validation_call_id belongs in this test. Its rules also count as individual validations. Empty rules are committed directly for identity.'
             ),
             args_model=TestRuleCascadeArgs,
             handler=test_rule_cascade,
@@ -187,46 +145,17 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="test_proto_assembly",
             description=(
-                "Assemble this node's parent forms from a proposed inventory: "
-                "a proto-phoneme for each correspondence set, plus the policy "
-                "for columns no set explains. Returns the assembled form per "
-                "concept, how many columns went unaccounted, which columns two "
-                "of your sets both matched, and the per-branch rules the "
-                "inventory implies. This is the call a commit is checked "
-                "against and the call to refine against: read the unaccounted "
-                "columns, condition a set, split one, change a value, and run "
-                "it again. Coverage is over sets rather than concepts, so "
-                "batching is valid only for the same exact hypothesis and "
-                "evidence revision. detail='summary' (the default) omits the "
-                "per-column resolutions; ask for 'full' when a form came out "
-                "wrong and you need to see which column did it. Summary includes bounded unmatched column IDs and unit IDs; "
-                "equal tokens do not select provenance. Every "
-                "commitment needs the set_id, the reflexes and the support "
-                "count copied back from the survey exactly — support is the "
-                "harness's own count and is re-derived — plus your own "
-                "confidence. Write a gap as null, 'Ø' or '∅'."
-            ),
-            args_model=TestProtoAssemblyArgs,
-            handler=test_proto_assembly,
+                ('Execute the exact inventory and report forms, unit/column traces, residue and commit readiness. Executable is distinct from commit_ready: supply missing rationales/directionality in a new preview. Changed decisions, member selections, policy, orders, overlays or evidence need exact revalidation; identical evidence reinspection is safe. Full commitments copy reflexes/support exactly; explicit null/value and confidence are always required. Shared claims select pattern members explicitly.' + (" The choices field resolves local reflexes/support from IDs. A returned hypothesis_id freezes the preview for commit without retranscription." if stored else ""))          ),
+            args_model=StoredAssemblyArgs if stored else TestProtoAssemblyArgs,
+            handler=test_stored_assembly if stored else test_proto_assembly,
+            remediation=describe_inventory_input if stored else None,
         )
     )
     registry.register(
         ToolSpec(
             name="realign",
             description=(
-                "Re-lay the aligner's columns for one or more concepts, and "
-                "return an alignment_overlay_id to cite in later calls. For the "
-                "case where the aligner has misaligned a form — a compound "
-                "against a simplex, two lexemes in one concept — and not a "
-                "routine step; the default is to accept the aligner's output. "
-                "Dropping the nulls from each row must reproduce that child's "
-                "own form: you may move material between columns, never invent, "
-                "delete, or reorder a segment. Say which correspondence set the "
-                "moved column joins in joins_set_id and the harness verifies "
-                "that the set really gains that support, refusing the call if "
-                "it does not; use null for the first attestation of a "
-                "correspondence, which is counted separately. A realignment "
-                "invalidates every set_id derived under the previous alignment."
+                "Repair a specific unit alignment while preserving each selected child's tokens in order. Partial evidence requires unit_id; ambiguous readings need analysis_ids. joins_set_id verifies source-column gain, reported separately from independent-support gain; null permits first attestation. Use the resulting overlay consistently, re-survey for new IDs and preview again."
             ),
             args_model=RealignArgs,
             handler=realign,
@@ -244,25 +173,10 @@ def default_tool_registry() -> ToolRegistry:
         ToolSpec(
             name="commit_reconstruction",
             description=(
-                "Commit this node's hypothesis, as either an 'inventory' or a "
-                "'rules' cascade — never both. An inventory gives each "
-                "correspondence set a proto-phoneme and states what happens to "
-                "columns no set explains; every committed set must have been "
-                "exercised by a same-session test_proto_assembly, its support "
-                "must match the harness's own count, and a set that deletes or "
-                "merges a distinction needs a directionality_rationale. A rules "
-                "cascade commits ordered individually validated rules: each "
-                "needs a successful same-session test_sound_law validation, "
-                "given as the per-rule validation_call_id or resolved by the "
-                "harness from the identical DSL and child scope, and "
-                "cascade_validation_call_id may name a test_rule_cascade "
-                "preview of the whole order. Either shape may be empty for an "
-                "identity reconstruction. A successful commit reports what the "
-                "hypothesis actually produced; an unexplained residue is "
-                "recorded, never rejected."
+                ('Commit the exact inspected hypothesis with node_id, summary and anomalies. Both inventory and ordered rules are supported. Nonempty choices require same-session validation; multi-choice reasoning and mechanically detected loss/merger explanations are required. Unexplained residue is reported, not rejected. Full inventory/rule payloads remain supported; never submit both shapes.' + (" A commit_ready hypothesis_id commits its immutable inventory without payload or overlays; edits need a new preview." if stored else ""))
             ),
-            args_model=CommitReconstructionArgs,
-            handler=commit_reconstruction,
+            args_model=StoredCommitArgs if stored else CommitReconstructionArgs,
+            handler=commit_stored_hypothesis if stored else commit_reconstruction,
             remediation=describe_session_validations,
         )
     )

@@ -1,0 +1,816 @@
+{
+  "lexicons": [
+    {
+      "variety_id": "hillburmish:AchangLongchuan",
+      "name": "Achang",
+      "forms": [
+        {
+          "form_id": "hillburmish:AchangLongchuan-1536_crawlofpeople-1",
+          "variety_id": "hillburmish:AchangLongchuan",
+          "concept_id": "96",
+          "segments": [
+            "t",
+            "o",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-1536_crawlofpeople-1:1",
+              "cognate_set_id": "hillburmish:79",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 721,
+                "source_membership_id": "AchangLongchuan-1536_crawlofpeople-1",
+                "source_cognateset_id": "79",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "AchangLongchuan-1536_crawlofpeople-1",
+            "source_language_id": "AchangLongchuan",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 721,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:AchangLongchuan-377_flower-1",
+          "variety_id": "hillburmish:AchangLongchuan",
+          "concept_id": "239",
+          "segments": [
+            "k",
+            "ă",
+            "n",
+            "⁵⁵",
+            "+",
+            "t",
+            "a",
+            "m",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-377_flower-1:1",
+              "cognate_set_id": "hillburmish:7",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1326,
+                "source_membership_id": "AchangLongchuan-377_flower-1",
+                "source_cognateset_id": "7",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-377_flower-1:2",
+              "cognate_set_id": "hillburmish:1708",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                5,
+                6,
+                7,
+                8
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1326,
+                "source_membership_id": "AchangLongchuan-377_flower-1",
+                "source_cognateset_id": "1708",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "AchangLongchuan-377_flower-1",
+            "source_language_id": "AchangLongchuan",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 1326,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:AchangLongchuan-578_needle-1",
+          "variety_id": "hillburmish:AchangLongchuan",
+          "concept_id": "1382",
+          "segments": [
+            "a",
+            "p",
+            "⁵⁵"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:AchangLongchuan-578_needle-1:1",
+              "cognate_set_id": "hillburmish:932",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 2241,
+                "source_membership_id": "AchangLongchuan-578_needle-1",
+                "source_cognateset_id": "932",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "AchangLongchuan-578_needle-1",
+            "source_language_id": "AchangLongchuan",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 2241,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        }
+      ],
+      "dataset_id": "hillburmish",
+      "source_language_id": "AchangLongchuan",
+      "source_glottocode": null,
+      "tree_glottocode": null,
+      "compatibility_rule_ids": [],
+      "family": "Sino-Tibetan",
+      "is_historical": false
+    },
+    {
+      "variety_id": "hillburmish:Xiandao",
+      "name": "Xiandao",
+      "forms": [
+        {
+          "form_id": "hillburmish:Xiandao-1536_crawlofpeople-1",
+          "variety_id": "hillburmish:Xiandao",
+          "concept_id": "96",
+          "segments": [
+            "t",
+            "o",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-1536_crawlofpeople-1:1",
+              "cognate_set_id": "hillburmish:79",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 726,
+                "source_membership_id": "Xiandao-1536_crawlofpeople-1",
+                "source_cognateset_id": "79",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Xiandao-1536_crawlofpeople-1",
+            "source_language_id": "Xiandao",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 726,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Xiandao-377_flower-1",
+          "variety_id": "hillburmish:Xiandao",
+          "concept_id": "239",
+          "segments": [
+            "p",
+            "a",
+            "n",
+            "⁵⁵",
+            "+",
+            "t",
+            "a",
+            "m",
+            "³¹"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-377_flower-1:1",
+              "cognate_set_id": "hillburmish:7",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1331,
+                "source_membership_id": "Xiandao-377_flower-1",
+                "source_cognateset_id": "7",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-377_flower-1:2",
+              "cognate_set_id": "hillburmish:1710",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                5,
+                6,
+                7,
+                8
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1331,
+                "source_membership_id": "Xiandao-377_flower-1",
+                "source_cognateset_id": "1710",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Xiandao-377_flower-1",
+            "source_language_id": "Xiandao",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 1331,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Xiandao-578_needle-1",
+          "variety_id": "hillburmish:Xiandao",
+          "concept_id": "1382",
+          "segments": [
+            "a",
+            "p",
+            "⁵⁵"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Xiandao-578_needle-1:1",
+              "cognate_set_id": "hillburmish:930",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 2246,
+                "source_membership_id": "Xiandao-578_needle-1",
+                "source_cognateset_id": "930",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Xiandao-578_needle-1",
+            "source_language_id": "Xiandao",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 2246,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        }
+      ],
+      "dataset_id": "hillburmish",
+      "source_language_id": "Xiandao",
+      "source_glottocode": null,
+      "tree_glottocode": null,
+      "compatibility_rule_ids": [],
+      "family": "Sino-Tibetan",
+      "is_historical": false
+    },
+    {
+      "variety_id": "hillburmish:Rangoon",
+      "name": "Rangoon Burmese",
+      "forms": [
+        {
+          "form_id": "hillburmish:Rangoon-1536_crawlofpeople-1",
+          "variety_id": "hillburmish:Rangoon",
+          "concept_id": "96",
+          "segments": [
+            "t",
+            "w",
+            "ɑ",
+            "⁵⁵",
+            "+",
+            "tθ",
+            "w",
+            "ɑ",
+            "⁵⁵"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-1536_crawlofpeople-1:1",
+              "cognate_set_id": "hillburmish:79",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 720,
+                "source_membership_id": "Rangoon-1536_crawlofpeople-1",
+                "source_cognateset_id": "79",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-1536_crawlofpeople-1:2",
+              "cognate_set_id": "hillburmish:1891",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                5,
+                6,
+                7,
+                8
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 720,
+                "source_membership_id": "Rangoon-1536_crawlofpeople-1",
+                "source_cognateset_id": "1891",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Rangoon-1536_crawlofpeople-1",
+            "source_language_id": "Rangoon",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 720,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Rangoon-377_flower-1",
+          "variety_id": "hillburmish:Rangoon",
+          "concept_id": "239",
+          "segments": [
+            "ɑ",
+            "⁵³",
+            "+",
+            "p",
+            "w",
+            "ĩ",
+            "⁵³"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-377_flower-1:1",
+              "cognate_set_id": "hillburmish:1707",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1325,
+                "source_membership_id": "Rangoon-377_flower-1",
+                "source_cognateset_id": "1707",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            },
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-377_flower-1:2",
+              "cognate_set_id": "hillburmish:7",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                3,
+                4,
+                5,
+                6
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 1325,
+                "source_membership_id": "Rangoon-377_flower-1",
+                "source_cognateset_id": "7",
+                "source_segment_slice": [
+                  "2"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Rangoon-377_flower-1",
+            "source_language_id": "Rangoon",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 1325,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        },
+        {
+          "form_id": "hillburmish:Rangoon-578_needle-1",
+          "variety_id": "hillburmish:Rangoon",
+          "concept_id": "1382",
+          "segments": [
+            "ɑ",
+            "ʔ",
+            "⁴"
+          ],
+          "cognate_set_id": null,
+          "cognate_memberships": [
+            {
+              "membership_id": "hillburmish:partial-cognacy:Rangoon-578_needle-1:1",
+              "cognate_set_id": "hillburmish:930",
+              "scope": "segment_slice",
+              "interpretation": "partial_cognate",
+              "segment_indices": [
+                0,
+                1,
+                2
+              ],
+              "slice_unit": "morpheme",
+              "provenance": {
+                "dataset_id": "hillburmish",
+                "source_table": "FormTable",
+                "source_row": 2240,
+                "source_membership_id": "Rangoon-578_needle-1",
+                "source_cognateset_id": "930",
+                "source_segment_slice": [
+                  "1"
+                ],
+                "source_slice_unit": "morpheme",
+                "alignment": [],
+                "sources": [
+                  "Huang1992"
+                ],
+                "cognate_detection_method": null,
+                "alignment_method": null,
+                "alignment_source": null,
+                "doubt": null,
+                "comment": null,
+                "source_reference": null,
+                "compatibility_rule_ids": [
+                  "lexibank-custom-morpheme-slice"
+                ]
+              }
+            }
+          ],
+          "morphological_boundary_tokens": [
+            "+",
+            "-"
+          ],
+          "provenance": {
+            "dataset_id": "hillburmish",
+            "source_form_id": "Rangoon-578_needle-1",
+            "source_language_id": "Rangoon",
+            "source_glottocode": null,
+            "tree_glottocode": null,
+            "source_row": 2240,
+            "segment_source": "Segments",
+            "source_segments": [],
+            "source_reference": null,
+            "compatibility_rule_ids": []
+          }
+        }
+      ],
+      "dataset_id": "hillburmish",
+      "source_language_id": "Rangoon",
+      "source_glottocode": null,
+      "tree_glottocode": null,
+      "compatibility_rule_ids": [],
+      "family": "Sino-Tibetan",
+      "is_historical": false
+    }
+  ],
+  "newick": "('hillburmish:AchangLongchuan','hillburmish:Xiandao','hillburmish:Rangoon')burmic;",
+  "concepts": [
+    {
+      "concept_id": "96",
+      "gloss": "CRAWL"
+    },
+    {
+      "concept_id": "239",
+      "gloss": "FLOWER"
+    },
+    {
+      "concept_id": "1382",
+      "gloss": "NEEDLE"
+    }
+  ],
+  "historical_form_bindings": []
+}

@@ -218,6 +218,13 @@ segments, so a parent segment no single child preserves is unreachable by any
 cascade. `⟨language_a v : language_b Ø⟩` reconstructs `*w` in one commitment and
 in no rule.
 
+Task05 correction (2026-10-05): that representational claim was false. Literal
+`v > w` can produce a new symbol, and replacement sequences can expand a
+nonempty target. The real DSL restriction is an empty target; it cannot insert
+at an empty position. The inventory's derived view can also omit unit/column
+scope. See `docs/research/protocol_revision.md`; expressibility is not historical
+correctness. The preceding paragraph records the earlier instruction revision.
+
 `COMMIT_REQUIREMENT_NOTES` covered only the rule shape and was therefore wrong
 for half the sessions it was shown to. It now covers both, leading with which to
 prefer.

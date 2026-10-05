@@ -83,6 +83,9 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # -- protocol: argument shape, reference, and bookkeeping friction
         # An omitted validation_call_id matched no same-session validation.
         "validation-unresolved": ToolErrorCategory.PROTOCOL,
+        "hypothesis-unknown": ToolErrorCategory.PROTOCOL,
+        "hypothesis-stale": ToolErrorCategory.PROTOCOL,
+        "hypothesis-not-ready": ToolErrorCategory.PROTOCOL,
         # An omitted validation_call_id matched several validations.
         "validation-ambiguous": ToolErrorCategory.PROTOCOL,
         # An explicit validation_call_id names no recorded validation.

@@ -549,8 +549,8 @@ def test_a_changed_tool_schema_refuses_to_resume_and_says_so(
     _half_finished_checkpoint(tmp_path, monkeypatch)
     original = cli.default_tool_registry
 
-    def narrower_registry():
-        registry = original()
+    def narrower_registry(**kwargs):
+        registry = original(**kwargs)
         definitions = registry.definitions()
         registry.definitions = lambda: definitions[:-1]
         return registry

@@ -1,6 +1,8 @@
 # Current state
 
-Updated 2026-10-04 with task 04 units-v2 repair; task 03 final smoke accounting
+Updated 2026-10-05 with task 05 offline protocol/instruction repair; its single
+local smoke failed and substantive live usability remains unresolved.
+Task 04 units-v2 and task 03 final smoke accounting
 is in [evidence results](research/evidence_results.md).
 Prompt numbering was updated on 2026-10-04; this entry document uses the current
 01–08 sequence. Dated research reports and conversations retain their original
@@ -224,10 +226,10 @@ node, input, width and alignment reading whenever quoting them.
    stays unknown; compatible claims merge provenance and incompatible claims stay
    separate. Legacy artifacts keep their whole-string interpretation. See the
    [contract](research/evidence_contract.md) and [migration](research/evidence_migration.md).
-5. **The runtime prompt needs correction.** Its claim that cascades cannot emit
-   segments absent from daughters is false for the literal replacement DSL.
-   Correcting it changes model behavior and instruction hashes, so it is assigned
-   to a separate implementation prompt, not silently changed by this doc reset.
+5. **The runtime prompt now corrects the representational claim.** Rules can emit
+   new literal tokens/sequences; empty targets remain forbidden. Task05 qualifies
+   sparse/outgroup/morphology judgments and changes instruction/schema/checklist
+   hashes separately from task04's evidence repair. Scientific benefit is untested.
 6. **Provider failures can contaminate interpretation.** Retry settings remain in
    the compatibility hash; provider outages can become node fallbacks. Planned
    recovery work must distinguish these from a model failing to solve a node.
@@ -253,8 +255,19 @@ scopes, obscuring cross-word recurrence. Existing focused tests and legacy repla
 pass; they do not cover those counterexamples. See the shared handoff for evidence.
 
 Task 04 has delivered the bounded offline repair and verified instruments
-described above. Task 05 is ready under the units-v2 contract and prioritizes
-reliable preview-to-commit use, with protocol and linguistic guidance identifiable.
+described above. Task 05's [protocol revision](research/protocol_revision.md)
+provides compact local choices, executable versus commit-ready previews and
+immutable same-session inventory handles; full inventory/rule paths remain.
+Missing decisions/explanations and stale evidence remain strictly validated.
+Both paths freeze supplementary witness/anchor evidence too. System text and
+inventory protocol are independently selectable; node notes are now hashed.
+Five two-level scripted controls and 633 portable checks pass. The single Gemma
+smoke stalled after 15 turns/13 calls, seven rejections and two output truncations;
+only an empty preview succeeded, with no commit. Final explicit-list/flat-shape
+remediation and reference-word isolation clarifications are offline-tested only.
+Task05 is partial at the live usability gate; no second smoke ran. Cumulative
+input tokens were 631,609 versus a maximum request of 56,233; configured context
+was 262,144. A shorter static prompt did not establish lower cost or better science.
 Task 06 remains independent. Task 07 requires an instrument/interface gate, usable
 frozen arms and a focused manifest review unless the owner scopes that review out;
 06 can be explicitly scoped out for a bounded single-node pilot with demonstrated

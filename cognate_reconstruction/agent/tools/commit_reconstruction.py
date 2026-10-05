@@ -14,6 +14,7 @@ from cognate_reconstruction.agent.schemas import (
     ContrastReductionReport,
     ProtoInventorySpec,
     ValidationKind,
+    ToolError,
 )
 from cognate_reconstruction.agent.tools.contrast import (
     contrast_reduction_reports,
@@ -571,7 +572,7 @@ def _require_directionality_rationales(
             + "\nWhat it needs from you, on each of those rules: a "
             "'directionality_rationale' naming *which of the active children "
             "innovated*, what the change is called if it has a name, and what "
-            "evidence outside those children polarizes it. Restating the "
+            "available evidence supports it, or why polarity remains uncertain. Restating the "
             "counts above is not an answer to that — they are the finding, not "
             "the claim. polarize reports what nodes outside the active children "
             "show in the same columns. The harness does not judge what you "
@@ -617,8 +618,8 @@ def _require_directionality_on_reducing_sets(
     """A set that gives up a distinction has to say which branch innovated.
 
     Detected mechanically off the inventory — a non-null reflex against a null
-    `proto_segment` is a deletion, two sets sharing one `proto_segment` without
-    complementary conditioning is a merger — and rejected on *absence* only. The
+    `proto_segment` is a deletion, distinct reflex tuples sharing one `proto_segment` without
+    complementary conditioning is a detected reduction — and rejected on *absence* only. The
     harness never evaluates whether the stated reason is good; the whole point of
     demanding the sentence is that a human reviewer can read it later.
     """
@@ -636,7 +637,7 @@ def _require_directionality_on_reducing_sets(
         f"{len(missing)} committed set(s) remove a distinction and omit "
         "'directionality_rationale'. A set that reconstructs nothing where a "
         "child shows material, or that shares its proto-phoneme with another "
-        "set unconditioned, has to say which branch innovated: the harness "
+        "distinct-reflex set unconditioned, must explain its historical reading: the harness "
         "cannot invert a merger later and nothing else records the claim",
         code="missing-directionality-rationale",
         subject=offender_digest(missing),
@@ -647,7 +648,7 @@ def _require_directionality_on_reducing_sets(
             + "\nWhat it needs from you, on each of those sets: a "
             "'directionality_rationale' naming *which of the active children "
             "innovated*, what the change is called if it has a name, and what "
-            "evidence outside those children polarizes it. polarize reports "
+            "available evidence supports it, or why polarity remains uncertain. polarize reports "
             "what nodes outside the active children show in the same columns. "
             "The harness does not judge what you write; it records that you "
             "wrote it, so a reviewer can check it."
@@ -669,7 +670,7 @@ def _resolve_assembly_validation(
     been previewed would make a commit need dozens of calls. It is the sets that
     are the claims.
     """
-    from cognate_reconstruction.agent.tools.proto_assembly import hypothesis_digest
+    from cognate_reconstruction.agent.tools.proto_assembly import hypothesis_digest, context_evidence_digest
     from cognate_reconstruction.agent.tools.inventory_evidence import node_inventory
     # Empty/identity remains usable without a preview. Dispositions and
     # restorations are claims even when the set list is empty.
@@ -679,9 +680,11 @@ def _resolve_assembly_validation(
         segmentation_overlay_id=segmentation_overlay_id,
         alignment_overlay_id=spec.alignment_overlay_id, unit_orders=spec.unit_orders)
     expected = hypothesis_digest(spec, segmentation_overlay_id)
+    witnesses = context_evidence_digest(context)
     matching = [(call_id, preview) for call_id, preview in context.assembly_validations.items()
                 if preview.hypothesis_digest == expected
-                and preview.evidence_revision == reading.evidence_revision]
+                and preview.evidence_revision == reading.evidence_revision
+                and preview.witness_evidence_digest == witnesses]
     named = spec.assembly_validation_call_id
     if named is not None:
         matching = [(call_id, preview) for call_id, preview in matching if call_id == named]
@@ -693,6 +696,23 @@ def _resolve_assembly_validation(
             remediation="Call test_proto_assembly with exactly the committed proto values, confidences, conditioning, residue policy/dispositions, restorations, unit_orders and overlays. A re-survey is safe; changed evidence or claims require a new preview. "
                         + _describe_assembly_validations(context))
     return matching[-1][0]
+
+
+def inventory_commit_requirements(commitments):
+    """Expose the same explanation gates in an executable preview, without rejecting it."""
+    issues = []
+    checks = (
+        lambda: _require_rationales_on_multi_set_commits(commitments),
+        lambda: _require_directionality_on_reducing_sets(
+            commitments, inventory_contrast_reductions(commitments)),
+    )
+    for check in checks:
+        try:
+            check()
+        except ToolInputError as error:
+            issues.append(ToolError(error_type="ToolInputError", message=str(error),
+                code=error.code, remediation=error.remediation))
+    return tuple(issues)
 
 
 def _describe_assembly_validations(context: AgentContext) -> str:
@@ -777,6 +797,7 @@ def _commit_inventory(
             resolved,
             segmentation_overlay_id=arguments.segmentation_overlay_id,
             detail=AssemblyDetail.SUMMARY,
+            context=context,
         ),
         held_out_unaccounted_column_rate=held_out_unaccounted_column_rate(
             context,

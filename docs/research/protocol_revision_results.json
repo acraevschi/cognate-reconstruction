@@ -1,0 +1,328 @@
+{
+  "version": "task05-protocol-v1",
+  "head": "7356f6601b67aaaaf6e4d991d54927ab3cf315aa",
+  "evidence_contract": "units-v2",
+  "count_semantics": "independent-etyma-v1",
+  "piece_representation": "units-v1",
+  "trajectory_version": "5.0",
+  "checkpoint_version": "3.0",
+  "evaluator_version": "task02-v1",
+  "unit_evaluator_version": "task04-units-v1",
+  "payload_measurements": {
+    "serialization": "system text + sorted JSON native definitions + indented unchanged-node payload; excludes provider envelopes/history; not token estimates",
+    "fixture_sha256": "44c08e488d907ad9ec5e9cedef89ebd282606f220d47f410c3f75c517e7ed97e",
+    "before": {
+      "head": "7356f6601b67aaaaf6e4d991d54927ab3cf315aa",
+      "instructions": {
+        "characters": 39981,
+        "utf8_bytes": 40142,
+        "sha256": "0cdcbd930b9ec75ed5561b600dbb561a75c27b70212bcf249136caa5c6204f61"
+      },
+      "tool_definitions": {
+        "characters": 63324,
+        "utf8_bytes": 63416,
+        "sha256": "598404fdd5e3f153412cdb1b32ca4c10276916f0c8b2857ad686625b230ad6ec"
+      },
+      "commit_notes": {
+        "characters": 3375,
+        "utf8_bytes": 3381,
+        "sha256": "214bef595af1b82c87a6c1ee320033a80daf2bc881f31c10dab3f199c01faa41"
+      },
+      "node_payload": {
+        "characters": 4103,
+        "utf8_bytes": 4109,
+        "sha256": "edc1a610f1ed7f524ec0edb55e56fb5008377f7f617ca6d1b926277a36e1a8b6"
+      }
+    },
+    "after": {
+      "instructions": {
+        "characters": 12803,
+        "utf8_bytes": 12807,
+        "sha256": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d"
+      },
+      "commit_notes": {
+        "characters": 1331,
+        "utf8_bytes": 1331,
+        "sha256": "182292157df3f90d35a64bd3eee9d535c4516c56f28499a0323cc16674467339"
+      },
+      "tool_definitions": {
+        "full-payload": {
+          "characters": 50532,
+          "utf8_bytes": 50551,
+          "sha256": "d34214797c0f5c56b8293c529534cfec8d019c4d5a2ece52ff7a7cfbd477a56f"
+        },
+        "stored-hypothesis": {
+          "characters": 52938,
+          "utf8_bytes": 52957,
+          "sha256": "f4bf9ab5877a20ea907a9c585075bd002a72e8565a75fd574e2564e0a4cfd82c"
+        }
+      },
+      "interpretation": "Serialized character/UTF-8 sizes, not model-independent token counts.",
+      "node_payload": {
+        "characters": 2047,
+        "utf8_bytes": 2047,
+        "sha256": "94b6d3f2bc313423bb3bea7b17e3dfb631a97ec03dc3007866be1dabec3da285"
+      },
+      "combined": {
+        "full-payload": {
+          "characters": 65382,
+          "utf8_bytes": 65405
+        },
+        "stored-hypothesis": {
+          "characters": 67788,
+          "utf8_bytes": 67811
+        }
+      },
+      "saved_call_costs": {
+        "unready_saved_preview": {
+          "characters": 1448,
+          "utf8_bytes": 1469,
+          "sha256": "ee63ab6e4e4eafecbf0128d80e85bed15805cecefe83d8a6f0206300710f5e02"
+        },
+        "same_decisions_compact_preview": {
+          "characters": 955,
+          "utf8_bytes": 964,
+          "sha256": "408fd5d34a9245f14520d6ef21ac94ac3374ffbee6d549b0bb07cd88f270af61"
+        },
+        "ready_operator_preview": {
+          "characters": 2924,
+          "utf8_bytes": 2933,
+          "sha256": "e7957ed77071a8bd1d09031c7dc68f4a6939d8232a07f24d87efba7677e4441b"
+        },
+        "ready_full_commit": {
+          "characters": 4428,
+          "utf8_bytes": 4449,
+          "sha256": "163a30226a39e0e7e3acb2913ce07a7d38881eea9a135913265e1af01ef3eb22"
+        },
+        "ready_handle_commit": {
+          "characters": 177,
+          "utf8_bytes": 177,
+          "sha256": "2256fec20d20abef7b84fae6c73a4871154f762a100f902a7279201b6eba31fc"
+        },
+        "expanded_commitments": 11,
+        "interpretation": "Saved values unchanged; raw preview was unready. Operator explanations only in labelled transcription control, not new model decisions."
+      }
+    },
+    "combined": {
+      "before": {
+        "characters": 107408,
+        "utf8_bytes": 107667
+      },
+      "full-payload": {
+        "characters": 65382,
+        "utf8_bytes": 65405
+      },
+      "stored-hypothesis": {
+        "characters": 67788,
+        "utf8_bytes": 67811
+      }
+    },
+    "saved_call_costs": {
+      "unready_saved_preview": {
+        "characters": 1448,
+        "utf8_bytes": 1469,
+        "sha256": "ee63ab6e4e4eafecbf0128d80e85bed15805cecefe83d8a6f0206300710f5e02"
+      },
+      "same_decisions_compact_preview": {
+        "characters": 955,
+        "utf8_bytes": 964,
+        "sha256": "408fd5d34a9245f14520d6ef21ac94ac3374ffbee6d549b0bb07cd88f270af61"
+      },
+      "ready_operator_preview": {
+        "characters": 2924,
+        "utf8_bytes": 2933,
+        "sha256": "e7957ed77071a8bd1d09031c7dc68f4a6939d8232a07f24d87efba7677e4441b"
+      },
+      "ready_full_commit": {
+        "characters": 4428,
+        "utf8_bytes": 4449,
+        "sha256": "163a30226a39e0e7e3acb2913ce07a7d38881eea9a135913265e1af01ef3eb22"
+      },
+      "ready_handle_commit": {
+        "characters": 177,
+        "utf8_bytes": 177,
+        "sha256": "2256fec20d20abef7b84fae6c73a4871154f762a100f902a7279201b6eba31fc"
+      },
+      "expanded_commitments": 11,
+      "interpretation": "Saved values unchanged; raw preview was unready. Operator explanations only in labelled transcription control, not new model decisions."
+    }
+  },
+  "saved_call_replay": [
+    {
+      "call_id": "943574050",
+      "saved_code": "schema:<root>=value_error",
+      "exact_replay_code": "schema:<root>=value_error",
+      "rebound_code": "schema:<root>=value_error"
+    },
+    {
+      "call_id": "733098842",
+      "saved_code": "schema:<root>=value_error",
+      "exact_replay_code": "schema:<root>=value_error",
+      "rebound_code": "schema:<root>=value_error"
+    },
+    {
+      "call_id": "200300078",
+      "saved_code": "correspondence-reflex-mismatch",
+      "exact_replay_code": "unknown-correspondence-set",
+      "rebound_code": "correspondence-reflex-mismatch"
+    },
+    {
+      "call_id": "879764618",
+      "saved_code": "schema:<root>=value_error",
+      "exact_replay_code": "schema:<root>=value_error",
+      "rebound_code": "schema:<root>=value_error"
+    },
+    {
+      "call_id": "735619439",
+      "saved_code": "missing-rule-rationale",
+      "exact_replay_code": "missing-rule-rationale",
+      "rebound_code": "missing-rule-rationale"
+    },
+    {
+      "call_id": "596432009",
+      "saved_code": "schema:inventory.commitments[].proto_segment_is_null=extra_forbidden,inventory.commitments[].reflexes=too_short",
+      "exact_replay_code": "schema:inventory.commitments[].proto_segment_is_null=extra_forbidden,inventory.commitments[].reflexes=too_short",
+      "rebound_code": "schema:inventory.commitments[].proto_segment_is_null=extra_forbidden,inventory.commitments[].reflexes=too_short"
+    },
+    {
+      "call_id": "384004327",
+      "saved_code": "schema:inventory.commitments[].proto_segment=missing",
+      "exact_replay_code": "schema:inventory.commitments[].proto_segment=missing",
+      "rebound_code": "schema:inventory.commitments[].proto_segment=missing"
+    }
+  ],
+  "normal_stored_controls": [
+    {
+      "mode": "correct",
+      "raw_exact": 4,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "validated_planned": 0
+    },
+    {
+      "mode": "wrong",
+      "raw_exact": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "validated_planned": 0
+    },
+    {
+      "mode": "extra",
+      "raw_exact": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "validated_planned": 0
+    },
+    {
+      "mode": "missing",
+      "raw_exact": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "validated_planned": 0
+    },
+    {
+      "mode": "reordered",
+      "raw_exact": 0,
+      "completed_nodes": [
+        "x",
+        "p"
+      ],
+      "validated_planned": 0
+    }
+  ],
+  "validation": {
+    "prerequisite": "35 focused pass; task04 runtime/test manifest has zero mismatches",
+    "focused_final": "173 passed in 6.74 seconds",
+    "portable_initial": "627 passed, 3 failed, 41 deselected, 59.34 seconds; description contracts and optional installation drift",
+    "portable_final": "630 passed, 41 deselected, 57.21 seconds",
+    "post_smoke_focused": "162 passed in 7.83 seconds",
+    "post_smoke_portable": "633 passed, 41 deselected, 60.96 seconds",
+    "final_operator_focused": "52 passed in 1.58 seconds; includes catalogue-only/busy no-launch regressions"
+  },
+  "countdown": "omitted: task01 maximum 29/36 turns, no cap failure",
+  "installed_copy": "Both .claude SKILL.md and driver.py are stale; session permission profile makes .claude read-only; no permissions changed",
+  "live_smoke": {
+    "status": "failed",
+    "path": "runs/experiments/task05-interface-smoke-20261005",
+    "runs": 1,
+    "failure": "ProtocolStallError: 6 of the last 9 tool calls were rejected on protocol grounds even after a correction naming them (schema:commitments[].choices=extra_forbidden,commitments[].concept_id=extra_forbidden,commitments[].confidence=missing,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].set_id=missing,+1, schema:commitments[].choices=extra_forbidden,commitments[].confidence=missing,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].residue_policy=extra_forbidden,commitments[].residue_witness_child_id=extra_forbidden,+2, schema:commitments[].choices=extra_forbidden,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].support=missing, unknown-correspondence-set); the model is cycling through malformed calls rather than adapting to the tool contract",
+    "metrics": {
+      "started_at": "2026-10-05T09:06:09.229259Z",
+      "finished_at": "2026-10-05T09:25:40.981777Z",
+      "duration_seconds": 1171.750455417001,
+      "turn_count": 15,
+      "provider_attempts": 15,
+      "retry_count": 0,
+      "tool_call_count": 13,
+      "failed_tool_call_count": 7,
+      "protocol_failure_count": 7,
+      "tool_failures_by_type": {
+        "schema:commitments[].choices=extra_forbidden,commitments[].concept_id=extra_forbidden,commitments[].confidence=missing,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].set_id=missing,+1": 1,
+        "schema:commitments[].choices=extra_forbidden,commitments[].confidence=missing,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].residue_policy=extra_forbidden,commitments[].residue_witness_child_id=extra_forbidden,+2": 1,
+        "schema:commitments[].choices=extra_forbidden,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].support=missing": 3,
+        "unknown-correspondence-set": 2
+      },
+      "truncated_response_count": 2,
+      "forced_tool_choice_count": 2,
+      "truncation_backoff_applied": 0,
+      "compacted_tool_results": 2,
+      "inspection_tool_calls": 5,
+      "concepts_inspected": 3,
+      "concepts_available": 3,
+      "sound_law_tests": 0,
+      "cascade_tests": 0,
+      "assembly_tests": 1,
+      "input_tokens": 631609,
+      "output_tokens": 37966,
+      "total_tokens": 669575,
+      "cached_input_tokens": null,
+      "reasoning_output_tokens": 32599,
+      "cost_usd": null,
+      "committed_rule_count": 0,
+      "committed_anomaly_count": 0,
+      "held_out_concept_count": 1,
+      "held_out_convergence_rate": null,
+      "committed_without_inspection": false,
+      "identity_without_testing": false,
+      "maximum_request_input_tokens": 56233,
+      "maximum_request_total_tokens": 57589,
+      "configured_context": 262144,
+      "substantive_preview_count": 0,
+      "empty_preview_count": 1,
+      "valid_commit_count": 0,
+      "result_written": false,
+      "interpretation": "ProtocolStallError, two output truncations and malformed grouped/whole-form calls; one empty preview does not establish workflow. No quality or single-cause inference."
+    },
+    "frozen_manifest_sha256": "5ecbecb925fef841e7d4ec31165d8671bcdedc9b11f2eb76782249d771e3e9a6",
+    "frozen_instruction_sha256": "4187d2bf815d8f71b809bb59ae0d10741dd1c19213171c17548ba5667f8aab42",
+    "frozen_schema_sha256": "d0fda0ab1c9945a795bd509b9a397f9be40bc89495a70c98e69563ba3bc1ff21",
+    "frozen_code_manifest_sha256": "26064a7e4e3e85e4cb4e94519845c92a6eeb2fae37db0f76200379d45d74ebae",
+    "final_clarification_live_tested": false,
+    "known_isolation_limit": "The frozen mechanical example coincided with the provisional NEEDLE reference; final instructions use abstract symbols. This is not a quality/evidence-isolation experiment."
+  },
+  "post_smoke_changes": [
+    "explicit claim-list presence, including deliberate empty identity",
+    "flat local-choice schema and targeted rejection remediation",
+    "abstract mechanical example instead of reference-like complete word",
+    "loaded local model verification distinct from server catalogue and busy refusal"
+  ],
+  "status": "offline complete; local substantive commit usability unresolved; final clarifications not live tested",
+  "final_instruction_sha256": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d",
+  "final_schema_sha256": "dd58d427b00f86da222b301a6bbebc1fcbe1d70f5a507dfa87b2dd5bfddba8a9",
+  "final_code_manifest_sha256": "c4e3ad6fc0825382ba2cdc5a3ee30211a88b8d56d25abc2eb34a66aec41654c2",
+  "final_dirty_diff_sha256": "d36c67c427e8bb9615fda4af2dfc18338ea0b533aff799bf3e43ea7710e1ae03",
+  "verification_notes": [
+    "Final runtime/test/probe/skill manifest matches current files",
+    "Affected local markdown links pass",
+    "No second live smoke; no paid calls, downloads, model switches or permission changes",
+    "Inherited task01 files preserved and task05 remains uncommitted"
+  ]
+}

@@ -4,6 +4,15 @@ For current project status read [current state](current_state.md). Before live
 runs follow [experiment policy](experiment_policy.md): local-first, bounded and
 serial; historical model examples below are not defaults or current price quotes.
 
+Task05's [protocol revision](research/protocol_revision.md) documents current
+inventory handles and comparison controls. `infer --inventory-protocol
+stored-hypothesis` (default) offers compact local choices and exact ready-preview
+commitment. `full-payload` keeps retranscribed inventories; rules work in both.
+`--agent-instructions PATH` independently selects system text by content hash.
+System text, native schemas and node commit notes are strict resume inputs;
+changed arms require a new run/checkpoint. Use the tracked operator skill/driver;
+an optional `.claude` installation can be stale and preflight reports that state.
+
 ## Inputs
 
 The `infer` command accepts a strict `WorkbenchPayload`. Every form is already

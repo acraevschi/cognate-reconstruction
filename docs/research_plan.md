@@ -108,6 +108,15 @@ interfaces and the minimal runtime wording changes as an evidence-mechanics pack
 
 ## 05 — Repair model-facing claims and friction
 
+Offline implementation on 2026-10-05: [protocol revision](research/protocol_revision.md).
+Compact choices and immutable preview handles are independently selectable from
+system text; full-payload/rule compatibility and strict validation remain.
+633 portable checks and the ordinary two-level instrument controls pass. The single
+local smoke failed without a substantive preview/commit; final clarifications are
+offline-tested only. Task05 is partial at live usability, so 07 is not ready.
+Review the final interface/manifest and decide the next bounded probe before
+comparative inference; no second smoke or downstream work is dispatched here.
+
 Start after 04 establishes the repaired contract. Make preview distinguish
 executable from commit-ready and reduce transcription of harness-owned data.
 Prefer commitment of an immutable stored validated hypothesis after explanations

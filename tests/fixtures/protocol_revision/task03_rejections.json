@@ -1,0 +1,1599 @@
+{
+  "source": "task03-interface-smoke-20261003/events.jsonl",
+  "interpretation": "saved model calls, no target data",
+  "calls": [
+    {
+      "call_id": "943574050",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "confidence": 1,
+            "reflexes": [
+              "k",
+              "p",
+              "k"
+            ],
+            "proto_segment": "k",
+            "set_id": "csu-30453a26826617d245346009",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "p",
+              "p",
+              "p"
+            ],
+            "proto_segment": "p",
+            "set_id": "csu-d7938eaffce523c92c12a69e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "t",
+              "t",
+              "tθ"
+            ],
+            "proto_segment": "t",
+            "set_id": "csu-f80a3949a2f84efde2abe79b",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "n",
+              "n",
+              "n"
+            ],
+            "proto_segment": "n",
+            "set_id": "csu-3c814d6391b24e1c8d91d430",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "m",
+              "m",
+              "m"
+            ],
+            "proto_segment": "m",
+            "set_id": "csu-731691c747efbab2a4ea7564",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "a",
+              "a",
+              "ɑ"
+            ],
+            "proto_segment": "a",
+            "set_id": "csu-5424d0531037fd2c7bbb7a65",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "o",
+              "o",
+              "o"
+            ],
+            "proto_segment": "o",
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "t",
+              "t",
+              "t"
+            ],
+            "proto_segment": "t",
+            "set_id": "csu-f80a3949a2f84efde2abe79b",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "³¹",
+              "³¹",
+              "³¹"
+            ],
+            "proto_segment": "³¹",
+            "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "⁵⁵",
+              "⁵⁵",
+              "⁵⁵"
+            ],
+            "proto_segment": "⁵⁵",
+            "set_id": "csu-cf20159b214fd35bacf9013e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "⁵³",
+              "⁵³",
+              "⁵³"
+            ],
+            "proto_segment": "⁵³",
+            "set_id": "csu-af8ec39781ed0e302930de47",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "reflexes": [
+              "w",
+              "w",
+              "w"
+            ],
+            "proto_segment": "w",
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          }
+        ],
+        "residue_policy": "drop"
+      },
+      "saved_error_code": "schema:<root>=value_error"
+    },
+    {
+      "call_id": "733098842",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "confidence": 1,
+            "proto_segment": "k",
+            "reflexes": [
+              "k",
+              "p",
+              "k"
+            ],
+            "set_id": "csu-30453a26826617d245346009",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "p",
+            "reflexes": [
+              "p",
+              "p",
+              "p"
+            ],
+            "set_id": "csu-d7938eaffce523c92c12a69e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "t",
+            "reflexes": [
+              "t",
+              "t",
+              "tθ"
+            ],
+            "set_id": "csu-f80a3949a2f84efde2abe79b",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "n",
+            "reflexes": [
+              "n",
+              "n",
+              "n"
+            ],
+            "set_id": "csu-3c814d6391b24e1c8d91d430",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "m",
+            "reflexes": [
+              "m",
+              "m",
+              "m"
+            ],
+            "set_id": "csu-731691c747efbab2a4ea7564",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "a",
+            "reflexes": [
+              "a",
+              "a",
+              "ɑ"
+            ],
+            "set_id": "csu-5424d0531037fd2c7bbb7a65",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "o",
+            "reflexes": [
+              "o",
+              "o",
+              "o"
+            ],
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "³¹",
+            "reflexes": [
+              "³¹",
+              "³¹",
+              "³¹"
+            ],
+            "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "⁵⁵",
+            "reflexes": [
+              "⁵⁵",
+              "⁵⁵",
+              "⁵⁵"
+            ],
+            "set_id": "csu-cf20159b214fd35bacf9013e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "⁵³",
+            "reflexes": [
+              "⁵³",
+              "⁵³",
+              "⁵³"
+            ],
+            "set_id": "csu-af8ec39781ed0e302930de47",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "w",
+            "reflexes": [
+              "w",
+              "w",
+              "w"
+            ],
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          }
+        ],
+        "residue_policy": "drop"
+      },
+      "saved_error_code": "schema:<root>=value_error"
+    },
+    {
+      "call_id": "200300078",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "confidence": 1,
+            "proto_segment": "k",
+            "reflexes": [
+              "k",
+              "p",
+              "k"
+            ],
+            "set_id": "csu-30453a26826617d245346009",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "p",
+            "reflexes": [
+              "p",
+              "p",
+              "p"
+            ],
+            "set_id": "csu-d7938eaffce523c92c12a69e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "t",
+            "reflexes": [
+              "t",
+              "t",
+              "tθ"
+            ],
+            "set_id": "csu-f80a3949a2f84efde2abe79b",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "n",
+            "reflexes": [
+              "n",
+              "n",
+              "n"
+            ],
+            "set_id": "csu-3c814d6391b24e1c8d91d430",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "m",
+            "reflexes": [
+              "m",
+              "m",
+              "m"
+            ],
+            "set_id": "csu-731691c747efbab2a4ea7564",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "a",
+            "reflexes": [
+              "a",
+              "a",
+              "ɑ"
+            ],
+            "set_id": "csu-5424d0531037fd2c7bbb7a65",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "o",
+            "reflexes": [
+              "o",
+              "o",
+              "o"
+            ],
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "³¹",
+            "reflexes": [
+              "³¹",
+              "³¹",
+              "³¹"
+            ],
+            "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "⁵⁵",
+            "reflexes": [
+              "⁵⁵",
+              "⁵⁵",
+              "⁵⁵"
+            ],
+            "set_id": "csu-cf20159b214fd35bacf9013e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "⁵³",
+            "reflexes": [
+              "⁵³",
+              "⁵³",
+              "⁵³"
+            ],
+            "set_id": "csu-af8ec39781ed0e302930de47",
+            "support": 1
+          }
+        ],
+        "residue_policy": "drop"
+      },
+      "saved_error_code": "correspondence-reflex-mismatch"
+    },
+    {
+      "call_id": "879764618",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "confidence": 1,
+            "proto_segment": "k",
+            "reflexes": [
+              "k",
+              "p",
+              "p"
+            ],
+            "set_id": "csu-30453a26826617d245346009",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "p",
+            "reflexes": [
+              null,
+              "p",
+              "ʔ"
+            ],
+            "set_id": "csu-d7938eaffce523c92c12a69e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "t",
+            "reflexes": [
+              "t",
+              "t",
+              "t"
+            ],
+            "set_id": "csu-f80a3949a2f84efde2abe79b",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "n",
+            "reflexes": [
+              "n",
+              "n",
+              null
+            ],
+            "set_id": "csu-3c814d6391b24e1c8d91d430",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "m",
+            "reflexes": [
+              null,
+              "m",
+              null
+            ],
+            "set_id": "csu-731691c747efbab2a4ea7564",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "a",
+            "reflexes": [
+              null,
+              "a",
+              "ɑ"
+            ],
+            "set_id": "csu-5424d0531037fd2c7bbb7a65",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "o",
+            "reflexes": [
+              "o",
+              "o",
+              "ɑ"
+            ],
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "³¹",
+            "reflexes": [
+              null,
+              "³¹",
+              null
+            ],
+            "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "⁵⁵",
+            "reflexes": [
+              null,
+              null,
+              "⁵⁵"
+            ],
+            "set_id": "csu-cf20159b214fd35bacf9013e",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "⁵³",
+            "reflexes": [
+              null,
+              null,
+              "⁵³"
+            ],
+            "set_id": "csu-af8ec39781ed0e302930de47",
+            "support": 1
+          },
+          {
+            "confidence": 1,
+            "proto_segment": "w",
+            "reflexes": [
+              "w",
+              "w",
+              "w"
+            ],
+            "set_id": "csu-9894af170d7039bf13fbe17a",
+            "support": 1
+          }
+        ],
+        "residue_policy": "drop"
+      },
+      "saved_error_code": "schema:<root>=value_error"
+    },
+    {
+      "call_id": "735619439",
+      "name": "commit_reconstruction",
+      "arguments": {
+        "anomalies": [],
+        "inventory": {
+          "child_node_ids": [
+            "hillburmish:AchangLongchuan",
+            "hillburmish:Xiandao",
+            "hillburmish:Rangoon"
+          ],
+          "commitments": [
+            {
+              "confidence": 1,
+              "proto_segment": "k",
+              "reflexes": [
+                "k",
+                "p",
+                "p"
+              ],
+              "set_id": "csu-30453a26826617d245346009",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "p",
+              "reflexes": [
+                null,
+                "p",
+                "ʔ"
+              ],
+              "set_id": "csu-d7938eaffce523c92c12a69e",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "t",
+              "reflexes": [
+                "t",
+                "t",
+                "t"
+              ],
+              "set_id": "csu-f80a3949a2f84efde2abe79b",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "n",
+              "reflexes": [
+                "n",
+                "n",
+                null
+              ],
+              "set_id": "csu-3c814d6391b24e1c8d91d430",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "m",
+              "reflexes": [
+                null,
+                "m",
+                null
+              ],
+              "set_id": "csu-731691c747efbab2a4ea7564",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "a",
+              "reflexes": [
+                null,
+                "a",
+                "ɑ"
+              ],
+              "set_id": "csu-5424d0531037fd2c7bbb7a65",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "o",
+              "reflexes": [
+                "o",
+                "o",
+                "ɑ"
+              ],
+              "set_id": "csu-9894af170d7039bf13fbe17a",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "³¹",
+              "reflexes": [
+                null,
+                "³¹",
+                null
+              ],
+              "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "⁵⁵",
+              "reflexes": [
+                null,
+                null,
+                "⁵⁵"
+              ],
+              "set_id": "csu-cf20159b214fd35bacf9013e",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "⁵³",
+              "reflexes": [
+                null,
+                null,
+                "⁵³"
+              ],
+              "set_id": "csu-af8ec39781ed0e302930de47",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "w",
+              "reflexes": [
+                null,
+                null,
+                "w"
+              ],
+              "set_id": "csu-95f1188f99112d9e0ad221e8",
+              "support": 1
+            }
+          ],
+          "residue_policy": "drop"
+        },
+        "node_id": "burmic",
+        "summary": "Reconstruction of Burmic based on AchangLongchuan, Xiandao, and Rangoon."
+      },
+      "saved_error_code": "missing-rule-rationale"
+    },
+    {
+      "call_id": "596432009",
+      "name": "commit_reconstruction",
+      "arguments": {
+        "anomalies": [],
+        "inventory": {
+          "child_node_ids": [
+            "hillburmish:AchangLongchuan",
+            "hillburmish:Xiandao",
+            "hillburmish:Rangoon"
+          ],
+          "commitments": [
+            {
+              "confidence": 1,
+              "proto_segment": "k",
+              "reflexes": [
+                "k",
+                "p",
+                "p"
+              ],
+              "rationale": "Xiandao and Rangoon show p.",
+              "set_id": "csu-30453a26826617d245346009",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "p",
+              "reflexes": [],
+              "proto_segment_is_null": false,
+              "rationale": "Xiandao shows p; Rangoon shows ʔ.",
+              "set_id": "csu-d7938eaffce523c92c12a69e",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "t",
+              "reflexes": [
+                "t",
+                "t",
+                "t"
+              ],
+              "rationale": "All children show t or tθ.",
+              "set_id": "csu-f80a3949a2f84efde2abe79b",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "n",
+              "reflexes": [
+                "n",
+                "n",
+                null
+              ],
+              "rationale": "AchangLongchuan and Xiandao show n.",
+              "set_id": "csu-3c814d6391b24e1c8d91d430",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "m",
+              "reflexes": [
+                null,
+                "m",
+                null
+              ],
+              "rationale": "Xiandao shows m.",
+              "set_id": "csu-731691c747efbab2a4ea7564",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "a",
+              "reflexes": [
+                null,
+                "a",
+                "ɑ"
+              ],
+              "rationale": "Xiandao shows a; Rangoon shows ɑ.",
+              "set_id": "csu-5424d0531037fd2c7bbb7a65",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "o",
+              "reflexes": [
+                "o",
+                "o",
+                "ɑ"
+              ],
+              "rationale": "AchangLongchuan and Xiandao show o; Rangoon shows ɑ.",
+              "set_id": "csu-9894af170d7039bf13fbe17a",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "³¹",
+              "reflexes": [
+                null,
+                "³¹",
+                null
+              ],
+              "rationale": "Xiandao shows ³¹.",
+              "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "⁵⁵",
+              "reflexes": [
+                null,
+                null,
+                "⁵⁵"
+              ],
+              "rationale": "Rangoon shows ⁵⁵.",
+              "set_id": "csu-cf20159b214fd35bacf9013e",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "⁵³",
+              "reflexes": [
+                null,
+                null,
+                "⁵³"
+              ],
+              "rationale": "Rangoon shows ⁵³.",
+              "set_id": "csu-af8ec39781ed0e302930de47",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "proto_segment": "w",
+              "reflexes": [
+                null,
+                null,
+                "w"
+              ],
+              "rationale": "Rangoon shows w.",
+              "set_id": "csu-95f1188f99112d9e0ad221e8",
+              "support": 1
+            }
+          ],
+          "residue_policy": "drop"
+        },
+        "node_id": "burmic",
+        "summary": "Reconstruction of Burmic based on AchangLongchuan, Xiandao, and Rangoon."
+      },
+      "saved_error_code": "schema:inventory.commitments[].proto_segment_is_null=extra_forbidden,inventory.commitments[].reflexes=too_short"
+    },
+    {
+      "call_id": "384004327",
+      "name": "commit_reconstruction",
+      "arguments": {
+        "anomalies": [],
+        "inventory": {
+          "child_node_ids": [
+            "hillburmish:AchangLongchuan",
+            "hillburmish:Xiandao",
+            "hillburmish:Rangoon"
+          ],
+          "commitments": [
+            {
+              "confidence": 1,
+              "rationale": "Merger of k and p.",
+              "reflexes": [
+                "k",
+                "p",
+                "p"
+              ],
+              "set_id": "csu-30453a26826617d245346009",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of initial segment.",
+              "reflexes": [
+                null,
+                "p",
+                "ʔ"
+              ],
+              "set_id": "csu-d7938eaffce523c92c12a69e",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "All children show t or tθ.",
+              "reflexes": [
+                "t",
+                "t",
+                "t"
+              ],
+              "set_id": "csu-f80a3949a2f84efde2abe79b",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of final segment.",
+              "reflexes": [
+                "n",
+                "n",
+                null
+              ],
+              "set_id": "csu-3c814d6391b24e1c8d91d430",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of segments.",
+              "reflexes": [
+                null,
+                "m",
+                null
+              ],
+              "set_id": "csu-731691c747efbab2a4ea7564",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Vowel change.",
+              "reflexes": [
+                null,
+                "a",
+                "ɑ"
+              ],
+              "set_id": "csu-5424d0531037fd2c7bbb7a65",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Merger of o and ɑ.",
+              "reflexes": [
+                "o",
+                "o",
+                "ɑ"
+              ],
+              "set_id": "csu-9894af170d7039bf13fbe17a",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of segments.",
+              "reflexes": [
+                null,
+                "³¹",
+                null
+              ],
+              "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of segments.",
+              "reflexes": [
+                null,
+                null,
+                "⁵⁵"
+              ],
+              "set_id": "csu-cf20159b214fd35bacf9013e",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of segments.",
+              "reflexes": [
+                null,
+                null,
+                "⁵³"
+              ],
+              "set_id": "csu-af8ec39781ed0e302930de47",
+              "support": 1
+            },
+            {
+              "confidence": 1,
+              "rationale": "Loss of segments.",
+              "reflexes": [
+                null,
+                null,
+                "w"
+              ],
+              "set_id": "csu-95f1188f99112d9e0ad221e8",
+              "support": 1
+            }
+          ],
+          "residue_policy": "drop"
+        },
+        "node_id": "burmic",
+        "summary": "Reconstruction of Burmic based on AchangLongchuan, Xiandao, and Rangoon."
+      },
+      "saved_error_code": "schema:inventory.commitments[].proto_segment=missing"
+    }
+  ],
+  "saved_local_sets": [
+    {
+      "scope_id": "boundary:hillburmish:1707:hillburmish:7:+",
+      "example_column_ids": [
+        "col-c07c243e696c2965aee91079"
+      ],
+      "set_id": "csu-3637a74fa0966c59e350dfdc",
+      "segments": [
+        null,
+        null,
+        "+"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "boundary:hillburmish:79:hillburmish:1891:+",
+      "example_column_ids": [
+        "col-a7919051d6a089de3cce7be5"
+      ],
+      "set_id": "csu-a482eb0eb8e6a8516c7b38e9",
+      "segments": [
+        null,
+        null,
+        "+"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1891",
+      "example_column_ids": [
+        "col-5c0bcc40a4505b3026449b5f"
+      ],
+      "set_id": "csu-da6e62bb7b67d4a6b46ef1f2",
+      "segments": [
+        null,
+        null,
+        "tθ"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:7",
+      "example_column_ids": [
+        "col-d7bd8773187dc88832e8206d"
+      ],
+      "set_id": "csu-95f1188f99112d9e0ad221e8",
+      "segments": [
+        null,
+        null,
+        "w"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:79",
+      "example_column_ids": [
+        "col-c6c2121904045028cb3e56fb"
+      ],
+      "set_id": "csu-87ee288dcbb6f2f5787586d1",
+      "segments": [
+        null,
+        null,
+        "w"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1891",
+      "example_column_ids": [
+        "col-1b843f97353642563bed9741"
+      ],
+      "set_id": "csu-2a282a6580e72641751827e8",
+      "segments": [
+        null,
+        null,
+        "w"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1707",
+      "example_column_ids": [
+        "col-01e9890d06785568c4ef8cb3"
+      ],
+      "set_id": "csu-91249000db3b916d47696c1d",
+      "segments": [
+        null,
+        null,
+        "ɑ"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1891",
+      "example_column_ids": [
+        "col-3b07cb1626d14446de8bb748"
+      ],
+      "set_id": "csu-784cd3038fc0d56753f1e4e4",
+      "segments": [
+        null,
+        null,
+        "ɑ"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1707",
+      "example_column_ids": [
+        "col-ca3fc078b764d64185518dfa"
+      ],
+      "set_id": "csu-af8ec39781ed0e302930de47",
+      "segments": [
+        null,
+        null,
+        "⁵³"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1891",
+      "example_column_ids": [
+        "col-d0f449befe89282375d9f0ef"
+      ],
+      "set_id": "csu-cf20159b214fd35bacf9013e",
+      "segments": [
+        null,
+        null,
+        "⁵⁵"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "boundary:hillburmish:7:hillburmish:1710:+",
+      "example_column_ids": [
+        "col-fb528d7082b7295dd80a4739"
+      ],
+      "set_id": "csu-13b6f2e4ed25c58b90486a6f",
+      "segments": [
+        null,
+        "+",
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1710",
+      "example_column_ids": [
+        "col-8d2b40fa3c470028f90b70ce"
+      ],
+      "set_id": "csu-b01df113e537fd37c2b44ffa",
+      "segments": [
+        null,
+        "a",
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:930",
+      "example_column_ids": [
+        "col-4f74ba96cd10df084e3dc63a"
+      ],
+      "set_id": "csu-5424d0531037fd2c7bbb7a65",
+      "segments": [
+        null,
+        "a",
+        "ɑ"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "1382"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1710",
+      "example_column_ids": [
+        "col-06bdb5e7c8c1fcba984b47aa"
+      ],
+      "set_id": "csu-731691c747efbab2a4ea7564",
+      "segments": [
+        null,
+        "m",
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:930",
+      "example_column_ids": [
+        "col-dce8cadc55df4df15122b8e1"
+      ],
+      "set_id": "csu-d7938eaffce523c92c12a69e",
+      "segments": [
+        null,
+        "p",
+        "ʔ"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "1382"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1710",
+      "example_column_ids": [
+        "col-da7a57931020062b63b031df"
+      ],
+      "set_id": "csu-87f8a39c4d04d77a4ccdf2f5",
+      "segments": [
+        null,
+        "t",
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1710",
+      "example_column_ids": [
+        "col-fbfe42d9535640e7087954dc"
+      ],
+      "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+      "segments": [
+        null,
+        "³¹",
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:930",
+      "example_column_ids": [
+        "col-684d8effd2e786135dc16fbb"
+      ],
+      "set_id": "csu-9337b24f7464acf2023ad68b",
+      "segments": [
+        null,
+        "⁵⁵",
+        "⁴"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "1382"
+      ]
+    },
+    {
+      "scope_id": "boundary:hillburmish:7:hillburmish:1708:+",
+      "example_column_ids": [
+        "col-089fbce8de4cec8f53b95dea"
+      ],
+      "set_id": "csu-0871e5bb48cb1919ea2fc059",
+      "segments": [
+        "+",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:932",
+      "example_column_ids": [
+        "col-dc93778fa884c6ff0a3da9c5"
+      ],
+      "set_id": "csu-5ea1b4ab558906217755f2a2",
+      "segments": [
+        "a",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "1382"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1708",
+      "example_column_ids": [
+        "col-ed749a691a30c73b2e0203d5"
+      ],
+      "set_id": "csu-9b46a9a89ecba27bdb25a54c",
+      "segments": [
+        "a",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:7",
+      "example_column_ids": [
+        "col-7e60ce35a68961963292ec36"
+      ],
+      "set_id": "csu-30453a26826617d245346009",
+      "segments": [
+        "k",
+        "p",
+        "p"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1708",
+      "example_column_ids": [
+        "col-d03728694569d85af6199a02"
+      ],
+      "set_id": "csu-984475474759173451b1e13b",
+      "segments": [
+        "m",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:7",
+      "example_column_ids": [
+        "col-57e1d6b5c0486cce9dc507c0"
+      ],
+      "set_id": "csu-3c814d6391b24e1c8d91d430",
+      "segments": [
+        "n",
+        "n",
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:79",
+      "example_column_ids": [
+        "col-2175647ef1c461c222e35db6"
+      ],
+      "set_id": "csu-9894af170d7039bf13fbe17a",
+      "segments": [
+        "o",
+        "o",
+        "ɑ"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:932",
+      "example_column_ids": [
+        "col-2688d8cfd67b1c3d293f4600"
+      ],
+      "set_id": "csu-7af240ca349913526c2618d0",
+      "segments": [
+        "p",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "1382"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1708",
+      "example_column_ids": [
+        "col-64ba786b702129adea9cf2b8"
+      ],
+      "set_id": "csu-c3577e6ea7f8644ec94b83eb",
+      "segments": [
+        "t",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:79",
+      "example_column_ids": [
+        "col-c2d6a8d96ca27a9e3f6272cf"
+      ],
+      "set_id": "csu-f80a3949a2f84efde2abe79b",
+      "segments": [
+        "t",
+        "t",
+        "t"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:1708",
+      "example_column_ids": [
+        "col-6c1135338908621de37aa94f"
+      ],
+      "set_id": "csu-31f6615fa936a6e308e218ed",
+      "segments": [
+        "³¹",
+        null,
+        null
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "239"
+      ]
+    },
+    {
+      "scope_id": "cog:hillburmish:79",
+      "example_column_ids": [
+        "col-524f642c0bc0832b1e524198"
+      ],
+      "set_id": "csu-12dc1de6c0e5d17a31a37bfd",
+      "segments": [
+        "³¹",
+        "³¹",
+        "⁵⁵"
+      ],
+      "support": 1,
+      "concept_count": 1,
+      "example_concept_ids": [
+        "96"
+      ]
+    }
+  ],
+  "saved_executable_preview": {
+    "commitments": [
+      {
+        "confidence": 1,
+        "proto_segment": "k",
+        "reflexes": [
+          "k",
+          "p",
+          "p"
+        ],
+        "set_id": "csu-30453a26826617d245346009",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "p",
+        "reflexes": [
+          null,
+          "p",
+          "ʔ"
+        ],
+        "set_id": "csu-d7938eaffce523c92c12a69e",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "t",
+        "reflexes": [
+          "t",
+          "t",
+          "t"
+        ],
+        "set_id": "csu-f80a3949a2f84efde2abe79b",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "n",
+        "reflexes": [
+          "n",
+          "n",
+          null
+        ],
+        "set_id": "csu-3c814d6391b24e1c8d91d430",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "m",
+        "reflexes": [
+          null,
+          "m",
+          null
+        ],
+        "set_id": "csu-731691c747efbab2a4ea7564",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "a",
+        "reflexes": [
+          null,
+          "a",
+          "ɑ"
+        ],
+        "set_id": "csu-5424d0531037fd2c7bbb7a65",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "o",
+        "reflexes": [
+          "o",
+          "o",
+          "ɑ"
+        ],
+        "set_id": "csu-9894af170d7039bf13fbe17a",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "³¹",
+        "reflexes": [
+          null,
+          "³¹",
+          null
+        ],
+        "set_id": "csu-73af0d2ced09fca9e3dcb4c6",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "⁵⁵",
+        "reflexes": [
+          null,
+          null,
+          "⁵⁵"
+        ],
+        "set_id": "csu-cf20159b214fd35bacf9013e",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "⁵³",
+        "reflexes": [
+          null,
+          null,
+          "⁵³"
+        ],
+        "set_id": "csu-af8ec39781ed0e302930de47",
+        "support": 1
+      },
+      {
+        "confidence": 1,
+        "proto_segment": "w",
+        "reflexes": [
+          null,
+          null,
+          "w"
+        ],
+        "set_id": "csu-95f1188f99112d9e0ad221e8",
+        "support": 1
+      }
+    ],
+    "residue_policy": "drop"
+  }
+}

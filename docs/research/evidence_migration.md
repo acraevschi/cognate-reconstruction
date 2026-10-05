@@ -157,3 +157,19 @@ the frozen legacy beam/report and operator-control interpretation remain. Old
 compact task03 artifacts are not rewritten. The three-concept default filter
 covers 9/33 occurrences; full sparse inspection is a declared choice, not hidden
 input narrowing. Future generated root beams still require dynamic cap preflight.
+
+
+## Task05 protocol amendment — 2026-10-05
+
+Read [protocol revision](protocol_revision.md) and its live outcome before selecting
+a comparative arm. Evidence/count/piece/evaluator semantics and 5.0/3.0 versions
+remain as above. Default stored-hypothesis tooling offers compact local choices
+and immutable session-local preview handles, with explicit values/nulls/confidence
+and commit-ready explanation checks. The full-payload profile and both commit shapes
+remain supported. Both inventory paths now freeze supplementary witnesses/anchors
+in addition to active columns. Changed claims/evidence require exact preview; handles
+never migrate across sessions/checkpoints. Native/system/node-checklist hashes and
+protocol selection remain strict; --agent-instructions changes system text only.
+Submitted compact choices stay in trajectory preview calls; completed artifacts
+still carry full expanded requests and approved_shared_claims. Historical preview
+readiness null is unknown. No countdown or artifact rescoring was added.

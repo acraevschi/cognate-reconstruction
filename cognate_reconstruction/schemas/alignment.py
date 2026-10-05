@@ -32,14 +32,7 @@ model that knows the DSL already knows how to ask for a gap.
 
 
 class CorrespondenceDetail(StrEnum):
-    """How much of the aligner's working trace a correspondence view carries.
-
-    `SUMMARY` keeps the answer — which segments correspond and how often — and
-    reduces the trace to bounded references into the alignments that are
-    serialized once anyway. `FULL` keeps every column occurrence with its
-    contexts, which is the aligner's working trace and costs one record per
-    aligned column per node pair.
-    """
+    """How much of the aligner's working trace a correspondence view carries."""
 
     SUMMARY = "summary"
     FULL = "full"

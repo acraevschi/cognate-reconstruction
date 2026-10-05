@@ -57,6 +57,8 @@ class AgentContext:
     assembly_validations: dict[str, TestProtoAssemblyResult] = field(
         default_factory=dict
     )
+    # Session-only immutable serialized hypotheses; never checkpointed or seeded.
+    inventory_hypotheses: dict = field(default_factory=dict)
     unit_alignment_cache: dict = field(default_factory=dict)
     child_beams: tuple[NodeBeamState, ...] = ()
     commit: CommittedHypothesis | None = None

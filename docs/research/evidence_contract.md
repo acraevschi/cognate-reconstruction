@@ -124,3 +124,17 @@ underdetermined order/lost-contrast readings. Piece diagnostics record
 Trajectories/checkpoints now write 5.0/3.0. Earlier records remain audit-readable;
 old checkpoints and units-v1 execution require their original semantics/checkout.
 The piece representation stays units-v1. Legacy whole-string replay is unchanged.
+
+
+## Task05 exact-reference amendment — 2026-10-05
+
+[Protocol revision](protocol_revision.md) adds compact local decisions resolved
+through exact IDs, executable versus commit-ready explanation reporting and an
+immutable same-session inventory handle. It changes instruction/native-schema/
+node-checklist hashes, not the units-v2 denominator or piece execution. Proto
+values/nulls, confidence and scientific reasoning are never inferred. Edited
+choices, collections, explanations, overlays or evidence require a new preview.
+Supplementary witness/anchor digests now join active-column revision checks for
+both inventory paths. Full payloads/rules and historical readers remain supported;
+handles are not checkpoint state. Live usability is qualified in the result, not
+inferred from scripted controls or a shorter prompt.
