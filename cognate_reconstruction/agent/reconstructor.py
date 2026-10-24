@@ -12,6 +12,7 @@ from cognate_reconstruction.agent.orchestrator import (
     failed_node_trajectory,
 )
 from cognate_reconstruction.agent.providers import ProviderError
+from cognate_reconstruction.agent.request_journal import RequestJournalError
 from cognate_reconstruction.agent.schemas import (
     PriorNodeInventory,
     PriorNodeReconstruction,
@@ -297,10 +298,11 @@ class AgenticNodeReconstructor:
         )
         try:
             run_result = self.orchestrator.run(context)
-        except (RunBudgetExceeded, RunCancelled, ProviderError) as error:
-            # A budget is a statement about the whole run, not about this node.
-            # Falling back over it would spend the rest of the tree fabricating
-            # identity nodes and report a stopped run as a completed one.
+        except (RunBudgetExceeded, RunCancelled, ProviderError, RequestJournalError) as error:
+            # A budget is a statement about the whole run, not about this node,
+            # and so is a journal that cannot be written. Falling back over it
+            # would spend the rest of the tree fabricating identity nodes and
+            # report a stopped run as a completed one.
             trajectory = failed_node_trajectory(error)
             if trajectory is not None:
                 self.trajectories.append(trajectory)

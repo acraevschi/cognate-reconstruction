@@ -28,6 +28,12 @@ from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.providers import ProviderError
 from cognate_reconstruction.agent.providers.errors import normalized_provider_error
 from cognate_reconstruction.agent.providers.protocol import LLMProvider
+from cognate_reconstruction.agent.request_journal import (
+    USAGE_ACCOUNTING_VERSION,
+    USAGE_TOTALS,
+    RequestJournal,
+    RequestJournalError,
+)
 from cognate_reconstruction.agent.schemas import (
     COMMIT_REQUIREMENT_NOTES,
     CommittedHypothesis,
@@ -282,6 +288,9 @@ class _MessageLog:
 class _RunState:
     started_at: datetime
     started_monotonic: float
+    # Fixed when the session starts so journaled effort can be matched with
+    # the trajectory that eventually records it (or found to have none).
+    trajectory_id: str = field(default_factory=lambda: f"trajectory-{uuid.uuid4()}")
     turn_count: int = 0
     provider_attempts: int = 0
     retry_count: int = 0
@@ -372,6 +381,7 @@ class AgentOrchestrator:
         clock_fn: Callable[[], float] = time.monotonic,
         jitter_fn: Callable[[float], float] = lambda _: 0.0,
         cancelled_fn: Callable[[], bool] = lambda: False,
+        request_journal: RequestJournal | None = None,
     ) -> None:
         if max_turns < 1 or max_tool_calls < 1:
             raise ValueError("agent loop limits must be positive")
@@ -447,12 +457,17 @@ class AgentOrchestrator:
         self.clock_fn = clock_fn
         self.jitter_fn = jitter_fn
         self.cancelled_fn = cancelled_fn
+        self.request_journal = request_journal
         self._run_started = self.clock_fn()
         self._total_turns = 0
         self._total_tool_calls = 0
         self._total_cost_usd = 0.0
         self._responses_without_cost = 0
         self._usage_history_complete = True
+        # True while turn/tool-call totals cover all counted effort, even when
+        # history is otherwise incomplete (journal-recovered abrupt loss).
+        self._effort_counts_known = True
+        self._unrecorded_requests = 0
         self._trajectory_starts: dict[str, float] = {}
         public_configuration = {
             "provider_adapter": type(provider).__name__,
@@ -485,20 +500,42 @@ class AgentOrchestrator:
             "responses_without_cost": self._responses_without_cost,
             "elapsed_seconds": max(0.0, self.clock_fn() - self._run_started),
             "history_complete": self._usage_history_complete,
+            "effort_counts_known": self._effort_counts_known,
+            "unrecorded_requests": self._unrecorded_requests,
+            "usage_accounting_version": USAGE_ACCOUNTING_VERSION,
         }
 
     def restore_usage(self, usage: dict) -> None:
         """Restore the same seed's cumulative caps without replaying requests."""
-        for key in ("turns", "tool_calls", "reported_cost_usd", "responses_without_cost", "elapsed_seconds"):
+        for key in USAGE_TOTALS:
             value = usage.get(key, 0)
             if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                 raise ValueError(f"invalid recorded run usage: {key}")
-        self._usage_history_complete = bool(usage.get("history_complete", True))
+        complete = bool(usage.get("history_complete", True))
+        # Records from before the journal carry only `history_complete`, and
+        # for them incomplete history meant unknown counts.
+        self._effort_counts_known = bool(usage.get("effort_counts_known", complete))
+        # Unknown counts are incomplete history, whatever the record says.
+        self._usage_history_complete = complete and self._effort_counts_known
+        self._unrecorded_requests = int(usage.get("unrecorded_requests", 0))
         self._total_turns = int(usage.get("turns", 0))
         self._total_tool_calls = int(usage.get("tool_calls", 0))
         self._total_cost_usd = float(usage.get("reported_cost_usd", 0.0))
         self._responses_without_cost = int(usage.get("responses_without_cost", 0))
         self._run_started -= float(usage.get("elapsed_seconds", 0.0))
+
+    def _journal(self, event: str, node_id: str, state: _RunState, **fields: object) -> None:
+        """Record effort before it starts; the effort must not start otherwise."""
+        if self.request_journal is None:
+            return
+        try:
+            self.request_journal.record(event, node_id=node_id, trajectory_id=state.trajectory_id, **fields)
+        except RequestJournalError:
+            raise
+        except Exception as error:
+            raise RequestJournalError(
+                f"request journal unwritable, so effort cannot be recorded before it starts: {error}"
+            ) from error
 
     def _emit(
         self,
@@ -518,14 +555,35 @@ class AgentOrchestrator:
                 )
             )
 
-    def _check_run_budget(self) -> None:
-        if self.cancelled_fn():
-            raise RunCancelled("run cancelled")
-        if not self._usage_history_complete and any(v is not None for v in (
+    def _check_usage_history(self) -> None:
+        """Refuse caps whose quantity is unknown after lost effort."""
+        if not self._effort_counts_known and any(v is not None for v in (
             self.max_run_seconds, self.max_total_turns, self.max_total_tool_calls, self.max_total_cost_usd,
         )):
             raise RunBudgetExceeded("run usage history unavailable; cannot enforce cumulative caps")
+        if not self._usage_history_complete and self.max_run_seconds is not None:
+            raise RunBudgetExceeded(
+                "run usage history incomplete: active time of effort lost to an abrupt "
+                f"exit ({self._unrecorded_requests} unrecorded provider request(s)) is unknown; "
+                "cannot enforce the run time limit. Caps are part of the resume "
+                "configuration, so start a fresh run (new checkpoint and run ID) "
+                "with a limit reduced by your own estimate of the lost time"
+            )
+
+    def _check_run_budget(self) -> None:
+        if self.cancelled_fn():
+            raise RunCancelled("run cancelled")
+        self._check_usage_history()
         if self.max_total_cost_usd is not None and self._responses_without_cost:
+            if self._unrecorded_requests:
+                raise RunBudgetExceeded(
+                    "provider cost unavailable; cannot enforce the run cost cap: "
+                    f"{self._responses_without_cost} request(s) have no recorded cost, and "
+                    f"{self._unrecorded_requests} request(s) were lost to an abrupt exit, so "
+                    "their spend is unknown. Caps are part of the resume configuration, "
+                    "so start a fresh run (new checkpoint and run ID) with a cap "
+                    "reduced by the provider-reported spend of the lost requests"
+                )
             raise RunBudgetExceeded("provider cost unavailable; cannot enforce the run cost cap")
         if (
             self.max_run_seconds is not None
@@ -568,6 +626,8 @@ class AgentOrchestrator:
                 last_error.stop_reason = "retry_elapsed_limit"
                 raise last_error
             state.provider_attempts += 1
+            self._journal("request_start", node_id, state, attempt=state.provider_attempts)
+            attempt_started = self.clock_fn()
             try:
                 try:
                     request_options = {"tool_choice": tool_choice,
@@ -580,10 +640,30 @@ class AgentOrchestrator:
                     raw_response = self.provider.complete(messages, definitions, **request_options)
                 except (TimeoutError, ConnectionError) as error:
                     raise normalized_provider_error(error) from error
+                except ProviderError:
+                    raise
+                except (Exception, KeyboardInterrupt):
+                    # The request may have been sent, and nothing prices it:
+                    # its spend is unknown, as for a request lost to an abrupt
+                    # exit, not zero.
+                    self._responses_without_cost += 1
+                    self._journal(
+                        "request_end", node_id, state, attempt=state.provider_attempts,
+                        outcome="abandoned", duration_seconds=max(0.0, self.clock_fn() - attempt_started),
+                    )
+                    raise
                 response = (raw_response if isinstance(raw_response, ProviderResponse)
                             else ProviderResponse(message=raw_response))
                 state.provider_responses.append(response.metadata)
                 usage = response.metadata.usage
+                self._journal(
+                    "request_end", node_id, state, attempt=state.provider_attempts, outcome="response",
+                    duration_seconds=max(0.0, self.clock_fn() - attempt_started),
+                    cost_usd=usage.cost_usd if usage is not None else None,
+                    input_tokens=usage.input_tokens if usage is not None else None,
+                    output_tokens=usage.output_tokens if usage is not None else None,
+                    total_tokens=usage.total_tokens if usage is not None else None,
+                )
                 if usage is not None and usage.cost_usd is not None:
                     self._total_cost_usd += usage.cost_usd
                 else:
@@ -595,6 +675,11 @@ class AgentOrchestrator:
             except ProviderError as error:
                 last_error = error
                 metadata = error.metadata
+                self._journal(
+                    "request_end", node_id, state, attempt=state.provider_attempts, outcome="error",
+                    duration_seconds=max(0.0, self.clock_fn() - attempt_started),
+                    response_state=metadata.response_state, retryable=metadata.retryable,
+                )
                 if metadata.response_state == "unknown" and not metadata.retryable:
                     self._responses_without_cost += 1
                 elapsed = max(0.0, self.clock_fn() - request_started)
@@ -1213,7 +1298,7 @@ class AgentOrchestrator:
         write_to_sink: bool = True,
     ) -> AgentTrajectory:
         definitions = self.registry.definitions()
-        trajectory_id = f"trajectory-{uuid.uuid4()}"
+        trajectory_id = state.trajectory_id
         trajectory = AgentTrajectory(
             trajectory_id=trajectory_id,
             run_id=self.run_id,
@@ -1411,6 +1496,8 @@ class AgentOrchestrator:
         )
         try:
             for turn_index in range(1, self.max_turns + 1):
+                # Unknown history outranks a count that only looks exhausted.
+                self._check_usage_history()
                 if (
                     self.max_total_turns is not None
                     and self._total_turns >= self.max_total_turns
@@ -1420,6 +1507,7 @@ class AgentOrchestrator:
                     )
                 self._total_turns += 1
                 state.turn_count = turn_index
+                self._journal("turn", context.node_id, state, turn=turn_index)
                 self._emit(
                     AgentEventKind.MODEL_TURN,
                     context.node_id,
@@ -1531,6 +1619,7 @@ class AgentOrchestrator:
                         )
                     state.tool_call_count += 1
                     self._total_tool_calls += 1
+                    self._journal("tool_call", context.node_id, state, call_id=call.call_id)
                     state.tool_names.append(call.name)
                     state.inspected_concept_ids |= inspected_concept_ids(
                         call.name,
@@ -1631,7 +1720,7 @@ class AgentOrchestrator:
             )
         except (Exception, KeyboardInterrupt) as caught:
             error = RunCancelled("run cancelled by keyboard interrupt") if isinstance(caught, KeyboardInterrupt) else caught
-            interruption = isinstance(error, (ProviderError, RunBudgetExceeded, RunCancelled))
+            interruption = isinstance(error, (ProviderError, RunBudgetExceeded, RunCancelled, RequestJournalError))
             cause = (error.metadata.kind.value if isinstance(error, ProviderError)
                      else getattr(error, "failure_kind", None) or
                      ("model_protocol_failure" if isinstance(error, (AgentLoopLimitError, ProtocolStallError)) else "unknown"))

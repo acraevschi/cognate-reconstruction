@@ -40,6 +40,33 @@ annotations and evaluation views; it changes no target forms, selection or trave
 Last pre-reset commit: `50c4db0` (2026-09-02). The last session reported 535
 passing tests; that count was not rerun for the reset. Fresh task 02 checks are below.
 
+## R01 contract repairs — verified 2026-10-23
+
+[R01](research/post_review_contract_repairs.md) reproduced and repaired all four
+review findings offline at starting HEAD `63af18d`, committed on branch `r01-contract-repairs`. There was no
+inference, model operation, paid call or dependency change.
+
+1. **Token-conditioned claims.** These now preview, commit, persist to JSONL and
+   checkpoints, re-preview immutably and reach parent nodes in both native
+   profiles. Strict validation is retained.
+2. **Abrupt loss.** New checkpointed runs journal each counted turn, request and
+   tool call before it happens. Turn and tool caps count lost effort. Cost and
+   elapsed time stay unknown and conservatively refuse their caps.
+   `history_complete` stays false. A legacy checkpoint without a summary is not
+   certified complete.
+3. **Overlapping conditioned choices.** Overlapping choices on one set are
+   reported by choice identity, with additive fields, and the emitted values are
+   unchanged.
+4. **`best_lexicon`.** It carries the top candidate's analysis.
+
+Model-visible instruction, schema and node-note digests are unchanged. Portable
+suite: 736 passed, 41 deselected. The banked replay still agrees on 364/364
+scores and 11/11 beams and reports. These fixes establish interface and
+accounting behaviour only, not live usability or reconstruction quality.
+Task05's offline protocol claim now includes token-conditioned JSON. Task06's
+cumulative caps hold for journaled abrupt loss, not for effort lost with its
+journal. R02 is ready to start.
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.

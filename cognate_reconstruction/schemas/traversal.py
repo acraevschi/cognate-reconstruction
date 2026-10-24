@@ -264,10 +264,31 @@ class ReconstructionDiagnostics(WorkbenchModel):
     columns_decided_by_tie_break: int | None = Field(default=None, ge=0)
     """Columns two committed sets both matched, decided by `TIE_BREAK_POLICY`.
 
+    Historical meaning, kept unchanged so earlier steps stay comparable: a
+    column counts when another distinct *set* also matched, whatever the
+    confidences. Under units-v2 a column binds one set, so overlapping
+    conditioned values on that set are not counted here; see
+    `columns_with_competing_choices` and `columns_decided_by_equal_confidence`.
+
     Shown to the model first: `test_proto_assembly` lists every such column so
     the session can condition one of the sets, split a set, or say in the
     summary that the evidence does not decide. The policy stays the last resort
     and stays documented as arbitrary.
+    """
+    columns_with_competing_choices: int | None = Field(default=None, ge=0)
+    """Columns where more than one distinct applicable choice held.
+
+    Choice identity is `(set_id, conditioning, proto_segment)`, so two
+    overlapping conditioned values on one local set count. Includes the
+    columns decided by confidence and those decided by equal confidence.
+    `None` on steps written before the field existed.
+    """
+    columns_decided_by_equal_confidence: int | None = Field(default=None, ge=0)
+    """Columns where a competing choice had the winner's confidence but another
+    value (`ColumnResolution.decided_by_equal_confidence`).
+
+    The documented order — ascending proto segment, then set ID — then picked
+    the value, which is arbitrary. `None` on earlier steps.
     """
     mean_set_support: float | None = Field(default=None, ge=0.0)
     """Mean support of the committed sets.

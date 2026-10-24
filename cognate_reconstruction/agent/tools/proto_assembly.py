@@ -282,7 +282,7 @@ def assembly_result(
             column
             for report in step.assembly_reports
             for column in report.columns
-            if column.competing_set_ids
+            if column.competing_choices or column.competing_set_ids
         ),
         assembled_concept_count=len(step.assembly_reports),
         segmentation_overlay_id=segmentation_overlay_id,

@@ -264,3 +264,16 @@ independent review of the final interface and comparison manifest before inferen
 Review exact-reference safety, explanation readiness, hidden-target isolation,
 submitted/expanded claims and package versus isolated attribution. The owner
 chooses when to begin; no downstream chat or experiment was dispatched.
+
+## R01 amendment — token-conditioned native JSON, 2026-10-23
+
+The final Task05 interface rejected legitimate token-conditioned claims at the
+native boundary: full-payload previews refused `conditioning.right.tokens`, and
+compact choices previewed commit-ready, then failed when the stored snapshot
+was read at commit. The cause was a model-level `before` validator. R01 scoped
+it to `reflexes`. Model-visible instructions, tool schemas and node notes are
+byte-identical, and so are hypothesis digests. Left/right token contexts now
+preview, commit, persist, re-preview immutably and reach parent nodes in both
+profiles. The observations above remain historical; the offline protocol claim
+now includes token-conditioned JSON. Live usability is still unproven. See
+[R01 repairs](post_review_contract_repairs.md).

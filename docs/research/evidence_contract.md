@@ -138,3 +138,19 @@ Supplementary witness/anchor digests now join active-column revision checks for
 both inventory paths. Full payloads/rules and historical readers remain supported;
 handles are not checkpoint state. Live usability is qualified in the result, not
 inferred from scripted controls or a shorter prompt.
+
+## R01 amendment — choice identity and annotated export, 2026-10-23
+
+Units-v2 allows several conditioned values on one local set; only an identical
+`(set_id, conditioning)` pair is refused. Column resolution keeps the documented
+order `(-confidence, proto_segment, set_id)`. Reporting now identifies competing
+applicable claims by `(set_id, conditioning, proto_segment)`. Additive fields:
+
+- `ColumnResolution.competing_choices` and `decided_by_tie_break`;
+- `ReconstructionDiagnostics.columns_with_competing_choices` and
+  `columns_decided_by_equal_confidence`.
+
+`columns_decided_by_tie_break` keeps its historical competing-set meaning.
+`FamilyReconstructionResult.internal_nodes[].best_lexicon` now carries the top
+candidate's analysis as-is; no membership is inferred from spelling. See
+[R01 repairs](post_review_contract_repairs.md).

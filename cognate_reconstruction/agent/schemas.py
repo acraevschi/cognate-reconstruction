@@ -1306,10 +1306,12 @@ class TestProtoAssemblyResult(WorkbenchModel):
     ambiguous_columns: tuple[ColumnResolution, ...] = Field(
         default=(),
         description=(
-            "Columns more than one committed set matched. Disambiguate them by "
-            "conditioning one of the sets, by splitting a set, or by saying in "
-            "your summary that the evidence does not decide; otherwise the beam "
-            "picks by mass and then by an arbitrary segment order."
+            "Columns where more than one distinct committed choice (set, "
+            "conditioning and value) applied; competing_choices lists the "
+            "others. Disambiguate them by conditioning one of the sets, by "
+            "splitting a set, or by saying in your summary that the evidence "
+            "does not decide; otherwise the beam picks by mass and then by an "
+            "arbitrary segment order."
         ),
     )
     assembled_concept_count: int = Field(default=0, ge=0)

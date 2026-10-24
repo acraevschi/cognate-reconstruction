@@ -85,6 +85,8 @@ an implementation. Local inference remains serial under the experiment policy.
 
 ## Live task state
 
+Updated 2026-10-23: R01 is complete offline (see its handoff below) and R02 is
+ready; the 2026-10-08 summary that follows is retained as history.
 Updated 2026-10-08. Tasks01–04 remain delivered with newly identified residual
 reporting/export gaps. Task05 has an offline conditioned-JSON defect and unproven
 substantive live usability. Task06 has an abrupt-history gap beyond its delivered
@@ -109,18 +111,18 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | --- | --- | --- | --- |
 | 01 — Failure audit | complete | Fixed 12-concept panel, fresh counts, traces and deterministic replay delivered | Task 01 completion below |
 | 02 — Evaluation | complete | task02-v1 contract, evaluator, six small cases, migration and offline results delivered | Task 02 completion below |
-| 03 — Evidence/assembly | complete | Historical delivery retained; R01 addresses analysis loss in best-lexicon export | Task03 completion; post-review amendment |
-| 04 — Evidence repair | complete | Documented counterexamples repaired; R01 addresses an additional same-set ambiguity-reporting gap | Task04 completion; post-review amendment |
-| 05 — Instructions/protocol | partial | R01 repairs token-conditioned native serialization; R03 tests substantive final usability | Post-review amendment |
-| 06 — Provider recovery | partial | Delivered graceful recovery retained; R01 repairs abrupt-history completeness before relying on cumulative caps | Post-review amendment |
+| 03 — Evidence/assembly | complete | Historical delivery retained; R01 repaired analysis loss in best-lexicon export | Task03 completion; R01 completion |
+| 04 — Evidence repair | complete | Documented counterexamples repaired; R01 repaired the same-set ambiguity-reporting gap | Task04 completion; R01 completion |
+| 05 — Instructions/protocol | partial | R01 repaired token-conditioned native serialization offline; R03 tests substantive final usability | R01 completion |
+| 06 — Provider recovery | complete | Graceful recovery retained; R01 added journaled abrupt-loss accounting (legacy/journal-loss limits remain) | R01 completion |
 | 07 — Original local comparisons | deferred | Unstarted historical experiment superseded as immediate work by R02/R03; package comparison can be selected in R04 | Post-review amendment |
 | 08 — Original forward prediction | deferred | Optional successor is R06, activated by owner choice | Post-review amendment |
 
 | Post-review ID | Status | Prerequisite / next action | Intended result |
 | --- | --- | --- | --- |
-| R01 — Contract repairs | not started | Reproduce/fix four confirmed counterexamples offline | `docs/research/post_review_contract_repairs.md` |
-| R02 — Diagnostic panel and manifests | not started | Verify R01 interfaces; independent design may proceed earlier | `docs/research/model_diagnostic_design.md` |
-| R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest, selected model and resource scope; local success not required | `docs/research/model_capability_diagnostic.md` |
+| R01 — Contract repairs | complete | Four findings reproduced and repaired offline (branch `r01-contract-repairs`); live usability not tested | `docs/research/post_review_contract_repairs.md` |
+| R02 — Diagnostic panel and manifests | ready | Verify R01 interfaces per the R01 completion amendment; build Stage A/B instruments and ledger | `docs/research/model_diagnostic_design.md` |
+| R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest; models selected 2026-10-25 (Gemma 4 26B local, Gemini 3.8 Flash medium); paid ceiling awaits owner confirmation; local success not required | `docs/research/model_capability_diagnostic.md` |
 | R04 — Interface and evidence study | deferred | R03/owner selects a specific question; no automatic redesign | `docs/research/focused_interface_study.md` |
 | R05 — Propagation and robustness | deferred | Useful local judgments or a demonstrated propagation uncertainty | `docs/research/propagation_robustness_study.md` |
 | R06 — Forward prediction | deferred | Owner-selected alternative, not a completion gate | `docs/research/forward_prediction_feasibility.md` |
@@ -151,6 +153,163 @@ Do not return to root-level historical 07/08 afterward as a second required phas
 Old Task07 is superseded by R02/R03 and possibly R04; old Task08's optional
 successor is R06. Preserve historical briefs as background. Downstream amendments,
 their tracked mirrors, scientific gates and aggregate resource limits are unchanged.
+
+### Owner model selection for R02/R03 — 2026-10-25
+
+The owner selected the R03 arms in chat, which removes the "ask for the
+model/provider" step:
+
+- **Local baseline:** `google/gemma-4-26b-a4b`, already loaded in LM Studio.
+  Verify availability, context length and competing jobs only at R03 launch;
+  R02 does no discovery or loading.
+- **Stronger candidate:** Gemini 3.8 Flash (`gemini-3.8-flash`, harness form
+  `gemini/gemini-3.8-flash`) through the hosted Gemini API with
+  `--reasoning-effort medium`.
+- **Available credit:** the owner reports 7.36 CHF on the AI Studio project.
+  That is the prepaid balance, not a spending authorization.
+
+**Pricing.** The official pricing page, read 2026-10-25, gives per 1M tokens on
+the paid standard tier through 2026-12-31:
+
+- input US$0.75;
+- output, including thinking tokens, US$3.75;
+- cached input US$0.075.
+
+Prices double from 2027-01-01. Re-read the page when freezing the manifest.
+
+**Calibration from banked runs.** Each banked Gemini 3.7 Flash run was a full
+three-node Burmish tree. It used 6.1–11.0M cumulative input tokens and 134–188k
+output tokens. The largest single request was 248–336k tokens, and the runs cost
+US$1.79–2.83. The same token use would cost roughly US$5–9 at 3.8 Flash prices,
+before any extra medium-reasoning output. Full-tree runs therefore do not fit
+the credit and are not R03's design.
+
+**Proposed budget (needs the owner's explicit confirmation).** The small
+Stage A/B fixtures should cost far less. The cap arithmetic is: worst-case input
+≤ total turns × maximum request, and output ≤ turns × maximum response.
+
+- **Proposed ceiling:** at most **US$5 aggregate** for all R03 Gemini 3.8 Flash
+  requests, including Stage A, Stage B, failures, retries and interruptions,
+  with **60 minutes** of paid wall time. Choose per-trial `--max-total-cost-usd`,
+  turn caps and a maximum output allowance so that the worst-case sum plus one
+  maximum-response headroom fits inside the ceiling. Keep the remaining credit
+  as margin against unknown or lost cost.
+- **Local arm:** keeps the existing two-hour serial ceiling.
+- **Superseded allowance:** the historical US$2/30-minute Flash allowance
+  referred to the earlier Flash model and is superseded for this arm only once
+  the owner confirms. Until then R03 launch stays pending on that single number.
+
+**Offline gate for R02: cost reporting for 3.8 Flash.** The harness's cost
+comes from LiteLLM `response_cost`. The installed LiteLLM 1.81.16 bundled price
+map lists no `gemini-3.7-flash` or `gemini-3.8-flash` entry, so banked costs
+came from LiteLLM's runtime-fetched map. If `gemini/gemini-3.8-flash` gets no
+price, every response is unpriced, `--max-total-cost-usd` refuses after the
+first response, and the ledger records unknown cost.
+
+R02 must establish, offline and using public documentation, how a priced
+response will be obtained or recorded. Do not change dependencies; an explicit,
+versioned price registration in the harness would be a code change to test.
+R02 must also record that the cost cap is checked after each response, so one
+response of headroom is always needed.
+
+Mirrored in both the R02 and R03 briefs under their upstream amendments.
+
+### R01 completion amendments — 2026-10-23
+
+Mirrors the amendments applied to the ignored `prompts/post-review/` briefs.
+
+**For R02 / `02-diagnostic-panel-and-manifests.md`** (replaces its "R01 must supply…" placeholder):
+
+R01 is complete offline. See `docs/research/post_review_contract_repairs.md`,
+the `_results.json` and the `_manifest.json` beside it. Starting HEAD was
+`63af18d`; the work is uncommitted. Use these delivered facts instead of
+preliminary assumptions:
+
+- **Native conditioning.** Choices, full commitments and shared claims accept
+  `conditioning` with `left`/`right` `{"tokens": [...]}` (optionally
+  `morphological_boundary_tokens` ⊆ `["+","-"]`) and `word_initial`/`word_final`
+  booleans. This works through `ToolRegistry.execute` in both `stored-hypothesis`
+  and `full-payload` profiles: preview → commit (handle or payload) → trajectory
+  JSONL → checkpoint → parent use → resume. Model-visible digests are unchanged
+  from Task05 final:
+  - instructions `0b9d91cf…`;
+  - default tool schemas `dd58d427…`;
+  - probe tool definitions: full `d3421479…`, stored `f4bf9ab5…`;
+  - node commit notes `1ddfc0fc…`;
+  - evidence contract `b1f459e7…`.
+- **Executable conditioned fixture.** Start from
+  `tests/workbench/test_conditioned_native_roundtrip.py`:
+  - `one_word(("p","i"),("f","i"))` with the `p:f` set → `p` under
+    `{"right":{"tokens":["i"]}}` and residue witness A (exact review case), or
+    witness B (discriminating: `p i` only if the condition applies);
+  - `test_conditioned_shared_claim_commits_through_handle`, three concepts, a
+    recurrent shared claim;
+  - `ConditionedProvider` for a two-level scripted `((A,B)x,C)r` run.
+
+  Stage A still needs its own small recurrent fixture, a specified revision and
+  a source-unit decision. These are tested building blocks, not a Stage A
+  manifest.
+- **Ambiguity fields.** These are additive.
+  - `ColumnResolution.competing_choices`: each entry is `set_id, proto_segment,
+    confidence, conditioning`.
+  - `ColumnResolution.decided_by_tie_break`.
+  - Preview `ambiguous_columns` now includes same-set conditioned overlaps.
+  - `ReconstructionDiagnostics.columns_with_competing_choices` and
+    `columns_decided_by_equal_confidence` are new.
+  - `columns_decided_by_tie_break` keeps its historical competing-set meaning.
+    Under units-v2 it is normally 0, so read the two new counts.
+  - Emitted values and resolution order are unchanged.
+- **Export format.** `FamilyReconstructionResult.internal_nodes[].best_lexicon`
+  is the top candidate per concept with its analysis copied as-is: unknown
+  pieces stay unknown, order status is preserved, nothing is re-derived from
+  spelling. The beam remains the full candidate record.
+- **Resume and accounting policy.** Run with `--checkpoint` to get
+  `<checkpoint>.requests.jsonl` (`request-journal-v1`, fsynced before each
+  counted turn, request and tool call). `run_summary.json` `usage` adds
+  `effort_counts_known`, `unrecorded_requests` and
+  `usage_accounting_version="abrupt-loss-v1"`.
+  - Turn and tool caps count lost effort.
+  - Lost or unpriced cost stays unknown in `responses_without_cost`; a cost cap
+    refuses resume.
+  - Elapsed time is a lower bound; a time cap refuses.
+  - `history_complete` stays false.
+
+  The whole-batch ledger must read these per-seed fields, and the journal for
+  attempts without trajectories. It must carry unknowns as unknown and never
+  sum them as zero. Per-seed caps are not batch caps. A legacy checkpoint
+  without a summary is uncertified.
+- **Test commands.** The focused command in the R01 report (14 modules, 232
+  passed), and `python -m pytest -q -k 'not local_run_artifacts'` (736 passed,
+  41 deselected, 2026-10-23).
+- **Outstanding limits.**
+  - `inspect_run` and the sweep aggregate do not display the new usage keys, and
+    no batch resource sum exists yet; that is R02 ledger work.
+  - Effort lost together with its journal is undetectable; there is no bounded
+    cost estimate.
+  - macOS fsync is not `F_FULLFSYNC`.
+  - A rival with an equal value but a different condition still counts as a
+    competing choice.
+  - No live usability has been shown.
+
+**For R03 / `03-stronger-model-diagnostic.md`:**
+
+Only these launch, serialization and budget facts changed. The serialization
+fact also covers report readers.
+
+- **Launch.** Launch every live trial with `--checkpoint` (and a unique
+  `--run-id`) so the request journal exists. Without a checkpoint there is no
+  abrupt-loss accounting.
+- **After an abrupt interruption.** Do not reset spend under a new name.
+  - A resume enforces turn and tool caps, counting journaled lost effort.
+  - A cost-capped or time-capped resume refuses. Record the lost requests as
+    unknown cost in the ledger, plus any provider-console spend as external
+    accounting. Only then start a fresh trial with an identity, and a cap
+    reduced, inside the same aggregate envelope as the frozen manifest permits.
+- **Serialization.** Token-conditioned claims are JSON-safe in both profiles.
+  Report readers must accept the additive `competing_choices`,
+  `decided_by_tie_break`, `columns_with_competing_choices` and
+  `columns_decided_by_equal_confidence` fields.
+- **Model-visible digests.** These are unchanged from Task05 final.
 
 ### Active post-review amendment — 2026-10-08
 
@@ -1379,3 +1538,50 @@ of 262 tracked files and local prompts: changes are confined to the intended
 documentation/prompt paths. No runtime tests, inference, model operations,
 dependency changes, commits, pushes or task dispatch occurred. Task statuses and
 the independent report are unchanged.
+
+### 2026-10-23 — R01 — complete
+
+Session: Claude Code desktop session (main agent), with two Claude Opus 5.5
+medium-thinking subagents under disjoint file ownership. One handled recovery
+(`cli.py`, `agent/orchestrator.py`); the other handled ambiguity and export
+(assembler, inventory/traversal schemas, preview, `inspect_run`, `service.py`).
+Checkout: `/Users/acraev/Work/cognate-reconstruction`, branch
+`burmish-session-evaluation-units`, HEAD `63af18d`. Committed 2026-10-25 on branch
+`r01-contract-repairs`, after a separate commit of the owner's earlier post-review
+planning edits; local audit/PBEBench files remain untracked.
+
+Result: [R01 repairs](research/post_review_contract_repairs.md), with compact
+results and a 182-entry source manifest beside it. All four review findings
+reproduced on a pristine `git archive HEAD` snapshot. The review's `/tmp`
+probes were absent, so portable regressions were written.
+
+1. **Token-conditioned claims.** The `CorrespondenceCommitment` gap-spelling
+   validator is now a field validator, and token-conditioned claims preview,
+   commit and read back in both profiles.
+2. **Abrupt loss.** An fsynced `request-journal-v1` with `abrupt-loss-v1` usage
+   semantics: turn and tool caps count lost effort, cost and time stay unknown
+   and refuse their caps, and a legacy run without a summary is uncertified.
+3. **Choice identity.** Ambiguity is reported by choice identity
+   (`competing_choices`, `decided_by_tie_break`, two new diagnostics), and the
+   historical tie-break count is preserved.
+4. **Export.** `best_lexicon` keeps the analysis.
+
+Validation/resources:
+- Focused tests: 232 passed. The four new modules hold 56 cases.
+- Portable suite, run once after integration: 736 passed, 41 deselected.
+- Local-artifact readers: 41 passed. `git diff --check` is clean.
+- Banked replay: 364/364 scores and 11/11 beams/reports agree.
+- Model-visible digests are unchanged.
+- No inference, model operations, paid calls, dependency changes or Git
+  publication.
+
+Downstream: R02/R03 briefs amended under their upstream sections and mirrored
+above. Contracts amended: protocol revision, provider recovery, evidence
+contract and current state.
+
+Open work: no live usability evidence yet. The ledger, plus `inspect_run`/sweep
+display of the new usage keys, belong to R02. Effort lost together with its
+journal remains undetectable.
+
+Next: R02 is ready. Start from the R01 completion amendment and the conditioned
+fixture.

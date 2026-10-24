@@ -27,7 +27,7 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from cognate_reconstruction.schemas.alignment import GAP_SEGMENT_TOKENS
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
@@ -205,12 +205,19 @@ class CorrespondenceCommitment(WorkbenchModel):
         ),
     )
 
-    @model_validator(mode="before")
+    @field_validator("reflexes", mode="before")
     @classmethod
     def accept_gap_spellings(cls, value):
-        if not isinstance(value, dict) or "reflexes" not in value:
-            return value
-        return {**value, "reflexes": normalize_written_gaps(value["reflexes"])}
+        """Normalize gap spellings in `reflexes` only.
+
+        A field validator, not a model-level one: a `mode="before"` model
+        validator hands every other field on in strict python mode, so a JSON
+        `conditioning.right.tokens` array reached `SegmentExpression` as a list
+        and was refused as a tuple. That rejected the full-payload preview of a
+        token-conditioned claim and failed the stored-handle commit when its
+        JSON snapshot was read back (R01 finding 1).
+        """
+        return normalize_written_gaps(value)
 
     @model_validator(mode="after")
     def validate_merger_claim(self) -> CorrespondenceCommitment:
@@ -224,6 +231,18 @@ class CorrespondenceCommitment(WorkbenchModel):
                 "'conditioning'"
             )
         return self
+
+
+def claim_key(item: CorrespondenceCommitment) -> tuple[str, str | None]:
+    """A set under one conditioning environment: what a spec commits once.
+
+    Adding the proto segment gives a choice identity, which is what makes two
+    applicable claims on one column competitors (see `CompetingChoice`).
+    """
+    return (
+        item.set_id,
+        item.conditioning.model_dump_json() if item.conditioning is not None else None,
+    )
 
 
 class ResiduePolicy(StrEnum):
@@ -369,11 +388,7 @@ class ProtoInventorySpec(WorkbenchModel):
         # tuple to hang the second value on. Uniqueness over the pair keeps what
         # the rule was for (the same claim cannot be committed twice) and makes
         # the elsewhere-condition expressible.
-        claims = [
-            (item.set_id, item.conditioning.model_dump_json()
-             if item.conditioning is not None else None)
-            for item in self.commitments
-        ]
+        claims = [claim_key(item) for item in self.commitments]
         if len(claims) != len(set(claims)):
             raise ValueError(
                 "a correspondence set may be committed once per conditioning "
@@ -516,6 +531,21 @@ class AssemblyDetail(StrEnum):
     FULL = "full"
 
 
+class CompetingChoice(WorkbenchModel):
+    """Another applicable claim on a column that the resolution did not emit.
+
+    Identified by choice identity — `(set_id, conditioning, proto_segment)` —
+    not by `set_id` alone: under units-v2 two conditioned claims on one local
+    set can both hold in a column (`#_` and `_#` on a one-token word), and an
+    identity by set would make that competition invisible.
+    """
+
+    set_id: NonEmptyStr
+    proto_segment: NonEmptyStr | None
+    confidence: float = Field(gt=0.0, le=1.0)
+    conditioning: RuleEnvironment | None = None
+
+
 class ColumnResolution(WorkbenchModel):
     """How one alignment column got its proto value, or failed to."""
 
@@ -542,6 +572,24 @@ class ColumnResolution(WorkbenchModel):
     `test_proto_assembly` surfaces so the session can disambiguate it before
     committing. Resolving it silently by segment order would be the harness
     making a call the model is better placed to make.
+
+    Kept as the distinct *other* set IDs; a competitor on the winner's own set
+    is reported in `competing_choices` only.
+    """
+    competing_choices: tuple[CompetingChoice, ...] = ()
+    """Every other distinct applicable choice, including ones on the same set.
+
+    Empty on reports written before the field existed. Identical duplicate
+    claims of the winner are not competitors and are not listed.
+    """
+    decided_by_equal_confidence: bool = False
+    """A competing choice had the winner's confidence and another value.
+
+    The documented order (ascending proto segment, then set ID) picked the
+    value, which is an arbitrary choice. A rival with the same value is still
+    listed in `competing_choices` but does not set this: it would have emitted
+    the same segment. Not to be confused with the beam-level
+    `traversal.beam.decided_by_tie_break`.
     """
 
 
@@ -630,6 +678,7 @@ __all__ = [
     "ColumnResolution",
     "CommitProtoInventoryArgs",
     "CommittedProtoInventory",
+    "CompetingChoice",
     "ConceptAssemblyReport",
     "CorrespondenceCommitment",
     "ProtoInventorySpec",
@@ -637,6 +686,7 @@ __all__ = [
     "ResiduePolicy",
     "SegmentRestoration",
     "WRITTEN_GAP_SPELLINGS",
+    "claim_key",
     "derive_set_id",
     "normalize_written_gaps",
 ]

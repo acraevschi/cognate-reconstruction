@@ -1833,8 +1833,18 @@ def _inventory_diagnostic_rows(
             "column decisions",
             f"{_reported(diagnostics.columns_decided_by_residue_policy)} by "
             "residue policy, "
-            f"{_reported(diagnostics.columns_decided_by_tie_break)} by an "
-            "arbitrary tie-break",
+            # `columns_decided_by_tie_break` keeps its historical name; it
+            # counts columns another distinct set also matched.
+            f"{_reported(diagnostics.columns_decided_by_tie_break)} with a "
+            "competing set"
+            + (
+                ""
+                if diagnostics.columns_with_competing_choices is None
+                else f", {diagnostics.columns_with_competing_choices} with "
+                "competing applicable choices, "
+                f"{_reported(diagnostics.columns_decided_by_equal_confidence)} "
+                "of them decided arbitrarily between equal-confidence values"
+            ),
         ),
     ]
     if diagnostics.restored_segment_count:

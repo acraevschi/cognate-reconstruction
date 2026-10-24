@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
+import os
 import subprocess
 import sys
 import uuid
@@ -33,6 +33,15 @@ from cognate_reconstruction.agent import (
 )
 from cognate_reconstruction.agent.events import AgentEventKind
 from cognate_reconstruction.agent.instructions import load_agent_instructions
+from cognate_reconstruction.agent.request_journal import (
+    REQUEST_JOURNAL_VERSION,
+    USAGE_RECORDED_EVENT,
+    JsonlRequestJournal,
+    ResumeUsage,
+    read_request_journal,
+    reconcile_resume_usage,
+    request_journal_path,
+)
 from cognate_reconstruction.agent.schemas import COMMIT_REQUIREMENT_NOTES
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.alignment.units import alignment_identity
@@ -898,11 +907,67 @@ def _seed_trajectories(
     )
 
 
-def _write_run_summary(path: Path, summary: dict) -> None:
+def _write_run_summary(path: Path, summary: dict, request_journal: JsonlRequestJournal | None = None) -> None:
+    """Replace the run summary atomically, then mark it in the journal.
+
+    The marker tells a later resume that this summary covers every journaled
+    session so far, so it is written only once the summary is durable.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-    temporary.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
     temporary.replace(path)
+    if request_journal is not None:
+        request_journal.record(USAGE_RECORDED_EVENT, usage=summary.get("usage"))
+
+
+REQUEST_JOURNAL_SETTING = "request_journal"
+"""Checkpoint `operational_settings` key marking a run that journals requests.
+
+A checkpoint with this marker whose journal is missing has lost its record of
+in-flight effort and is treated as missing history, never as zero effort.
+"""
+
+
+def _resume_usage(trajectories_path, checkpoint, checkpoint_path, summary_path,
+                  run_id: str, configuration_sha256: str) -> ResumeUsage:
+    """The cumulative usage a resume restores before it makes any request."""
+    saved_usage = {}
+    if summary_path.exists():
+        saved_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if (saved_summary.get("run_id"), saved_summary.get("configuration_sha256")) != (run_id, configuration_sha256):
+            raise ValueError("resume summary belongs to another run/configuration")
+        saved_usage = saved_summary.get("usage", {})
+    # Every distinct attempt's effort counts, while outcomes count each node once.
+    try:
+        previous = tuple({
+            t.trajectory_id: t for t in TrajectoryDatasetBuilder.read_jsonl(trajectories_path)
+            if t.run_id == run_id and t.configuration_sha256 == configuration_sha256
+        }.values()) if Path(trajectories_path).exists() else ()
+    except OSError:
+        previous = ()
+    return reconcile_resume_usage(
+        saved_usage=saved_usage, trajectories=previous,
+        journal=read_request_journal(request_journal_path(checkpoint_path), run_id, configuration_sha256),
+        journaled=checkpoint.operational_settings.get(REQUEST_JOURNAL_SETTING) == REQUEST_JOURNAL_VERSION,
+        checkpointed_node_ids=checkpoint.steps_by_node,
+    )
+
+
+def _warn_incomplete_history(resumed: ResumeUsage) -> None:
+    if resumed.usage["history_complete"]:
+        return
+    lost = resumed.unrecorded
+    detail = (
+        f"{lost.requests} provider request(s) and {lost.turns} turn(s) were journaled by a "
+        "process that exited before recording them; their turns count against caps, their "
+        "cost and time stay unknown"
+        if not lost.empty else "an earlier resume already found effort lost to an abrupt exit"
+    ) if resumed.usage["effort_counts_known"] else "no trustworthy record of earlier effort"
+    print(f"warning: run usage history is incomplete ({detail})", file=sys.stderr)
 
 
 def _recover_finalized_steps(path, checkpoint, dataset, beam_width):
@@ -987,6 +1052,7 @@ def _command_infer(args: argparse.Namespace) -> None:
     seed_trajectories: tuple[AgentTrajectory, ...] = ()
     input_sha256 = _hash_text(input_text)
     tree_sha256 = _hash_text(dataset.tree.newick)
+    request_journal: JsonlRequestJournal | None = None
     if args.resume:
         if args.run_id is not None:
             raise ValueError("--run-id cannot be changed during --resume")
@@ -1029,6 +1095,20 @@ def _command_infer(args: argparse.Namespace) -> None:
             )
         run_id = args.run_id or f"run-{uuid.uuid4()}"
         if checkpoint_store is not None:
+            journal_path = request_journal_path(checkpoint_store.path)
+            if journal_path.exists():
+                # Its sessions would be read as this run's lost effort.
+                raise ValueError(
+                    f"request journal already exists: {journal_path}; it belongs to an "
+                    "earlier run at this checkpoint path. Remove it or choose a new "
+                    "checkpoint path"
+                )
+            request_journal = JsonlRequestJournal(
+                journal_path, run_id=run_id, configuration_sha256=configuration_sha256,
+            )
+            # The journal exists before the checkpoint does, so a checkpoint
+            # carrying the marker without a journal means the journal was lost.
+            request_journal.record("journal_opened", resumed=False)
             checkpoint = FamilyCheckpoint(
                 run_id=run_id,
                 input_sha256=input_sha256,
@@ -1041,10 +1121,16 @@ def _command_infer(args: argparse.Namespace) -> None:
                     "retry_backoff_seconds": args.retry_backoff_seconds,
                     "max_retry_seconds": args.max_retry_seconds,
                     "retry_max_delay_seconds": args.retry_max_delay_seconds,
+                    REQUEST_JOURNAL_SETTING: REQUEST_JOURNAL_VERSION,
                 },
             )
             checkpoint_store.save(checkpoint)
 
+    if request_journal is None and checkpoint_store is not None:
+        request_journal = JsonlRequestJournal(
+            request_journal_path(checkpoint_store.path), run_id=run_id,
+            configuration_sha256=configuration_sha256,
+        )
     orchestrator = AgentOrchestrator(
         provider,
         instructions=_selected_instructions(args),
@@ -1068,6 +1154,7 @@ def _command_infer(args: argparse.Namespace) -> None:
         event_sink=_event_sink(args),
         run_id=run_id,
         configuration_sha256=configuration_sha256,
+        request_journal=request_journal,
     )
     deterministic = RuleBasedReconstructor(
         beam_width=args.beam_width,
@@ -1105,40 +1192,22 @@ def _command_infer(args: argparse.Namespace) -> None:
             orchestrator._emit(
                 AgentEventKind.RESUME_SETTINGS_CHANGED, "run", f"{name} changed on resume",
                 component=name, original_digest=checkpoint.configuration_components.get(name),
-                current_digest=components[name], original_retry_settings=checkpoint.operational_settings,
-                current_retry_settings={"max_retries": args.max_retries, "retry_backoff_seconds": args.retry_backoff_seconds,
-                                        "max_retry_seconds": args.max_retry_seconds, "retry_max_delay_seconds": args.retry_max_delay_seconds},
+                current_digest=components[name],
+                original_retry_settings={
+                    k: v for k, v in checkpoint.operational_settings.items() if k != REQUEST_JOURNAL_SETTING
+                },
+                current_retry_settings={
+                    "max_retries": args.max_retries, "retry_backoff_seconds": args.retry_backoff_seconds,
+                    "max_retry_seconds": args.max_retry_seconds,
+                    "retry_max_delay_seconds": args.retry_max_delay_seconds,
+                },
             )
-        saved_usage = {}
-        if summary_path.exists():
-            saved_summary = json.loads(summary_path.read_text(encoding="utf-8"))
-            if saved_summary.get("run_id") != run_id or saved_summary.get("configuration_sha256") != configuration_sha256:
-                raise ValueError("resume summary belongs to another run/configuration")
-            saved_usage = saved_summary.get("usage", {})
-        # JSONL can be newer than the last summary after an abrupt exit. Retain
-        # all distinct attempts' effort, while outcomes count each node once.
-        try:
-            previous = tuple({t.trajectory_id: t for t in TrajectoryDatasetBuilder.read_jsonl(args.trajectories)
-                              if t.run_id == run_id and t.configuration_sha256 == configuration_sha256}.values()) if Path(args.trajectories).exists() else ()
-        except OSError:
-            previous = ()
-        recorded_usage = {
-            "turns": sum(t.metrics.turn_count for t in previous),
-            "tool_calls": sum(t.metrics.tool_call_count for t in previous),
-            "reported_cost_usd": sum(t.metrics.cost_usd or 0 for t in previous),
-            "responses_without_cost": sum(1 for t in previous for r in t.provider_responses if r.usage is None or r.usage.cost_usd is None)
-                + sum(t.provider_failure is not None and t.provider_failure.response_state == "unknown" and not t.provider_failure.retryable for t in previous),
-            "elapsed_seconds": sum(t.metrics.duration_seconds for t in previous),
-        }
-        for key in recorded_usage:
-            value = saved_usage.get(key, 0)
-            if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
-                raise ValueError(f"invalid recorded run usage: {key}")
-        usage = {key: max(value, saved_usage.get(key, 0)) for key, value in recorded_usage.items()}
-        recorded_completed = {t.node_id for t in previous if t.completed and t.reconstruction_step is not None}
-        usage["history_complete"] = saved_usage.get("history_complete", True) and (
-            bool(saved_usage) or set(checkpoint.steps_by_node) <= recorded_completed)
-        orchestrator.restore_usage(usage)
+        resumed = _resume_usage(args.trajectories, checkpoint, checkpoint_store.path,
+                                summary_path, run_id, configuration_sha256)
+        _warn_incomplete_history(resumed)
+        orchestrator.restore_usage(resumed.usage)
+        request_journal.record("journal_opened", resumed=True,
+                               restored_usage=orchestrator.usage_snapshot())
     try:
         result = service.reconstruct_family(
             dataset, anchors_by_node=anchors_by_node,
@@ -1147,11 +1216,11 @@ def _command_infer(args: argparse.Namespace) -> None:
         )
     except (Exception, KeyboardInterrupt):
         if service.last_run_summary is not None:
-            _write_run_summary(summary_path, service.last_run_summary)
+            _write_run_summary(summary_path, service.last_run_summary, request_journal)
             print(f"INCOMPLETE RUN: progress and missing evaluations saved to {summary_path}", file=sys.stderr)
         raise
     _write_json(args.output, result.model_dump_json(indent=2))
-    _write_run_summary(summary_path, service.last_run_summary)
+    _write_run_summary(summary_path, service.last_run_summary, request_journal)
     reconstructed = len(result.internal_nodes) - len(result.node_failures)
     print(
         f"wrote {args.output}: {reconstructed} reconstructed "

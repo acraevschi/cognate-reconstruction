@@ -54,6 +54,12 @@ class FamilyReconstructionResult(WorkbenchModel):
 
 
 def _best_lexicon(beam: NodeBeamState) -> LanguageLexicon:
+    """The top candidate per concept, with its analysis carried as-is.
+
+    Built like `traversal.beam.beam_to_lexicon`, restricted to the first
+    candidate. The analysis is copied, never re-derived from the spelling, so
+    pieces the beam left unknown stay unknown here.
+    """
     return LanguageLexicon(
         variety_id=beam.node_id,
         name=beam.node_id,
@@ -63,6 +69,7 @@ def _best_lexicon(beam: NodeBeamState) -> LanguageLexicon:
                 variety_id=beam.node_id,
                 concept_id=distribution.concept_id,
                 segments=distribution.candidates[0].segments,
+                analysis=distribution.candidates[0].analysis,
             )
             for distribution in beam.distributions
         ),

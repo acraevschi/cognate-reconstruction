@@ -77,11 +77,13 @@ from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
     ColumnResolution,
     CommittedProtoInventory,
+    CompetingChoice,
     ConceptAssemblyReport,
     CorrespondenceCommitment,
     ResidueDisposition,
     ResiduePolicy,
     SegmentRestoration,
+    claim_key,
 )
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.rules import (
@@ -622,6 +624,7 @@ def _matched_outcome(
     *,
     conditioned: bool,
     competing: Sequence[str] = (),
+    rivals: Sequence[CorrespondenceCommitment] = (),
 ) -> ColumnOutcome:
     proto = item.proto_segment
     return ColumnOutcome(
@@ -632,6 +635,20 @@ def _matched_outcome(
             proto_segment=proto,
             resolved_by="conditioned_set" if conditioned else "set",
             competing_set_ids=tuple(competing),
+            competing_choices=tuple(
+                CompetingChoice(
+                    set_id=rival.set_id,
+                    proto_segment=rival.proto_segment,
+                    confidence=rival.confidence,
+                    conditioning=rival.conditioning,
+                )
+                for rival in rivals
+            ),
+            decided_by_equal_confidence=any(
+                rival.confidence == item.confidence
+                and rival.proto_segment != item.proto_segment
+                for rival in rivals
+            ),
         ),
         log_mass=math.log(item.confidence),
         reading=frozenset() if proto is None else frozenset({proto}),
@@ -643,7 +660,9 @@ class _ColumnStats:
     unaccounted: int = 0
     residue_policy_decided: int = 0
     tie_broken: int = 0
-    ambiguous: list[ColumnResolution] = field(default_factory=list)
+    """Historical `columns_decided_by_tie_break`: another distinct set matched."""
+    equal_confidence: int = 0
+    competing: int = 0
 
 
 def resolve_columns(
@@ -718,15 +737,17 @@ def resolve_columns(
                 satisfied.append(item)
         if satisfied:
             best = _choose_column_commitment(satisfied)
-            competing = tuple(
-                item.set_id for item in satisfied if item.set_id != best.set_id
-            )
+            rivals = _competing_choices(best, satisfied)
+            competing = tuple(dict.fromkeys(
+                item.set_id for item in rivals if item.set_id != best.set_id
+            ))
             outcome = _matched_outcome(
-                best, column, reflexes, conditioned=True, competing=competing
+                best, column, reflexes, conditioned=True, competing=competing,
+                rivals=rivals,
             )
-            if competing:
-                stats.tie_broken += 1
-                stats.ambiguous.append(outcome.resolution)
+            stats.tie_broken += bool(competing)
+            stats.competing += bool(rivals)
+            stats.equal_confidence += outcome.resolution.decided_by_equal_confidence
             outcomes[column] = outcome
             continue
         fallback = [item for item in matches if item.conditioning is None]
@@ -752,6 +773,44 @@ def resolve_columns(
     return ordered, stats
 
 
+def _choice_identity(
+    item: CorrespondenceCommitment,
+) -> tuple[str, str | None, str | None]:
+    """What makes two applicable claims different choices.
+
+    Not `set_id` alone: units-v2 lets one local set carry several conditioned
+    values, and two of them can hold in the same column. Confidence and
+    rationale are not part of it — they grade a choice, they do not make it a
+    different one.
+    """
+    return (*claim_key(item), item.proto_segment)
+
+
+def _competing_choices(
+    best: CorrespondenceCommitment,
+    satisfied: Sequence[CorrespondenceCommitment],
+) -> tuple[CorrespondenceCommitment, ...]:
+    """Distinct applicable choices other than the one the column emitted.
+
+    Ordered by the resolution key, so the runner-up comes first. A duplicate of
+    the winner's choice identity, or of an already-listed rival, is not a
+    second competitor.
+    """
+    seen = {_choice_identity(best)}
+    rivals: list[CorrespondenceCommitment] = []
+    for item in sorted(satisfied, key=_column_resolution_key):
+        identity = _choice_identity(item)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        rivals.append(item)
+    return tuple(rivals)
+
+
+def _column_resolution_key(item: CorrespondenceCommitment):
+    return (-item.confidence, item.proto_segment or "", item.set_id)
+
+
 def _choose_column_commitment(
     satisfied: Sequence[CorrespondenceCommitment],
 ) -> CorrespondenceCommitment:
@@ -763,10 +822,7 @@ def _choose_column_commitment(
     every such column so a session can condition one of the sets, split a set, or
     say in its summary that the evidence does not decide.
     """
-    return min(
-        satisfied,
-        key=lambda item: (-item.confidence, item.proto_segment or "", item.set_id),
-    )
+    return min(satisfied, key=_column_resolution_key)
 
 
 def _assemble_segments(
@@ -798,9 +854,10 @@ class ConceptAssembly:
     """One concept's winning assembly, and everything a report needs from it."""
 
     report: ConceptAssemblyReport
-    ambiguous_columns: tuple[ColumnResolution, ...]
     residue_policy_columns: int
     tie_broken_columns: int
+    equal_confidence_columns: int
+    competing_choice_columns: int
     anchors_available: bool
 
 
@@ -1153,9 +1210,10 @@ class ProtoInventoryAssembler:
                 log_score,
                 ConceptAssembly(
                     report=report,
-                    ambiguous_columns=tuple(stats.ambiguous),
                     residue_policy_columns=stats.residue_policy_decided,
                     tie_broken_columns=stats.tie_broken,
+                    equal_confidence_columns=stats.equal_confidence,
+                    competing_choice_columns=stats.competing,
                     anchors_available=bool(anchor_segments),
                 ),
             )
@@ -1251,6 +1309,8 @@ class ProtoInventoryAssembler:
         unaccounted_columns = 0
         residue_policy_columns = 0
         tie_broken_columns = 0
+        equal_confidence_columns = 0
+        competing_choice_columns = 0
         cross_branch_concepts = 0
         assembled_concepts = 0
         anchor_mismatches = 0
@@ -1290,6 +1350,8 @@ class ProtoInventoryAssembler:
             unaccounted_columns += assembly.report.unaccounted_column_count
             residue_policy_columns += assembly.residue_policy_columns
             tie_broken_columns += assembly.tie_broken_columns
+            equal_confidence_columns += assembly.equal_confidence_columns
+            competing_choice_columns += assembly.competing_choice_columns
             if assembly.report.column_count:
                 assembled_concepts += 1
                 cross_branch_concepts += assembly.report.cross_branch_assembled
@@ -1362,6 +1424,8 @@ class ProtoInventoryAssembler:
             ),
             columns_decided_by_residue_policy=residue_policy_columns,
             columns_decided_by_tie_break=tie_broken_columns,
+            columns_with_competing_choices=competing_choice_columns,
+            columns_decided_by_equal_confidence=equal_confidence_columns,
             mean_set_support=(sum(supports) / len(supports) if supports else 0.0),
             restored_segment_count=len(request.restorations),
             alignment_overrides=len({item.concept_id for item in overrides}),
@@ -1425,6 +1489,8 @@ class ProtoInventoryAssembler:
                         "cross_branch_assembly_rate": 0.0,
                         "columns_decided_by_residue_policy": 0,
                         "columns_decided_by_tie_break": 0,
+                        "columns_with_competing_choices": 0,
+                        "columns_decided_by_equal_confidence": 0,
                         "mean_set_support": 0.0,
                         "restored_segment_count": 0,
                         "contrast_reducing_set_count": 0,

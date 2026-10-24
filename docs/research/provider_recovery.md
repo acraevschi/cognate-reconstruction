@@ -206,3 +206,24 @@ conda run -n llm_reconstruction python tools/evaluate_run.py RUN_DIR --payload F
 Task06 is independently delivered after the required checks. Task07 still needs
 task05's substantive usability follow-up, final frozen interface/manifest/cap review
 and the owner's choice to start. Recovery does not establish a usable linguistic arm.
+
+## R01 amendment — abrupt-loss accounting, 2026-10-23
+
+The guarantee above covered recorded or gracefully finalized effort. After an
+abrupt exit, an empty or partial checkpoint made missing history look
+complete. New checkpointed runs now keep an fsynced `request-journal-v1`
+(`<checkpoint>.requests.jsonl`). It is written before each counted turn,
+provider request and tool call. Usage records add `effort_counts_known`,
+`unrecorded_requests` and `usage_accounting_version="abrupt-loss-v1"`.
+
+- **Turn and tool-call caps.** These count journaled lost effort exactly.
+- **Cost.** Known priced responses are restored. In-flight and unpriced requests
+  stay unknown, and a cost cap refuses.
+- **Elapsed time.** This is a lower bound, and a time cap refuses.
+- **History flag.** `history_complete` stays false.
+- **Legacy checkpoints.** One without a run summary is no longer certified
+  complete: it refuses cumulative caps and continues flagged without them.
+
+The sentence "missing cost/history cannot silently restart a capped seed's spend
+at zero" now holds for journaled abrupt loss. It is not a guarantee for effort
+lost together with its journal. See [R01 repairs](post_review_contract_repairs.md).
