@@ -1,5 +1,68 @@
 # Research and implementation plan
 
+## Active post-review plan — 2026-10-08
+
+The owner requested implementing the independent review's actionable repairs and
+research directions, then clarified that the same repaired harness should be
+tested with a stronger model before substantial redesign or pivot. The active
+briefs are `prompts/post-review/01-contract-repairs.md` through
+`07-assisted-hypothesis-criticism.md`, identified as **R01–R07**. As clarified
+2026-10-13, the user selects the main agent and thinking level outside the prompt;
+useful delegated subagents use Claude Opus 5.5 with medium thinking.
+Experimental reconstruction models are a separate choice. Preparation changes
+documentation only and does not launch agents, implement repairs or run inference.
+
+| ID | Work | Dependencies and decision |
+| --- | --- | --- |
+| R01 | Four bounded contract/reporting fixes: token-conditioned native JSON/readback; abrupt-history accounting; same-set ambiguity reporting; annotated best-lexicon export | Reproduce review counterexamples; offline only |
+| R02 | Small supplied-hypothesis usability and evidence-sensitive judgment tasks, source validity, baselines, normal evaluator controls, batch ledger, candidate manifests | R01 for final validation; independent design can start earlier; no provider calls |
+| R03 | One local baseline and one stronger candidate on the same repaired harness; distinguish interaction success from linguistic utility | R01/R02 verified, reviewed manifest and explicit model/resource authorization; local success/availability does not gate stronger arm |
+| R04 | Conditional current-versus-simpler evidence/response package study, or a justified narrower follow-up | R03 selects unresolved question; do not assume redesign is necessary |
+| R05 | Conditional value of intermediate hypotheses and robustness to equivalent presentations | Useful local capability or a specific demonstrated propagation uncertainty |
+| R06 | Optional explicit forward prediction with genuine withholding; minimal offline prototype | Owner selects this direction; not all conditional tasks must precede it |
+| R07 | Optional source-linked hypothesis critic and balanced/blinded evaluation prototype | Alternative contribution selected by owner; R06 not required |
+
+Immediate sequence: R01 → R02 → R03. Do not interpret the later briefs as a
+requirement to implement every idea. R04/R05 are evidence-dependent and R06/R07
+are alternatives, not completion gates. Give an agent one individual brief at a
+time and use the amended next brief after its handoff. Pasting a conditional or
+optional brief selects that direction within its scope; verify evidence and any
+live-resource prerequisites without asking the user to select it again. Do not
+return to historical root-level 07/08 as a second phase. Preserve both execution
+backends while
+allowing a small study to expose one appropriate representation. Defer broad model
+rankings, training, large new corpora, global optimization, automatic subgrouping
+and feature/backend expansion until a bounded study demonstrates the need.
+
+The first live comparison separates two stages. A supplies a nonempty conditioned
+hypothesis and tests preview/revision/commit; B asks the model to choose a linguistic
+analysis from appropriate evidence. A is not quality evidence. Freeze B's outcomes,
+counterevidence/ambiguity cases and non-oracle baselines; exact copying can be
+legitimate and can also make an alleged conditioning test non-discriminating.
+Keep raw and versioned diagnostics, all planned denominators and exposure labels.
+
+Model changes are the intended intervention in R03, while harness/evidence/scoring
+stay common. Necessary provider/reasoning differences are recorded. Later interface
+comparisons hold model choice common or explicitly propose a small factorial study.
+Do not pool changed models, prompts or budgets as an isolated assembly repair.
+The updated experiment policy retains aggregate budget limits and excludes any
+unspecified paid authorization. Frozen manifests are reviewed before live use;
+previous owner approval carries forward without repeated requests.
+
+Each implementing session updates its result and shared handoff, then makes small
+concrete amendments to affected downstream prompts: delivered versions/interfaces,
+input paths, commands, interpretation and remaining gates. Mirror the actionable
+text in the tracked handoff because prompts are ignored. The user chooses the next
+task; no handoff dispatches it. Use the latest amendment over an older instruction.
+
+## Historical Task01–08 plan
+
+The material below preserves the earlier task formulation and numbered history.
+Its original Task07 local-first experiment is superseded as the immediate next
+study by R02/R03; historical Task08's optional successor is R06. Earlier local-
+success gates and Task07-only spending references are read under the dated current
+policy above. Historical artifact/contract names are not renumbered.
+
 Accepted work direction, 2026-09-15; sequence amended 2026-10-04 after independent
 review; numbered consecutively 01–08. These are planned tasks, not implemented
 features. Read [current state](current_state.md) and

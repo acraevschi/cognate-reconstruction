@@ -1,5 +1,31 @@
 # Current state
 
+## Post-review qualification — 2026-10-08
+
+The independent assessment completed on 2026-10-07 and is local-only at
+`prompts/review-after-tasks01-06-report.md`. Its fresh verification reproduced
+364 historical score records and eleven committed beams/reports; 167 focused
+tests passed. Those are review observations, not tests rerun during this prompt
+preparation. The review also reproduced four gaps: token-conditioned JSON/handle
+commit failure, abrupt first-node resource-history reset, missing same-set
+condition-overlap diagnostics, and dropped analysis in `best_lexicon` export.
+Current traversal/normal evaluation use the analysis-preserving beam path; the
+export defect does not negate those propagation controls.
+
+No fixes or new inference have been performed by the follow-up prompt preparation.
+Task05 therefore has an additional offline contract gap as well as unproven live
+usability; Task06's delivered graceful recovery does not establish safe cumulative
+caps over every hard-interruption window. Preserve their historical test results.
+
+The owner requested an early stronger-model comparison on the repaired harness
+before substantial redesign/pivot. R01 repairs, R02 prepares instruments/manifests,
+and R03 separates supplied-hypothesis usability from linguistic judgment for a
+local baseline and one stronger candidate. Local success is not a prerequisite to
+the stronger arm. Most software tests are deterministic; older hosted Gemini
+commit success and recent local Gemma failures are not a controlled model comparison.
+See the shared handoff and research plan for the current R01–R07 sequence. Sections
+below retain their dated historical task numbering/status and implemented evidence.
+
 Updated 2026-10-05 with task 06 offline provider recovery and interruption accounting.
 Task05's single local smoke failed; substantive live usability remains unresolved.
 Task 04 units-v2 and task 03 final smoke accounting

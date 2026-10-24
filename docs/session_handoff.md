@@ -1,7 +1,8 @@
 # Shared session handoff
 
 Use this file to carry implementation context between chats, agents, and resumed
-sessions. Task numbers refer to work packages 01–08, not individual chats. Keep
+sessions. Historical Task01–Task08 and active post-review R01–R07 identify work
+packages, not individual chats. Always include the R prefix for new work. Keep
 the live summary short; link detailed evidence in each task's result document.
 
 The [current state](current_state.md) describes accepted findings and implemented
@@ -16,7 +17,8 @@ what actually exists, even when a status entry is out of date.
 ## Numbering — updated 2026-10-04
 
 The owner requested consecutive numbering after the repair brief was added.
-Active instructions and task rows below use the current 01–08 sequence.
+Historical instructions and Task01–08 rows retain that sequence; the 2026-10-08
+post-review amendment below introduces the separately named R01–R07 sequence.
 Dated research reports, saved runs, conversation references and the historical
 session entries retain the numbers used when they were written. Artifact/schema
 labels such as task02-v1, units-v1 and task03-* have not changed.
@@ -83,10 +85,14 @@ an implementation. Local inference remains serial under the experiment policy.
 
 ## Live task state
 
-Updated 2026-10-05. Tasks 01–04 are delivered; 05 is complete offline but partial
-at substantive local commit usability after its single failed smoke. 06 is delivered
-offline; 07 remains unstarted. The completion amendment supersedes earlier interface
-versions/defaults. The task03 smoke remains incomplete live interface evidence.
+Updated 2026-10-08. Tasks01–04 remain delivered with newly identified residual
+reporting/export gaps. Task05 has an offline conditioned-JSON defect and unproven
+substantive live usability. Task06 has an abrupt-history gap beyond its delivered
+graceful-recovery work. No new fixes or inference have run. The completed independent
+review and subsequent owner discussion are translated into R01–R07 below; R01–R03
+are the immediate sequence. Original Task07 is superseded as the next experiment;
+Task08's optional successor is R06. The older task03/05 smokes remain qualified
+historical interface evidence, not controlled comparisons.
 
 Active session: none.
 
@@ -103,14 +109,199 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | --- | --- | --- | --- |
 | 01 — Failure audit | complete | Fixed 12-concept panel, fresh counts, traces and deterministic replay delivered | Task 01 completion below |
 | 02 — Evaluation | complete | task02-v1 contract, evaluator, six small cases, migration and offline results delivered | Task 02 completion below |
-| 03 — Evidence/assembly | complete | units-v1 repair and offline checks delivered; single smoke stalled on malformed commits | Task 03 completion below |
-| 04 — Evidence repair | complete | units-v2 counts/shared collections, local witnesses and normal piece evaluator verified offline; 607 portable checks pass | Task 04 completion below |
-| 05 — Instructions/protocol | partial | Offline repair/633 portable checks delivered; sole smoke failed; review final interface/manifest and choose a bounded usability follow-up before 07 | Task05 handoff below |
-| 06 — Provider recovery | complete | Offline recovery/206 focused/680 portable checks delivered; semantic hashes and task02-v1 preserved | Task06 completion below |
-| 07 — Local comparisons | not started | 04 instrument/caps verified; await 05 usability, relevant 06 or explicit scope-out, and final independent review | Task 04 completion amendment |
-| 08 — Forward prediction | deferred | 07's recommendation and the user's decision to take up the study | — |
+| 03 — Evidence/assembly | complete | Historical delivery retained; R01 addresses analysis loss in best-lexicon export | Task03 completion; post-review amendment |
+| 04 — Evidence repair | complete | Documented counterexamples repaired; R01 addresses an additional same-set ambiguity-reporting gap | Task04 completion; post-review amendment |
+| 05 — Instructions/protocol | partial | R01 repairs token-conditioned native serialization; R03 tests substantive final usability | Post-review amendment |
+| 06 — Provider recovery | partial | Delivered graceful recovery retained; R01 repairs abrupt-history completeness before relying on cumulative caps | Post-review amendment |
+| 07 — Original local comparisons | deferred | Unstarted historical experiment superseded as immediate work by R02/R03; package comparison can be selected in R04 | Post-review amendment |
+| 08 — Original forward prediction | deferred | Optional successor is R06, activated by owner choice | Post-review amendment |
+
+| Post-review ID | Status | Prerequisite / next action | Intended result |
+| --- | --- | --- | --- |
+| R01 — Contract repairs | not started | Reproduce/fix four confirmed counterexamples offline | `docs/research/post_review_contract_repairs.md` |
+| R02 — Diagnostic panel and manifests | not started | Verify R01 interfaces; independent design may proceed earlier | `docs/research/model_diagnostic_design.md` |
+| R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest, selected model and resource scope; local success not required | `docs/research/model_capability_diagnostic.md` |
+| R04 — Interface and evidence study | deferred | R03/owner selects a specific question; no automatic redesign | `docs/research/focused_interface_study.md` |
+| R05 — Propagation and robustness | deferred | Useful local judgments or a demonstrated propagation uncertainty | `docs/research/propagation_robustness_study.md` |
+| R06 — Forward prediction | deferred | Owner-selected alternative, not a completion gate | `docs/research/forward_prediction_feasibility.md` |
+| R07 — Hypothesis criticism | deferred | Owner-selected alternative; no R06 prerequisite | `docs/research/hypothesis_criticism_feasibility.md` |
 
 ## Amendments for downstream tasks
+
+### Prompt voice, delegation and workflow clarification — 2026-10-13
+
+The user requested a wording correction, not implementation of the R-series.
+All seven `prompts/post-review/` briefs now speak as the user's direct first-person
+instructions. The user selects the main agent and thinking level when starting
+the session; no main-agent model is prescribed. Delegated agents should use
+Claude Opus 5.5 with medium thinking. This supersedes the Sol xhigh/high settings
+in older preparation entries and does not select a reconstruction provider or
+authorize model operations. Use supported delegation controls rather than inventing
+a provider identifier. If the requested setting is unavailable, continue separable
+implementation yourself and record the limit; a required independent review stays
+pending unless explicitly scoped out, rather than becoming self-review.
+
+Copy-paste one individual brief at a time: R01, then its amended R02, then its
+amended R03 after each result/handoff. The agent reads the common README and tracked
+handoff; do not paste the entire folder as one task. Choose subsequent work from
+R03's findings: R04/R05 remain conditional, R06/R07 optional alternatives. Pasting
+one of these briefs selects that direction within its stated scope, so do not ask
+the user to select it again; verify its evidence and live-resource prerequisites.
+Do not return to root-level historical 07/08 afterward as a second required phase.
+Old Task07 is superseded by R02/R03 and possibly R04; old Task08's optional
+successor is R06. Preserve historical briefs as background. Downstream amendments,
+their tracked mirrors, scientific gates and aggregate resource limits are unchanged.
+
+### Active post-review amendment — 2026-10-08
+
+This amendment supersedes older forward-looking local-first/Task07 sequencing
+instructions below. Historical observations, task identifiers, raw artifacts and
+original task deliverables are not rewritten. The owner requested detailed prompts
+for the agreed repairs/studies, including early testing of a stronger model on the
+same repaired harness before substantial redesign/pivot. The prompts are in
+`prompts/post-review/`, with consecutive files identified as R01–R07. The root
+prompt index routes to them; original Task01–08 briefs remain for provenance.
+
+Delegation clarified 2026-10-13: the user selects the main implementation agent
+and thinking level outside the prompt. Useful delegated subagents: Claude Opus 5.5
+with medium thinking. Delegate separable offline work with named file ownership;
+main owns shared semantic interfaces and integration. Only main launches authorized
+reconstruction inference, serially. These coding-agent choices do not specify
+the reconstruction model/provider. No task or inference was launched during
+prompt preparation; no commit/push/merge is authorized by a brief alone.
+
+**Review evidence to preserve.** The independent report is local-only at
+`prompts/review-after-tasks01-06-report.md`, completed 2026-10-07 at HEAD `63af18d`.
+It ran 167 focused tests, reproduced 364 saved scores and eleven committed
+beams/reports, and remeasured current frozen-input coverage: Burmic 543 local
+sets/210 patterns, 437/567 alternative occurrences under the default filter;
+Maruic 738/320, 1033/1340 occurrences. Both represent all 54 concepts; concept
+coverage is not material coverage. These are prior review observations, not
+verification newly run by prompt preparation or the next agent.
+
+**R01 / `01-contract-repairs.md`: reproduce and repair four boundaries.**
+
+1. Token conditioning: a valid `CorrespondenceCommitment` with reflexes `p:f`,
+   proto `p`, confidence .8, and `conditioning.right.tokens=("i",)` fails JSON
+   round-trip in review Pydantic 2.13.4. A=`p i`, B=`f i`, one supplied root unit,
+   other columns retained from A, reproduces through the native registry. Full
+   preview rejects nested arrays; compact choices preview commit-ready then fail
+   when the stored spec is read at commit. Word-edge-only controls succeed.
+   Inspect gap normalization in `schemas/inventory.py`, native registry and stored
+   hypothesis readback. Preserve strict values; cover both profiles, token contexts,
+   shared claims where relevant, exact re-preview, JSONL and downstream readback.
+2. Abrupt history: a fake first-node run returns one uncommitted response, then
+   exits outside ordinary finalization on its second call under a two-turn cap.
+   Empty initial checkpoint survives; no final trajectory/summary exists. Resume
+   currently permits two further calls and says history complete because the set
+   of completed nodes is empty. Inspect `cli.py` usage completeness and durable
+   lifecycle state. Fix first/later-node windows with a minimal marker/journal or
+   conservative refusal; do not claim known-zero missing spend or mid-node resume.
+3. Overlapping choices: one-token A=`p`, B=`f`, same local set reconstructs `p`
+   at word start (.7) and `t` at word end (.9). Both apply; current code commits
+   `t` while ambiguity/competitor lists are empty. Distinguish claim identity from
+   set identity in `traversal/assembler.py` and reports; test equal/unequal confidence.
+4. `_best_lexicon` in `agent/service.py` drops beam analysis from the public
+   `internal_nodes[].best_lexicon` projection. Preserve compatible analysis or an
+   explicit annotated-export contract. Actual traversal `beam_to_lexicon` and
+   normal evaluator already retain analysis; do not conflate their behavior.
+
+Use review temporary probes only if available; make portable minimal regressions
+without requiring `/tmp` transfer. Result: `post_review_contract_repairs.md`.
+Update contracts/current state and amend R02/R03 with actual versions, APIs,
+fixtures, commands, compatibility and unresolved limits. No provider/model work.
+
+**R02 / `02-diagnostic-panel-and-manifests.md`: prepare instruments, not inference.**
+Stage A supplies a nonempty token-conditioned hypothesis, a small revision and
+exact preview/commit/readback; it is usability, not linguistic discovery. Stage B
+uses a very small recurrent multi-etymon decision panel with counterevidence and
+ambiguity controls; models propose the choices. Keep A's answers, targets and
+evaluator hints out of B. Verify identity/fixed-daughter and a justified simple
+deployable baseline. Daughter c copies 6/6 in the old conditioned case, so raw exact
+alone does not demonstrate conditioning skill. Preserve raw/versioned readings,
+all planned denominators, scorable coverage, proxies and missing/fallback distinctions.
+Audit source/unit/notation validity before a real-language primary outcome; no
+invented tone mapping or OLD MAN resolution. Use normal evaluator and fake-run
+controls, not comparator-only tests. Measure actual fixture caps/sparse coverage.
+
+Prepare one local baseline and one stronger candidate, not a model leaderboard.
+Choose for native tools/reasoning and auditable resources, not size alone. Consult
+official public metadata/pricing; no model-server discovery/loading or provider
+requests in R02. Carry existing owner choices; if provider/model or ceiling remains
+unspecified, prepare a concrete recommendation and ask only for that missing
+decision while continuing offline work. Coding-model settings are not experimental
+API authorization. Existing Flash policy applies only within its named envelope.
+
+Implement/reuse a minimal whole-batch ledger/launcher with fake tests for all
+attempts, missing costs, interruptions and distinct outcomes. Candidate manifests
+freeze inputs, code/dirty/source identities, model-visible instruction/schema/node
+notes, versions, output/reasoning settings, caps, primary outcome and stop rules.
+Initial proposal: at most one A and one conditional B trial per model, smaller if
+budget requires; prespecified replication only within the same total envelope.
+Result: `model_diagnostic_design.md`. Amend R03 with actual commands/artifacts,
+model/resource decision, ledger and outstanding review/launch gates.
+
+**R03 / `03-stronger-model-diagnostic.md`: early same-harness model diagnosis.**
+Verify R01/R02 and use a read-only Claude Opus 5.5 subagent with medium thinking
+to review the final concrete manifest unless owner explicitly scopes that review out.
+Reviewer cannot edit,
+run/discover/load models or spend. Main resolves findings and freezes before launch.
+Use one local baseline and one stronger candidate on the same repaired harness.
+The stronger model may run first; local failure or unavailability is not its gate.
+Run A then conditional B separately for each model; missing local B limits the
+paired conclusion but does not automatically block stronger B. Old hosted Gemini
+commit success and local Gemma smoke failure are different snapshots, not a
+controlled comparison. Preserve model/provider/configuration attribution limits.
+
+Live scope must name the model/provider and total authorized envelope. Existing
+Flash ceiling is US$2 total/30 minutes, not per stage/seed/arm; local initial batch
+ceiling is two hours, serially. An explicitly approved alternative supersedes the
+specified fields, and prior permission is not requested again. No fresh paid
+allowance arises in later prompts. Include usability and failures/retries, maximum
+in-flight headroom and unknown costs in one ledger. Actual loaded-model/context
+preflight happens only when ready; no unauthorized model replacement/download.
+
+Separate software-invalid acceptance/rejection, malformed submissions, navigation,
+truncation, infrastructure/resource stops, successful commitments and useful
+linguistic judgments. Stronger success/local failure identifies a practical
+capability/interface interaction, not an optimal harness. Both completing poorly
+points toward task/evidence/judgment; both failing motivates a smaller-interface
+diagnostic, not an immediate verdict of impossibility. No extra seeds/model swaps
+or mid-batch patches to obtain success. Result: `model_capability_diagnostic.md`.
+Amend R04 with one evidence-backed next question or explicit deferral; R05 only
+when a propagation question is supported.
+
+**Conditional follow-ups, not a compulsory roadmap.** R04
+`04-interface-and-evidence-study.md` builds/tests only the minimal reduced
+evidence/response package warranted by R03, holding model common or proposing a
+small explicitly funded 2×2 comparison if interaction is the issue. Do not leak
+answers through dossier/candidate curation or mistake membership lists for laws
+over unseen units. R05 `05-propagation-and-robustness.md` tests a specifically
+implicated intermediate/alternative or representation sensitivity before any joint
+optimizer; correct synthetic intermediates are privileged controls, not model
+discoveries. Both start offline and need selected live scope for inference.
+
+R06 `06-forward-prediction.md` is the optional successor to historical Task08:
+explicit forward branch rules, one known- or inferred-ancestor regime, real
+withholding from every evidence channel, ambiguous and overfit controls, smallest
+offline prototype; no automatic inversion or training/backend expansion. R07
+`07-assisted-hypothesis-criticism.md` is an optional alternative: read-only
+source-linked critic, balanced legitimate/error cases, actionable precision and
+false-objection measurement, human utility pending actual blinded expert evaluation.
+No automatic fixes or external messaging. Neither optional task is needed to
+complete R01–R03, and they need not follow each other. PBEBench/CFR remains
+auxiliary background for a concrete question, not a required import.
+
+**Mandatory downstream continuity.** Every implementing main agent records actual
+changes/tests/hashes/artifact paths/limits, updates its R-row and result, then
+patches affected downstream brief paragraphs with concrete delivered interfaces,
+commands, interpretation and remaining gate. Mirror the full actionable amendment
+here because ignored prompts do not travel. Do not append contradictions, copy
+historical allowances as fresh permission, dispatch another chat or claim a pending
+live result is complete. Preserve unrelated changes and all historical experiment
+artifacts. Use existing conda environment, focused meaningful tests and one portable
+suite after substantive changes; documentation-only preparation needs no runtime
+suite. No new dependency/model/data operations by default.
 
 Task 01 amendments below are applied to the local briefs. They are tracked here
 because `prompts/` is ignored and does not travel to another checkout. Receiving
@@ -622,6 +813,53 @@ Do not migrate hashes or mix arms merely to resume. Task05 substantive usability
 and the final independent interface/manifest/cap review still gate comparative
 inference; the owner chooses the next bounded follow-up. No inference is dispatched.
 
+### Review preparation amendment — 2026-10-06
+
+The owner requested a brief for an open-ended GPT-6 Astra review of Tasks01–06
+before Task07.
+The local brief is `prompts/review-after-tasks01-06.md`, prepared against
+`burmish-session-evaluation-units` at `63af18d`; it is not a completed review or
+a dispatch. Task01 has no dedicated implementation commit and remains local by
+owner choice. Tasks02/03 share `eebc8f6`, with Task03 review fixes in `217e25e`;
+Task04 is `7356f66`, Task05 `3ea4402`, Task06 `63af18d`. The review may challenge
+the diagnoses, final integrated implementation and research direction, and propose
+new studies, substantial changes or pivots beyond the numbered plan. Task07 readiness
+is one part of the assessment, not its organizing objective. The current plan and
+old implementation-scope restrictions are context, not limits on recommendations;
+operational limits still govern what the reviewer may execute.
+Read-only inspection and focused deterministic offline probes are appropriate;
+write only the local review report and temporary
+probe outputs. No implementation/status edits or new reconstruction inference,
+provider/model operations, downloads, commits, pushes or task dispatch are part
+of the review. The report is `prompts/review-after-tasks01-06-report.md` when
+produced; it is absent at preparation.
+
+**05/07 next session under the current plan:** Read that report when available, verify accepted findings
+against actual source/artifacts, and carry material consequences into the bounded
+usability follow-up, frozen arms and final comparison manifest. A review of the
+prospective plan is not certification of a manifest that does not yet exist.
+Task05 substantive usability, ordinary evaluator/caps and owner-chosen launch
+remain gates; this brief neither completes them nor licenses a second smoke.
+
+**Research-direction clarification:** The owner explicitly wants the reviewer to
+develop its own future directions, changes and pivots, rather than merely inspect
+past work and readiness for the next prompt. A different sequence or research
+roadmap is an acceptable recommendation. Task07 may be revised, replaced or deferred
+in that recommendation; the owner decides which proposals to adopt before any
+implementation/inference. Targeted primary-source literature reading may inform
+the assessment; new data collection, models, dependencies and provider runs remain
+proposals, not authorized review actions.
+
+**08 scope clarification:** The owner explicitly treats Task08 as an optional
+future idea outside the current Tasks01–07 plan's completion criteria. Do not
+require its implementation for Task07 or the Tasks01–06 assessment. The reviewer
+may discuss it alongside other future ideas, without treating it as the required
+destination or the limit of recommendations. A later owner decision is needed to
+activate it. These instructions are mirrored in the
+local 07/08 briefs and index. `prompts/` remains ignored; transfer the brief/report
+separately to another checkout or use this tracked context and verify missing
+evidence rather than inventing it.
+
 ## Session handoffs
 
 Entries below through the prompt-revision handoff use the numbering in effect
@@ -1039,3 +1277,105 @@ new runtime change was introduced for packaging. The README now reflects deliver
 Task01 audit/CLI/tests/fixtures, PBEBench assessment, raw runs and ignored prompts
 remain local. No push or PR was requested or performed. Task05 stays partial at
 substantive live usability; the task07 review/usability gate remains unchanged.
+
+### 2026-10-06 — independent review brief for Tasks01–06 prepared
+
+At the owner's request, wrote `prompts/review-after-tasks01-06.md` for GPT-6 Astra,
+against `burmish-session-evaluation-units` at `63af18d`. It supplies project context,
+the actual six briefs, verified task-to-commit mapping, local and checked-in evidence,
+frozen-smoke versus final-source distinctions, and open-ended review questions.
+The reviewer may challenge diagnoses, implementation and the prospective Task07
+design; the output is an evidence-backed readiness judgment and prioritized next
+sequence, without implementation edits or new inference. No review was dispatched.
+
+Task01 remains local/uncommitted; Tasks02/03 share a commit rather than fictitious
+separate histories. Task05 stays partial at live usability, Task06 delivered offline,
+and Task07 unstarted. Recorded the owner's clarification that Task08 is an optional
+future idea outside the current plan's completion criteria. The actionable amendment
+is above and mirrored in the local 07/08 briefs; refreshed the local prompt index.
+No implemented behavior or accepted research finding changed, so current-state and
+runtime files are unchanged. Prompts/report remain ignored and need separate transfer.
+
+Validation: all Markdown links in the new brief resolve, eight full commit hashes
+exist in current ancestry, and 38 document/tool/fixture pointers exist. Changed
+documentation passes whitespace checks. No runtime tests, model operations, provider
+calls, downloads, commits or pushes were performed for this documentation task.
+Next: the owner can start Astra with this brief in the current checkout. Its review
+may inform a bounded Task05 follow-up and the final Task07 manifest; neither is
+authorized or completed by preparing the prompt. Active session cleared.
+
+### 2026-10-06 — review remit broadened at the owner's clarification
+
+The owner clarified that open-ended means independently proposing future research
+directions, changes and pivots, not only auditing delivered work and Task07 readiness.
+Revised `prompts/review-after-tasks01-06.md` around both retrospective assessment
+and research strategy. Astra may propose a different roadmap, revise/replace/defer
+Task07, or recommend changes beyond the numbered prompts. Existing brief restrictions
+are context for past work, not limits on recommendations. Execution remains read-only
+with no reconstruction inference/model operations; targeted primary-source literature
+reading may inform ideas. Task08 may be assessed alongside other future ideas without
+being required or setting the boundary of future directions.
+
+Updated the actionable amendment above and mirrored it in the local index and 07/08
+briefs. Commit/evidence pointers are preserved. Changed-document links, commit ancestry
+and whitespace checks pass. No runtime changes/tests or review dispatch occurred;
+task statuses and current-state findings are unchanged. Next: the owner may start
+Astra with the revised brief and choose which recommendations to adopt afterward.
+Active session cleared.
+
+### 2026-10-08 — post-review follow-up prompts prepared
+
+At the owner's request, translated the completed independent assessment and the
+subsequent stronger-model discussion into seven session-sized briefs in
+`prompts/post-review/`, IDs R01–R07. Immediate work is R01 offline contract repairs,
+R02 offline diagnostic/instrument preparation, and R03 a bounded same-harness
+local/stronger comparison with distinct supplied-hypothesis and judgment stages.
+R04/R05 are conditional interface/propagation studies; R06/R07 are optional forward
+prediction and hypothesis-criticism alternatives, not required milestones.
+
+Every brief introduces the project, identifies scope/prerequisites/artifacts,
+defines meaningful completion and limits, suggests separable Sol-high subagent work
+under a Sol-xhigh main agent, and requires concrete amendments to affected downstream
+briefs plus the tracked handoff. The coding-agent model does not select a reconstruction
+provider. Local-model success/availability no longer gates an otherwise authorized
+stronger arm. Existing aggregate caps remain; a different unspecified paid model
+or larger envelope still needs a concrete applicable owner decision.
+
+Preserved historical Task01–08 numbering and briefs, adding supersession pointers
+to the old 07/08. Updated the prompt index, optional PBEBench/CFR note, tracked
+research plan/policy/current state and live handoff. The completed review report,
+review brief and historical Tasks01–06 prompt contents are unchanged. All prior
+user changes were retained. No implementation, tests of runtime behavior, model
+operations, inference, dependency changes, commits, pushes or task dispatch occurred.
+
+Documentation checks: seven consecutively named R-briefs have matching IDs and
+upstream-amendment sections; local links in 16 new/edited Markdown documents
+resolve; whitespace and `git diff --check` pass. A pre-edit hash inventory confirms
+no protected file changed outside the intended eight existing documentation/prompt
+paths. Eight new files comprise the seven briefs and their common index. Next:
+the owner may give R01 to a main implementation agent; no session is active here.
+
+### 2026-10-13 — first-person prompts and workflow clarified
+
+At the user's request, rewrote the seven post-review briefs as direct instructions
+in the user's voice. Removed prescribed main-agent model/thinking settings;
+the user selects those when starting a session. Delegated work now requests
+Claude Opus 5.5 with medium thinking. Updated the common contract, root index and
+active tracked plan/policy/handoff references; retained older dated preparation
+logs as history under the new amendment above.
+
+Made the copy-paste order explicit: one brief at a time, R01 → R02 → R03, using
+each upstream session's amended next brief and handoff. R04/R05 remain conditional,
+R06/R07 optional alternatives; pasting one selects that direction within scope.
+Old root-level 07/08 are background, not another phase after the R-series.
+Scientific prerequisites, downstream amendments, provider choices and resource
+limits remain unchanged. No implementation task was started.
+
+Documentation checks: all seven briefs have first-person openings and the requested
+subagent setting; no GPT/Sol/main-thinking prescription remains in the post-review
+folder. All 103 local Markdown links in the 14 changed files resolve; trailing
+whitespace and `git diff --check` checks pass. Compared a pre-edit hash inventory
+of 262 tracked files and local prompts: changes are confined to the intended
+documentation/prompt paths. No runtime tests, inference, model operations,
+dependency changes, commits, pushes or task dispatch occurred. Task statuses and
+the independent report are unchanged.
