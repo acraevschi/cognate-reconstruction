@@ -319,3 +319,39 @@ class NoCallProvider:
 
     def complete(self, messages, tools, **kwargs):
         raise AssertionError("completed conditioned nodes must be reused without a provider call")
+
+
+SEEDED_HANDLE_SCRIPT = """
+import json
+from cognate_reconstruction.schemas.lexicon import LexicalForm
+from cognate_reconstruction.schemas.rules import SegmentExpression
+from tests.workbench.test_conditioned_native_roundtrip import RIGHT_I, one_word, preview_and_commit
+dumps = {SegmentExpression(tokens=("i",)).model_dump_json(),
+         SegmentExpression.model_validate_json(SegmentExpression(tokens=("i",)).model_dump_json()).model_dump_json(),
+         SegmentExpression.model_validate_json('{"tokens":["i"],"morphological_boundary_tokens":["-","+"]}').model_dump_json()}
+form = LexicalForm(form_id="f", variety_id="A", concept_id="c", segments=("p",))
+preview_and_commit(one_word(("p", "i"), ("f", "i")), "stored-hypothesis", RIGHT_I)
+print(json.dumps({"segment_dumps": sorted(dumps),
+                  "form_boundaries": json.loads(form.model_dump_json())["morphological_boundary_tokens"]}))
+"""
+
+
+@pytest.mark.parametrize("seed", ["1", "2", "7"])
+def test_boundary_sets_serialize_canonically_and_handles_commit_under_any_hash_seed(seed):
+    # frozenset dumps followed the string-hash seed, so a stored conditioned
+    # handle could be re-digested differently from its own JSON snapshot and
+    # refused as stale at commit (seed 7: the default set and its readback
+    # dumped in different orders). Each seed runs in a fresh interpreter.
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    env = {**os.environ, "PYTHONHASHSEED": seed, "PYTHONDONTWRITEBYTECODE": "1",
+           "PYTHONPATH": str(root)}
+    done = subprocess.run([sys.executable, "-c", SEEDED_HANDLE_SCRIPT], cwd=root, env=env,
+                          capture_output=True, text=True, timeout=120)
+    assert done.returncode == 0, done.stderr[-2000:]
+    out = json.loads(done.stdout.strip().splitlines()[-1])
+    assert out == {"segment_dumps": ['{"tokens":["i"],"morphological_boundary_tokens":["+","-"]}'],
+                   "form_boundaries": ["+", "-"]}

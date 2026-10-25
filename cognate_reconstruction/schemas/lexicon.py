@@ -5,13 +5,14 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_serializer, model_validator
 from cognate_reconstruction.schemas.evidence import FormAnalysis
 
 from cognate_reconstruction.schemas.common import (
     MORPHOLOGICAL_BOUNDARY_TOKENS,
     NonEmptyStr,
     WorkbenchModel,
+    sorted_token_set,
 )
 
 
@@ -146,6 +147,10 @@ class LexicalForm(WorkbenchModel):
     analysis: FormAnalysis | None = None
     morphological_boundary_tokens: frozenset[str] = MORPHOLOGICAL_BOUNDARY_TOKENS
     provenance: FormProvenance = Field(default_factory=FormProvenance)
+
+    @field_serializer("morphological_boundary_tokens", when_used="json")
+    def serialize_boundary_tokens(self, value: frozenset[str]) -> list[str]:
+        return sorted_token_set(value)
 
     @model_validator(mode="after")
     def validate_boundaries(self) -> LexicalForm:

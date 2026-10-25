@@ -5,7 +5,7 @@
 discovery/loading, paid calls, dependency changes or downloads. Environment:
 `llm_reconstruction`, Python 3.11.0, Pydantic 2.13.4, pytest 9.1.1, LingPy 2.6.14.
 [Compact results](post_review_contract_repairs_results.json) and the
-[source manifest](post_review_contract_repairs_manifest.json) (182 SHA-256
+[source manifest](post_review_contract_repairs_manifest.json) (183 SHA-256
 entries over tracked `cognate_reconstruction/`, `tools/`, `tests/`, `skills/`
 plus the four new test modules) accompany this report.
 
@@ -60,7 +60,7 @@ hand on, and a populated JSON round-trip test now guards them.
 
 **After.** Both profiles preview, commit, persist and reuse left- and right-token
 contexts, including a context whose boundary vocabulary is restricted to `+`.
-`tests/workbench/test_conditioned_native_roundtrip.py` (31 cases; 15 fail on
+`tests/workbench/test_conditioned_native_roundtrip.py` (34 cases; 15 fail on
 HEAD, namely every token-context case) covers:
 
 - left/right token contexts plus boundary and word-edge controls, both profiles,
@@ -104,12 +104,26 @@ and tokens, `response_state` and `retryable`.
 - **Journal markers.** A fresh run writes `journal_opened` before its checkpoint
   and marks the checkpoint `operational_settings["request_journal"]`. The
   `FamilyCheckpoint` schema is unchanged.
-- **Reconciliation on resume.** Journaled sessions with no JSONL trajectory are
-  unrecorded effort. Restored totals are JSONL plus that effort, combined with
-  the saved summary by per-key maximum, so repeated resumes are idempotent.
-- **Write failures and torn records.** A failed journal write propagates, so no
-  request is sent unjournaled. A torn final journal line is ignored with a
-  warning; corruption anywhere else is refused.
+- **Summary markers.** After each run summary is written and fsynced, the CLI
+  appends a `usage_recorded` record. The summary covers every record before it.
+- **Reconciliation on resume.** Only the journal after the last marker is
+  examined. There, a session with a JSONL trajectory is recorded effort and a
+  session without one is unrecorded effort. Restored totals are the saved
+  summary plus both, so repeated resumes are idempotent. A run without a
+  journal keeps the earlier rule: the per-key maximum of summary and JSONL.
+- **Graceful exits are not lost effort.** A session that commits and then fails
+  in deterministic post-processing has no trajectory, but the run summary
+  records it (see section 6, D1).
+- **Write failures and torn records.** A failed journal write stops the run
+  with `RequestJournalError`, a run-level interruption like a budget. No request
+  is sent unjournaled and no node becomes a fallback. The reader ignores a torn
+  final line with a warning and refuses corruption anywhere else. The next
+  writer removes the torn line before it appends.
+- **Interrupted requests.** A request interrupted by Ctrl-C, or by an ordinary
+  exception from the provider adapter, is journaled with `outcome="abandoned"`
+  and counted in `responses_without_cost`: it may have been billed.
+- **Stale journals.** A fresh run refuses a journal already at its checkpoint
+  path, so an earlier run's sessions cannot be read as its own.
 
 **Accounting policy per quantity.**
 
@@ -144,27 +158,37 @@ responses_without_cost=2, history_complete=false, effort_counts_known=true,
 unrecorded_requests=2`. Under a 4-turn cap resume makes exactly 2 calls (total
 4); a further resume makes 0 calls and leaves totals unchanged.
 
-`tests/workbench/test_abrupt_interruption.py` (16 cases, fake providers):
+`tests/workbench/test_abrupt_interruption.py` (24 cases, fake providers):
 - first-node loss counted against the cap;
 - larger-cap conservative, idempotent resume;
 - later-node loss with completed nodes and trajectories intact;
 - in-flight request with and without a cost cap;
 - priced response restored, but not its time;
 - time cap refusal;
-- journal durability before each request;
-- unchanged graceful `KeyboardInterrupt`;
+- journal durability before each request, and one fsync per record;
+- graceful `KeyboardInterrupt` mid-request: resumable, with its cost unknown,
+  so a cost-capped resume stops;
+- a post-commit failure, then a time-capped resume that proceeds;
+- effort after a summary added to it, not compared with it;
+- an unwritable journal stopping the run;
+- a torn tail followed by two resumes;
+- unknown history reported before an exhausted turn count;
+- a fresh run refusing a stale journal;
 - retry-only setting change after abrupt loss;
 - legacy run with a summary, legacy run without a summary (with and without
   caps), and a missing journal;
 - torn versus corrupt records;
 - an isolated subprocess calling `os._exit(17)` mid-node.
 
-The module imports the new journal API, so all 16 fail on HEAD; the probe above
-records the behavioural before-state. No real service was killed.
+At `63af18d` the module cannot import the journal API, so its failure there
+says nothing about behaviour. The behavioural before-state is the probe above.
+The review fixes were checked by reverting each one (section 6). No real
+service was killed.
 
 **Limits.** Effort lost together with its journal, or effort from pre-journal
 processes behind an older summary, cannot be detected; the first is handled by
-refusal, the second is undetectable. macOS `os.fsync` is not `F_FULLFSYNC`, so
+refusal, the second is undetectable. A process that dies between writing a
+summary and its marker leaves sessions that both count, which over-counts. macOS `os.fsync` is not `F_FULLFSYNC`, so
 device-level power-loss durability is not guaranteed. Concurrent resumes are
 not coordinated. Mid-node conversation recovery was deliberately not built.
 `run_summary.json` exposes the new usage keys. `inspect_run`/sweep aggregates do
@@ -192,8 +216,9 @@ discarded.
   Confidence and rationale grade a choice; they do not create a new one.
 - **Additive `ColumnResolution` fields.** `competing_choices` lists
   `CompetingChoice(set_id, proto_segment, confidence, conditioning)`, runner-up
-  first. `decided_by_tie_break` marks a column where a rival had the winner's
-  confidence. `competing_set_ids` keeps its meaning (distinct other sets, now
+  first. `decided_by_equal_confidence` marks a column where a rival had the
+  winner's confidence and another value, so the order picked the value.
+  `competing_set_ids` keeps its meaning (distinct other sets, now
   deduplicated).
 - **Preview.** `ambiguous_columns` now includes columns with competing choices.
 - **New additive diagnostics.** `ReconstructionDiagnostics.columns_with_competing_choices`
@@ -205,25 +230,31 @@ discarded.
   counts when present.
 
 **After.** At .7/.9 the column emits `t`, `ambiguous_columns` has one entry and
-`competing_choices=[p/.7/word_initial]`, `decided_by_tie_break=false`. At .9/.9
-it emits `p` with rival `t/.9/word_final` and `decided_by_tie_break=true`. No
-historical rationale is required to silence the diagnostic.
+`competing_choices=[p/.7/word_initial]`, `decided_by_equal_confidence=false`.
+At .9/.9 it emits `p` with rival `t/.9/word_final` and
+`decided_by_equal_confidence=true`. No historical rationale is required to
+silence the diagnostic.
 
-`tests/workbench/test_choice_ambiguity.py` (7 cases):
+`tests/workbench/test_choice_ambiguity.py` (10 cases):
 - both profiles × unequal/equal confidence, through preview, actual commit, the
   step rebuilt from the committed inventory, diagnostics and `ReconstructionStep`
   JSON readback;
 - single-claim non-ambiguity;
-- de-duplication without a winner change;
+- de-duplication without a winner change (defensive: a validated spec cannot
+  repeat a claim);
+- an equal-confidence rival with the same value, which is listed but does not
+  count as decided by equal confidence;
+- the legacy distinct-set path and its historical count;
 - old reports without the new fields still load.
 
 **Compatibility.** Tool-argument schemas and hypothesis digests are unchanged.
 New report JSON carries the two column fields, so trajectory/report bytes and
 the trajectory JSON-schema digest change additively. Saved reports load with
-defaults. **Limit:** a rival with the same value but another condition still
-counts as a competing choice. That is accurate, but it can flag columns whose
-emitted value would not change. The distinct-set path is legacy-only and has no
-new test.
+defaults. The model-visible `test_proto_assembly` *result* also changes: every
+`detail=full` column carries both fields (about 50 bytes per column), and
+`ambiguous_columns` is broader. **Limit:** a rival with the same value but
+another condition still counts as a competing choice, which is accurate but can
+flag a column whose emitted value would not change.
 
 ## 4. Annotated `best_lexicon` export
 
@@ -243,6 +274,98 @@ equal surfaces `p a` but distinct analyses, an `unknown:tail` piece that stays
 `kind="unknown"` with no cognate set, source order status, and model order
 claims (`order_status="model_claim"`) from the morphology control.
 
+## 5. Found while verifying the commit: hash-order serialization of boundary sets
+
+**Before.** A clean `git archive` export of the first R01 commit failed six
+stored-hypothesis conditioned tests in one full run, then passed in the next.
+Looping the conditioned modules reproduced a `hypothesis-stale` refusal at
+commit about once in twelve runs. `SegmentExpression.morphological_boundary_tokens`
+and `LexicalForm.morphological_boundary_tokens` are `frozenset`s. Their JSON
+dump follows hash-table order, which depends on the process's string-hash seed
+and on insertion order. With `PYTHONHASHSEED=7`, the default `{"+","-"}` dumped
+as `["+","-"]` but its JSON readback dumped as `["-","+"]`. A stored handle is
+re-digested from its JSON snapshot at commit, so the digests could disagree.
+Cross-process dumps of every form and condition also varied with the seed. The
+defect was latent at HEAD, where conditioned handles could not commit at all.
+
+**Repair.** JSON-mode field serializers (`when_used="json"`) emit both sets
+sorted, via `schemas.common.sorted_token_set`. Python-mode dumps keep the
+`frozenset`, so strict python revalidation is unchanged. The default dumps as
+`["+","-"]` in every process. Saved artifacts in either order still load,
+because the sets compare equal. The behavioural and tool-schema digests hash
+texts and schemas, not boundary-token data, so they are unchanged under seeds
+1 and 7, and the banked replay still agrees 364/364 and 11/11. A digest over
+*data* that holds a boundary set (a hypothesis digest, a handle) can differ
+from one computed before this repair in a process that dumped `["-","+"]`.
+Such a digest was never reproducible across processes, and none is re-verified
+across processes, so nothing is migrated.
+`test_boundary_sets_serialize_canonically_and_handles_commit_under_any_hash_seed`
+runs seeds 1, 2 and 7 in fresh interpreters, through a conditioned handle
+commit. It fails on the first R01 commit. Twenty-five consecutive loops of the
+conditioned, protocol and ambiguity modules then passed.
+
+**Clean-export note.** A clean export also fails ten tests that read ignored
+local corpora (`data/lexibank/hillburmish`, Burmish benchmark material) or
+local-only audit files. The same ten fail on a clean export of `63af18d`; they
+are not R01 regressions. The working-tree portable suite includes those local
+inputs.
+
+## 6. Independent review of R01 — 2026-10-25
+
+A separate Claude Opus 5.5 reviewer (medium thinking) read the R01 commits
+without pointers to suspected faults. It changed nothing in the repository.
+It reported three defects, all in finding 2's journal. Each was reproduced here
+before it was fixed.
+
+- **D1: a graceful failure read as an abrupt one.** A committed trajectory
+  reaches the JSONL only in `finalize`, after the overlay and the assembler run.
+  When either raised an ordinary error (an ambiguous overlay, a changed bound
+  column), the summary said `history_complete=true`, but the journal showed a
+  session with no trajectory. Every later resume reported "1 provider request(s)
+  … journaled by a process that exited" and, under `--max-run-seconds`, refused
+  for good. At `63af18d` the same run resumed. **Fix:** the `usage_recorded`
+  marker (section 2). The resume reads only the journal after the last marker,
+  and adds that tail to the summary instead of comparing the two.
+- **D2: a torn tail broke the second resume.** A torn record has no newline, so
+  the next process's first record joined it. The next resume then refused
+  "corrupt request journal … line 2". **Fix:** the writer truncates an
+  unterminated last record before its first append; the reader already ignored
+  it.
+- **D3: an unwritable journal became silent fallbacks.** The `OSError` reached
+  the node's ordinary-failure path, so every node became an identity fallback,
+  no request was sent and the run "completed". **Fix:** `_journal` raises
+  `RequestJournalError`, which the node wrapper re-raises like a budget.
+
+The review also raised risks. These were fixed:
+- **Ctrl-C mid-request recorded no cost.** The request now counts in
+  `responses_without_cost`, so a cost-capped resume stops.
+- **Equal confidence overstated.** `decided_by_equal_confidence` is set only
+  when the equal-confidence rival has another value; the field was renamed from
+  `decided_by_tie_break` (introduced by R01 and never banked).
+- **A reused checkpoint path inherited a stale journal.** A fresh run now
+  refuses it.
+
+These were not changed and are recorded here:
+- A deferred column skips a conditioned claim whose environment is undecidable,
+  and its unconditioned fallback is not reported as competition. This predates
+  R01.
+- `with_suffix` maps `a.json` and `a.ckpt` to one journal path. Records are
+  filtered by run ID and configuration, and a fresh run now refuses an existing
+  journal.
+
+**Test gaps closed.** Deleting the per-turn history check, the fsync, the torn
+tail repair, the error wrapping, the summary marker, the abandoned-request
+count or the stale-journal refusal each fails at least one named test in
+`test_abrupt_interruption.py`. The equal-confidence and distinct-set paths in
+`test_choice_ambiguity.py` have direct tests.
+
+**Readability.** The journal writer, reader and resume reconciliation are one
+module, `agent/request_journal.py`, with typed `UnrecordedEffort`,
+`JournalTail` and `ResumeUsage` records. The CLI's resume accounting is two
+short functions. `restore_usage` states its legacy rule directly. The
+assembler and the spec share `claim_key`, and an unread ambiguity list was
+removed. Orchestrator messages no longer name CLI flags.
+
 ## Verification
 
 ```sh
@@ -254,19 +377,22 @@ PYTHONDONTWRITEBYTECODE=1 /opt/anaconda3/envs/llm_reconstruction/bin/python -m p
   tests/workbench/test_schema_versioning.py tests/workbench/test_schemas.py \
   tests/workbench/test_conditioned_native_roundtrip.py tests/workbench/test_abrupt_interruption.py \
   tests/workbench/test_choice_ambiguity.py tests/workbench/test_best_lexicon_export.py
-# 232 passed
+# 235 passed at R01; 246 passed after the review fixes (section 6)
 /opt/anaconda3/envs/llm_reconstruction/bin/python -m pytest -q -p no:cacheprovider -k 'not local_run_artifacts'
-# run once after integration: 736 passed, 41 deselected in 68.29s
+# after integration 736 passed; after the boundary-set repair: 739 passed;
+# after the review fixes: 750 passed, 41 deselected
 /opt/anaconda3/envs/llm_reconstruction/bin/python -m pytest -q -p no:cacheprovider -k 'local_run_artifacts'   # relevant readers: 41 passed
 ```
 
 **Banked replay.** `tools/failure_audit.py` is local-only. It ran over the four
 valid Burmish runs with `--payload runs/benchmarks/burmish.json --select-panel
 --replay --json`, after finding 1 and again with findings 1, 3 and 4
-integrated. Both times all 364 saved score checks, 11/11 committed beams and
-11/11 assembly reports agreed. Finding 2 does not touch the replay boundary.
+integrated, and again after the review fixes. Each time all 364 saved score
+checks, 11/11 committed beams and 11/11 assembly reports agreed. Finding 2 does
+not touch the replay boundary.
 
-**Behavioural digests.** These are identical at HEAD and after R01:
+**Behavioural digests.** These are identical at `63af18d`, after R01 and after
+the review fixes:
 - evidence contract `b1f459e7…`
 - instructions `0b9d91cf…`
 - node commit requirements `1ddfc0fc…`
@@ -284,9 +410,10 @@ this tracked-file manifest.
 - Finding 2's guarantee covers journaled effort only (limits above). Per-seed
   caps are still not batch caps; R02 must sum all attempts across seeds,
   including `unrecorded_requests` and unknown costs.
-- Model-visible interfaces are unchanged. These repairs make the intended
-  conditioned case executable; they do not show that any model will use it.
-  Substantive live usability remains untested (R03).
+- Instructions, tool-argument schemas and commit notes are unchanged. Two
+  `test_proto_assembly` result fields are new (section 3). These repairs make
+  the intended conditioned case executable; they do not show that any model
+  will use it. Substantive live usability remains untested (R03).
 - Task05/06 historical results stand as recorded. Task05's "complete offline"
   claim now holds for token-conditioned native JSON. Task06's cumulative caps
   now cover journaled abrupt loss in new runs; pre-journal checkpoints keep the

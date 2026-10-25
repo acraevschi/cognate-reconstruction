@@ -59,8 +59,13 @@ inference, model operation, paid call or dependency change.
    unchanged.
 4. **`best_lexicon`.** It carries the top candidate's analysis.
 
-Model-visible instruction, schema and node-note digests are unchanged. Portable
-suite: 736 passed, 41 deselected. The banked replay still agrees on 364/364
+Model-visible instruction, schema and node-note digests are unchanged; the
+assembly preview's result carries the new ambiguity fields. An independent
+review on 2026-10-25 found three journal defects (a graceful failure read as
+abrupt loss, a torn tail breaking a later resume, an unwritable journal
+producing fallbacks); all three are fixed, see section 6 of the R01 report.
+Portable suite: 750 passed, 41 deselected. JSON dumps of boundary-token sets are now
+sorted, so stored-handle digests no longer depend on the hash seed. The banked replay still agrees on 364/364
 scores and 11/11 beams and reports. These fixes establish interface and
 accounting behaviour only, not live usability or reconstruction quality.
 Task05's offline protocol claim now includes token-conditioned JSON. Task06's

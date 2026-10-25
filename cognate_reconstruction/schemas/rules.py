@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import Field, computed_field, field_serializer, model_validator
 
 from cognate_reconstruction.schemas.common import (
     MORPHOLOGICAL_BOUNDARY_TOKENS,
     NonEmptyStr,
     WorkbenchModel,
+    sorted_token_set,
 )
 
 
@@ -18,6 +19,10 @@ class SegmentExpression(WorkbenchModel):
 
     tokens: tuple[NonEmptyStr, ...]
     morphological_boundary_tokens: frozenset[str] = MORPHOLOGICAL_BOUNDARY_TOKENS
+
+    @field_serializer("morphological_boundary_tokens", when_used="json")
+    def serialize_boundary_tokens(self, value: frozenset[str]) -> list[str]:
+        return sorted_token_set(value)
 
     @model_validator(mode="after")
     def validate_boundary_vocabulary(self) -> SegmentExpression:

@@ -115,7 +115,9 @@ that a stronger/different model could resolve. A new successful local smoke is
 not required before the stronger arm. Default ceiling: **one small pilot,
 up to US$2 total across requests and retries**, with a 30-minute wall-clock cap.
 This is one aggregate paid envelope across its usability/judgment stages, not
-US$2 per arm, seed or prompt. Different approved model/budget decisions supersede
+US$2 per arm, seed or prompt. For R03's Gemini 3.8 Flash arm the owner confirmed US$5
+aggregate with 60 minutes of paid wall time on 2026-10-25; that replaces only
+these two fields. Different approved model/budget decisions supersede
 only the expressly changed fields; writing a recommendation does not approve it.
 Use existing credentials through their environment variable; never print keys,
 inspect secret files in logs, or record them in manifests. Confirm the currently

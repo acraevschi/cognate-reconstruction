@@ -227,3 +227,10 @@ provider request and tool call. Usage records add `effort_counts_known`,
 The sentence "missing cost/history cannot silently restart a capped seed's spend
 at zero" now holds for journaled abrupt loss. It is not a guarantee for effort
 lost together with its journal. See [R01 repairs](post_review_contract_repairs.md).
+
+Review fixes, 2026-10-25: a `usage_recorded` marker follows each run summary,
+and a resume reconciles only the journal after the last marker, so a graceful
+failure after a commit is not read as abrupt loss. A torn last record is
+removed before the next append. A journal that cannot be written stops the
+run (`RequestJournalError`) instead of producing fallbacks. A request
+interrupted by Ctrl-C counts as having unknown cost.

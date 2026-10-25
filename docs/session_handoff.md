@@ -47,6 +47,9 @@ results and amendments for their supported interfaces. A fresh clone cannot run
    below, then the documents listed in your brief. Confirm the checkout, branch,
    revision and existing changes. Verify that prerequisite artifacts and interfaces
    are present; a previous agent's completion claim is not sufficient by itself.
+   Within the ignored `prompts/` folder, read only your own brief, the
+   post-review common contract and files your brief or its amendments explicitly
+   name, unless the owner asks. Do not browse older or other briefs to save effort.
 2. Briefly state the inherited decisions, your effective task and any remaining
    prerequisite. Mark the row `in progress` and identify the active session below
    by task and chat link/ID if available. Preserve existing work; continue from
@@ -120,9 +123,9 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 
 | Post-review ID | Status | Prerequisite / next action | Intended result |
 | --- | --- | --- | --- |
-| R01 — Contract repairs | complete | Four findings reproduced and repaired offline (branch `r01-contract-repairs`); live usability not tested | `docs/research/post_review_contract_repairs.md` |
+| R01 — Contract repairs | complete | Four findings reproduced and repaired offline (branch `r01-contract-repairs`); independent review's three journal defects fixed 2026-10-25; live usability not tested | `docs/research/post_review_contract_repairs.md` |
 | R02 — Diagnostic panel and manifests | ready | Verify R01 interfaces per the R01 completion amendment; build Stage A/B instruments and ledger | `docs/research/model_diagnostic_design.md` |
-| R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest; models selected 2026-10-25 (Gemma 4 26B local, Gemini 3.8 Flash medium); paid ceiling awaits owner confirmation; local success not required | `docs/research/model_capability_diagnostic.md` |
+| R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest; models selected 2026-10-25 (Gemma 4 26B local, Gemini 3.8 Flash medium); paid ceiling US$5 aggregate / 60 minutes confirmed 2026-10-25; local success not required | `docs/research/model_capability_diagnostic.md` |
 | R04 — Interface and evidence study | deferred | R03/owner selects a specific question; no automatic redesign | `docs/research/focused_interface_study.md` |
 | R05 — Propagation and robustness | deferred | Useful local judgments or a demonstrated propagation uncertainty | `docs/research/propagation_robustness_study.md` |
 | R06 — Forward prediction | deferred | Owner-selected alternative, not a completion gate | `docs/research/forward_prediction_feasibility.md` |
@@ -184,11 +187,11 @@ US$1.79–2.83. The same token use would cost roughly US$5–9 at 3.8 Flash pric
 before any extra medium-reasoning output. Full-tree runs therefore do not fit
 the credit and are not R03's design.
 
-**Proposed budget (needs the owner's explicit confirmation).** The small
+**Budget (confirmed by the owner, 2026-10-25).** The small
 Stage A/B fixtures should cost far less. The cap arithmetic is: worst-case input
 ≤ total turns × maximum request, and output ≤ turns × maximum response.
 
-- **Proposed ceiling:** at most **US$5 aggregate** for all R03 Gemini 3.8 Flash
+- **Ceiling:** at most **US$5 aggregate** for all R03 Gemini 3.8 Flash
   requests, including Stage A, Stage B, failures, retries and interruptions,
   with **60 minutes** of paid wall time. Choose per-trial `--max-total-cost-usd`,
   turn caps and a maximum output allowance so that the worst-case sum plus one
@@ -196,8 +199,9 @@ Stage A/B fixtures should cost far less. The cap arithmetic is: worst-case input
   as margin against unknown or lost cost.
 - **Local arm:** keeps the existing two-hour serial ceiling.
 - **Superseded allowance:** the historical US$2/30-minute Flash allowance
-  referred to the earlier Flash model and is superseded for this arm only once
-  the owner confirms. Until then R03 launch stays pending on that single number.
+  referred to the earlier Flash model. The owner confirmed the ceiling above on
+  2026-10-25, so it supersedes that allowance for this arm only. It is not
+  re-requested in later prompts and does not grow.
 
 **Offline gate for R02: cost reporting for 3.8 Flash.** The harness's cost
 comes from LiteLLM `response_cost`. The installed LiteLLM 1.81.16 bundled price
@@ -252,7 +256,8 @@ preliminary assumptions:
 - **Ambiguity fields.** These are additive.
   - `ColumnResolution.competing_choices`: each entry is `set_id, proto_segment,
     confidence, conditioning`.
-  - `ColumnResolution.decided_by_tie_break`.
+  - `ColumnResolution.decided_by_equal_confidence`: an equal-confidence rival
+    had another value, so the documented order picked the value.
   - Preview `ambiguous_columns` now includes same-set conditioned overlaps.
   - `ReconstructionDiagnostics.columns_with_competing_choices` and
     `columns_decided_by_equal_confidence` are new.
@@ -273,14 +278,19 @@ preliminary assumptions:
     refuses resume.
   - Elapsed time is a lower bound; a time cap refuses.
   - `history_complete` stays false.
+  - A `usage_recorded` marker follows each run summary, and a resume reconciles
+    only the journal after the last marker, so a graceful failure is not lost
+    effort.
+  - A journal write failure stops the run (`RequestJournalError`). A Ctrl-C
+    mid-request counts as unknown cost. A fresh run refuses an existing journal.
 
   The whole-batch ledger must read these per-seed fields, and the journal for
   attempts without trajectories. It must carry unknowns as unknown and never
   sum them as zero. Per-seed caps are not batch caps. A legacy checkpoint
   without a summary is uncertified.
-- **Test commands.** The focused command in the R01 report (14 modules, 232
-  passed), and `python -m pytest -q -k 'not local_run_artifacts'` (736 passed,
-  41 deselected, 2026-10-23).
+- **Test commands.** The focused command in the R01 report (14 modules, 246
+  passed), and `python -m pytest -q -k 'not local_run_artifacts'` (750 passed,
+  41 deselected, 2026-10-25).
 - **Outstanding limits.**
   - `inspect_run` and the sweep aggregate do not display the new usage keys, and
     no batch resource sum exists yet; that is R02 ledger work.
@@ -307,9 +317,10 @@ fact also covers report readers.
     reduced, inside the same aggregate envelope as the frozen manifest permits.
 - **Serialization.** Token-conditioned claims are JSON-safe in both profiles.
   Report readers must accept the additive `competing_choices`,
-  `decided_by_tie_break`, `columns_with_competing_choices` and
+  `decided_by_equal_confidence`, `columns_with_competing_choices` and
   `columns_decided_by_equal_confidence` fields.
-- **Model-visible digests.** These are unchanged from Task05 final.
+- **Model-visible digests.** These are unchanged from Task05 final. The
+  `test_proto_assembly` result gains the two column fields above.
 
 ### Active post-review amendment — 2026-10-08
 
@@ -413,8 +424,9 @@ commit success and local Gemma smoke failure are different snapshots, not a
 controlled comparison. Preserve model/provider/configuration attribution limits.
 
 Live scope must name the model/provider and total authorized envelope. Existing
-Flash ceiling is US$2 total/30 minutes, not per stage/seed/arm; local initial batch
-ceiling is two hours, serially. An explicitly approved alternative supersedes the
+Flash ceiling is US$2 total/30 minutes, not per stage/seed/arm (for R03's Gemini
+3.8 Flash arm, superseded by the owner-confirmed US$5 aggregate / 60 minutes of
+2026-10-25); local initial batch ceiling is two hours, serially. An explicitly approved alternative supersedes the
 specified fields, and prior permission is not requested again. No fresh paid
 allowance arises in later prompts. Include usability and failures/retries, maximum
 in-flight headroom and unknown costs in one ledger. Actual loaded-model/context
@@ -1567,8 +1579,10 @@ probes were absent, so portable regressions were written.
 4. **Export.** `best_lexicon` keeps the analysis.
 
 Validation/resources:
-- Focused tests: 232 passed. The four new modules hold 56 cases.
-- Portable suite, run once after integration: 736 passed, 41 deselected.
+- Focused tests: 235 passed. The four new modules hold 59 cases.
+- Portable suite: 736 passed after integration; 739 passed, 41 deselected after
+  the boundary-set serialization repair found during commit verification
+  (see the R01 report, section 5).
 - Local-artifact readers: 41 passed. `git diff --check` is clean.
 - Banked replay: 364/364 scores and 11/11 beams/reports agree.
 - Model-visible digests are unchanged.
@@ -1585,3 +1599,40 @@ journal remains undetectable.
 
 Next: R02 is ready. Start from the R01 completion amendment and the conditioned
 fixture.
+
+### 2026-10-25 — R01 — independent review fixes
+
+Session: the same Claude Code desktop session. A separate Claude Opus 5.5
+subagent (medium thinking) reviewed the R01 commits without pointers to
+suspected faults and changed nothing. Checkout and branch as above; the R01
+commits were amended rather than followed by a new one.
+
+Result: [R01 repairs, section 6](research/post_review_contract_repairs.md). The
+three defects the review found were reproduced, then fixed:
+1. **D1.** A graceful failure after a commit was read as abrupt loss, and a
+   time-capped resume then refused for good. A `usage_recorded` marker now
+   follows each run summary, and a resume reconciles only the journal after it.
+2. **D2.** A torn journal tail broke the second resume. The writer now removes
+   it before appending.
+3. **D3.** An unwritable journal turned every node into an identity fallback.
+   It now stops the run with `RequestJournalError`.
+
+Also fixed: a Ctrl-C mid-request counts as unknown cost; a fresh run refuses a
+journal left at its checkpoint path; `ColumnResolution.decided_by_tie_break`
+is renamed `decided_by_equal_confidence` and is set only when the rival's value
+differs. The journal code is one module, `agent/request_journal.py`, and the
+CLI's resume accounting is two short functions.
+
+Validation/resources:
+- Focused tests: 246 passed. Portable suite: 750 passed, 41 deselected.
+  Local-artifact readers: 41 passed.
+- Reverting each of seven fixes fails at least one named test.
+- Banked replay: 364/364 scores and 11/11 beams/reports agree.
+- Model-visible digests are unchanged; the `test_proto_assembly` result has the
+  two column fields R01 added, and the docs now say so.
+- No inference, model operations, paid calls or dependency changes.
+
+Downstream: the R02/R03 completion amendments above and in both briefs now
+name the renamed field and the new journal behaviour.
+
+Next: R02 is ready.

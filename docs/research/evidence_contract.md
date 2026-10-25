@@ -146,7 +146,8 @@ Units-v2 allows several conditioned values on one local set; only an identical
 order `(-confidence, proto_segment, set_id)`. Reporting now identifies competing
 applicable claims by `(set_id, conditioning, proto_segment)`. Additive fields:
 
-- `ColumnResolution.competing_choices` and `decided_by_tie_break`;
+- `ColumnResolution.competing_choices` and `decided_by_equal_confidence` (set
+  only when an equal-confidence rival has another value);
 - `ReconstructionDiagnostics.columns_with_competing_choices` and
   `columns_decided_by_equal_confidence`.
 

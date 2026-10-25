@@ -99,7 +99,7 @@
               "word_initial"
             ]
           ],
-          "decided_by_tie_break": false
+          "decided_by_equal_confidence": false
         },
         "0.9/0.9": {
           "emitted": "p",
@@ -112,7 +112,11 @@
               "word_final"
             ]
           ],
-          "decided_by_tie_break": true
+          "decided_by_equal_confidence": true
+        },
+        "same value, equal confidence": {
+          "competing_choices": 1,
+          "decided_by_equal_confidence": false
         }
       },
       "emitted_values_changed": false
@@ -120,6 +124,11 @@
     "4_best_lexicon": {
       "before_head": "beam candidate analysis present; best_lexicon form analysis None",
       "after": "analysis copied as-is from the top beam candidate"
+    },
+    "5_boundary_set_serialization": {
+      "before": "frozenset JSON dumps followed the hash seed; ~1/12 stored conditioned handle commits refused as hypothesis-stale; PYTHONHASHSEED=7 default dump != readback dump",
+      "after": "JSON-mode sorted serialization; python-mode frozenset unchanged; digests and replay unchanged; 25 clean loops",
+      "regression": "test_boundary_sets_serialize_canonically_and_handles_commit_under_any_hash_seed (seeds 1,2,7)"
     }
   },
   "historical_replay": {
@@ -129,18 +138,59 @@
     "committed_reports_agree": "11/11",
     "runs_after": [
       "finding 1 only",
-      "findings 1+3+4 integrated"
+      "findings 1+3+4 integrated",
+      "after the 2026-10-25 review fixes"
     ]
   },
   "tests": {
     "new_modules": {
-      "test_conditioned_native_roundtrip.py": 31,
-      "test_abrupt_interruption.py": 16,
-      "test_choice_ambiguity.py": 7,
+      "test_conditioned_native_roundtrip.py": 34,
+      "test_abrupt_interruption.py": 24,
+      "test_choice_ambiguity.py": 10,
       "test_best_lexicon_export.py": 2
     },
-    "focused_command_result": "232 passed (14 modules)",
-    "portable_suite": "736 passed, 41 deselected in 68.29s",
-    "local_run_artifacts_subset": "41 passed"
+    "focused_command_result": "246 passed (14 modules); 235 at R01",
+    "portable_suite": "750 passed, 41 deselected (739 at R01; 736 before the boundary-set repair)",
+    "local_run_artifacts_subset": "41 passed",
+    "clean_export_note": "10 tests needing ignored local corpora fail in a clean git archive, identically at 63af18d"
+  },
+  "review_fixes_2026_10_25": {
+    "reviewer": "independent Claude Opus 5.5 subagent, medium thinking; no repository changes",
+    "defects": {
+      "D1_graceful_post_commit_failure_read_as_abrupt_loss": {
+        "before": "committed session without trajectory read as unrecorded; resume under --max-run-seconds refused permanently (regression vs 63af18d)",
+        "fix": "usage_recorded journal marker after each fsynced run summary; resume reads only the journal tail after the last marker and adds it to the summary",
+        "regression": [
+          "test_post_commit_failure_is_graceful_and_a_time_capped_resume_proceeds",
+          "test_effort_after_a_summary_adds_to_it_rather_than_competing_with_it"
+        ]
+      },
+      "D2_torn_tail_joined_by_next_append": {
+        "before": "second resume refused: corrupt request journal line 2",
+        "fix": "writer truncates an unterminated last record before its first append",
+        "regression": [
+          "test_torn_journal_tail_survives_repeated_resumes"
+        ]
+      },
+      "D3_unwritable_journal_became_identity_fallbacks": {
+        "before": "OSError per node, every node an identity fallback, run completed",
+        "fix": "RequestJournalError, re-raised by the node wrapper as a run-level stop",
+        "regression": [
+          "test_unwritable_journal_stops_the_run_instead_of_falling_back"
+        ]
+      }
+    },
+    "risks_fixed": {
+      "ctrl_c_mid_request": "journaled outcome=abandoned and counted in responses_without_cost; a cost-capped resume stops",
+      "equal_confidence_flag": "renamed decided_by_equal_confidence; set only when the rival's value differs",
+      "stale_journal_at_checkpoint_path": "fresh run refuses an existing journal"
+    },
+    "risks_recorded": [
+      "deferred columns skip conditioned claims with an undecidable environment (predates R01)",
+      "with_suffix maps a.json and a.ckpt to one journal path; mitigated by run/configuration filtering and the fresh-run refusal"
+    ],
+    "mutation_checks": "reverting each of 7 fixes (per-turn check, fsync, torn-tail repair, error wrap, summary marker, abandoned cost, stale-journal refusal) fails at least one named test",
+    "digests_unchanged": true,
+    "model_visible_result_change": "test_proto_assembly detail=full columns carry competing_choices and decided_by_equal_confidence; ambiguous_columns broader"
   }
 }
