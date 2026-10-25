@@ -90,6 +90,17 @@ def retry_after_seconds(value, *, now: datetime | None = None) -> float | None:
     return max(0.0, seconds) if math.isfinite(seconds) else None
 
 
+def _client_timeout(error: Exception) -> bool:
+    """Did the client stop waiting? The request may still be served and billed."""
+    if isinstance(error, TimeoutError):
+        return True
+    try:
+        from openai import APITimeoutError  # the base of litellm.Timeout
+    except ImportError:
+        return False
+    return isinstance(error, APITimeoutError)
+
+
 def classify_provider_error(error: Exception, *, now: datetime | None = None) -> ProviderFailureMetadata:
     """Only status, explicit error codes and retry hints are evidence.
 
@@ -99,6 +110,11 @@ def classify_provider_error(error: Exception, *, now: datetime | None = None) ->
     """
     if isinstance(error, ProviderError):
         return error.metadata
+    if _client_timeout(error):
+        # LiteLLM raises its own client-side timeout with a synthetic
+        # status_code 408, which would otherwise read as a server rejection
+        # that may be replayed at no cost.
+        return ProviderFailureMetadata(exception_type=type(error).__name__)
     response = _get(error, "response")
     status = _get(error, "status_code") or _get(error, "http_status") or _get(error, "status") or _get(response, "status_code")
     try:

@@ -101,6 +101,33 @@ def test_unknown_prose_and_lost_response_are_never_replayed():
         assert meta.response_state == "unknown"
 
 
+def test_litellm_client_timeout_is_a_lost_response_not_a_rejection():
+    import litellm
+    # LiteLLM gives its own timeout status_code 408; that is not the server's.
+    error = litellm.Timeout("untrusted provider prose", model="gemini/x", llm_provider="gemini")
+    assert error.status_code == 408
+    meta = classify_provider_error(error)
+    assert (meta.kind, meta.retryable, meta.response_state, meta.http_status) == (
+        ProviderFailureKind.UNKNOWN, False, "unknown", None)
+    assert meta.exception_type == "Timeout"
+    assert "untrusted provider prose" not in meta.model_dump_json()
+
+
+def test_litellm_timeout_is_not_replayed_and_leaves_cost_unknown(tmp_path):
+    import litellm
+    calls = []
+    def completion(**kwargs):
+        calls.append(kwargs)
+        raise litellm.Timeout("timed out", model="fake/model", llm_provider="openai")
+    svc = service(LiteLLMProvider("fake/model", completion_fn=completion), tmp_path,
+                  max_retries=3, max_retry_seconds=600)
+    with pytest.raises(ProviderError):
+        svc.reconstruct_family(ingest_payload(plan()))
+    assert len(calls) == 1
+    assert svc.last_run_summary["provider_failure"]["response_state"] == "unknown"
+    assert svc.last_run_summary["usage"]["responses_without_cost"] == 1
+
+
 def test_retry_hints_dates_and_structured_duration():
     now = datetime(2026, 10, 5, 12, tzinfo=UTC)
     assert retry_after_seconds("Mon, 05 Oct 2026 12:01:00 GMT", now=now) == 60
