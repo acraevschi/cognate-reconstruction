@@ -45,7 +45,9 @@ results and amendments for their supported interfaces. A fresh clone cannot run
 
 1. Read your task's row, applicable amendments, and the latest relevant handoff
    below, then the documents listed in your brief. Confirm the checkout, branch,
-   revision and existing changes. Verify that prerequisite artifacts and interfaces
+   revision and existing changes. Post-review work (R02 onward) continues on the
+   pushed branch `r01-contract-repairs`; its name is historical and it carries
+   the whole post-review sequence. Commit, push or rename only when the owner asks. Verify that prerequisite artifacts and interfaces
    are present; a previous agent's completion claim is not sufficient by itself.
    Within the ignored `prompts/` folder, read only your own brief, the
    post-review common contract and files your brief or its amendments explicitly
@@ -124,7 +126,7 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | Post-review ID | Status | Prerequisite / next action | Intended result |
 | --- | --- | --- | --- |
 | R01 — Contract repairs | complete | Four findings reproduced and repaired offline (branch `r01-contract-repairs`); independent review's three journal defects fixed 2026-10-25; live usability not tested | `docs/research/post_review_contract_repairs.md` |
-| R02 — Diagnostic panel and manifests | ready | Verify R01 interfaces per the R01 completion amendment; build Stage A/B instruments and ledger | `docs/research/model_diagnostic_design.md` |
+| R02 — Diagnostic panel and manifests | ready | On branch `r01-contract-repairs`; verify R01 interfaces per the R01 completion amendment; build Stage A/B instruments and ledger | `docs/research/model_diagnostic_design.md` |
 | R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest; models selected 2026-10-25 (Gemma 4 26B local, Gemini 3.8 Flash medium); paid ceiling US$5 aggregate / 60 minutes confirmed 2026-10-25; local success not required | `docs/research/model_capability_diagnostic.md` |
 | R04 — Interface and evidence study | deferred | R03/owner selects a specific question; no automatic redesign | `docs/research/focused_interface_study.md` |
 | R05 — Propagation and robustness | deferred | Useful local judgments or a demonstrated propagation uncertainty | `docs/research/propagation_robustness_study.md` |
