@@ -209,6 +209,43 @@ def test_every_tool_schema_survives_gemini_s_dialect() -> None:
     assert not seen & rejected
 
 
+@pytest.mark.parametrize("protocol", ["stored-hypothesis", "full-payload"])
+def test_every_tool_keeps_its_arguments_on_gemini_s_wire(protocol: str) -> None:
+    """LiteLLM keeps only `anyOf` when a schema has one beside its properties.
+
+    A top-level `anyOf` once sent `test_proto_assembly` to Gemini with no
+    argument definitions at all, while the OpenAI-shaped local route kept them
+    (R03, 2026-10-25). Every argument a tool publishes must reach Gemini.
+    """
+    from litellm.llms.vertex_ai.gemini.vertex_and_google_ai_studio_gemini import (
+        VertexGeminiConfig,
+    )
+
+    definitions = default_tool_registry(inventory_protocol=protocol).definitions()
+    declarations = VertexGeminiConfig()._map_function(
+        value=[
+            {
+                "type": "function",
+                "function": {
+                    "name": definition.name,
+                    "description": definition.description,
+                    "parameters": json.loads(json.dumps(definition.parameters)),
+                },
+            }
+            for definition in definitions
+        ],
+        optional_params={},
+    )[0]["function_declarations"]
+    sent = {declaration["name"]: declaration.get("parameters") or {} for declaration in declarations}
+
+    lost = {
+        definition.name: sorted(set(definition.parameters.get("properties", {}))
+                                - set(sent[definition.name].get("properties", {})))
+        for definition in definitions
+    }
+    assert not {name: names for name, names in lost.items() if names}
+
+
 def test_a_signed_turn_becomes_a_valid_gemini_request() -> None:
     """Assemble the request Google would actually receive, without sending it.
 

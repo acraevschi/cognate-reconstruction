@@ -1,0 +1,153 @@
+{
+  "report": "docs/research/model_capability_diagnostic.md",
+  "date": "2026-10-25",
+  "launch_utc": [
+    "2026-10-25T18:51:32Z",
+    "2026-10-25T19:07:48Z"
+  ],
+  "source": {
+    "head": "19fd76dbf13a12cc2ffad155412ef2c3d56f15c9",
+    "dirty_paths": [
+      "cognate_reconstruction/agent/tools/stored_hypothesis.py",
+      "tests/workbench/test_gemini_provider.py"
+    ],
+    "tracked_diff_sha256_prefix": "6c438ad1"
+  },
+  "environment": {
+    "python": "3.11.0",
+    "litellm": "1.81.16",
+    "httpx": "0.28.1",
+    "pydantic": "2.13.4",
+    "pip_freeze_sha256": "448a3e5bc423627a6cc58dd49e56bde0b37c1015ec160ad1ff4446c466445c06",
+    "LITELLM_LOCAL_MODEL_COST_MAP": "True"
+  },
+  "frozen": {
+    "manifest.stage-a.json": "bbbab7c87831583de39a34cdcec7e4d02e859654b487f7957334f3ff8ec19b2e",
+    "manifest.stage-b.json": "e5b70ab9078ff38f79210c9fef8b727dea69def2cd8d0000a7209594915a2eb1",
+    "plan.json": "554d13a92c645160fb58e57ce793fb7488729f37bd4410b96019638307daea45",
+    "source_manifest.json": "6e93742fcdc6d95aa98e7197393127b5332a856d362414ca006e8a3a70a3dde2",
+    "preregistration.md": "c1d24aad0e903fa563b32156dcee2402a65168ca0763a2f0ab7d776a675cbc62"
+  },
+  "superseded_freeze": "runs/experiments/r03-model-diagnostic-20261025 (never launched)",
+  "tool_schema_sha256": {
+    "r02": "dd58d427b00f86da222b301a6bbebc1fcbe1d70f5a507dfa87b2dd5bfddba8a9",
+    "r03_launched": "628f0f32eca43a872c7fb72c90e67b1ba3e00b9a1f9b4057e1cf702175584a72"
+  },
+  "artifacts": {
+    "batch_ledger.json": "fabf073e4ade0e8bc6d0be32c77cdb77b6ea37d6a5c4c1af8846a02ab1d98545",
+    "batch_events.jsonl": "a221761a695400f07184b198e3e7af0db78c1e25e1d6cde24ec28eca6fb33601",
+    "runs/a-gemini/evaluation.json": "87b8e2afbc9846c28a20a466dc47047aec5ffc883f69153df3014a64e76b6cc7",
+    "runs/b-gemini/evaluation.json": "e3de78d879c95d31f2bf0ad7b617ac87a4489f4248d6b8bc53f5212df2674b3b",
+    "runs/a-local/evaluation.json": "ca30c37b05f87ed58042d7d256a2f0ec90155e4e1e95830efae5a8a9ed24fcd5"
+  },
+  "trials": {
+    "A-gemini": {
+      "outcome": "success",
+      "usable": true,
+      "criteria": {
+        "model_committed": true,
+        "committed_supplied_hypothesis": true,
+        "residue_as_supplied": true,
+        "previewed_original": true,
+        "previewed_revision_after_original": true,
+        "committed_revised_preview": true,
+        "output_matches_reference": true,
+        "output_units_match": true,
+        "provenance_intact": true,
+        "artifact_readback": true
+      },
+      "rejected_tool_calls": 1,
+      "tool_calls": 6
+    },
+    "B-gemini": {
+      "model_committed_correct": 18,
+      "planned": 18,
+      "pairs_both_correct_model_committed": 6,
+      "pairs_planned": 6,
+      "readings": {
+        "absent": 8,
+        "retain": 10
+      },
+      "by_basis": {
+        "outgroup_presence": {
+          "planned": 6,
+          "correct": 6
+        },
+        "outgroup_absence": {
+          "planned": 8,
+          "correct": 8
+        },
+        "complementary_outgroup_presence": {
+          "planned": 4,
+          "correct": 4
+        }
+      },
+      "decided_by": {
+        "explicit_claim": 18
+      },
+      "unresolved": [
+        {
+          "id": "U1-final",
+          "reading": "absent",
+          "confidence": 0.5
+        },
+        {
+          "id": "U2-final",
+          "reading": "absent",
+          "confidence": 0.5
+        }
+      ],
+      "task02_x": {
+        "raw_top_exact": "16/16",
+        "mean_ned": 0.0,
+        "outside_selection_top_hits": 3
+      },
+      "run_status": "interrupted",
+      "stop": "RunBudgetExceeded in unscored root session after x committed"
+    },
+    "A-local": {
+      "outcome": "no_commit",
+      "usable": false,
+      "stop": "ProtocolStallError after 11 turns; 7/11 calls rejected (invalid submissions)"
+    },
+    "B-local": {
+      "outcome": "not_run",
+      "reason": "requires_usable A-local"
+    }
+  },
+  "ledger": {
+    "gemini": {
+      "known_cost_usd": 2.475424499999999,
+      "total_cost_usd": 2.475424499999999,
+      "unknown_cost_requests": 0,
+      "provider_requests": 36,
+      "turns": 36,
+      "tool_calls": 36,
+      "input_tokens": 2931596,
+      "output_tokens": 73794,
+      "max_request_input_tokens": 186117,
+      "wall_seconds": 690.5024316660129
+    },
+    "local": {
+      "known_cost_usd": 0.0,
+      "total_cost_usd": null,
+      "unknown_cost_requests": 11,
+      "provider_requests": 11,
+      "turns": 11,
+      "tool_calls": 11,
+      "input_tokens": 314476,
+      "output_tokens": 10128,
+      "max_request_input_tokens": 42024,
+      "wall_seconds": 283.92829433304723
+    }
+  },
+  "gemini_cached_input_tokens": 2471971,
+  "gemini_reasoning_tokens": 51788,
+  "gemini_cache_adjusted_estimate_usd": 0.8068,
+  "external_cost_check": "pending: owner reads AI Studio balance (7.36 CHF before) >=24h after 2026-10-25T19:07Z",
+  "key_grep_files": 0,
+  "tests": {
+    "portable_before_repair": "802 passed, 41 deselected",
+    "portable_after_repair": "804 passed, 41 deselected"
+  }
+}

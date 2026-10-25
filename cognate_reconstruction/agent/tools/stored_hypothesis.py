@@ -27,10 +27,9 @@ class LocalCorrespondenceChoice(WorkbenchModel):
 
 class StoredAssemblyArgs(TestProtoAssemblyArgs):
     """Preview flat local choices or compatible full commitments; explicitly state a claim list, including [] for identity."""
-    model_config = {"json_schema_extra": {"anyOf": [
-        {"required": ["choices"]}, {"required": ["commitments"]},
-        {"required": ["shared_claims"]},
-    ]}}
+    # The one-of rule lives only in `explicit_claim_collection`: LiteLLM's
+    # Gemini conversion keeps nothing but a top-level `anyOf`, which dropped
+    # every argument of this tool from Gemini requests.
     commitments: tuple[CorrespondenceCommitment, ...] = ()
     choices: tuple[LocalCorrespondenceChoice, ...] = Field(default=(), description="Top-level flat list: one local set_id/value/confidence/explanation per item, not per concept or whole form. Do not nest choices inside commitments. Resolves only reflexes/support. Explicit [] means identity; overlapping claims are rejected.")
 

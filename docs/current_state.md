@@ -82,11 +82,12 @@ journal. R02 is ready to start.
   `[m, m]` pattern versus the suffix unit's own sets), one specified revision
   and a handle commit. The scripted operator succeeds in both profiles through
   `cli infer` and the real LiteLLM adapter; scripted deviations are classified.
-- **Stage B** (`r02-stage-b-v1`, `r02-decisions-v1`): 14 synthetic etyma at node
-  `x` of `((a,b)x,c)r`, 16 identified retain/absent opportunities in the correct
-  cognate unit, 2 unresolved items and 5 matched counterevidence pairs. Copying
-  and uniform policies score 5–11/16 and 0/5 pairs; the deployable
-  outgroup-witness rule is the identification rule and scores 16/16.
+- **Stage B** (`r02-stage-b-v1`, `r02-decisions-v1`): 16 synthetic etyma at node
+  `x` of `((a,b)x,c)r`, 18 identified retain/absent opportunities in the correct
+  cognate unit, 2 unresolved items and 6 matched counterevidence pairs. Copying,
+  uniform and no-outgroup cue policies score 8–12/18 and 0–3/6 pairs; the
+  deployable outgroup-witness rule is the identification rule and scores 18/18.
+  (Corrected 2026-10-25 from an earlier draft's 14/16/5 counts.)
 - **Harness changes:** `--price-table` (versioned explicit prices; upper-bound
   cost; digest-joined only when used); Gemini 3+ thinking level sent explicitly,
   because LiteLLM 1.81.16 turned `medium` into `high` (or refused it) for
@@ -96,6 +97,33 @@ journal. R02 is ready to start.
   bound Gemini 3.8 Flash at a worst case of US$4.70 within the owner's US$5 /
   60-minute ceiling, and the local arm within two hours. The required read-only
   manifest review, launch preflight and the launch itself belong to R03.
+
+## R03 stronger-model diagnostic — measured 2026-10-25
+
+[R03](research/model_capability_diagnostic.md) ran R02's Stage A/B once per
+model, serially, on the same code, evidence, profile, instructions and tools.
+
+- **Pre-launch repair.** The required read-only review found that LiteLLM
+  1.81.16's Gemini schema mapping keeps only a top-level `anyOf`, so
+  `test_proto_assembly` reached Gemini with none of its 12 arguments. The
+  published `anyOf` is removed. The validator still refuses an omitted claim
+  collection, and a wire test now covers every tool in both profiles. The
+  stored-hypothesis tool-schema digest is `628f0f32…` (was `dd58d427…`).
+- **Gemini 3.8 Flash** (medium thinking, temperature 1.0):
+  - Stage A `success`: supplied conditioned hypothesis, revision, handle commit, readback.
+  - Stage B node `x`: 18/18 model-committed correct and 6/6 matched pairs, all by explicit claims, in the correct units; both unresolved items committed at confidence 0.5. That equals the panel's deployable identification rule: necessary-condition evidence use on synthetic development material, not discovery.
+- **Gemma 4 26B A4B** (LM Studio, MLX 6-bit, temperature 0.1): Stage A
+  `no_commit`. Seven of eleven calls were invalid submissions (invented fields
+  or IDs, stale IDs after a re-survey), ending in `ProtocolStallError`. There is
+  no local judgment outcome.
+- **Resources.** Gemini US$2.4754 upper bound (no unknown-cost or retried
+  request; about US$0.81 using the cached-token counts Gemini reported) and
+  690.5 s, within US$5 and 3,600 s; local 283.9 s. The external console check is
+  pending.
+- One trial per arm: feasibility, not reliability or a model ranking. The
+  current harness is usable by this Gemini configuration and was not usable by
+  this local one. Interface redesign is deferred; R04 is narrowed to a judgment
+  panel that the outgroup-witness rule does not solve.
 
 ## Authority and reading order
 
