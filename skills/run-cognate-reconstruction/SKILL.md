@@ -13,8 +13,9 @@ local inference additionally needs a model server.
 
 The source of truth is `skills/run-cognate-reconstruction/driver.py` and this
 tracked skill. `.claude/skills/run-cognate-reconstruction/` is an installed copy
-and can lag. Prefer the tracked paths. Read `docs/session_handoff.md`,
-`docs/current_state.md` and `docs/experiment_policy.md` before live work.
+and can lag. Prefer the tracked paths. Read `docs/current_state.md`,
+`docs/experiment_policy.md` and, where it exists, the local untracked
+`docs/session_handoff.md` before live work.
 The latest direct user instruction takes precedence. Do not infer permission to
 run a broad comparison from permission for a smoke.
 

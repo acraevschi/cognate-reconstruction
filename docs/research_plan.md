@@ -69,8 +69,8 @@ features. Read [current state](current_state.md) and
 [experiment policy](experiment_policy.md) first. Local executable briefs live in
 `prompts/`; this tracked document preserves their scope for other checkouts.
 
-[Shared session handoff](session_handoff.md) carries progress, decisions and
-concrete amendments between sessions. Follow its start/resume and completion
+The session handoff (`docs/session_handoff.md`, local and untracked) carries
+progress, decisions and concrete amendments between sessions. Follow its start/resume and completion
 steps for every work package. Keep live status there, accepted findings in
 `current_state.md`, and detailed evidence in each task's result document.
 

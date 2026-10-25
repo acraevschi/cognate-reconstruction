@@ -100,8 +100,9 @@ journal. R02 is ready to start.
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.
-[Shared session handoff](session_handoff.md) carries live task status, unfinished
-steps and amendments for later sessions; read it when starting or resuming work.
+The session handoff (`docs/session_handoff.md`, a local, untracked file) carries
+live task status, unfinished steps and amendments for later sessions; where it
+exists, read it when starting or resuming work.
 [Research plan](research_plan.md) defines the work packages and dependencies;
 [experiment policy](experiment_policy.md) governs testing and expenditure.
 The local `prompts/` files implement that plan. CLI/schema behavior is ultimately

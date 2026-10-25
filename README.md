@@ -17,8 +17,9 @@ substantive live usability before comparative work.
 - [Current state](docs/current_state.md): what exists, the last results, known
   limitations, and which older decisions have been superseded.
 - [Research plan](docs/research_plan.md): implementation order and decision points.
-- [Shared session handoff](docs/session_handoff.md): live task status, decisions,
-  unfinished work and amendments carried into the next session.
+- Session handoff (`docs/session_handoff.md`, local and untracked, like
+  `prompts/`): live task status, decisions, unfinished work and amendments
+  carried into the next agent session. Absent from other checkouts.
 - [Experiment policy](docs/experiment_policy.md): local-first testing, budgets,
   provenance, and interpretation of results. Read before any live run.
 - [Implementation prompts](prompts/README.md): local agent briefs for the plan.
