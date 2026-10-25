@@ -437,3 +437,23 @@ def test_the_report_reads_result_json_for_the_best_lexicon(
         node.node_id: dict(node.forms) for node in build_report(load_run(run_dir)).nodes
     }
     assert forms["PROTO"] == {"water": "p a", "fire": "p u r"}
+
+
+def test_run_usage_shows_the_abrupt_loss_accounting_keys(tmp_path, monkeypatch, capsys) -> None:
+    """The R01 usage keys are displayed; a legacy record says they are absent."""
+    run_dir = _run_family(tmp_path, monkeypatch, CONSISTENT)
+    capsys.readouterr()
+    cli.main(["inspect-run", "--run-dir", str(run_dir)])
+    text = " ".join(capsys.readouterr().out.split())
+    assert "effort counts known: yes" in text
+    assert "unrecorded requests: 0" in text
+    assert "accounting: abrupt-loss-v1" in text
+
+    result = json.loads((run_dir / "result.json").read_text(encoding="utf-8"))
+    for key in ("effort_counts_known", "unrecorded_requests", "usage_accounting_version"):
+        del result["lifecycle_summary"]["usage"][key]
+    (run_dir / "result.json").write_text(json.dumps(result), encoding="utf-8")
+    family = dict(build_report(load_run(run_dir)).family)
+    assert "effort counts known: not recorded" in family["run usage"]
+    assert "unrecorded requests: not reported" in family["run usage"]
+    assert "not recorded (legacy record)" in family["run usage"]

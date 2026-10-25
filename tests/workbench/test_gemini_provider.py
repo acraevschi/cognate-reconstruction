@@ -522,10 +522,38 @@ def test_the_reasoning_budget_reaches_the_provider_and_the_digest(
     provider, digest, public, _ = cli._provider_and_configuration(
         _infer_args("--reasoning-effort", "high")
     )
-    assert provider.completion_kwargs["reasoning_effort"] == "high"
+    # Gemini 3+ receives the explicit thinking level (R02); see the next test.
+    assert provider.completion_kwargs["thinkingConfig"] == {"thinkingLevel": "high", "includeThoughts": True}
+    assert "reasoning_effort" not in provider.completion_kwargs
     assert public["reasoning_effort"] == "high"
+    assert public["reasoning_transport"] == "gemini-thinking-level-v1"
     _, other, _, _ = cli._provider_and_configuration(_infer_args())
     assert digest != other
+
+
+@pytest.mark.parametrize("model,level", [("gemini-3.8-flash", "medium"), ("gemini-3.7-flash", "medium"),
+                                         ("gemini-3.8-flash", "low")])
+def test_gemini_3_thinking_level_reaches_the_request_as_selected(monkeypatch, model, level) -> None:
+    """LiteLLM maps `medium` to thinkingLevel "high" for names it does not
+    special-case and refuses `reasoning_effort` for models missing from its
+    map; the explicit field reaches the request unchanged in both cases."""
+    from litellm.utils import get_optional_params
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    provider, _, _, _ = cli._provider_and_configuration(
+        _infer_args("--model", model, "--reasoning-effort", level))
+    options = {k: v for k, v in provider.completion_kwargs.items() if k not in ("api_key", "timeout")}
+    sent = get_optional_params(model=model, custom_llm_provider="gemini", **options)
+    assert sent["thinkingConfig"] == {"thinkingLevel": level, "includeThoughts": True}
+
+
+def test_non_gemini_3_models_keep_the_generic_reasoning_effort(monkeypatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    provider, _, public, _ = cli._provider_and_configuration(
+        _infer_args("--model", "gemini-2.5-flash", "--reasoning-effort", "low"))
+    assert provider.completion_kwargs["reasoning_effort"] == "low"
+    assert "reasoning_transport" not in public
+    assert not cli._gemini_thinking_level_model("openai/gemini-3-local")
 
 
 def test_gemini_defaults_to_the_temperature_google_documents(monkeypatch) -> None:

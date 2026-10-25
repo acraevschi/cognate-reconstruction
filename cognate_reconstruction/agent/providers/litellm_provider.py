@@ -9,6 +9,7 @@ from typing import Any
 from cognate_reconstruction.agent.providers.errors import (
     ProviderTransientError, ProviderError, ProviderFailureMetadata, ProviderFailureKind, normalized_provider_error,
 )
+from cognate_reconstruction.agent.providers.pricing import TokenPrice, priced_cost
 from cognate_reconstruction.agent.schemas import (
     LLMMessage,
     LLMToolCall,
@@ -57,8 +58,14 @@ class LiteLLMProvider:
         *,
         completion_kwargs: Mapping[str, Any] | None = None,
         completion_fn: Callable[..., object] | None = None,
+        price: TokenPrice | None = None,
     ) -> None:
         self.model = model
+        if price is not None and price.model != model:
+            raise ValueError(f"price entry is for {price.model!r}, not {model!r}")
+        # An explicit operator price replaces LiteLLM's model-cost map for this
+        # model; see `pricing`. The adapter's own figure is still recorded.
+        self.price = price
         self.completion_kwargs = dict(completion_kwargs or {})
         reserved = {"model", "messages", "tools", "tool_choice"}
         if overlap := sorted(reserved & self.completion_kwargs.keys()):
@@ -212,6 +219,18 @@ class LiteLLMProvider:
         )
         hidden = _value(response, "_hidden_params", {}) or {}
         response_cost = _value(hidden, "response_cost")
+        reported_cost = float(response_cost) if response_cost is not None else None
+        cost, cost_source = reported_cost, ("provider_reported" if reported_cost is not None else None)
+        if self.price is not None:
+            table_cost = priced_cost(
+                self.price,
+                int(prompt_tokens) if prompt_tokens is not None else None,
+                int(completion_tokens) if completion_tokens is not None else None,
+            )
+            # Without both token counts the table cannot price the response;
+            # the reported figure, if any, is then the only known cost.
+            if table_cost is not None:
+                cost, cost_source = table_cost, "price_table"
         usage = None
         if any(
             value is not None
@@ -242,9 +261,9 @@ class LiteLLMProvider:
                 reasoning_output_tokens=(
                     int(reasoning_tokens) if reasoning_tokens is not None else None
                 ),
-                cost_usd=(
-                    float(response_cost) if response_cost is not None else None
-                ),
+                cost_usd=cost,
+                cost_source=cost_source,
+                provider_reported_cost_usd=reported_cost,
             )
         return ProviderResponse(
             message=LLMMessage(

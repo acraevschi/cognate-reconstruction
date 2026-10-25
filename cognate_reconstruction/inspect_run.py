@@ -1233,6 +1233,32 @@ def _historical_lines(
     return tuple(lines)
 
 
+def _run_usage_line(result: Mapping[str, Any] | None) -> str | None:
+    """The run's own cumulative usage record, including the abrupt-loss keys.
+
+    Records written before `abrupt-loss-v1` lack the last three keys; they are
+    shown as not recorded rather than guessed from `history_complete`.
+    """
+    result = result or {}
+    usage = result.get("usage") or (result.get("lifecycle_summary") or {}).get("usage")
+    if not isinstance(usage, Mapping):
+        return None
+
+    def flag(key: str) -> str:
+        value = usage.get(key)
+        return "not recorded" if value is None else ("yes" if value else "no")
+
+    cost = usage.get("reported_cost_usd")
+    return (
+        f"{usage.get('turns', '?')} turns, {usage.get('tool_calls', '?')} tool calls, "
+        f"${cost or 0:.4f} reported cost, {usage.get('responses_without_cost', '?')} "
+        f"response(s) without cost; history complete: {flag('history_complete')}, "
+        f"effort counts known: {flag('effort_counts_known')}, unrecorded requests: "
+        f"{_reported(usage.get('unrecorded_requests'))}, accounting: "
+        f"{usage.get('usage_accounting_version') or 'not recorded (legacy record)'}"
+    )
+
+
 def build_report(
     artifacts: RunArtifacts,
     *,
@@ -1338,6 +1364,9 @@ def build_report(
             "of model-loop time",
         ),
     )
+    usage_line = _run_usage_line(artifacts.result)
+    if usage_line is not None:
+        family += (("run usage", usage_line),)
     evaluation_lines = ()
     if artifacts.result and artifacts.result.get("evaluation_report"):
         evaluation_lines = tuple(render_evaluation_text(

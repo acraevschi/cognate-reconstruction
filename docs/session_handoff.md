@@ -126,8 +126,8 @@ are satisfied; explain any scoped-out work rather than silently dropping it.
 | Post-review ID | Status | Prerequisite / next action | Intended result |
 | --- | --- | --- | --- |
 | R01 — Contract repairs | complete | Four findings reproduced and repaired offline (branch `r01-contract-repairs`); independent review's three journal defects fixed 2026-10-25; live usability not tested | `docs/research/post_review_contract_repairs.md` |
-| R02 — Diagnostic panel and manifests | ready | On branch `r01-contract-repairs`; verify R01 interfaces per the R01 completion amendment; build Stage A/B instruments and ledger | `docs/research/model_diagnostic_design.md` |
-| R03 — Stronger-model diagnostic | not started | R01/R02, concrete reviewed manifest; models selected 2026-10-25 (Gemma 4 26B local, Gemini 3.8 Flash medium); paid ceiling US$5 aggregate / 60 minutes confirmed 2026-10-25; local success not required | `docs/research/model_capability_diagnostic.md` |
+| R02 — Diagnostic panel and manifests | complete | Offline instruments, pricing gate, Gemini thinking-level fix, ledger/launcher and frozen candidate manifests delivered 2026-10-25; read-only instrument audit integrated; no live work | `docs/research/model_diagnostic_design.md` |
+| R03 — Stronger-model diagnostic | ready | R02 manifests frozen in `runs/experiments/r02-model-diagnostic-20261025/`; gates: required read-only manifest review, launch preflight, re-freeze after any code change; models and ceilings already decided | `docs/research/model_capability_diagnostic.md` |
 | R04 — Interface and evidence study | deferred | R03/owner selects a specific question; no automatic redesign | `docs/research/focused_interface_study.md` |
 | R05 — Propagation and robustness | deferred | Useful local judgments or a demonstrated propagation uncertainty | `docs/research/propagation_robustness_study.md` |
 | R06 — Forward prediction | deferred | Owner-selected alternative, not a completion gate | `docs/research/forward_prediction_feasibility.md` |
@@ -323,6 +323,95 @@ fact also covers report readers.
   `columns_decided_by_equal_confidence` fields.
 - **Model-visible digests.** These are unchanged from Task05 final. The
   `test_proto_assembly` result gains the two column fields above.
+
+### R02 completion amendments — 2026-10-25
+
+**For R03 / `03-stronger-model-diagnostic.md`** (applied to the brief):
+
+R02 is complete offline; see `docs/research/model_diagnostic_design.md` and its
+tracked manifest copy `docs/research/model_diagnostic_design_manifest.json`.
+Nothing below authorizes launch by itself; the owner's model and budget
+decisions above are carried forward unchanged.
+
+- **Inputs and versions.** Stage A `benchmarks/diagnostic/r02-stage-a-v1.json`
+  (checker `r02-usability-v1`); Stage B `benchmarks/diagnostic/r02-stage-b-v1.json`
+  (scorer `r02-decisions-v1`, beside task02-v1 / task04-units-v1; evidence
+  `units-v2`). Native profile stored-hypothesis for both arms. Each stage appends
+  its own block to the packaged instructions via `--agent-instructions`:
+  Stage A `543e3f32…` (the supplied hypothesis), Stage B `5b4c7aef…` (the
+  parsimony criterion only; no items or answers). Packaged text `0b9d91cf…`,
+  tool schemas `dd58d427…`, commit notes `1ddfc0fc…`, evidence `b1f459e7…`.
+- **Frozen candidate directory.** `runs/experiments/r02-model-diagnostic-20261025/`
+  (ignored): `inputs/`, `manifest.stage-a.json` (`d8a532c8…`),
+  `manifest.stage-b.json` (`d5d2824f…`), `plan.json` (`0ef7da95…`),
+  `source_manifest.json` (`1a5bd7b4…`, 220 files, HEAD `815a0b6` + code diff
+  `03f798f2…`).
+  **Superseded:** the pre-commit review changed the retry budget in the trial
+  commands (`--max-retry-seconds` now equals the timeout), so this directory is
+  stale and is kept only as the reviewed draft; re-freeze after the commit.
+  Regenerate, never hand-edit:
+  `python tools/r02_diagnostics.py freeze --output-dir <new dir>`. Any code change,
+  including a commit (it changes `head`), needs a re-freeze into a new directory
+  name before launch, and the review must see the re-frozen hashes.
+- **Arms, caps and resources.** Gemini 3.8 Flash: `--preset gemini
+  --reasoning-effort medium`, temperature 1.0, `max_tokens` 16,384, timeout 300 s,
+  `--price-table inputs/price-table.json` (official prices read 2026-10-25,
+  valid through 2026-12-31). A: 24 turns, US$0.75 cap, 900 s. B: 30 turns/node,
+  60 total, US$2.25 cap, 1,800 s. Both `--max-failed-nodes 0`, `--max-retries 3`,
+  `--max-retry-seconds` equal to the timeout, `--checkpoint`, unique run IDs. Headroom for one
+  response US$0.847872 (context-limit input + 16,384 output): worst case
+  US$1.60 + US$3.10 = **US$4.70 ≤ US$5**; paid wall reservations 2,900 s ≤ 3,600 s.
+  Local Gemma 4 26B: `--preset lm-studio`, temperature 0.1, no reasoning setting,
+  `max_tokens` 16,384, timeout 600 s; A 1,800 s, B 5,000 s; reservations
+  7,000 s ≤ 7,200 s. One A and one conditional B trial per model; no retries,
+  reruns or seeds.
+- **Reasoning transport.** LiteLLM 1.81.16 would have sent `medium` as
+  thinkingLevel `high` for `gemini-3.8-flash` (or refused it without a cost-map
+  entry). The CLI now sends `thinkingConfig.thinkingLevel` explicitly for Gemini
+  3+ and records `reasoning_transport="gemini-thinking-level-v1"` in the digest.
+  Check reasoning tokens in the first trajectory's provider usage.
+- **Pricing.** Cost comes from the price table as an upper bound (all prompt
+  tokens at the uncached rate; output includes thinking); LiteLLM's own figure is
+  kept as `provider_reported_cost_usd`, and `cost_source` says which applied. The
+  cap is checked after each response, hence the headroom.
+- **Ledger usage.** From the experiment directory:
+  `python /Users/acraev/Work/cognate-reconstruction/tools/experiment_batch.py run --plan plan.json --dry-run`,
+  then without `--dry-run`. Order: A-gemini, B-gemini (requires A-gemini usable),
+  A-local, B-local (requires A-local usable). The launcher refuses on a non-empty
+  run dir, an unusable prerequisite, unknown paid cost, or spend + reservation over
+  a ceiling. Read `batch_ledger.json` (`r02-ledger-v1`: all-attempt turns, requests,
+  known/unknown cost, tokens, maximum request size, outcomes) and
+  `batch_events.jsonl`; `experiment_batch.py ledger --plan plan.json` rewrites the
+  ledger without running anything.
+- **Expected stage outputs.** Each run dir: `result.json` (absent if
+  interrupted), `run_summary.json`, `checkpoint.json`, `checkpoint.requests.jsonl`,
+  `trajectories.jsonl`, `events.jsonl`, logs, `evaluation.json`. Stage A:
+  `outcome`, `criteria`, `stage_gate`, extra/missing claims, output. Stage B:
+  `decisions.primary` (`model_committed_correct` of 18 is the headline; readings,
+  presence/absence subtotals), `matched_pairs` (of 6), `unresolved` (with
+  confidences), `decided_by`, `task02_evaluation`, `run_status`.
+- **Prespecified reading (descriptive).** Evidence-sensitive on this panel:
+  ≥16/18 and ≥5/6 pairs with explicit claims; baseline-level: ≤11/18 or ≤2/6.
+  Baselines: identity 10, daughter a 8, b 10, union 10, intersection 8, no-outgroup
+  cue rules ≤12 and ≤3/6, copy-c 11 (7 `other`); the deployable outgroup-witness
+  rule is the identification rule itself (18/18, 6/6), so B is a necessary-condition
+  test of evidence use and correct unit execution, not of discovery.
+- **Remaining gates.** (1) The required read-only Opus 5.5 review of these
+  manifests (R02's instrument audit is not it). (2) Launch preflight:
+  `GEMINI_API_KEY` set (never printed), `gemini-3.8-flash` served, date ≤
+  2026-12-31, local model loaded with enough context for ~20k-token first requests
+  growing past 80k, no competing jobs. (3) Re-freeze after any code change.
+  No owner decision is missing.
+
+**For R04 / `04-interface-and-evidence-study.md`** (applied to the brief; reusable
+interfaces only, no redesign implied): reuse `load_explicit_case` /
+`build_explicit_case`, `score_decisions` (`r02-decisions-v1`), `expand_arguments`
+(canonical claim comparison), `StageBBaseline` and `fixed_daughter_step`, the
+ledger/launcher (`r02-batch-v1`, `r02-ledger-v1`), `--price-table` and the Gemini
+thinking-level transport. Stage A/B are development material. On Stage B the
+deployable rule equals the identification rule, so compare evidence-sensitive
+decisions and execution burden, not "beating" it. A dossier listing outgroup
+columns would hand over B's decisive cue. No untuned application split exists.
 
 ### Active post-review amendment — 2026-10-08
 
@@ -1638,3 +1727,24 @@ Downstream: the R02/R03 completion amendments above and in both briefs now
 name the renamed field and the new journal behaviour.
 
 Next: R02 is ready.
+
+### 2026-10-25 — R02 — complete offline
+
+Built the Stage A supplied-hypothesis fixture/checker (`r02-stage-a-v1`,
+`r02-usability-v1`) and the Stage B counterbalanced retention panel/scorer
+(`r02-stage-b-v1`, `r02-decisions-v1`: 18 primary opportunities, 6 matched
+pairs, 2 unresolved), baselines (copy/uniform/cue policies 8–12/18, 0–3/6; the
+deployable outgroup-witness rule 18/18), `--price-table` (versioned explicit
+prices; LiteLLM's pricing kwargs are blocked by the secret filter), and an
+explicit Gemini 3+ thinking level (LiteLLM 1.81.16 sent `medium` as `high` or
+refused it for `gemini-3.8-flash`). A delegated Opus 5.5 subagent built the
+whole-batch ledger and serial launcher; a second, read-only, audited the
+instruments, and its four defects (hidden parsimony assumption, confounded
+pairs, two Stage A false-fails) plus a scorer risk were fixed before freezing.
+Candidate manifests: `runs/experiments/r02-model-diagnostic-20261025/`
+(Gemini worst case US$4.70 ≤ US$5, 2,900 s ≤ 3,600 s; local 7,000 s ≤ 7,200 s).
+No model request, discovery or paid call. Results and commands:
+`docs/research/model_diagnostic_design.md`. Uncommitted.
+
+Next: R03 is ready subject to its required manifest review and launch preflight.
+

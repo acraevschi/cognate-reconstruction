@@ -115,3 +115,23 @@ The five [scripted controls](evidence_repair.md) use actual preview/commit, pare
 propagation, JSONL and `evaluate_run`; their success verifies the measurement
 instrument, not linguistic/model improvement. Real unannotated targets and
 OLD MAN's unresolved scope still have unknown piece quality.
+
+## R02 amendment — additive stage diagnostics, 2026-10-25
+
+task02-v1 and task04-units-v1 readings are unchanged. Two additive, report-only
+versions sit beside them for the R02 stages ([design](model_diagnostic_design.md)):
+
+- `r02-usability-v1` (Stage A): exact execution of a supplied hypothesis. Claims
+  are compared after expansion to local sets with canonical conditions; prose is
+  not compared. Its references are executions of supplied claims, never quality
+  targets.
+- `r02-decisions-v1` (Stage B): one opportunity per etymon position or piece where
+  exactly one active child has material in one supplied cognate unit, read from
+  the committed top candidate's analysis by cognate set, never by spelling.
+  Readings `retain`/`absent`/`other`/`unscorable`/`missing`; the denominator is
+  every planned identified opportunity, so missing or unanalyzed output cannot
+  raise the rate. Unresolved (no-outgroup) opportunities are descriptive only.
+  Correctness is conditional on the definition's stated parsimony assumptions.
+
+Explicit diagnostic definitions (`r02-stage-a-v1`, `r02-stage-b-v1`) build
+payloads from observed pieces; their operator fields never enter model evidence.

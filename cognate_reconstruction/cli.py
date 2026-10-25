@@ -6,11 +6,13 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import uuid
 from collections import Counter
 from collections.abc import Sequence
+from datetime import date
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -42,6 +44,7 @@ from cognate_reconstruction.agent.request_journal import (
     reconcile_resume_usage,
     request_journal_path,
 )
+from cognate_reconstruction.agent.providers.pricing import load_price_table, price_for, price_setting
 from cognate_reconstruction.agent.schemas import COMMIT_REQUIREMENT_NOTES
 from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
 from cognate_reconstruction.alignment.units import alignment_identity
@@ -603,6 +606,16 @@ DEFAULT_TEMPERATURE = 0.1
 GEMINI_DEFAULT_TEMPERATURE = 1.0
 
 
+GEMINI_THINKING_TRANSPORT = "gemini-thinking-level-v1"
+
+
+def _gemini_thinking_level_model(model: str) -> bool:
+    """Is this a Gemini 3+ model routed through LiteLLM's Gemini adapters?"""
+    route, _, raw = model.partition("/")
+    match = re.match(r"gemini-(\d+)", raw)
+    return f"{route}/" in _EXPLICIT_GEMINI_PREFIXES and match is not None and int(match.group(1)) >= 3
+
+
 def _resolved_temperature(requested: float | None, preset: str | None) -> float:
     if requested is not None:
         return requested
@@ -625,11 +638,12 @@ def _provider_and_configuration(
     api_key = api_key_from_environment(api_key_env)
     model = args.model
     api_base = _api_base(args.api_base) if args.api_base else None
+    reasoning_transport = None
     if args.reasoning_effort is not None:
         # Gemini 3 thinks at "low" unless told otherwise, and the comparative
         # method is not a low-thinking task. Passed as the OpenAI-shaped name so
-        # every backend that has a reasoning control gets it; LiteLLM turns it
-        # into thinkingConfig.thinkingLevel for Gemini.
+        # every backend that has a reasoning control gets it, except for the
+        # Gemini 3+ models handled after routing below.
         options["reasoning_effort"] = args.reasoning_effort
     if preset == "gemini":
         assert api_key is not None  # the preset always names a key variable
@@ -687,10 +701,26 @@ def _provider_and_configuration(
             options["api_base"] = api_base
         if api_key:
             options["api_key"] = api_key
+    if args.reasoning_effort is not None and _gemini_thinking_level_model(model):
+        # LiteLLM 1.81.16 sends `medium` as thinkingLevel "high" for every
+        # Gemini 3 name it does not special-case (only `gemini-3-flash*` and
+        # `gemini-3.1-pro-preview`), and refuses `reasoning_effort` outright for
+        # a model missing from its cost map. The level is therefore sent as the
+        # explicit Gemini field, which LiteLLM passes through unchanged.
+        del options["reasoning_effort"]
+        options["thinkingConfig"] = {"thinkingLevel": args.reasoning_effort, "includeThoughts": True}
+        reasoning_transport = GEMINI_THINKING_TRANSPORT
     temperature = _resolved_temperature(args.temperature, preset)
     options["temperature"] = temperature
     options["timeout"] = args.timeout
-    provider = LiteLLMProvider(model, completion_kwargs=options)
+    price_entry = None
+    if getattr(args, "price_table", None):
+        table, table_sha256 = load_price_table(args.price_table)
+        price = price_for(table, model, date.today())
+        price_entry = price_setting(price, table_sha256)
+        provider = LiteLLMProvider(model, completion_kwargs=options, price=price)
+    else:
+        provider = LiteLLMProvider(model, completion_kwargs=options)
     settings = {
         "inventory_protocol": getattr(args, "inventory_protocol", "stored-hypothesis"),
         "model": model,
@@ -713,6 +743,12 @@ def _provider_and_configuration(
         "max_run_seconds": args.max_run_seconds,
         "max_total_cost_usd": args.max_total_cost_usd,
     }
+    if price_entry is not None:
+        # Added only when used, so every earlier configuration keeps its digest.
+        settings["price_table"] = price_entry
+    if reasoning_transport is not None:
+        # The wire request changed for these configurations, so their digest does too.
+        settings["reasoning_transport"] = reasoning_transport
     retry_settings = {
         "max_retries": args.max_retries,
         "retry_backoff_seconds": args.retry_backoff_seconds,
@@ -1966,6 +2002,15 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--max-total-tool-calls", type=int)
     infer.add_argument("--max-run-seconds", type=float)
     infer.add_argument("--max-total-cost-usd", type=float)
+    infer.add_argument(
+        "--price-table",
+        help=(
+            "Versioned JSON price table (price-table-v1) for a model LiteLLM "
+            "cannot price. Its entry for --model replaces LiteLLM's reported "
+            "cost with an upper bound from token counts; the table digest joins "
+            "the configuration digest. Refused outside the entry's dates."
+        ),
+    )
     infer.add_argument(
         "--max-repeated-tool-failures",
         type=int,

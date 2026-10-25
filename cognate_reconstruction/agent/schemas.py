@@ -133,6 +133,22 @@ class ProviderUsage(WorkbenchModel):
         ),
     )
     cost_usd: float | None = Field(default=None, ge=0.0)
+    cost_source: Literal["provider_reported", "price_table"] | None = Field(
+        default=None,
+        description=(
+            "Where cost_usd came from: the provider adapter's reported cost, or "
+            "the operator's explicit price table applied to the token counts. "
+            "Null on records written before the field existed."
+        ),
+    )
+    provider_reported_cost_usd: float | None = Field(
+        default=None,
+        ge=0.0,
+        description=(
+            "The adapter's own reported cost, kept beside a price-table cost "
+            "so the two can be compared; never added to cost_usd."
+        ),
+    )
 
 
 class ProviderResponseMetadata(WorkbenchModel):

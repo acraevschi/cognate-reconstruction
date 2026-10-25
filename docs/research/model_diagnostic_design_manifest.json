@@ -1,0 +1,198 @@
+{
+  "task": "R02",
+  "written": "2026-10-25",
+  "experiment_dir": "runs/experiments/r02-model-diagnostic-20261025",
+  "status": "candidate manifest; not independently reviewed; launch not authorized by R02",
+  "source": {
+    "head": "815a0b6f8afd0ca5bca1f31580d9729bb84dad0b",
+    "branch": "r01-contract-repairs",
+    "source_roots": [
+      "cognate_reconstruction",
+      "tools",
+      "tests",
+      "skills",
+      "benchmarks",
+      "examples"
+    ],
+    "tracked_diff_sha256": "03f798f28c0e618ccf1046fbf631e5d188ad12a1c710fcfa57c43305dc7f8c37",
+    "dirty_paths": [
+      "benchmarks/diagnostic/r02-stage-a-v1.json",
+      "benchmarks/diagnostic/r02-stage-b-v1.json",
+      "cognate_reconstruction/agent/providers/litellm_provider.py",
+      "cognate_reconstruction/agent/providers/pricing.py",
+      "cognate_reconstruction/agent/schemas.py",
+      "cognate_reconstruction/benchmarks/ledger.py",
+      "cognate_reconstruction/cli.py",
+      "cognate_reconstruction/evaluation/decisions.py",
+      "cognate_reconstruction/evaluation/usability.py",
+      "cognate_reconstruction/inspect_run.py",
+      "cognate_reconstruction/synthesis/diagnostics.py",
+      "examples/pricing/",
+      "tests/workbench/test_experiment_ledger.py",
+      "tests/workbench/test_gemini_provider.py",
+      "tests/workbench/test_inspect_run.py",
+      "tests/workbench/test_price_table.py",
+      "tests/workbench/test_r02_instruments.py",
+      "tools/experiment_batch.py",
+      "tools/r02_diagnostics.py"
+    ]
+  },
+  "source_manifest_sha256": "1a5bd7b46981cdcc8cc4952eaccf5373c57529f388959c9a795b207d20a1cd5b",
+  "source_file_count": 220,
+  "files": {
+    "manifest.stage-a.json": "d8a532c840f9c1ed3272569720f180964ebfcd8c5f6924e38269818a3c5176cb",
+    "manifest.stage-b.json": "d5d2824fd8cb6ac29caf59c9cce539661bfddbe509939b6e869ee465d2a5e7ec",
+    "plan.json": "0ef7da9554c2b63db70f4a9cc2074aa0c0b8729ac2efaa8853c5e7be8182aa83",
+    "inputs/gemini.provider-config.json": "4bd88ce8ccd5f4397d45e97b0848615054b7003934deb6d64301a48df3cac8cf",
+    "inputs/local.provider-config.json": "4bd88ce8ccd5f4397d45e97b0848615054b7003934deb6d64301a48df3cac8cf",
+    "inputs/price-table.json": "f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521",
+    "inputs/stage-a.instructions.stored-hypothesis.md": "543e3f320d18d455f27f943f862ee1da9527beb810a2032b7d4e53fab48dcadb",
+    "inputs/stage-a.payload.json": "703b8d9051b69ed1cbcd2d2a9766f7c5a04230ee7917a8407d4c01475f62a6d8",
+    "inputs/stage-b.instructions.md": "5b4c7aefaee21c543d10f523c3da91e4c52e57867ed63287b73ab57611fba4ff",
+    "inputs/stage-b.payload.json": "e84851120913d6ba8ef91a9bd67a06a321cd851adad4bfcb5b5937b1233fd93b"
+  },
+  "model_visible": {
+    "A": {
+      "instructions_sha256": "543e3f320d18d455f27f943f862ee1da9527beb810a2032b7d4e53fab48dcadb",
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the agent instructions": "543e3f320d18d455f27f943f862ee1da9527beb810a2032b7d4e53fab48dcadb",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "dd58d427b00f86da222b301a6bbebc1fcbe1d70f5a507dfa87b2dd5bfddba8a9",
+      "the anchor file": "absent",
+      "first_request": {
+        "system_sha256": "543e3f320d18d455f27f943f862ee1da9527beb810a2032b7d4e53fab48dcadb",
+        "node_prompt_sha256": "11d958dc765cadda3f02fd952a9698c62cfcf70d3c628517c25bfc2f183d63c8",
+        "tool_definitions_sha256": "6b794b6e5463a4f2ca93fb364f8cad39ece9d8f58e48d1bcceeb7705c688ab97",
+        "node_prompt_chars": 2007
+      }
+    },
+    "B": {
+      "instructions_sha256": "5b4c7aefaee21c543d10f523c3da91e4c52e57867ed63287b73ab57611fba4ff",
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the agent instructions": "5b4c7aefaee21c543d10f523c3da91e4c52e57867ed63287b73ab57611fba4ff",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "dd58d427b00f86da222b301a6bbebc1fcbe1d70f5a507dfa87b2dd5bfddba8a9",
+      "the anchor file": "absent",
+      "packaged_instructions_sha256": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d",
+      "first_request_x": {
+        "system_sha256": "5b4c7aefaee21c543d10f523c3da91e4c52e57867ed63287b73ab57611fba4ff",
+        "node_prompt_sha256": "fecbdfcde2103881120384caf70f22d1548efa2d25bf3fcbf6740562eb4a926e",
+        "tool_definitions_sha256": "6b794b6e5463a4f2ca93fb364f8cad39ece9d8f58e48d1bcceeb7705c688ab97",
+        "node_prompt_chars": 2141
+      },
+      "root_request": "depends on the model's committed x beam; not frozen"
+    }
+  },
+  "definitions": {
+    "benchmarks/diagnostic/r02-stage-a-v1.json": "fcff364189f9408d1cb89c7e10270145fbc88c0bb9a219eecdb092e960964caa",
+    "benchmarks/diagnostic/r02-stage-b-v1.json": "5a997c02adbc328b68afe3f78653b5dc296b1da8e0d3cb0576884616e0b18377"
+  },
+  "price_table": {
+    "sha256": "f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521",
+    "entry": {
+      "model": "gemini/gemini-3.8-flash",
+      "input_usd_per_million": 0.75,
+      "output_usd_per_million": 3.75,
+      "cached_input_usd_per_million": 0.075,
+      "valid_from": null,
+      "valid_through": "2026-12-31",
+      "tier": "Gemini API paid standard tier; output price includes thinking tokens; no long-context threshold listed",
+      "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "read_on": "2026-10-25"
+    }
+  },
+  "evaluator_versions": {
+    "task02": "task02-v1",
+    "units": "task04-units-v1",
+    "evidence_contract": "units-v2",
+    "usability": "r02-usability-v1",
+    "decisions": "r02-decisions-v1",
+    "ledger": "r02-ledger-v1",
+    "usage_accounting": "abrupt-loss-v1"
+  },
+  "arms": {
+    "A": {
+      "gemini": {
+        "caps": {
+          "max_turns": 24,
+          "max_total_turns": 24,
+          "max_run_seconds": 900,
+          "max_total_cost_usd": 0.75
+        },
+        "resources": {
+          "paid": true,
+          "cost_cap_usd": 0.75,
+          "one_response_headroom_usd": 0.847872,
+          "headroom_basis": "1048576 input tokens (context limit) and 16384 output tokens at the table price",
+          "worst_case_trial_usd": 1.597872,
+          "cost_reservation_usd": 1.6,
+          "max_turns_total": 24,
+          "worst_case_output_tokens": 393216,
+          "max_run_seconds": 900,
+          "wall_reservation_seconds": 1000
+        },
+        "temperature": 1.0,
+        "reasoning_effort": "medium",
+        "harness_model": "gemini/gemini-3.8-flash"
+      },
+      "local": {
+        "caps": {
+          "max_turns": 24,
+          "max_total_turns": 24,
+          "max_run_seconds": 1800,
+          "max_total_cost_usd": null
+        },
+        "resources": {
+          "paid": false,
+          "max_run_seconds": 1800,
+          "wall_reservation_seconds": 1900
+        },
+        "temperature": 0.1,
+        "reasoning_effort": null,
+        "harness_model": "openai/google/gemma-4-26b-a4b"
+      }
+    },
+    "B": {
+      "gemini": {
+        "caps": {
+          "max_turns": 30,
+          "max_total_turns": 60,
+          "max_run_seconds": 1800,
+          "max_total_cost_usd": 2.25
+        },
+        "resources": {
+          "paid": true,
+          "cost_cap_usd": 2.25,
+          "one_response_headroom_usd": 0.847872,
+          "headroom_basis": "1048576 input tokens (context limit) and 16384 output tokens at the table price",
+          "worst_case_trial_usd": 3.097872,
+          "cost_reservation_usd": 3.1,
+          "max_turns_total": 60,
+          "worst_case_output_tokens": 983040,
+          "max_run_seconds": 1800,
+          "wall_reservation_seconds": 1900
+        },
+        "temperature": 1.0,
+        "reasoning_effort": "medium",
+        "harness_model": "gemini/gemini-3.8-flash"
+      },
+      "local": {
+        "caps": {
+          "max_turns": 30,
+          "max_total_turns": 60,
+          "max_run_seconds": 5000,
+          "max_total_cost_usd": null
+        },
+        "resources": {
+          "paid": false,
+          "max_run_seconds": 5000,
+          "wall_reservation_seconds": 5100
+        },
+        "temperature": 0.1,
+        "reasoning_effort": null,
+        "harness_model": "openai/google/gemma-4-26b-a4b"
+      }
+    }
+  },
+  "live_model_calls": 0
+}

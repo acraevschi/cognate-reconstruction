@@ -1,0 +1,814 @@
+{
+  "suite_version": "r02-stage-b-v1",
+  "case_id": "stage-b-unit-retention",
+  "stage": "B",
+  "newick": "((a,b)x,c)r;",
+  "question": "At node x, does the model keep witness-gap material in the correct cognate unit when, and only when, the outgroup c supports it under the stated parsimony criterion, while leaving tied cases unresolved?",
+  "identifiability": "conditional_outgroup_parsimony",
+  "independent_evidence": "Assumptions (stated to the model in the Stage B task block): the supplied tree ((a,b)x,c)r and supplied cognate units are correct; within one cognate unit, gain and loss of a segment or piece cost one event each on a branch (unweighted parsimony); c's g corresponds to k. Material present in exactly one of a/b is present at x when c shows it in the same unit (one loss beats two gains) and absent when c's same-unit form lacks it (one gain beats two losses). With no c form the two histories tie. Values at x come from the daughter that has them. Counterbalancing: a ends every core in k (retained or added), b never does, and vowels, onsets and stem shapes are balanced across retain and absent items, so no visible cue other than c predicts the answer.",
+  "equivalent_solutions": "Without the parsimony criterion any mixture of independent gains and losses fits, and proto-symbol relabelings are equivalent. The two no-outgroup items (U1, U2 design labels) tie under the criterion; they are excluded from the primary denominator and both alternatives are accepted in the raw exact view.",
+  "observed": {
+    "a": {
+      "w01": [
+        [
+          "c52",
+          "p i k"
+        ]
+      ],
+      "w02": [
+        [
+          "c04",
+          "l i k"
+        ]
+      ],
+      "w03": [
+        [
+          "c17",
+          "m i k"
+        ]
+      ],
+      "w04": [
+        [
+          "c43",
+          "s o k"
+        ]
+      ],
+      "w05": [
+        [
+          "c11",
+          "n e k"
+        ]
+      ],
+      "w06": [
+        [
+          "c25",
+          "t e k"
+        ]
+      ],
+      "w07": [
+        [
+          "c29",
+          "i k"
+        ]
+      ],
+      "w08": [
+        [
+          "c15",
+          "k e n"
+        ]
+      ],
+      "w09": [
+        [
+          "c41",
+          "p o k"
+        ]
+      ],
+      "w10": [
+        [
+          "c20",
+          "l e k"
+        ]
+      ],
+      "w11": [
+        [
+          "c08",
+          "t o k"
+        ]
+      ],
+      "w12": [
+        [
+          "c46",
+          "u k"
+        ]
+      ],
+      "w13": [
+        [
+          "c58",
+          "k u k"
+        ]
+      ],
+      "w14": [
+        [
+          "c33",
+          "n u k"
+        ]
+      ],
+      "w15": [
+        [
+          "c37",
+          "s e k"
+        ]
+      ],
+      "w16": [
+        [
+          "c39",
+          "m u k"
+        ]
+      ]
+    },
+    "b": {
+      "w01": [
+        [
+          "c52",
+          "p i"
+        ]
+      ],
+      "w02": [
+        [
+          "c04",
+          "l i k"
+        ],
+        [
+          "c61",
+          "k o"
+        ]
+      ],
+      "w03": [
+        [
+          "c17",
+          "m i"
+        ]
+      ],
+      "w04": [
+        [
+          "c43",
+          "s o k"
+        ],
+        [
+          "c35",
+          "k o"
+        ]
+      ],
+      "w05": [
+        [
+          "c11",
+          "n e"
+        ]
+      ],
+      "w06": [
+        [
+          "c25",
+          "t e"
+        ]
+      ],
+      "w07": [
+        [
+          "c29",
+          "h i"
+        ]
+      ],
+      "w08": [
+        [
+          "c15",
+          "k e"
+        ]
+      ],
+      "w09": [
+        [
+          "c41",
+          "p o"
+        ]
+      ],
+      "w10": [
+        [
+          "c20",
+          "l e"
+        ],
+        [
+          "c72",
+          "k o"
+        ]
+      ],
+      "w11": [
+        [
+          "c08",
+          "t o"
+        ]
+      ],
+      "w12": [
+        [
+          "c46",
+          "h u"
+        ]
+      ],
+      "w13": [
+        [
+          "c58",
+          "k u"
+        ]
+      ],
+      "w14": [
+        [
+          "c33",
+          "n u"
+        ]
+      ],
+      "w15": [
+        [
+          "c37",
+          "s e"
+        ],
+        [
+          "c26",
+          "k o"
+        ]
+      ],
+      "w16": [
+        [
+          "c39",
+          "m u"
+        ]
+      ]
+    },
+    "c": {
+      "w01": [
+        [
+          "c52",
+          "b i"
+        ]
+      ],
+      "w02": [
+        [
+          "c04",
+          "l i g"
+        ]
+      ],
+      "w03": [
+        [
+          "c17",
+          "m i g"
+        ]
+      ],
+      "w04": [
+        [
+          "c43",
+          "s a k"
+        ],
+        [
+          "c35",
+          "k a"
+        ]
+      ],
+      "w05": [
+        [
+          "c11",
+          "n e"
+        ]
+      ],
+      "w06": [
+        [
+          "c25",
+          "t e g"
+        ]
+      ],
+      "w07": [
+        [
+          "c29",
+          "h i g"
+        ]
+      ],
+      "w09": [
+        [
+          "c41",
+          "b a g"
+        ]
+      ],
+      "w10": [
+        [
+          "c20",
+          "l e"
+        ],
+        [
+          "c72",
+          "k a"
+        ]
+      ],
+      "w11": [
+        [
+          "c08",
+          "t a"
+        ]
+      ],
+      "w12": [
+        [
+          "c46",
+          "h u g"
+        ]
+      ],
+      "w14": [
+        [
+          "c33",
+          "n u g"
+        ]
+      ],
+      "w15": [
+        [
+          "c37",
+          "s e"
+        ]
+      ],
+      "w16": [
+        [
+          "c39",
+          "m u"
+        ]
+      ]
+    }
+  },
+  "targets": {
+    "x": {
+      "validity": "validated_target",
+      "note": "Conditional on unweighted parsimony on the supplied tree with outgroup c and the supplied cognate units; tied items carry both alternatives.",
+      "forms": {
+        "w01": [
+          [
+            [
+              "c52",
+              "p i"
+            ]
+          ]
+        ],
+        "w02": [
+          [
+            [
+              "c04",
+              "l i k"
+            ]
+          ]
+        ],
+        "w03": [
+          [
+            [
+              "c17",
+              "m i k"
+            ]
+          ]
+        ],
+        "w04": [
+          [
+            [
+              "c43",
+              "s o k"
+            ],
+            [
+              "c35",
+              "k o"
+            ]
+          ]
+        ],
+        "w05": [
+          [
+            [
+              "c11",
+              "n e"
+            ]
+          ]
+        ],
+        "w06": [
+          [
+            [
+              "c25",
+              "t e k"
+            ]
+          ]
+        ],
+        "w07": [
+          [
+            [
+              "c29",
+              "h i k"
+            ]
+          ]
+        ],
+        "w08": [
+          [
+            [
+              "c15",
+              "k e n"
+            ]
+          ],
+          [
+            [
+              "c15",
+              "k e"
+            ]
+          ]
+        ],
+        "w09": [
+          [
+            [
+              "c41",
+              "p o k"
+            ]
+          ]
+        ],
+        "w10": [
+          [
+            [
+              "c20",
+              "l e"
+            ],
+            [
+              "c72",
+              "k o"
+            ]
+          ]
+        ],
+        "w11": [
+          [
+            [
+              "c08",
+              "t o"
+            ]
+          ]
+        ],
+        "w12": [
+          [
+            [
+              "c46",
+              "h u k"
+            ]
+          ]
+        ],
+        "w13": [
+          [
+            [
+              "c58",
+              "k u"
+            ]
+          ],
+          [
+            [
+              "c58",
+              "k u k"
+            ]
+          ]
+        ],
+        "w14": [
+          [
+            [
+              "c33",
+              "n u k"
+            ]
+          ]
+        ],
+        "w15": [
+          [
+            [
+              "c37",
+              "s e"
+            ]
+          ]
+        ],
+        "w16": [
+          [
+            [
+              "c39",
+              "m u"
+            ]
+          ]
+        ]
+      }
+    }
+  },
+  "design_ids": {
+    "w09": "R1",
+    "w03": "R2",
+    "w14": "R3",
+    "w06": "R4",
+    "w11": "A1",
+    "w01": "A2",
+    "w16": "A3",
+    "w05": "A4",
+    "w12": "C1",
+    "w07": "C2",
+    "w02": "S1",
+    "w15": "S2",
+    "w10": "S3",
+    "w04": "S4",
+    "w13": "U1",
+    "w08": "U2"
+  },
+  "generated_history": "Operator history used to write the forms: r>x a>o; x>a h>Ø/#_, inherited suffix lost, then k added after every word-final vowel; x>b suffix -ko added to S1/S2 before b's later loss of word-final k; r>c p>b, k>g/_#. U1/U2 are written to tie; neither is scored as uniquely recoverable.",
+  "opportunities": [
+    {
+      "opportunity_id": "R1-final",
+      "design_id": "R1",
+      "concept_id": "w09",
+      "node_id": "x",
+      "unit": "c41",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "o",
+      "expected": "retain",
+      "basis": "outgroup_presence",
+      "class": "primary",
+      "pair": "P1"
+    },
+    {
+      "opportunity_id": "R2-final",
+      "design_id": "R2",
+      "concept_id": "w03",
+      "node_id": "x",
+      "unit": "c17",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "i",
+      "expected": "retain",
+      "basis": "outgroup_presence",
+      "class": "primary",
+      "pair": "P2"
+    },
+    {
+      "opportunity_id": "R3-final",
+      "design_id": "R3",
+      "concept_id": "w14",
+      "node_id": "x",
+      "unit": "c33",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "u",
+      "expected": "retain",
+      "basis": "outgroup_presence",
+      "class": "primary",
+      "pair": "P3"
+    },
+    {
+      "opportunity_id": "R4-final",
+      "design_id": "R4",
+      "concept_id": "w06",
+      "node_id": "x",
+      "unit": "c25",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "e",
+      "expected": "retain",
+      "basis": "outgroup_presence",
+      "class": "primary",
+      "pair": "P4"
+    },
+    {
+      "opportunity_id": "A1-final",
+      "design_id": "A1",
+      "concept_id": "w11",
+      "node_id": "x",
+      "unit": "c08",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "o",
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": "P1"
+    },
+    {
+      "opportunity_id": "A2-final",
+      "design_id": "A2",
+      "concept_id": "w01",
+      "node_id": "x",
+      "unit": "c52",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "i",
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": "P2"
+    },
+    {
+      "opportunity_id": "A3-final",
+      "design_id": "A3",
+      "concept_id": "w16",
+      "node_id": "x",
+      "unit": "c39",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "u",
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": "P3"
+    },
+    {
+      "opportunity_id": "A4-final",
+      "design_id": "A4",
+      "concept_id": "w05",
+      "node_id": "x",
+      "unit": "c11",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "e",
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": "P4"
+    },
+    {
+      "opportunity_id": "C1-initial",
+      "design_id": "C1",
+      "concept_id": "w12",
+      "node_id": "x",
+      "unit": "c46",
+      "locus": "initial",
+      "token": "h",
+      "absent_token": "u",
+      "expected": "retain",
+      "basis": "complementary_outgroup_presence",
+      "class": "primary",
+      "pair": null
+    },
+    {
+      "opportunity_id": "C1-final",
+      "design_id": "C1",
+      "concept_id": "w12",
+      "node_id": "x",
+      "unit": "c46",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "u",
+      "expected": "retain",
+      "basis": "complementary_outgroup_presence",
+      "class": "primary",
+      "pair": null
+    },
+    {
+      "opportunity_id": "C2-initial",
+      "design_id": "C2",
+      "concept_id": "w07",
+      "node_id": "x",
+      "unit": "c29",
+      "locus": "initial",
+      "token": "h",
+      "absent_token": "i",
+      "expected": "retain",
+      "basis": "complementary_outgroup_presence",
+      "class": "primary",
+      "pair": null
+    },
+    {
+      "opportunity_id": "C2-final",
+      "design_id": "C2",
+      "concept_id": "w07",
+      "node_id": "x",
+      "unit": "c29",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "i",
+      "expected": "retain",
+      "basis": "complementary_outgroup_presence",
+      "class": "primary",
+      "pair": null
+    },
+    {
+      "opportunity_id": "S1-suffix",
+      "design_id": "S1",
+      "concept_id": "w02",
+      "node_id": "x",
+      "unit": "c61",
+      "locus": "piece",
+      "token": null,
+      "absent_token": null,
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": "P5"
+    },
+    {
+      "opportunity_id": "S4-suffix",
+      "design_id": "S4",
+      "concept_id": "w04",
+      "node_id": "x",
+      "unit": "c35",
+      "locus": "piece",
+      "token": null,
+      "absent_token": null,
+      "expected": "retain",
+      "basis": "outgroup_presence",
+      "class": "primary",
+      "pair": "P5"
+    },
+    {
+      "opportunity_id": "S2-final",
+      "design_id": "S2",
+      "concept_id": "w15",
+      "node_id": "x",
+      "unit": "c37",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "e",
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": null
+    },
+    {
+      "opportunity_id": "S2-suffix",
+      "design_id": "S2",
+      "concept_id": "w15",
+      "node_id": "x",
+      "unit": "c26",
+      "locus": "piece",
+      "token": null,
+      "absent_token": null,
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": "P6"
+    },
+    {
+      "opportunity_id": "S3-final",
+      "design_id": "S3",
+      "concept_id": "w10",
+      "node_id": "x",
+      "unit": "c20",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "e",
+      "expected": "absent",
+      "basis": "outgroup_absence",
+      "class": "primary",
+      "pair": null
+    },
+    {
+      "opportunity_id": "S3-suffix",
+      "design_id": "S3",
+      "concept_id": "w10",
+      "node_id": "x",
+      "unit": "c72",
+      "locus": "piece",
+      "token": null,
+      "absent_token": null,
+      "expected": "retain",
+      "basis": "outgroup_presence",
+      "class": "primary",
+      "pair": "P6"
+    },
+    {
+      "opportunity_id": "U1-final",
+      "design_id": "U1",
+      "concept_id": "w13",
+      "node_id": "x",
+      "unit": "c58",
+      "locus": "final",
+      "token": "k",
+      "absent_token": "u",
+      "expected": "unresolved",
+      "basis": "no_outgroup_competing_regular_explanations",
+      "class": "ambiguous",
+      "pair": null
+    },
+    {
+      "opportunity_id": "U2-final",
+      "design_id": "U2",
+      "concept_id": "w08",
+      "node_id": "x",
+      "unit": "c15",
+      "locus": "final",
+      "token": "n",
+      "absent_token": "e",
+      "expected": "unresolved",
+      "basis": "no_outgroup",
+      "class": "ambiguous",
+      "pair": null
+    }
+  ],
+  "matched_pairs": {
+    "P1": [
+      "R1-final",
+      "A1-final"
+    ],
+    "P2": [
+      "R2-final",
+      "A2-final"
+    ],
+    "P3": [
+      "R3-final",
+      "A3-final"
+    ],
+    "P4": [
+      "R4-final",
+      "A4-final"
+    ],
+    "P5": [
+      "S1-suffix",
+      "S4-suffix"
+    ],
+    "P6": [
+      "S2-suffix",
+      "S3-suffix"
+    ]
+  },
+  "task_block": [
+    "## Stage B task: the evaluation criterion for this node",
+    "",
+    "This node is a diagnostic with a stated analytic criterion. Treat the supplied tree and the",
+    "supplied cognate units as correct. Where material occurs in only some descendants, prefer the",
+    "history with fewer changes on the supplied tree, counting the gain and the loss of a segment",
+    "or of a morphological piece as one change each on a branch. Evidence outside the active",
+    "children is available through the tools; inspect it. A gap is one observation, not proof:",
+    "combine it with the rest of the tree as this criterion directs. Where two histories need the",
+    "same number of changes, the item is unresolved: say so in the rationale and confidence;",
+    "either value is then accepted. Decide each etymon and unit on its own evidence.",
+    ""
+  ]
+}

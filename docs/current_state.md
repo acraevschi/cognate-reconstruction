@@ -72,6 +72,31 @@ Task05's offline protocol claim now includes token-conditioned JSON. Task06's
 cumulative caps hold for journaled abrupt loss, not for effort lost with its
 journal. R02 is ready to start.
 
+## R02 diagnostic instruments — prepared 2026-10-25
+
+[R02](research/model_diagnostic_design.md) prepared offline, on branch
+`r01-contract-repairs`, everything R03 needs; no model was called.
+
+- **Stage A** (`r02-stage-a-v1`, `r02-usability-v1`): one node with a supplied
+  nonempty token-conditioned shared claim, a source-unit decision (a pooled
+  `[m, m]` pattern versus the suffix unit's own sets), one specified revision
+  and a handle commit. The scripted operator succeeds in both profiles through
+  `cli infer` and the real LiteLLM adapter; scripted deviations are classified.
+- **Stage B** (`r02-stage-b-v1`, `r02-decisions-v1`): 14 synthetic etyma at node
+  `x` of `((a,b)x,c)r`, 16 identified retain/absent opportunities in the correct
+  cognate unit, 2 unresolved items and 5 matched counterevidence pairs. Copying
+  and uniform policies score 5–11/16 and 0/5 pairs; the deployable
+  outgroup-witness rule is the identification rule and scores 16/16.
+- **Harness changes:** `--price-table` (versioned explicit prices; upper-bound
+  cost; digest-joined only when used); Gemini 3+ thinking level sent explicitly,
+  because LiteLLM 1.81.16 turned `medium` into `high` (or refused it) for
+  `gemini-3.8-flash`; whole-batch ledger and serial launcher; `inspect_run`
+  shows the abrupt-loss usage keys.
+- **Candidate manifests** under `runs/experiments/r02-model-diagnostic-20261025/`
+  bound Gemini 3.8 Flash at a worst case of US$4.70 within the owner's US$5 /
+  60-minute ceiling, and the local arm within two hours. The required read-only
+  manifest review, launch preflight and the launch itself belong to R03.
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.
