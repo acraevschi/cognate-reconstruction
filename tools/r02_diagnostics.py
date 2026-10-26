@@ -450,6 +450,25 @@ ARMS = {
               "A": {"max_turns": 24, "max_total_turns": 24, "max_run_seconds": 1800, "max_total_cost_usd": None},
               "B": {"max_turns": 30, "max_total_turns": 60, "max_run_seconds": 5000, "max_total_cost_usd": None}},
 }
+# R03 follow-up: the local arm with Gemma's published sampler sent explicitly.
+# R03's local requests carried only temperature 0.1 and max_tokens, so LM Studio
+# filled top_k/top_p/min_p/repeat_penalty from its own defaults. min_p 0 because
+# Gemma's generation_config has no min_p and LM Studio would otherwise apply one.
+ARMS["local-vendor-sampling"] = {**ARMS["local"], "temperature": 1.0,
+                                 "sampling_config": ROOT / "examples/sampling/gemma-4-26b-a4b.json",
+                                 "extra_provider_options": {"min_p": 0.0}}
+# R03c: Qwen3.6 35B-A3B under the model card's thinking-mode "precise coding"
+# sampler (temperature 0.6, top_p 0.95, top_k 20, min_p 0, presence_penalty 0,
+# repetition_penalty 1.0). The card's general setting adds presence_penalty 1.5,
+# which would penalise re-citing the identifiers this protocol depends on.
+ARMS["local-qwen"] = {**ARMS["local"], "model": "qwen3.6-35b-a3b", "harness_model": "openai/qwen3.6-35b-a3b",
+                      "temperature": 0.6, "sampling_config": ROOT / "examples/sampling/qwen3.6-35b-a3b.json",
+                      "extra_provider_options": {"presence_penalty": 0.0}}
+# R03e: Gemma's R03b arm, resending its own reasoning within each tool loop
+# (R03 §17a: Gemma's guidance keeps thoughts between calls of one turn).
+ARMS["local-vendor-sampling-reasoning"] = {**ARMS["local-vendor-sampling"], "infer_args": [
+    "--reasoning-history", "keep", "--reasoning-history-budget", "16000", "--reasoning-history-head", "200"]}
+DEFAULT_ARMS = ("gemini", "local")
 WALL_OVERHEAD_SECONDS = 100
 
 
@@ -533,6 +552,9 @@ def trial_argv(arm_name: str, stage: str, inputs: Path) -> list[str]:
             # The harness clips each request's timeout to the remaining retry
             # budget, so a smaller budget would silently replace the timeout.
             "--max-retry-seconds", str(arm["timeout"]), "--quiet"]
+    if "temperature" in arm:
+        argv += ["--temperature", str(arm["temperature"])]
+    argv += arm.get("infer_args", [])
     argv += ["--agent-instructions", str(inputs / ("stage-a.instructions.stored-hypothesis.md" if stage == "A"
                                                    else "stage-b.instructions.md"))]
     if arm["reasoning_effort"]:
@@ -543,7 +565,15 @@ def trial_argv(arm_name: str, stage: str, inputs: Path) -> list[str]:
     return argv
 
 
-def freeze(output_dir: Path) -> dict:
+def _provider_options(arm: dict) -> dict:
+    options = {"max_tokens": MAX_OUTPUT_TOKENS}
+    if arm.get("sampling_config"):
+        options.update(json.loads(Path(arm["sampling_config"]).read_text()))
+    options.update(arm.get("extra_provider_options") or {})
+    return options
+
+
+def freeze(output_dir: Path, arm_names: tuple[str, ...] = DEFAULT_ARMS) -> dict:
     """Write inputs, per-stage manifests and the serial launch plan."""
     from datetime import date
     from cognate_reconstruction.agent.providers.pricing import load_price_table, price_for
@@ -560,8 +590,8 @@ def freeze(output_dir: Path) -> dict:
     b_text = stage_b_instruction_file(case_b)
     (inputs / "stage-b.instructions.md").write_text(b_text)
     (inputs / "price-table.json").write_bytes(GEMINI_PRICE_TABLE.read_bytes())
-    for name in ARMS:
-        (inputs / f"{name}.provider-config.json").write_text(json.dumps({"max_tokens": MAX_OUTPUT_TOKENS}, indent=2) + "\n")
+    for name in arm_names:
+        (inputs / f"{name}.provider-config.json").write_text(json.dumps(_provider_options(ARMS[name]), indent=2) + "\n")
     table, table_sha = load_price_table(inputs / "price-table.json")
     price = price_for(table, ARMS["gemini"]["harness_model"], date.today())
     sources = source_manifest()
@@ -588,20 +618,23 @@ def freeze(output_dir: Path) -> dict:
         "max_output_tokens": MAX_OUTPUT_TOKENS,
     }
     arms_out = {}
-    for name, arm in ARMS.items():
+    for name in arm_names:
+        arm = ARMS[name]
         arms_out[name] = {k: arm[k] for k in ("model", "preset", "harness_model", "reasoning_effort", "timeout", "ceiling")}
-        arms_out[name]["temperature"] = 1.0 if arm["preset"] == "gemini" else 0.1
+        arms_out[name]["temperature"] = arm.get("temperature", 1.0 if arm["preset"] == "gemini" else 0.1)
+        if arm.get("sampling_config"):
+            arms_out[name]["provider_options"] = _provider_options(arm)
     manifests = {}
     for stage, case, definition in (("A", case_a, STAGE_A), ("B", case_b, STAGE_B)):
         manifests[stage] = {**common, "stage": stage, "definition": str(definition.relative_to(ROOT)),
             "definition_sha256": _file_hash(definition), "suite_version": case["suite_version"],
             "question": case["question"], "model_visible": visible[stage],
             "arms": {name: {**arms_out[name], "caps": ARMS[name][stage], "resources": resource_bound(ARMS[name], stage, price),
-                            "argv": trial_argv(name, stage, inputs)} for name in ARMS}}
+                            "argv": trial_argv(name, stage, inputs)} for name in arm_names}}
         (output_dir / f"manifest.stage-{stage.lower()}.json").write_text(json.dumps(manifests[stage], indent=2) + "\n")
     plan = {"plan_version": "r02-batch-v1", "batch_dir": ".",
-            "ceilings": {name: ARMS[name]["ceiling"] for name in ARMS}, "trials": []}
-    for name in ARMS:  # the stronger arm first: local availability is not its gate
+            "ceilings": {name: ARMS[name]["ceiling"] for name in arm_names}, "trials": []}
+    for name in arm_names:  # the stronger arm first: local availability is not its gate
         for stage in ("A", "B"):
             bound = resource_bound(ARMS[name], stage, price)
             plan["trials"].append({
@@ -631,6 +664,8 @@ def main():
     ev.add_argument("--definition", type=Path)
     fr = sub.add_parser("freeze", help="Write inputs, candidate manifests and the launch plan")
     fr.add_argument("--output-dir", type=Path, required=True)
+    fr.add_argument("--arms", nargs="+", choices=sorted(ARMS), default=list(DEFAULT_ARMS),
+                    help="arms to freeze, in launch order (default: gemini local)")
     args = parser.parse_args()
     if args.command == "build":
         args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -648,7 +683,7 @@ def main():
             written[name] = _hash(text)
         print(json.dumps(written, indent=2))
     elif args.command == "freeze":
-        print(json.dumps(freeze(args.output_dir), indent=2))
+        print(json.dumps(freeze(args.output_dir, tuple(args.arms)), indent=2))
     elif args.command == "controls":
         print(json.dumps(controls(), indent=2))
     elif args.command == "measure":

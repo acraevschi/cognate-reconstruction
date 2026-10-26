@@ -18,6 +18,7 @@ LiteLLM 1.81.16, httpx 0.28.1, Pydantic 2.13.4 (`pip freeze` SHA-256
 | B-local | **Not run** (gated on A-local). A missing paired outcome, not a judgment result |
 | Gemini spend | **US$2.4754** by the pre-registered upper-bound price table (no unknown-cost request, no retry); about **US$0.81** with the cached-token counts Gemini reported. Ceiling US$5. Paid wall time 690.5 s of 3,600 s |
 | Local time | 283.9 s of 7,200 s |
+| Follow-ups (local, separate identities) | R03b (Gemma, its published sampler): A **no_commit**, same error classes (§15). R03c (Qwen3.6 35B-A3B, its published sampler): A **success**, 0 rejected; B **10/18, 0/6 pairs**, baseline-level, outgroup absence read as a tie (§16). R03d (Gemma on the `unit_orders`-fixed code): A **no_commit** again, 7/9 rejected; the fix was not exercised (§17). R03e (Gemma with its reasoning resent within the tool loop): thinking sustained, A **success** (1/6 rejected); B **no commit**, three 16k-token thoughts that never reached a call (§18) |
 | External cost check | **Pending**: the owner reads the AI Studio balance (7.36 CHF before R03) at least 24 h after 19:07 UTC on 2026-10-25 |
 
 **Substantive usability of the current harness:** demonstrated for Gemini 3.8
@@ -306,6 +307,70 @@ changed, and nothing ran twice.
 - Post-response exceptions would still be classified as zero-cost retryable; none occurred.
 - Gemini saw the system text as user-turn text. Native `system_instruction` was not tested.
 
+## 12a. Open questions and room for improvement
+
+Noted after the run (2026-10-25). None of these changes R03's results.
+
+**Claim confidence is self-reported and unvalidated.**
+- **What it is.** Every claim carries a model-stated `confidence` in (0, 1]. It is required and never defaulted, but nothing computes or checks it.
+- **Where it acts.**
+  - Between competing claims on one correspondence, the higher confidence wins (`decided_by_equal_confidence` reports ties).
+  - It feeds candidate ranking. Normalized beam weights are therefore not calibrated probabilities.
+- **What R03 observed.** None of it supports a calibration claim, because one trial per model is too few.
+  - Gemini, Stage B: 58 claims at 1.0 and the two genuine ties at 0.5, a coarse "determined / tie" split.
+  - Gemini, Stage A: copied the supplied 0.8 and 0.9.
+  - Gemma: placeholder-like 0.7 throughout.
+- **Until validated.** Read confidence as descriptive or ordinal, never as a probability.
+- **Possible improvements, cheapest first:**
+  1. Score confidence as ordinal labels (determined under the criterion / tie or unresolved / weak). Stage B already tests the tie label.
+  2. Pool enough claims with known answers to measure calibration; an 18-item panel is too small.
+  3. Add harness-computed signals beside the self-report: counts of supporting and contradicting forms, and agreement across repeated samples (a measure of stability, not of correctness).
+  4. Refuse or flag a confidence of 1.0 on a claim the evidence shows as tied.
+  5. Stop letting self-reported confidence silently settle competing claims: flag the conflict for an explicit decision, or break ties on evidence.
+
+**Identifier bookkeeping.**
+- **What failed.** Gemma's Stage A failure was mostly clerical. Of its 7 rejected calls, 2 were schema errors that constrained decoding could prevent. The other 5 were schema-valid JSON with stale, invented or incomplete IDs.
+- **Candidate fixes** (each is an interface change, to be compared current-versus-new on the same tasks):
+  - claims that name a correspondence by reflex pattern and unit, with the harness resolving the ID and refusing ambiguous matches;
+  - per-turn enums of the IDs that are currently valid;
+  - server-side constrained tool calls, if LM Studio supports them for MLX tool arguments. Unverified.
+
+**Proposed: pattern-based correspondence references** (planned, not implemented).
+- **Why.** The set IDs serve the harness, which needs every claim tied to exact evidence rows under the current overlays. They need not be the model's job. The Stage A instructions already state each claim as a pattern in a unit ("the `[p, f]` pattern → p before `i`", "the `[m, m]` sets in unit u07 → null"), and that description is unambiguous enough to execute. Letting the model say just that would remove most of Gemma's failure surface without losing rigor:
+  - copying 24-hex IDs;
+  - the `csu-`/`csp-` distinction;
+  - IDs renamed by an overlay.
+
+  It would also shrink every transcript.
+- **Design.**
+  - **A new opt-in profile.** It would be a new `--inventory-protocol` value (working name `pattern-reference`). `stored-hypothesis` and its tool-schema digest `628f0f32…` stay byte-identical, so R03 remains the comparison baseline.
+  - **New claim forms.** A local choice may give `unit` (a `cog:`/`boundary:` scope as the surveys print it) and `reflexes` (the per-child tuple, null for a gap) instead of `set_id`. A shared claim may give `reflexes` and the units it covers instead of `pattern_id`/`member_set_ids`. ID fields remain accepted.
+  - **Resolution at every preview.** References are resolved against the node's current inventory under the submitted overlays (`verify_commitments` and `expand_shared_claims` in `agent/tools/inventory_evidence.py`). A reference is therefore never stale; nothing has to be re-copied after a re-survey.
+  - **Refusal, never a guess.** Zero matches, or more than one, is refused with the candidate rows listed. The same pattern can occur twice in one unit (both `k`s in `k u k`), so a small optional disambiguator (position, or an example concept) is accepted only when the reference is ambiguous.
+  - **Persistence unchanged.** The committed inventory stores the resolved exact set IDs, so commit, JSONL, checkpoint, readback, the evaluator and the parent beams are all unchanged.
+- **Work.**
+  - schema fields (`agent/tools/stored_hypothesis.py`), resolution and refusals;
+  - registry and CLI wiring, with short tool descriptions for the profile;
+  - the Stage A checker (`evaluation/usability.py`) comparing claims after resolution;
+  - a scripted Stage A operator for the profile, proved through `cli infer` with the real `LiteLLMProvider`;
+  - tests for ambiguous, absent and stale references, and the Gemini wire check for the new profile.
+
+  That is roughly 300–500 lines including tests: one focused coding session, separate from R03.
+- **Prerequisite.** First fix the no-op `unit_orders` gap (§15). Done after R03c (§16): an entry naming no concept at the node is refused. A unit absent from the concept is still accepted, because projection over a superset of units is used deliberately; such a claim still orders the concept's real units.
+- **Evaluation.** A frozen, local-only Stage A comparison with Gemma 4 26B under Gemma's published sampler (as in R03b): current profile against `pattern-reference`, on the same fixture, caps, checker and gate. It costs only machine time, about 5 minutes per Stage A trial. Use a few trials per arm, prespecified, to tell an effect from sampling variation.
+- **Decision rule.**
+  - **Gemma passes Stage A with references:** the bookkeeping was the barrier. Keep the profile, run its conditional Stage B, and keep local models for cheap iteration.
+  - **Gemma still fails** on field names or ignored corrections: treat it as a capability limit. Use the hosted model for substantive runs, or give the other preferred local model one Stage A check before ruling local models out.
+
+  Gemini's clerical slips (an omitted required null once per stage) suggest the profile could help the hosted arm too. That would need its own paid comparison.
+
+**Local sampler settings.**
+- **What was sent.** The local arm sent only temperature 0.1 (the harness default, not tuned for Gemma) and `max_tokens`. top_p, top_k and the repetition penalty came from LM Studio's defaults. The tracked `examples/sampling/gemma-4-26b-a4b.json` was not used.
+- **The vendor default.** Google's default for Gemma 4 is temperature 1.0, top_p 0.95, top_k 64.
+- **A suggestive pattern.** Gemma resubmitted the same stale IDs four times and almost stopped thinking after turn 3. That fits low-temperature perseveration but does not establish it.
+- **Next test.** A free, prespecified local Stage A comparison: current settings versus explicit vendor settings, about 3 trials each.
+- **Status.** One trial with the vendor settings ran as R03b (§15). The errors persisted, in the same classes.
+
 ## 13. Preferred next action
 
 **Defer interface-redesign implementation.** Instead, run one narrowed R04
@@ -342,3 +407,371 @@ LITELLM_LOCAL_MODEL_COST_MAP=True PYTHONDONTWRITEBYTECODE=1 /opt/anaconda3/envs/
 # rewrite/read the ledger without running anything:
 /opt/anaconda3/envs/llm_reconstruction/bin/python /Users/acraev/Work/cognate-reconstruction/tools/experiment_batch.py ledger --plan plan.json
 ```
+
+## 15. Follow-up R03b — local arm with Gemma's published sampler (2026-10-25)
+
+This was a separate experiment, requested by the owner after R03, with its own
+identity: `runs/experiments/r03b-local-sampling-20261025/`. It does not change or
+pool with R03. It ran 21:30:56–21:35:47 UTC.
+
+**What changed.** Only the sampler:
+- **R03:** the LM Studio server log shows R03's local request body carried only `temperature: 0.1` and `max_tokens`. Everything else was LM Studio's default, which `examples/sampling/README.md` gives as a 1.1 repetition penalty; the effective values are not logged.
+- **R03b:** sent temperature 1.0, top_k 64, top_p 0.95, repeat_penalty 1.0 (`examples/sampling/gemma-4-26b-a4b.json`), min_p 0.0 and max_tokens 16,384. All were confirmed in the request body by an offline rehearsal.
+
+Model, instance (MLX 6-bit, context 262,144), server-default thinking, tools
+`628f0f32…`, instructions, payloads, caps, checker and gate are as in R03. The
+code change is outside the model-visible path: `tools/r02_diagnostics.py` gained
+a `--arms` freeze option and a `local-vendor-sampling` arm, with a test.
+- **Frozen files:** `plan.json` `c7c41dc6…`, manifests A `af96deb6…` and B `6cba2859…`, `source_manifest.json` `2ee7469d…` (HEAD `1711093` + those two files), `preregistration.md` `e42bbf17…`.
+- **Tests:** portable suite 805 passed, 41 deselected.
+
+**Result: the errors persist.** Stage A ended `no_commit`. The node hit
+`ProtocolStallError` after 10 turns with 7 of 10 calls rejected, so B was refused.
+One trial; 290 s; 207,201 input / 11,195 output tokens; largest request 30,139.
+
+| Error class | R03 (temperature 0.1, server sampler) | R03b (Gemma sampler) |
+| --- | --- | --- |
+| Invented or wrong field names (`explanation`, `local_set_id`, missing `rationale`/`member_set_ids`) | 1 | 2 |
+| Pattern ID used as a choice, or an invented ID | yes (turn 4) | yes (turn 3: `csp-` IDs in `choices`) |
+| Malformed `unit_orders` (`child_id`/`order`) | 1 | 1 |
+| Unrequested `unit_orders` overlay | real concepts, incomplete units (`alignment-failed` 1) | a unit given as the concept (`cog:u07`) |
+| `unknown-correspondence-set` (IDs from another overlay) | 4 | 4 |
+| Re-surveyed under the overlay, then reused old IDs | yes | yes, then mixed IDs from two surveys |
+
+Prompt tokens rose monotonically (no truncation). Thinking again fell to about 1
+token per turn from the third request on (until the final 6,503-token turn), so
+that pattern is not explained by the low temperature.
+
+**Reading (pre-registered).** "Errors persist" is satisfied: A is not usable,
+and the rejections fall in the same classes. On one trial per setting, the
+explicit vendor sampler did not remove the failure. That makes a sampler-only
+explanation unlikely, but it cannot be excluded statistically. Temperature and
+the repetition penalty changed together.
+
+**Harness counterexample found here (not repaired).**
+- **The defect.** A `unit_orders` entry naming a nonexistent concept is accepted without error. The overlay is a no-op, because orders are looked up by concept, yet every entry joins the evidence digest. So every set ID is renamed (`alignment/units.py:273–295`). The R03b model sent `{"concept_id": "cog:u07", …}`; the survey returned identical evidence under new IDs, and the next previews were rejected as `unknown-correspondence-set`.
+- **Reproduction.** `runs/experiments/r03-offline-checks-20261025/noop_overlay.py`: the same 21 local sets, 0 IDs shared, no refusal.
+- **Effect.** It did not cause the failure: the overlay was itself an invalid, unrequested submission. But it hid that error behind a misleading one.
+- **Fix, for a separate scope before any new batch:** refuse `unit_orders` that name an unknown concept, or a unit absent from that concept. (Implemented after R03c for the unknown-concept case only; see §16.)
+
+**Consequence for the next step.** This supports the identifier-bookkeeping
+explanation in §12a over a sampler explanation. For the local model, the next
+discriminating comparison is an interface one:
+- name a correspondence by pattern and unit, with the harness resolving the ID; or
+- offer per-turn enums of the IDs currently valid.
+
+Either would be compared with today's interface on Stage A, with the no-op overlay
+refusal fixed first. More sampler variants are not the next test.
+
+## 16. Follow-up R03c — Qwen3.6 35B-A3B, and the `unit_orders` fix (2026-10-25)
+
+A separate experiment, requested by the owner to check whether R03/R03b's Stage A
+failure is specific to Gemma: `runs/experiments/r03c-local-qwen-20261025/`. It ran
+22:26:12–23:03:07 UTC on the code Gemma met, before the `unit_orders` fix below,
+so that only the model and its sampler differ from R03b.
+
+**What changed from R03b.** The model and that model's own published sampler:
+- **Model:** `qwen3.6-35b-a3b`, unsloth Qwen3.6-35B-A3B-UD-MLX-4bit (4-bit), context 262,144, the sole loaded model, idle at launch.
+- **Sampler:** the model card's thinking-mode "precise coding" setting, sent explicitly: temperature 0.6, top_p 0.95, top_k 20, min_p 0, presence_penalty 0, repeat_penalty 1.0 (`examples/sampling/qwen3.6-35b-a3b.json` + presence_penalty 0), max_tokens 16,384. An offline rehearsal confirmed every value in the request body.
+- **Not chosen:** the card's general thinking setting (temperature 1.0, presence_penalty 1.5). A presence penalty discourages re-emitting tokens already generated, and this protocol requires re-citing identifiers. The choice was recorded before launch. Gemma ran at 1.0, so this is each model at its own published sampler, not both at one sampler.
+- **LM Studio defaults:** the saved per-model settings for this model hold no sampler fields, so values set in the LM Studio UI did not apply; the explicit values governed.
+
+Tools `628f0f32…`, instructions, payloads, caps, checker, scorer and gate are as
+in R03b. Server-default thinking (Qwen thinks by default; `preserve_thinking`
+not set). Frozen: `plan.json` `9fd6bb74…`, manifests A `69e0ea31…` / B
+`799723e0…`, `source_manifest.json` `9ff3b30f…` (HEAD `1711093` + the arm in
+`tools/r02_diagnostics.py` and its test), `preregistration.md` `34c99681…`.
+
+**Stage A: success.** 4 turns, 5 calls, 0 rejected: a local and a recurrence
+survey, the original preview, the revised preview, and a handle commit. Output
+matches the reference with provenance and readback intact; `stage_gate.usable`.
+119 s; 114,135 input / 5,253 output tokens. None of Gemma's error classes
+occurred: no invented fields, no pattern IDs in `choices`, no unrequested
+`unit_orders`, no stale IDs.
+
+**Stage B: baseline-level judgment** (pre-registered label: ≤11/18 or ≤2/6).
+
+| Measure | Qwen (R03c) | Gemini (R03) |
+| --- | --- | --- |
+| `model_committed_correct` | **10/18** | 18/18 |
+| outgroup presence (6) | 6 | 6 |
+| complementary outgroup presence (4) | 4 | 4 |
+| outgroup absence (8) | **0** | 8 |
+| matched pairs | **0/6** | 6/6 |
+| decided by | explicit claims, all 20 opportunities | explicit claims |
+| unresolved U1/U2 | committed `retain` | committed null at 0.5 |
+
+- **Every opportunity was read `retain`.** 10/18 equals the identity, daughter-b and union baselines (§8).
+- **How Qwen read the evidence.** The local survey carries `outgroup_reflexes` for the sets the outgroup witnesses, and the note: "a node showing nothing is absent above". Qwen used the witnesses correctly: its rationales name the right forms (c shows g in w03, w06, w07, w09, w12, w14). Where c has the concept but lacks the segment (w01, w05, w11, w16; the suffix cases), it wrote "no outgroup" and called the set a tie. It then retained the segment at confidence 0.5. It treated absence of a witness as absence of evidence, against the stated note.
+- **Bookkeeping.** Of 18 calls at x and r, 1 was rejected: `child_node_ids` in a root preview (`extra_forbidden`), corrected next turn. Both nodes committed through handles.
+- **Resources.** 2,095 s; 18 requests; 965,072 input / 91,619 output tokens; largest request 90,509. Prompt tokens never dropped (no truncation). At each node one response spent the whole 16,384-token budget on thinking (`response_truncated`). The harness's truncation recovery then asked for a tool call, and the session continued.
+
+**Reading.**
+- **Gemma's Stage A failure is not a general local-model limit with this interface.** A second local model of similar class passed the same frozen Stage A cleanly on its first trial. The bookkeeping is learnable without the §12a interface change. One trial each, different sampler and quantization: this is consistent with a model difference, not proof of one.
+- **The judgment gap is real and separate.** On Stage B, Qwen used the protocol correctly but not the outgroup-absence criterion. That is a valid but scientifically poor decision, not an interface failure. Gemini applied the same criterion to the same survey output.
+- **For R04 and the §12a plan.** The pattern-reference profile is still motivated for Gemma, but no longer as a precondition for using local models at all. A local model is usable for protocol-level iteration (Stage A–type checks) now. Judgment experiments still need the hosted model, or a model that passes Stage B.
+
+**The `unit_orders` fix (after R03c, not used by any run).**
+- `cognate_reconstruction/alignment/units.py` `evidence_map` now refuses a `unit_orders` entry whose `concept_id` has no form at the node. The message lists the valid concept IDs and says to omit `unit_orders` unless units conflict in order. Tools surface it as `alignment-failed`.
+- A claim for a present concept already had to list all of its units (`_unit_order`), so it always orders something. Unit IDs beyond the concept's own stay accepted: `tools/evidence_repair_controls.py` uses one order per concept across nodes on purpose. A first, stricter version refusing them broke that control (`test_diagnostic_suite.py`) and was narrowed.
+- **Remaining gap:** a concept present in only one child is not aligned, so a claim for it still orders nothing yet enters the digest. It is not refused, because `polarize` may evaluate a child subset where that is legitimate.
+- **Test:** `test_a_unit_order_that_orders_nothing_is_refused_not_folded_into_set_ids` fails before the fix and passes after; the portable suite passed 848.
+- R03b's offending call (`concept_id: "cog:u07"`) would now be refused with the concept list, instead of silently renaming every set.
+
+## 17. Follow-up R03d — Gemma on the code with the `unit_orders` fix (2026-10-26)
+
+Requested by the owner after R03c: one Gemma Stage A (B conditional) on the fixed
+code with Gemma's published sampler. Directory
+`runs/experiments/r03d-gemma-fixed-20261026/`; ran 18:28:58–18:34:42 UTC.
+
+**Design.** Byte-identical to R03b apart from paths: the argv, the provider
+config `2e8866c5…` (temperature 1.0, top_k 64, top_p 0.95, repeat_penalty 1.0,
+min_p 0), tools `628f0f32…`, instructions, payloads, caps, checker and gate. The
+same LM Studio instance class (MLX 6-bit, context 262,144, sole loaded model). The
+only model-path change is the §16 fix. Frozen: `plan.json` `f859ed73…`, manifests
+A `d6c652a4…` / B `120f16aa…`, `source_manifest.json` `144a13fc…`,
+`preregistration.md` `4b4252cc…`.
+
+**Result: A `no_commit`, B refused.** `ProtocolStallError` after 9 turns; 7 of 9
+calls rejected; 343 s; 178,451 input / 13,791 output tokens.
+
+**The fix was not exercised.** Gemma sent no `unit_orders` at all this time, so
+no IDs went stale and there was no `unknown-correspondence-set`. By the
+pre-registered rule, this is a second sample of R03b's condition, not a test of
+the fix. Every rejection was in how the claims themselves were written:
+
+| Turn | Rejection | What the model sent |
+| --- | --- | --- |
+| 3 | schema (15 errors) | `csp-` pattern IDs as `choices`; invented `explanation` and `reflexes` in choices; shared claims with `set_ids` and no `pattern_id`/`member_set_ids`; commitments without `support` |
+| 4 | schema | `set_ids` instead of `member_set_ids`; shared claim without `proto_segment`; commitments without `reflexes`/`support` |
+| 5 | schema | commitment without `support` |
+| 6 | schema | `support: [4]` (a list for an integer) |
+| 7, 8 | `invalid-shared-claim` | the same local set both in `choices` and in a shared claim. Turn 8 repeats turn 7 unchanged |
+| 9 | schema | after the harness's targeted correction: invented `explanation` again |
+
+Each remediation fixed the named error and the next call introduced another.
+Turn 8 ignored a rejection entirely.
+
+**Thinking collapses again.** Reasoning tokens per turn were 551, 2,278, then
+**1** on every turn from the first preview (turns 3–8), until the post-correction
+turn (6,464). R03b showed the same pattern at temperature 1.0, and R03 at 0.1. Qwen
+in R03c thought for hundreds to thousands of tokens on most turns. So Gemma wrote
+every rejected claim structure without visible reasoning. Whether that is the model's
+choice or a template/server effect (for example, how LM Studio's Gemma template
+handles thinking after tool turns) was not established when this run was read.
+§17a traces it to how the harness and Gemma's template combine.
+
+**Reading.** Across three Gemma trials (R03, R03b, R03d), Stage A failed through
+invalid claim structure every time. The ID-overlay path (`unit_orders` → stale IDs)
+was one route among several, not the cause. With R03c's clean Qwen pass on the same
+interface, the evidence points to a Gemma-specific limit under this protocol, as
+deployed. The thinking collapse has since been traced to an integration gap (§17a). It
+is not yet separated from model capability by a live run. For the §12a decision rule:
+- this weakens the case for building the pattern-reference profile for Gemma's
+  sake, because most R03d errors were field names and claim shapes, not IDs;
+- Qwen is the local model to use for protocol-level iteration;
+- local judgment (Stage B) remains undemonstrated.
+
+### 17a. Why Gemma's thinking drops to one token (offline and server log only)
+
+Requested by the owner before committing. No model calls were made. The sources
+were LM Studio's request/response log for R03d
+(`~/.lmstudio/server-logs/2026-10/2026-10-26.1.log`), the model's
+`chat_template.jinja` (lmstudio-community gemma-4-26B-A4B-it-MLX-6bit, SHA-256
+`85a08664…`), and the hub `model.yaml`. The template was rendered offline on the
+logged requests: `runs/experiments/r03-offline-checks-20261025/gemma-thinking/`
+(`render.py`, rendered requests 3 and 9).
+
+**What the one token is.** From request 3 on, every response's `reasoning_content`
+is exactly `"\n"`. Gemma opens and immediately closes its thought channel
+(`<|channel>thought\n<channel|>`). That is the same string the template inserts
+when thinking is switched off. Thinking was on: `model.yaml` sets
+`enableThinking` true by default, and the rendered system turn begins with `<|think|>`.
+
+**Why it happens.** Three facts combine:
+1. **The harness discards reasoning.** `LLMMessage` has no reasoning field.
+   `LiteLLMProvider._message_payload` sends earlier assistant steps back with
+   `content` and `tool_calls` only. It keeps Gemini thought signatures, but on
+   the OpenAI-shaped route the reasoning text is counted and dropped. The logged
+   requests confirm this: no assistant message carries `reasoning_content`.
+2. **Gemma's template renders a tool loop as one model turn.** After the user
+   message, every step continues the same `<|turn>model`:
+   `<|tool_call>…<tool_call|><|tool_response>…<tool_response|><|tool_call>…`.
+   After a tool response the generation prompt adds nothing: no new turn and no
+   thinking cue. Earlier thoughts are rendered back
+   (`<|channel>thought …<channel|>` before each call) only when the client
+   supplies `reasoning_content`.
+3. **So Gemma continues the turn as it sees it.** By request 3 its own turn shows
+   two or three tool calls with no thought before any of them. It writes the next
+   step the same way, behind an empty thought block.
+
+**The natural experiment in all three Gemma runs.** Reasoning tokens per step,
+with the harness's protocol correction marked. The correction is a user message,
+so it starts a new `<|turn>model` with no bare calls in it:
+
+| Run | Reasoning tokens per step |
+| --- | --- |
+| R03 (temperature 0.1) | 703, 1,591, 1,754, 1, 1, 1, 1, 1, 1, **[correction]** 2,062, 1 |
+| R03b (Gemma sampler) | 141, 1,195, 1, 1, 1, 1, 1, 1, 1, **[correction]** 6,503 |
+| R03d (fixed code) | 551, 2,278, 1, 1, 1, 1, 1, 1, **[correction]** 6,464 |
+
+Thinking stops once the current model turn holds two or three thoughtless calls.
+It returns on the first step of each new model turn. In R03 it stops again one
+step later, once that new turn holds a thoughtless call. It is independent of
+temperature and sampler.
+
+**Why Qwen was unaffected.** Qwen's template renders each step as its own
+`<|im_start|>assistant` turn, and its generation prompt opens `<think>\n` every
+time. It is made to think at every step, whatever history it receives. The
+harness dropped Qwen's reasoning too; that did not matter there.
+
+**Reading.**
+- **Established:** the collapse comes from the harness dropping reasoning
+  combined with Gemma's single-turn tool-loop template. It is not a sampler
+  effect, and it is not Gemma declining to think on a fresh turn. In all three
+  runs Gemma thought for thousands of tokens whenever a new turn began.
+- **Not established:**
+  - whether sending `reasoning_content` back would sustain Gemma's thinking;
+  - whether sustained thinking would remove its claim-structure errors.
+  The only steps with thinking after the start were the post-correction steps.
+  In R03b and R03d, that step was the last before the stall, so there is no
+  evidence either way on the errors.
+- **Consequence for R03/R03b/R03d.** Gemma's Stage A failures happened under an
+  interface condition Qwen did not face: it wrote its claims with no reasoning
+  from the third step on. "Gemma-specific limit" (§17) should be read as "Gemma
+  as deployed by this harness". The model's capability with its thinking
+  sustained is untested.
+
+**Candidate repair (not implemented).**
+- Add an optional reasoning field to assistant `LLMMessage`s.
+- Capture it from the response (`reasoning_content`).
+- Send it back on the OpenAI-shaped route, as is already done for Gemini thought signatures.
+
+Before any live use:
+- an offline wire check that LiteLLM forwards the field to LM Studio;
+- a trajectory/checkpoint schema decision (the text must be stored to be resent);
+- a token-cost note: Gemma's thoughts ran to about 2k tokens per step.
+
+A single pre-registered Gemma Stage A trial on the repaired harness would then
+test whether thinking is sustained and whether the claim errors persist. That
+would be an interface change to the local route, run under a new identity.
+
+## 18. Follow-up R03e — Gemma with its reasoning resent, and the context budget (2026-10-26)
+
+### 18.1 What was built
+
+`--reasoning-history keep` (default `drop`, so existing configurations and their
+digests are unchanged).
+- **What is resent.** Within the current tool loop, each assistant step goes back with the `reasoning_content` of the response that made it.
+- **Budget.** The most recent steps go in full up to `--reasoning-history-budget` reasoning tokens (default 16,000). Older steps keep their first `--reasoning-history-head` tokens (default 200).
+- **What is excluded.** Nothing from before the last user message, so a node start or a harness correction resets the history, as Gemma's template does. Nothing from responses that made no call (runaway thoughts).
+- **Where it is stored.** On the adapter, like Gemini's thought signatures, so trajectory schemas are unchanged.
+- **Recording.** In the configuration digest only when used. Refused for Gemini.
+- **Tests and checks:**
+  - tests: `tests/workbench/test_reasoning_history.py` and a freeze-arm test; suite 853 passed;
+  - wire: LiteLLM forwards the field (offline rehearsal of the frozen argv);
+  - server: a live probe showed LM Studio renders it into Gemma's template (prompt 85 → 430 tokens with a 345-token thought).
+- **Vendor guidance** (from the web review, §18.4): Gemma 4's prompt-formatting guide says thoughts must not be removed between the function calls of one turn. The harness had been doing exactly that.
+
+### 18.2 Result
+
+`runs/experiments/r03e-gemma-reasoning-20261026/`; 18:52:54–19:19:34 UTC.
+- **Design:** R03d's argv plus the three flags. Inputs, sampler config `2e8866c5…`, tools `628f0f32…` and caps are byte-identical.
+- **Frozen:** `plan.json` `26ee6ccd…`, manifests A `2e1e6ef5…` / B `b295d30f…`, `source_manifest.json` `9760f694…` (re-verified against disk before launch), `preregistration.md` `8bae0717…`.
+
+**Mechanism: thinking sustained.** Reasoning tokens per Stage A step:
+
+| Run | Reasoning tokens per step |
+| --- | --- |
+| R03d (reasoning dropped) | 551, 2,278, 1, 1, 1, 1, 1, 1, [correction] 6,464 |
+| **R03e (reasoning resent)** | **567, 296, 2,553, 263, 320, 344** |
+
+**Stage A: success, Gemma's first.** 6 calls, 1 rejected
+(`shared_claims[].member_set_ids` missing, fixed on the next call). Original and
+revised previews, handle commit, reference output, provenance and readback intact.
+161 s; 127,840 input / 6,057 output tokens; peak prompt 35,669.
+
+**Stage B: no commit.** At node `x`, Gemma surveyed, read alignments and
+re-surveyed (4 calls, all accepted). It then produced three responses that each spent
+the whole 16,384-token output cap on thinking without a call: 16,381 reasoning
+tokens each, with the harness's truncation recovery between them. The third ended
+the node (`ProtocolStallError`), so the root never ran. The scorer reports 18
+missing (0/18, 0/6), which is a missing outcome, not a judgment. 1,438 s; peak prompt
+39,355 tokens, so context length was not the limit.
+- **The thoughts.** In the server log, 491 of 522 sentences in the first are
+  distinct. It is not a repetition loop but analysis that does not converge.
+  Gemma derives daughter-to-daughter "rules" (`k > Ø`, `u > k`, "anomalous
+  insertions") instead of reconstructing the parent, and re-checks the same forms.
+  The outgroup was never consulted.
+- **A truncation check note.** Prompt tokens fell once (37,303 → 35,016). That was
+  the harness's recovery message: a user turn that resets the resent reasoning by
+  design, not server-side truncation.
+
+**Reading (pre-registered).**
+- "Thinking sustained and A usable" holds. That is consistent with the dropped
+  reasoning having caused Gemma's three earlier Stage A failures (one trial).
+- §17's "Gemma-specific limit" is withdrawn for Stage A. As deployed before R03e,
+  the harness was disabling Gemma's thinking.
+- On Stage B, Gemma with thinking does not converge within the output cap.
+  This is an output-truncation outcome (the frozen 16,384 `max_tokens`). Whether a
+  larger cap would yield a commit, and whether that commit would be any good, is
+  untested. The content of the thoughts (no outgroup, daughter-to-daughter rules)
+  does not suggest an evidence-sensitive decision was near.
+
+### 18.3 Measured context per node session (all past runs with usage records)
+
+| Data | Model | Sessions | Peak prompt, median | p90 | max |
+| --- | --- | --- | --- | --- | --- |
+| Burmish | Gemma 26B | 18 | 89,698 | 111,239 | 342,463 |
+| Polynesian | Gemma 26B | 107 | 53,969 | 81,348 | 252,648 |
+| Polynesian | Qwen 35B | 21 | 77,331 | 109,937 | 118,873 |
+| Burmish / Polynesian | Gemini 3.7 | 23 / 21 | 216,489 / 151,390 | 336,176 / 213,005 | 400,664 / 262,415 |
+| R02/R03 panels | Gemma / Qwen / Gemini 3.8 | 3 / 3 / 3 | 30,139 / 79,368 / 161,543 | — | 42,024 / 90,509 / 174,747 |
+
+- **Growth comes from tool results.** Single results reached 128,669 tokens
+  (`search_forms`), 99,019 (`test_rule_cascade`) and 84,029 (`get_alignments`).
+  Over 249 `search_forms` steps, the median was 3,513 and the p90 26,552.
+- **Reasoning, if all of it were resent** (simulated on Qwen's 26 sessions): median
+  peak 80k → 124k, p90 114k → 170k, max 123k → 259k. With a 16k budget: median
+  95k, p90 129k. With 32k: p90 144k.
+- **Gemma rarely reasoned in past runs.** Median 0 tokens per call step; when it
+  did, median 1,184 and p90 4,659.
+
+### 18.4 Long-context evidence (web review, Sonnet subagent, 2026-10-26)
+
+No benchmark measures either model's effective context between 64k and 256k, so
+the following is extrapolation:
+- **Gemma 4 26B-A4B:** 44.1% on MRCR v2 (8-needle, 128k), per its model card.
+  Tool-markup drift has been reported in agentic sessions of about 28–41k with large
+  schemas. Suggested working range about 32k, soft ceiling about 64k, never above 100k.
+- **Qwen3.6 35B-A3B:** no long-context scores; the 3.5 sibling has LongBench v2
+  59.0. Suggested range about 64k, soft ceiling 100–128k.
+- **Interleaved thinking:** Google keeps thoughts between the calls of one turn.
+  Qwen recommends `preserve_thinking` for agents.
+- **Cache precision:** an 8-bit or full-precision KV cache is fine; 4-bit hurts retrieval.
+- **Confidence:** low to medium. Our own real-data sessions (§18.3) already
+  exceed Gemma's suggested soft ceiling before any reasoning is resent.
+
+### 18.5 Design options for the context budget (not implemented)
+
+Resent reasoning is the smaller cost; tool output is the larger. In order of
+expected payoff:
+1. **Tool-result hygiene:**
+   - replace superseded results (re-surveys, replaced previews) with stubs;
+   - shrink older results to a one-line stub with the call ID and a summary;
+   - cap each result at about 8–16k tokens, with paging;
+   - possibly a denser tabular rendering of set lists.
+2. **A per-model soft ceiling with a restart from harness state.** On crossing it,
+   start a fresh conversation for the node. It would carry the task, the stored
+   hypothesis handle, the last preview result and the open errors, all written
+   deterministically by the harness.
+3. **Cheaper reasoning history:** heads only (`--reasoning-history-budget 0
+   --reasoning-history-head 200`, at most about 5k per node), or the latest step in full plus heads.
+4. Not recommended: overriding Gemma's template to open a new turn per step,
+   which departs from the vendor format.
+5. Narrower sessions per node, or routing long sessions to Gemini.
+
+Items 1 and 2 change what every model sees, so each needs its own experiment. The
+ceilings should be set from our own measurement of opaque-ID copying and
+tool-call validity at 16k, 32k, 64k, 96k and 128k on both local models, not from
+the extrapolation above.

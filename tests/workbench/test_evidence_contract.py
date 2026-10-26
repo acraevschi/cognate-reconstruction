@@ -341,3 +341,23 @@ def test_frozen_real_defects_replay_and_source_unit_control_repairs_pairing():
     assert len(rows["239"]["analysis"]["pieces"]) == 1
     crawl_sources = [s for c in rows["96"]["core_columns"] for s in c["source_positions"]]
     assert all(s["segment_indices"][0] < 4 for s in crawl_sources if "Rangoon" in s["form_id"])
+
+
+def test_a_unit_order_that_orders_nothing_is_refused_not_folded_into_set_ids():
+    # R03b: a claim naming a scope id ("cog:u07") as its concept ordered nothing,
+    # yet entered the evidence revision and renamed every set the model held.
+    from cognate_reconstruction.schemas.evidence import UnitOrderClaim
+    ctx = context(lex("A", form("A", ("p", "k"), (("root", (0,)), ("affix", (1,))))),
+                  lex("B", form("B", ("f", "k"), (("root", (0,)), ("affix", (1,))))))
+    unknown = UnitOrderClaim(concept_id="cog:root", unit_ids=("root",), rationale="scope id, not a concept")
+    with pytest.raises(ValueError, match=r"names \['cog:root'\], which have no form here; concept_ids are \['word'\]"):
+        evidence_map(ctx.child_lexicons, ctx.aligner, unit_orders=(unknown,))
+    before = call(ctx, "summarize_correspondences", "s1", min_support=1)
+    refused = call(ctx, "summarize_correspondences", "s2", min_support=1,
+                   unit_orders=[unknown.model_dump(mode="json")])
+    assert before.ok and not refused.ok and refused.error.code == "alignment-failed"
+    # A claim that orders this concept's units still executes, including one
+    # that also names units seen only elsewhere (projection keeps those present).
+    for unit_ids in (("root", "affix"), ("root", "affix", "suffix")):
+        real = UnitOrderClaim(concept_id="word", unit_ids=unit_ids, rationale="explicit order")
+        evidence_map(ctx.child_lexicons, ctx.aligner, unit_orders=(real,))

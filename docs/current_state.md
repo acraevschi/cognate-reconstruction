@@ -124,6 +124,41 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   current harness is usable by this Gemini configuration and was not usable by
   this local one. Interface redesign is deferred; R04 is narrowed to a judgment
   panel that the outgroup-witness rule does not solve.
+- **R03b follow-up** (separate experiment): the same local Stage A, with
+  Gemma's published sampler sent explicitly (temperature 1.0, top_k 64, top_p
+  0.95, repeat_penalty 1.0, min_p 0), again ended `no_commit` with the same
+  error classes. A harness gap was found: `unit_orders` naming an unknown
+  concept was accepted as a no-op that renamed every set ID.
+- **R03c follow-up** (separate experiment, same code as R03b): Qwen3.6
+  35B-A3B (MLX 4-bit) at its card's precise thinking sampler (temperature 0.6,
+  top_k 20, top_p 0.95, min_p 0, presence 0) passed Stage A with 0 rejected
+  calls. On Stage B it committed `retain` everywhere: 10/18, 0/6 pairs,
+  baseline-level; it read outgroup witnesses correctly but treated outgroup
+  absence as a tie. So Gemma's Stage A failure is not general to local models
+  with this interface; the local judgment gap remains.
+- **`unit_orders` fix** (after R03c; no run uses it yet): `evidence_map` now
+  refuses a `unit_orders` entry whose concept has no form at the node, with
+  the valid concept IDs (`alignment-failed`). Supersets of a concept's units
+  stay accepted; a concept present in only one child is still not refused.
+- **R03d follow-up** (Gemma on the fixed code, R03b's sampler): Stage A
+  `no_commit` again, 7/9 rejected, all claim-structure errors (invented fields,
+  pattern IDs as choices, missing `support`, a set both in `choices` and a shared
+  claim). Gemma sent no `unit_orders`, so the fix was not exercised. Its
+  reasoning fell to 1 token per turn from the first preview, as in R03/R03b.
+  Offline diagnosis (report §17a): the harness does not send `reasoning_content`
+  back, and Gemma's template renders the tool loop as one model turn with no
+  thinking cue. So Gemma imitates its own visible thoughtless calls; thinking
+  returns whenever a new model turn starts. Gemma's failures are therefore
+  "as deployed by this harness"; carrying reasoning back is tested in R03e.
+  Qwen's template forces `<think>` each step, so it was unaffected.
+- **R03e follow-up** (Gemma, reasoning resent within the tool loop, new
+  `--reasoning-history keep`, 16k budget + 200-token heads; default stays
+  `drop`): thinking was sustained on every step and Stage A **succeeded** (6
+  calls, 1 rejected), Gemma's first. Stage B did not commit: three
+  16,384-token thinking-only responses at node x (non-converging analysis, no
+  outgroup use); peak prompt 39k. Report §18 also records per-node context
+  measurements (real-data Gemma median peaks 54k–90k, tool results up to 129k)
+  and context-budget design options; none of those are implemented.
 
 ## Authority and reading order
 

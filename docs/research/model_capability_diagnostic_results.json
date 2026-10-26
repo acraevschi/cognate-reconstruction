@@ -149,5 +149,272 @@
   "tests": {
     "portable_before_repair": "802 passed, 41 deselected",
     "portable_after_repair": "804 passed, 41 deselected"
+  },
+  "follow_up_r03b": {
+    "directory": "runs/experiments/r03b-local-sampling-20261025",
+    "launch_utc": [
+      "2026-10-25T21:30:56Z",
+      "2026-10-25T21:35:47Z"
+    ],
+    "change": "sampler only: temperature 1.0, top_k 64, top_p 0.95, repeat_penalty 1.0, min_p 0.0 sent explicitly (R03 sent temperature 0.1 and max_tokens only)",
+    "frozen": {
+      "plan.json": "c7c41dc6",
+      "manifest.stage-a.json": "af96deb6",
+      "manifest.stage-b.json": "6cba2859",
+      "source_manifest.json": "2ee7469d",
+      "preregistration.md": "e42bbf17"
+    },
+    "A": {
+      "outcome": "no_commit",
+      "stop": "ProtocolStallError",
+      "turns": 10,
+      "rejected": 7,
+      "codes": {
+        "schema": 3,
+        "unknown-correspondence-set": 4
+      }
+    },
+    "B": {
+      "outcome": "not_run",
+      "reason": "requires_usable"
+    },
+    "wall_seconds": 290.3,
+    "input_tokens": 207201,
+    "output_tokens": 11195,
+    "reading": "errors persist (same classes); one trial per setting",
+    "harness_counterexample": "unit_orders naming an unknown concept accepted as a no-op that renames every set ID; repro runs/experiments/r03-offline-checks-20261025/noop_overlay.py; repaired after R03c for unknown concepts (section 16)"
+  },
+  "follow_up_r03c": {
+    "directory": "runs/experiments/r03c-local-qwen-20261025",
+    "launch_utc": [
+      "2026-10-25T22:26:12Z",
+      "2026-10-25T23:03:07Z"
+    ],
+    "model": "qwen3.6-35b-a3b (unsloth Qwen3.6-35B-A3B-UD-MLX-4bit, 4-bit, context 262144)",
+    "change": "model and its published sampler: temperature 0.6, top_p 0.95, top_k 20, min_p 0.0, presence_penalty 0.0, repeat_penalty 1.0 (model card thinking-mode precise setting); code as R03b, before the unit_orders fix",
+    "frozen": {
+      "plan.json": "9fd6bb74",
+      "manifest.stage-a.json": "69e0ea31",
+      "manifest.stage-b.json": "799723e0",
+      "source_manifest.json": "9ff3b30f",
+      "provider-config": "f49e5618",
+      "preregistration.md": "34c99681"
+    },
+    "A": {
+      "outcome": "success",
+      "usable": true,
+      "turns": 4,
+      "tool_calls": 5,
+      "rejected": 0,
+      "wall_seconds": 119,
+      "input_tokens": 114135,
+      "output_tokens": 5253
+    },
+    "B": {
+      "x_model_committed_correct": 10,
+      "of": 18,
+      "matched_pairs": 0,
+      "pairs_of": 6,
+      "uniform_reading": "retain",
+      "by_basis": {
+        "outgroup_presence": [
+          6,
+          6
+        ],
+        "complementary_outgroup_presence": [
+          4,
+          4
+        ],
+        "outgroup_absence": [
+          0,
+          8
+        ]
+      },
+      "decided_by": "explicit_claim (20/20)",
+      "unresolved": "U1, U2 committed retain",
+      "label": "baseline-level",
+      "rejected": 1,
+      "rejected_codes": {
+        "schema": 1
+      },
+      "response_truncated": 2,
+      "wall_seconds": 2095,
+      "input_tokens": 965072,
+      "output_tokens": 91619,
+      "max_request_input_tokens": 90509
+    },
+    "reading": "Gemma's Stage A failure is not general to local models with this interface; Qwen's Stage B treats outgroup absence as a tie (valid but scientifically poor). One trial each."
+  },
+  "unit_orders_fix": {
+    "file": "cognate_reconstruction/alignment/units.py",
+    "rule": "refuse unit_orders whose concept_id has no form at the node",
+    "test": "tests/workbench/test_evidence_contract.py::test_a_unit_order_that_orders_nothing_is_refused_not_folded_into_set_ids",
+    "suite": "848 passed",
+    "used_by_runs": [
+      "r03d (not exercised: no unit_orders sent)"
+    ]
+  },
+  "follow_up_r03d": {
+    "directory": "runs/experiments/r03d-gemma-fixed-20261026",
+    "launch_utc": [
+      "2026-10-26T18:28:58Z",
+      "2026-10-26T18:34:42Z"
+    ],
+    "change": "harness only: unit_orders naming an absent concept refused (section 16); argv, sampler config 2e8866c5, inputs as R03b",
+    "frozen": {
+      "plan.json": "f859ed73",
+      "manifest.stage-a.json": "d6c652a4",
+      "manifest.stage-b.json": "120f16aa",
+      "source_manifest.json": "144a13fc",
+      "preregistration.md": "4b4252cc"
+    },
+    "A": {
+      "outcome": "no_commit",
+      "stop": "ProtocolStallError",
+      "turns": 9,
+      "rejected": 7,
+      "codes": {
+        "schema": 5,
+        "invalid-shared-claim": 2
+      },
+      "unit_orders_sent": 0,
+      "fix_exercised": false,
+      "reasoning_tokens_per_turn": [
+        551,
+        2278,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        6464
+      ],
+      "wall_seconds": 343.4,
+      "input_tokens": 178451,
+      "output_tokens": 13791
+    },
+    "B": {
+      "outcome": "not_run",
+      "reason": "requires_usable"
+    },
+    "reading": "second sample of R03b's condition (fix not exercised); invalid claim structure again; thinking collapse traced offline to dropped reasoning_content plus Gemma's single-turn tool-loop template (section 17a)"
+  },
+  "gemma_thinking_diagnosis": {
+    "method": "offline: LM Studio request/response log 2026-10-26 + chat_template.jinja rendered on logged requests; no model calls",
+    "template_sha256": "85a08664d16d8f3be4416c92427b3ac10df1024ac566cc0b4bc3bab409393f98",
+    "artifacts": "runs/experiments/r03-offline-checks-20261025/gemma-thinking/",
+    "one_token_is": "empty thought channel; reasoning_content == '\\n' from request 3 on",
+    "mechanism": [
+      "harness sends prior assistant steps without reasoning_content (LLMMessage has no reasoning field)",
+      "Gemma template renders the whole tool loop as one model turn; no thinking cue after a tool response; prior thoughts rendered only if reasoning_content is supplied",
+      "Gemma continues its visible pattern of thoughtless calls"
+    ],
+    "reasoning_tokens_per_step": {
+      "r03": "703 1591 1754 1 1 1 1 1 1 [correction] 2062 1",
+      "r03b": "141 1195 1 1 1 1 1 1 1 [correction] 6503",
+      "r03d": "551 2278 1 1 1 1 1 1 [correction] 6464"
+    },
+    "qwen": "template opens <think> at every step, so unaffected",
+    "not_established": [
+      "that resending reasoning sustains thinking",
+      "that sustained thinking removes the claim-structure errors"
+    ],
+    "candidate_repair": "carry reasoning_content on assistant messages for the OpenAI-shaped route (not implemented)"
+  },
+  "follow_up_r03e": {
+    "directory": "runs/experiments/r03e-gemma-reasoning-20261026",
+    "launch_utc": [
+      "2026-10-26T18:52:54Z",
+      "2026-10-26T19:19:34Z"
+    ],
+    "change": "--reasoning-history keep --reasoning-history-budget 16000 --reasoning-history-head 200; otherwise R03d",
+    "frozen": {
+      "plan.json": "26ee6ccd",
+      "manifest.stage-a.json": "2e1e6ef5",
+      "manifest.stage-b.json": "b295d30f",
+      "source_manifest.json": "9760f694",
+      "preregistration.md": "8bae0717"
+    },
+    "A": {
+      "outcome": "success",
+      "usable": true,
+      "tool_calls": 6,
+      "rejected": 1,
+      "rejected_codes": {
+        "schema": 1
+      },
+      "reasoning_tokens_per_step": [
+        567,
+        296,
+        2553,
+        263,
+        320,
+        344
+      ],
+      "wall_seconds": 161,
+      "input_tokens": 127840,
+      "output_tokens": 6057,
+      "peak_prompt": 35669
+    },
+    "B": {
+      "outcome": "no_commit",
+      "stop": "ProtocolStallError after three 16,384-token thinking-only responses at x",
+      "tool_calls_accepted": 4,
+      "scored": "18 missing (0/18, 0/6), a missing outcome",
+      "wall_seconds": 1438,
+      "input_tokens": 226323,
+      "output_tokens": 51669,
+      "peak_prompt": 39355
+    },
+    "reading": "thinking sustained; Gemma's first Stage A success, consistent with dropped reasoning having caused earlier failures (one trial); Stage B thinking does not converge within the output cap"
+  },
+  "context_budget": {
+    "per_node_peak_prompt": {
+      "burmish_gemma": [
+        89698,
+        111239,
+        342463
+      ],
+      "polynesian_gemma": [
+        53969,
+        81348,
+        252648
+      ],
+      "polynesian_qwen": [
+        77331,
+        109937,
+        118873
+      ],
+      "note": "median, p90, max"
+    },
+    "largest_tool_results": {
+      "search_forms": 128669,
+      "test_rule_cascade": 99019,
+      "get_alignments": 84029
+    },
+    "qwen_simulated_keep_all": {
+      "median": 123909,
+      "p90": 170023,
+      "max": 259389
+    },
+    "qwen_simulated_budget_16k": {
+      "median": 94815,
+      "p90": 128606
+    },
+    "web_review_soft_ceilings": {
+      "gemma-4-26b-a4b": "about 64k",
+      "qwen3.6-35b-a3b": "100-128k",
+      "confidence": "low-medium"
+    }
+  },
+  "reasoning_history_option": {
+    "files": [
+      "cognate_reconstruction/agent/providers/litellm_provider.py",
+      "cognate_reconstruction/cli.py"
+    ],
+    "test": "tests/workbench/test_reasoning_history.py",
+    "suite": "853 passed",
+    "default": "drop"
   }
 }

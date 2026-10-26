@@ -608,3 +608,61 @@ def test_frozen_plan_runs_serially_with_gating_and_a_whole_batch_ledger(tmp_path
     assert again.returncode == 0
     later = [json.loads(line) for line in (batch / "batch_events.jsonl").read_text().splitlines()][len(events):]
     assert {e["event"] for e in later} == {"refused"}
+
+
+def test_local_sampler_variant_sends_gemma_s_published_sampler(tmp_path, monkeypatch):
+    # R03's local requests carried only temperature 0.1 and max_tokens; the
+    # follow-up arm must send every sampler value itself, and nothing else may change.
+    from tools.r02_diagnostics import freeze
+    freeze(tmp_path, ("local-vendor-sampling",))
+    plan = json.loads((tmp_path / "plan.json").read_text())
+    assert [t["trial_id"] for t in plan["trials"]] == ["A-local-vendor-sampling", "B-local-vendor-sampling"]
+    assert set(plan["ceilings"]) == {"local-vendor-sampling"}
+    config = json.loads((tmp_path / "inputs/local-vendor-sampling.provider-config.json").read_text())
+    assert config == {"max_tokens": 16384, "top_k": 64, "top_p": 0.95, "repeat_penalty": 1.0, "min_p": 0.0}
+    argv = plan["trials"][0]["argv"]
+    assert argv[argv.index("--temperature") + 1] == "1.0"
+    args = cli._parser().parse_args([a.replace("{run_dir}", str(tmp_path)) for a in argv[3:]] + ["--no-preflight"])
+    provider, _, public, _ = cli._provider_and_configuration(args)
+    assert public["temperature"] == 1.0
+    assert {k: provider.completion_kwargs[k] for k in config} == config
+    # The default freeze is untouched by the variant: no temperature flag, max_tokens only.
+    freeze(tmp_path / "default")
+    default = json.loads((tmp_path / "default/plan.json").read_text())
+    assert all("--temperature" not in t["argv"] for t in default["trials"])
+    assert json.loads((tmp_path / "default/inputs/local.provider-config.json").read_text()) == {"max_tokens": 16384}
+
+
+def test_qwen_arm_sends_the_model_card_s_precise_sampler(tmp_path):
+    # R03c: Qwen at its card's thinking-mode "precise coding" sampler, with
+    # presence_penalty sent as 0 so no server default can penalise re-cited IDs.
+    from tools.r02_diagnostics import freeze
+    freeze(tmp_path, ("local-qwen",))
+    plan = json.loads((tmp_path / "plan.json").read_text())
+    assert [t["trial_id"] for t in plan["trials"]] == ["A-local-qwen", "B-local-qwen"]
+    config = json.loads((tmp_path / "inputs/local-qwen.provider-config.json").read_text())
+    assert config == {"max_tokens": 16384, "top_k": 20, "top_p": 0.95, "min_p": 0.0,
+                      "repeat_penalty": 1.0, "presence_penalty": 0.0}
+    argv = plan["trials"][0]["argv"]
+    assert argv[argv.index("--model") + 1] == "qwen3.6-35b-a3b"
+    args = cli._parser().parse_args([a.replace("{run_dir}", str(tmp_path)) for a in argv[3:]] + ["--no-preflight"])
+    provider, _, public, _ = cli._provider_and_configuration(args)
+    assert public["temperature"] == 0.6
+    assert {k: provider.completion_kwargs[k] for k in config} == config
+
+
+def test_reasoning_arm_differs_from_r03b_only_by_reasoning_history(tmp_path):
+    from tools.r02_diagnostics import freeze
+    freeze(tmp_path / "base", ("local-vendor-sampling",))
+    freeze(tmp_path / "keep", ("local-vendor-sampling-reasoning",))
+    base = json.loads((tmp_path / "base/plan.json").read_text())["trials"][0]["argv"]
+    keep = json.loads((tmp_path / "keep/plan.json").read_text())["trials"][0]["argv"]
+    strip = lambda argv, root: [a.replace(str(root), "X").replace("local-vendor-sampling-reasoning", "local-vendor-sampling")
+                                for a in argv]
+    extra = ["--reasoning-history", "keep", "--reasoning-history-budget", "16000", "--reasoning-history-head", "200"]
+    keep_n, base_n = strip(keep, tmp_path / "keep"), strip(base, tmp_path / "base")
+    at = keep_n.index("--reasoning-history")
+    assert keep_n[at:at + len(extra)] == extra and keep_n[:at] + keep_n[at + len(extra):] == base_n
+    args = cli._parser().parse_args([a.replace("{run_dir}", str(tmp_path)) for a in keep[3:]] + ["--no-preflight"])
+    _, _, public, _ = cli._provider_and_configuration(args)
+    assert public["reasoning_history"] == {"mode": "keep", "budget_tokens": 16000, "older_head_tokens": 200}

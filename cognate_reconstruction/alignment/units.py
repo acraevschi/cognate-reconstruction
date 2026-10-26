@@ -273,6 +273,12 @@ def evidence_map(lexicons, aligner, *, unit_orders=(), overrides=(), overlay_ids
     if len({claim.concept_id for claim in unit_orders}) != len(unit_orders):
         raise ValueError("unit_orders may name each concept only once")
     orders = {claim.concept_id: claim for claim in unit_orders}
+    # Every claim enters the evidence revision, so one naming no concept here
+    # would change every set identifier without changing any column. A claim
+    # for a present concept must already list all its units (_unit_order).
+    if unknown := sorted({claim.concept_id for claim in unit_orders} - set(by_concept)):
+        raise ValueError(f"unit_orders names {unknown}, which have no form here; concept_ids are "
+                         f"{sorted(by_concept)}. Omit unit_orders unless a concept's units conflict in order")
     counters = {"projected_columns": projected, "candidate_tuples": 0, "alignment_calls": 0, "cache_hits": 0}
     alignments = []
     cache = {} if cache is None else cache

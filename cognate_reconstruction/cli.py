@@ -34,6 +34,7 @@ from cognate_reconstruction.agent import (
     default_tool_registry,
 )
 from cognate_reconstruction.agent.events import AgentEventKind
+from cognate_reconstruction.agent.providers.litellm_provider import ReasoningHistory
 from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.request_journal import (
     REQUEST_JOURNAL_VERSION,
@@ -714,13 +715,22 @@ def _provider_and_configuration(
     options["temperature"] = temperature
     options["timeout"] = args.timeout
     price_entry = None
+    reasoning_history = None
+    if getattr(args, "reasoning_history", "drop") == "keep":
+        if model.startswith(_EXPLICIT_GEMINI_PREFIXES):
+            # Gemini carries its reasoning as thought signatures, which the
+            # adapter already returns; resent text would be a second channel.
+            raise ValueError("--reasoning-history keep is for OpenAI-shaped routes; Gemini keeps thought signatures")
+        reasoning_history = ReasoningHistory(budget_tokens=args.reasoning_history_budget,
+                                             older_head_tokens=args.reasoning_history_head)
     if getattr(args, "price_table", None):
         table, table_sha256 = load_price_table(args.price_table)
         price = price_for(table, model, date.today())
         price_entry = price_setting(price, table_sha256)
-        provider = LiteLLMProvider(model, completion_kwargs=options, price=price)
+        provider = LiteLLMProvider(model, completion_kwargs=options, price=price,
+                                   reasoning_history=reasoning_history)
     else:
-        provider = LiteLLMProvider(model, completion_kwargs=options)
+        provider = LiteLLMProvider(model, completion_kwargs=options, reasoning_history=reasoning_history)
     settings = {
         "inventory_protocol": getattr(args, "inventory_protocol", "stored-hypothesis"),
         "model": model,
@@ -749,6 +759,9 @@ def _provider_and_configuration(
     if reasoning_transport is not None:
         # The wire request changed for these configurations, so their digest does too.
         settings["reasoning_transport"] = reasoning_transport
+    if reasoning_history is not None:
+        # What the model sees changed; recorded only when used, like the above.
+        settings["reasoning_history"] = reasoning_history.setting()
     retry_settings = {
         "max_retries": args.max_retries,
         "retry_backoff_seconds": args.retry_backoff_seconds,
@@ -1972,6 +1985,28 @@ def _parser() -> argparse.ArgumentParser:
             "Reasoning budget for backends that expose one; recorded in the "
             "configuration digest. Gemini 3 thinks at 'low' when this is unset."
         ),
+    )
+    infer.add_argument(
+        "--reasoning-history",
+        choices=("drop", "keep"),
+        default="drop",
+        help=(
+            "Whether earlier steps of the current tool loop go back with the "
+            "model's own reasoning (OpenAI-shaped routes). 'keep' resends it "
+            "within --reasoning-history-budget; recorded in the digest."
+        ),
+    )
+    infer.add_argument(
+        "--reasoning-history-budget",
+        type=int,
+        default=16000,
+        help="Tokens of the most recent steps' reasoning resent in full under 'keep'.",
+    )
+    infer.add_argument(
+        "--reasoning-history-head",
+        type=int,
+        default=200,
+        help="Tokens kept from each older step's reasoning once the budget is spent.",
     )
     infer.add_argument("--beam-width", type=int, default=5)
     infer.add_argument(

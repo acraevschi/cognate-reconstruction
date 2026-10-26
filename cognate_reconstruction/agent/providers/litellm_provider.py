@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
 
 from cognate_reconstruction.agent.providers.errors import (
@@ -47,6 +48,32 @@ def _split_thought_signature(call_id: str) -> tuple[str, str | None]:
     return prefix, signature
 
 
+@dataclass(frozen=True)
+class ReasoningHistory:
+    """Resend the model's own reasoning within the current tool loop.
+
+    Off by default: earlier steps go back as tool calls only. Gemma 4's template
+    renders a whole tool loop as one model turn and shows earlier thoughts only
+    when the client sends them, so without them the model sees a run of
+    thoughtless calls and continues it with an empty thought (R03 §17a). The
+    most recent steps keep their reasoning in full up to `budget_tokens`; older
+    ones keep their first `older_head_tokens`, so the pattern of thinking before
+    a call stays visible at little cost. Reasoning before the last user message
+    is never resent; both supported templates drop it there anyway.
+    """
+
+    budget_tokens: int
+    older_head_tokens: int = 200
+
+    def __post_init__(self) -> None:
+        if self.budget_tokens < 0 or self.older_head_tokens < 0:
+            raise ValueError("reasoning history budgets must be non-negative")
+
+    def setting(self) -> dict[str, Any]:
+        return {"mode": "keep", "budget_tokens": self.budget_tokens,
+                "older_head_tokens": self.older_head_tokens}
+
+
 class LiteLLMProvider:
     """Normalize LiteLLM's OpenAI-shaped native tool-calling response."""
 
@@ -59,8 +86,10 @@ class LiteLLMProvider:
         completion_kwargs: Mapping[str, Any] | None = None,
         completion_fn: Callable[..., object] | None = None,
         price: TokenPrice | None = None,
+        reasoning_history: ReasoningHistory | None = None,
     ) -> None:
         self.model = model
+        self.reasoning_history = reasoning_history
         if price is not None and price.model != model:
             raise ValueError(f"price entry is for {price.model!r}, not {model!r}")
         # An explicit operator price replaces LiteLLM's model-cost map for this
@@ -81,6 +110,11 @@ class LiteLLMProvider:
         # them, and LiteLLM then substitutes Google's documented
         # skip-the-validator placeholder, which degrades rather than fails.
         self._thought_signatures: dict[str, str] = {}
+        # Same keying and the same resume caveat: the text of one response's
+        # reasoning and its reported token count, under its first call's ID.
+        # Only responses that made a call are kept; a response that spent its
+        # budget thinking and called nothing is not worth its tokens again.
+        self._reasoning: dict[str, tuple[str, int]] = {}
 
     def _tool_call_payload(self, call: LLMToolCall) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -94,6 +128,31 @@ class LiteLLMProvider:
         signature = self._thought_signatures.get(call.call_id)
         if signature is not None:
             payload["provider_specific_fields"] = {"thought_signature": signature}
+        return payload
+
+    def _messages_payload(self, messages: Sequence[LLMMessage]) -> list[dict[str, Any]]:
+        payload = [self._message_payload(message) for message in messages]
+        if self.reasoning_history is None:
+            return payload
+        last_user = max((i for i, m in enumerate(messages) if m.role is MessageRole.USER), default=-1)
+        remaining = self.reasoning_history.budget_tokens
+        for index in range(len(messages) - 1, last_user, -1):
+            message = messages[index]
+            stored = self._reasoning.get(message.tool_calls[0].call_id) if message.tool_calls else None
+            if stored is None:
+                continue
+            text, tokens = stored
+            if tokens <= remaining:
+                remaining -= tokens
+            else:
+                # Spent: older steps keep only a head, cut at the same
+                # characters-per-token rate the full text had.
+                remaining = 0
+                head = len(text) * self.reasoning_history.older_head_tokens // max(tokens, 1)
+                if head <= 0:
+                    continue
+                text = text[:head].rstrip() + " …"
+            payload[index]["reasoning_content"] = text
         return payload
 
     def _message_payload(self, message: LLMMessage) -> dict[str, Any]:
@@ -143,7 +202,7 @@ class LiteLLMProvider:
         try:
             response = completion(
                 model=self.model,
-                messages=[self._message_payload(message) for message in messages],
+                messages=self._messages_payload(messages),
                 tools=[
                     {
                         "type": "function",
@@ -265,6 +324,11 @@ class LiteLLMProvider:
                 cost_source=cost_source,
                 provider_reported_cost_usd=reported_cost,
             )
+        reasoning_text = _value(raw_message, "reasoning_content")
+        if self.reasoning_history is not None and calls and isinstance(reasoning_text, str) and reasoning_text.strip():
+            # Without a reported count, about four characters per token.
+            count = int(reasoning_tokens) if reasoning_tokens is not None else len(reasoning_text) // 4 + 1
+            self._reasoning[calls[0].call_id] = (reasoning_text, count)
         return ProviderResponse(
             message=LLMMessage(
                 role=MessageRole.ASSISTANT,
