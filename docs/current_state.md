@@ -159,6 +159,13 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   outgroup use); peak prompt 39k. Report §18 also records per-node context
   measurements (real-data Gemma median peaks 54k–90k, tool results up to 129k)
   and context-budget design options; none of those are implemented.
+- **`--reasoning-history auto`** (2026-10-28): decides `keep`/`drop` per model
+  from its chat template (keep only when resent reasoning is rendered and the
+  template continues one model turn through tool results), with a live server
+  probe. Resolves Gemma 4 → keep, Qwen3.6/3.8 → drop, Gemini → drop. `auto`
+  is the default; only `keep` enters the digest (dropping runs hash as
+  before), and every decision is written to `run_summary.json`. When nothing
+  can be inferred the default falls back to drop with a warning (report §19).
 - **Creation-time tool-result slimming (Option 1a, R03f).** Implemented:
   `exceptions` no longer list `target_absent` forms; `get_alignments`
   `detail="summary"` omits pairwise views; `search_forms` hits and cascade

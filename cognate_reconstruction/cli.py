@@ -34,6 +34,9 @@ from cognate_reconstruction.agent import (
     default_tool_registry,
 )
 from cognate_reconstruction.agent.events import AgentEventKind
+from cognate_reconstruction.agent.providers.chat_template import (
+    analyze_template, locate_lm_studio_template, probe_reasoning_consumption,
+)
 from cognate_reconstruction.agent.providers.litellm_provider import ReasoningHistory
 from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.request_journal import (
@@ -122,6 +125,58 @@ def _api_base(value: str) -> str:
 
 def _hash_text(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _auto_reasoning_history(args, preset, model, api_base, api_key, *, strict: bool) -> tuple[str, dict[str, Any]]:
+    """Resolve `--reasoning-history auto` from the chat template (R03 §17a, §18, §19).
+
+    Keep when the template renders resent reasoning and continues one model turn
+    through tool results (Gemma 4); drop otherwise (Qwen3.6 opens a new turn
+    that thinks by itself). Unless preflight is off, the server is also asked
+    whether it renders the field. `auto` is the default: when nothing can be
+    inferred it falls back to drop and says so; asked for explicitly
+    (`strict`), it refuses instead.
+    """
+    requested = "auto" if strict else "auto (default)"
+    if model.startswith(_EXPLICIT_GEMINI_PREFIXES):
+        return "drop", {"requested": requested, "reason": "Gemini keeps thought signatures"}
+    raw_model = model.removeprefix("openai/")
+
+    def fallback(reason: str) -> tuple[str, dict[str, Any]]:
+        if strict:
+            raise ValueError(f"--reasoning-history auto: {reason}; choose keep or drop explicitly")
+        print(f"reasoning history: {reason}; dropping earlier reasoning (pass --reasoning-history "
+              "keep or drop to decide explicitly)", file=sys.stderr)
+        return "drop", {"requested": requested, "reason": reason}
+
+    try:
+        if getattr(args, "chat_template", None):
+            path = Path(args.chat_template)
+            text, source, variables = path.read_text(), f"file:{path.name}", {}
+        elif preset == "lm-studio" and (strict or not getattr(args, "no_preflight", False)):
+            located = locate_lm_studio_template(raw_model)
+            text, source, variables = located.text, f"lm-studio:{located.source}", located.variables
+        else:
+            return fallback("no chat template to read (pass --chat-template)")
+        analysis = analyze_template(text, variables)
+    except (OSError, ValueError) as error:  # TemplateAnalysisError is a ValueError
+        return fallback(str(error))
+    record: dict[str, Any] = {
+        "requested": requested, "template_source": source, "template_sha256": _hash_text(text),
+        "template_variables": variables, "consumes_reasoning": analysis.consumes_reasoning,
+        "new_turn_after_tool": analysis.new_turn_after_tool, "reason": analysis.reason, "probe": None,
+    }
+    if not getattr(args, "no_preflight", False) and api_base:
+        try:
+            probe = probe_reasoning_consumption(_api_base(api_base), api_key, raw_model)
+        except (OSError, KeyError, ValueError) as error:
+            return fallback(f"the server probe failed: {error}")
+        record["probe"] = probe
+        if probe["consumed"] != analysis.consumes_reasoning:
+            return fallback(
+                f"the template says resent reasoning is {'rendered' if analysis.consumes_reasoning else 'ignored'}, "
+                f"but the server {'rendered' if probe['consumed'] else 'ignored'} it")
+    return analysis.mode, record
 
 
 def _hash_json(value: object) -> str:
@@ -716,7 +771,12 @@ def _provider_and_configuration(
     options["timeout"] = args.timeout
     price_entry = None
     reasoning_history = None
-    if getattr(args, "reasoning_history", "drop") == "keep":
+    requested_history = getattr(args, "reasoning_history", None)
+    history_record: dict[str, Any] = {}
+    if requested_history in (None, "auto"):
+        requested_history, history_record = _auto_reasoning_history(
+            args, preset, model, api_base, options.get("api_key"), strict=requested_history == "auto")
+    if requested_history == "keep":
         if model.startswith(_EXPLICIT_GEMINI_PREFIXES):
             # Gemini carries its reasoning as thought signatures, which the
             # adapter already returns; resent text would be a second channel.
@@ -760,8 +820,13 @@ def _provider_and_configuration(
         # The wire request changed for these configurations, so their digest does too.
         settings["reasoning_transport"] = reasoning_transport
     if reasoning_history is not None:
-        # What the model sees changed; recorded only when used, like the above.
+        # What the model sees changed; recorded only then, like the above. A run
+        # that drops reasoning, by default or decision, hashes as it always did:
+        # the digest records what was sent. Why it was decided goes to the
+        # run summary (`_with_reasoning_history`).
         settings["reasoning_history"] = reasoning_history.setting()
+    provider.reasoning_decision = {**history_record, **(
+        reasoning_history.setting() if reasoning_history is not None else {"mode": "drop"})}
     retry_settings = {
         "max_retries": args.max_retries,
         "retry_backoff_seconds": args.retry_backoff_seconds,
@@ -956,6 +1021,13 @@ def _seed_trajectories(
     )
 
 
+def _with_reasoning_history(summary: dict, decision: dict | None) -> dict:
+    """The digest alone cannot say what `--reasoning-history` decided, or why."""
+    if not decision:
+        return summary
+    return {**summary, "reasoning_history": decision}
+
+
 def _write_run_summary(path: Path, summary: dict, request_journal: JsonlRequestJournal | None = None) -> None:
     """Replace the run summary atomically, then mark it in the journal.
 
@@ -1098,6 +1170,7 @@ def _command_infer(args: argparse.Namespace) -> None:
     provider, configuration_sha256, _, components = _provider_and_configuration(
         args, compatibility_policy=checkpoint.compatibility_policy if checkpoint else "operational-retry-v1",
     )
+    decision = getattr(provider, "reasoning_decision", None)
     seed_trajectories: tuple[AgentTrajectory, ...] = ()
     input_sha256 = _hash_text(input_text)
     tree_sha256 = _hash_text(dataset.tree.newick)
@@ -1265,11 +1338,13 @@ def _command_infer(args: argparse.Namespace) -> None:
         )
     except (Exception, KeyboardInterrupt):
         if service.last_run_summary is not None:
-            _write_run_summary(summary_path, service.last_run_summary, request_journal)
+            _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
+                               request_journal)
             print(f"INCOMPLETE RUN: progress and missing evaluations saved to {summary_path}", file=sys.stderr)
         raise
     _write_json(args.output, result.model_dump_json(indent=2))
-    _write_run_summary(summary_path, service.last_run_summary, request_journal)
+    _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
+                       request_journal)
     reconstructed = len(result.internal_nodes) - len(result.node_failures)
     print(
         f"wrote {args.output}: {reconstructed} reconstructed "
@@ -1988,13 +2063,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     infer.add_argument(
         "--reasoning-history",
-        choices=("drop", "keep"),
-        default="drop",
+        choices=("drop", "keep", "auto"),
+        default=None,
         help=(
             "Whether earlier steps of the current tool loop go back with the "
             "model's own reasoning (OpenAI-shaped routes). 'keep' resends it "
-            "within --reasoning-history-budget; recorded in the digest."
+            "within --reasoning-history-budget. 'auto', the default, decides from "
+            "the chat template (keep only where the template needs it) and falls "
+            "back to drop with a warning when it cannot; given explicitly, it "
+            "refuses instead. 'keep' enters the digest; every decision is in "
+            "run_summary.json."
         ),
+    )
+    infer.add_argument(
+        "--chat-template",
+        help="Chat template file for --reasoning-history auto, instead of LM Studio's loaded one.",
     )
     infer.add_argument(
         "--reasoning-history-budget",

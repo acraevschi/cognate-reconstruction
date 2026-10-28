@@ -87,14 +87,168 @@ def _args(*extra):
                                      "--no-preflight", *extra])
 
 
-def test_the_digest_records_reasoning_history_only_when_kept(monkeypatch):
+def test_the_digest_records_reasoning_history_only_when_kept(monkeypatch, capsys):
     monkeypatch.setenv("GEMINI_API_KEY", "test-key")
-    _, _, default, _ = cli._provider_and_configuration(_args())
+    provider, default_digest, default, _ = cli._provider_and_configuration(_args())
+    _, drop_digest, _, _ = cli._provider_and_configuration(_args("--reasoning-history", "drop"))
+    # The default is auto; with nothing to read it falls back to drop, says so,
+    # and hashes exactly like an explicit drop (and like runs before auto).
+    assert "reasoning_history" not in default and default_digest == drop_digest
+    assert provider.reasoning_decision == {"requested": "auto (default)", "mode": "drop",
+                                           "reason": "no chat template to read (pass --chat-template)"}
+    assert "dropping earlier reasoning" in capsys.readouterr().err
     provider, _, kept, _ = cli._provider_and_configuration(_args("--reasoning-history", "keep"))
-    assert "reasoning_history" not in default
     assert kept["reasoning_history"] == {"mode": "keep", "budget_tokens": 16000, "older_head_tokens": 200}
     assert provider.reasoning_history == ReasoningHistory(16000, 200)
     with pytest.raises(ValueError, match="Gemini keeps thought signatures"):
         cli._provider_and_configuration(cli._parser().parse_args(
             ["infer", "--input", "x.json", "--model", "gemini-3.8-flash", "--preset", "gemini", "--no-preflight",
              "--reasoning-history", "keep"]))
+
+
+# --reasoning-history auto: decided from the chat template. The templates below
+# are synthetic stand-ins for the two vendor patterns, not the vendors' files.
+CONTINUING = (  # Gemma 4's shape: one model turn through tool results
+    "{%- for m in messages -%}"
+    "{%- if m.role == 'assistant' -%}<model>{% if m.reasoning_content %}<thought>{{ m.reasoning_content }}</thought>{% endif %}"
+    "{% for c in m.tool_calls %}<call>{{ c.function.name }}</call>{% endfor %}"
+    "{%- elif m.role == 'tool' -%}<result>{{ m.content }}</result>"
+    "{%- else -%}<{{ m.role }}>{{ m.content }}</{{ m.role }}>{%- endif -%}"
+    "{%- endfor -%}"
+    "{%- if add_generation_prompt and messages[-1].role != 'tool' -%}<model>{%- endif -%}")
+NEW_TURN = (  # Qwen3.6's shape: every step a new assistant turn that opens <think>
+    "{%- for m in messages -%}"
+    "<{{ m.role }}>{% if m.reasoning_content %}<think>{{ m.reasoning_content }}</think>{% endif %}"
+    "{{ m.content }}{% for c in (m.tool_calls or []) %}<call>{{ c.function.name }}</call>{% endfor %}</{{ m.role }}>"
+    "{%- endfor -%}"
+    "{%- if add_generation_prompt -%}<assistant><think>{%- endif -%}")
+IGNORING = CONTINUING.replace("{% if m.reasoning_content %}<thought>{{ m.reasoning_content }}</thought>{% endif %}", "")
+
+
+def test_template_analysis_separates_the_three_patterns():
+    from cognate_reconstruction.agent.providers.chat_template import analyze_template
+    cases = {CONTINUING: (True, False, "keep"), NEW_TURN: (True, True, "drop"), IGNORING: (False, False, "drop")}
+    for template, (consumes, new_turn, mode) in cases.items():
+        analysis = analyze_template(template)
+        assert (analysis.consumes_reasoning, analysis.new_turn_after_tool, analysis.mode) == (consumes, new_turn, mode)
+
+
+def test_a_template_that_cannot_render_a_tool_loop_is_refused():
+    from cognate_reconstruction.agent.providers.chat_template import TemplateAnalysisError, analyze_template
+    with pytest.raises(TemplateAnalysisError, match="does not render"):
+        analyze_template("{{ raise_exception('tools unsupported') }}")
+
+
+def _lm_studio_home(tmp_path, *, hub=False, override=False):
+    import json as _json
+    root = tmp_path / ".lmstudio"
+    models = root / "models"
+    (models / "pub/Model-MLX-4bit").mkdir(parents=True)
+    (models / "pub/Model-MLX-4bit/chat_template.jinja").write_text(CONTINUING)
+    (models / "pub/Model-MLX-8bit").mkdir(parents=True)
+    (models / "pub/Model-MLX-8bit/tokenizer_config.json").write_text(_json.dumps({"chat_template": NEW_TURN}))
+    (root / "settings.json").write_text(_json.dumps({"downloadsFolder": str(models)}))
+    if hub:
+        (root / "hub/models/vendor/model").mkdir(parents=True)
+        (root / "hub/models/vendor/model/model.yaml").write_text(
+            "model: vendor/model\nbase:\n  - key: pub/model-mlx-4bit\n  - key: pub/model-mlx-8bit\n"
+            "customFields:\n  - key: enableThinking\n    defaultValue: true\n"
+            "    effects:\n      - type: setJinjaVariable\n        variable: enable_thinking\n")
+    if override:
+        (root / ".internal/user-concrete-model-default-config/pub").mkdir(parents=True)
+        (root / ".internal/user-concrete-model-default-config/pub/Model-MLX-4bit.json").write_text(
+            '{"operation": {"fields": [{"key": "llm.prediction.promptTemplate", "value": {}}]}}')
+    return tmp_path
+
+
+def _ps(*entries):
+    import json as _json
+    return lambda argv: _json.dumps(list(entries))
+
+
+def test_lm_studio_templates_are_located_by_folder_or_through_the_hub(tmp_path):
+    from cognate_reconstruction.agent.providers.chat_template import TemplateAnalysisError, locate_lm_studio_template
+    home = _lm_studio_home(tmp_path, hub=True)
+    direct = locate_lm_studio_template("m8", home=home, run=_ps({"identifier": "m8", "path": "pub/Model-MLX-8bit"}))
+    assert (direct.source, direct.variables, direct.text) == ("pub/Model-MLX-8bit/tokenizer_config.json", {}, NEW_TURN)
+    hub = locate_lm_studio_template("vendor/model", home=home, run=_ps(
+        {"identifier": "vendor/model", "path": "vendor/model", "quantization": {"name": "4bit"}}))
+    assert (hub.source, hub.variables) == ("pub/Model-MLX-4bit/chat_template.jinja", {"enable_thinking": True})
+    with pytest.raises(TemplateAnalysisError, match="resolves to"):
+        locate_lm_studio_template("vendor/model", home=home, run=_ps({"identifier": "vendor/model", "path": "vendor/model"}))
+    with pytest.raises(TemplateAnalysisError, match="not loaded"):
+        locate_lm_studio_template("other", home=home, run=_ps())
+    overridden = _lm_studio_home(tmp_path / "o", override=True)
+    with pytest.raises(TemplateAnalysisError, match="overrides the prompt template"):
+        locate_lm_studio_template("m4", home=overridden, run=_ps({"identifier": "m4", "path": "pub/Model-MLX-4bit"}))
+
+
+def test_the_probe_compares_prompt_tokens_with_and_without_the_field():
+    from cognate_reconstruction.agent.providers.chat_template import probe_reasoning_consumption
+    bodies = []
+
+    def post(body):
+        bodies.append(body)
+        rendered = any(m.get("reasoning_content") for m in body["messages"])
+        return {"usage": {"prompt_tokens": 85 + (345 if rendered else 0)}}
+
+    assert probe_reasoning_consumption("http://x/v1", None, "m", post=post) == {
+        "prompt_tokens_without": 85, "prompt_tokens_with": 430, "consumed": True}
+    assert all(b["max_tokens"] == 1 and isinstance(b["messages"][2]["tool_calls"][0]["function"]["arguments"], str)
+               for b in bodies)
+
+
+def test_auto_resolves_from_the_template_and_records_why(tmp_path, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    continuing, new_turn = tmp_path / "continuing.jinja", tmp_path / "new.jinja"
+    continuing.write_text(CONTINUING)
+    new_turn.write_text(NEW_TURN)
+    provider, _, public, _ = cli._provider_and_configuration(_args("--chat-template", str(continuing)))
+    assert provider.reasoning_history == ReasoningHistory(16000, 200)
+    assert public["reasoning_history"] == {"mode": "keep", "budget_tokens": 16000, "older_head_tokens": 200}
+    record = provider.reasoning_decision
+    assert (record["requested"], record["mode"], record["template_source"], record["probe"]) == (
+        "auto (default)", "keep", "file:continuing.jinja", None)
+    provider, _, public, _ = cli._provider_and_configuration(_args("--reasoning-history", "auto", "--chat-template", str(new_turn)))
+    assert provider.reasoning_history is None and "reasoning_history" not in public
+    assert (provider.reasoning_decision["requested"], provider.reasoning_decision["mode"],
+            provider.reasoning_decision["new_turn_after_tool"]) == ("auto", "drop", True)
+    gemini, _, public, _ = cli._provider_and_configuration(cli._parser().parse_args(
+        ["infer", "--input", "x.json", "--model", "gemini-3.8-flash", "--preset", "gemini", "--no-preflight"]))
+    assert "reasoning_history" not in public
+    assert gemini.reasoning_decision == {"requested": "auto (default)", "reason": "Gemini keeps thought signatures",
+                                         "mode": "drop"}
+
+
+def test_auto_refuses_when_the_server_disagrees_with_the_template(tmp_path, monkeypatch):
+    template = tmp_path / "continuing.jinja"
+    template.write_text(CONTINUING)
+    monkeypatch.setattr(cli, "_lm_studio_models", lambda base, key: ("m",))
+    monkeypatch.setattr(cli, "probe_reasoning_consumption", lambda base, key, model: {
+        "prompt_tokens_without": 85, "prompt_tokens_with": 85, "consumed": False})
+    argv = ["infer", "--input", "x.json", "--model", "m", "--preset", "lm-studio", "--chat-template", str(template)]
+    with pytest.raises(ValueError, match="server ignored it"):
+        cli._provider_and_configuration(cli._parser().parse_args(argv + ["--reasoning-history", "auto"]))
+    # The same disagreement under the default falls back to drop instead.
+    provider, _, _, _ = cli._provider_and_configuration(cli._parser().parse_args(argv))
+    assert provider.reasoning_history is None and "server ignored it" in provider.reasoning_decision["reason"]
+
+
+def test_explicit_auto_refuses_what_the_default_falls_back_from(monkeypatch):
+    from cognate_reconstruction.agent.providers.chat_template import TemplateAnalysisError
+
+    def not_loaded(model):
+        raise TemplateAnalysisError(f"{model!r} is not loaded in LM Studio")
+
+    monkeypatch.setattr(cli, "locate_lm_studio_template", not_loaded)
+    with pytest.raises(ValueError, match="--reasoning-history auto: .*not loaded"):
+        cli._provider_and_configuration(cli._parser().parse_args(
+            ["infer", "--input", "x.json", "--model", "no-such-model", "--preset", "lm-studio", "--no-preflight",
+             "--reasoning-history", "auto"]))
+
+
+def test_the_run_summary_carries_the_decision_only_when_there_is_one():
+    summary = {"run_id": "r", "status": "finished"}
+    assert cli._with_reasoning_history(summary, None) is summary
+    decided = {"requested": "auto", "mode": "drop", "reason": "the template opens a new turn after a tool result"}
+    assert cli._with_reasoning_history(summary, decided) == {**summary, "reasoning_history": decided}

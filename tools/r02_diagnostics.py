@@ -554,7 +554,9 @@ def trial_argv(arm_name: str, stage: str, inputs: Path) -> list[str]:
             "--max-retry-seconds", str(arm["timeout"]), "--quiet"]
     if "temperature" in arm:
         argv += ["--temperature", str(arm["temperature"])]
-    argv += arm.get("infer_args", [])
+    # R02-R03d ran with earlier reasoning dropped, then the only behaviour; the
+    # harness default is now `auto`, so the historical arms say drop outright.
+    argv += arm.get("infer_args", ["--reasoning-history", "drop"])
     argv += ["--agent-instructions", str(inputs / ("stage-a.instructions.stored-hypothesis.md" if stage == "A"
                                                    else "stage-b.instructions.md"))]
     if arm["reasoning_effort"]:

@@ -661,8 +661,11 @@ def test_reasoning_arm_differs_from_r03b_only_by_reasoning_history(tmp_path):
                                 for a in argv]
     extra = ["--reasoning-history", "keep", "--reasoning-history-budget", "16000", "--reasoning-history-head", "200"]
     keep_n, base_n = strip(keep, tmp_path / "keep"), strip(base, tmp_path / "base")
-    at = keep_n.index("--reasoning-history")
-    assert keep_n[at:at + len(extra)] == extra and keep_n[:at] + keep_n[at + len(extra):] == base_n
+    at, base_at = keep_n.index("--reasoning-history"), base_n.index("--reasoning-history")
+    # The historical arm pins drop; the reasoning arm puts its three flags there.
+    assert base_n[base_at:base_at + 2] == ["--reasoning-history", "drop"]
+    assert keep_n[at:at + len(extra)] == extra
+    assert keep_n[:at] + keep_n[at + len(extra):] == base_n[:base_at] + base_n[base_at + 2:]
     args = cli._parser().parse_args([a.replace("{run_dir}", str(tmp_path)) for a in keep[3:]] + ["--no-preflight"])
     _, _, public, _ = cli._provider_and_configuration(args)
     assert public["reasoning_history"] == {"mode": "keep", "budget_tokens": 16000, "older_head_tokens": 200}

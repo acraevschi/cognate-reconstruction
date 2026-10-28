@@ -973,3 +973,71 @@ Recommended order: (1) supersession of previews with the repeat guard; (2) put i
 behind the watermark; (3) a versioned schema diet. Separately, the Stage B
 blocker for both local models is non-converging thinking under the 16,384-token
 cap. No context option addresses it.
+
+## 19. `--reasoning-history auto`: deciding from the chat template (2026-10-28)
+
+Owner request: choose `keep` or `drop` per model, inferred rather than listed.
+
+**Rule.** Two properties of a chat template decide it. Both are read by rendering
+a one-step synthetic tool loop (`cognate_reconstruction/agent/providers/chat_template.py`):
+
+| Resent reasoning reaches the prompt | New turn opens after a tool result | Mode |
+| --- | --- | --- |
+| yes | no | `keep` (Gemma 4: the model continues its own turn) |
+| yes | yes | `drop` (Qwen3.6: each step opens a turn that thinks by itself) |
+| no | either | `drop` (resending would be ignored) |
+
+**How the template is found.**
+- `--chat-template FILE` names it explicitly.
+- Under the `lm-studio` preset, `lms ps --json` gives the loaded model's folder, or
+  a hub ID. A hub model is resolved through its `model.yaml` to the single
+  downloaded variant with the loaded quantization, and the hub's Jinja defaults
+  (Gemma's `enable_thinking`) are applied.
+- The template comes from `chat_template.jinja` or `tokenizer_config.json`.
+- **Refused:** a per-model prompt-template override, an ambiguous hub variant, and
+  GGUF models (which embed the template). Pass `--chat-template` for those.
+
+**Live check.** Unless `--no-preflight`, two one-token requests compare prompt
+tokens with and without `reasoning_content`. A disagreement between server and
+template is refused. Gemini always resolves to `drop`.
+
+**Default and recording.** `auto` is the harness default (owner decision,
+2026-10-28).
+- **Digest:** it records the reasoning setting only when the outcome is `keep`.
+  A run that drops, by default or by decision, hashes exactly as before, so
+  earlier checkpoints still resume.
+- **`run_summary.json`:** gets the full decision record for every run:
+  `requested`, `mode`, `reason`, template source (relative to the models folder)
+  and SHA-256, variables, probe.
+- **Fallback:** when nothing can be inferred, the default falls back to `drop` and
+  prints why; an explicit `--reasoning-history auto` refuses instead.
+- **Historical arms:** the R02–R03d arms in `tools/r02_diagnostics.py` now pass
+  `--reasoning-history drop` explicitly, so re-freezing them reproduces what
+  those runs saw.
+- **Scope of `keep`:** within the current node's tool loop only. No reasoning
+  from earlier nodes, from before a harness correction, or from responses
+  without a call; recent steps in full up to the budget, older ones as heads.
+- **Live check of the default (Qwen loaded):** `drop` with the full record; digest
+  identical to an explicit `drop`.
+
+**Checks.**
+- **Offline, every downloaded MLX template:**
+  - Gemma 4 26B (6-bit), with or without `enable_thinking`: uses resent reasoning, no new turn → `keep`;
+  - Qwen3.6 35B (4-bit and 8-bit) and Qwen3.8 27B: uses it, new turn → `drop`.
+- **Gemma's hub resolution** on the real LM Studio folders (simulated `lms ps`
+  entry, since Gemma was not loaded) → `lmstudio-community/gemma-4-26B-A4B-it-MLX-6bit`,
+  `enable_thinking: true`, `keep`.
+- **Live, Qwen loaded:** template `55d49314…`; probe 320 → 682 prompt tokens
+  (the field is rendered); resolved `drop`.
+- **End to end:** a scratch `infer` smoke on the R02 Stage A payload with
+  `--reasoning-history auto` committed in 6 steps. It is not an experiment and
+  is not pooled.
+- **Tests:** synthetic templates for the three patterns, a fake LM Studio home
+  (folder, hub, ambiguous variant, override), the probe, CLI resolution and
+  refusal, and the run-summary record. Suite: 870 passed.
+
+**Limits.**
+- LM Studio renders with its own Jinja implementation. The live probe covers the
+  first property only; the second rests on the offline render.
+- A user-level change to a hub custom field (for example `enableThinking` turned
+  off in LM Studio's UI) is not read: the hub default is used.

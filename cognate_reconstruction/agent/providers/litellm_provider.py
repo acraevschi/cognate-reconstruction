@@ -90,6 +90,8 @@ class LiteLLMProvider:
     ) -> None:
         self.model = model
         self.reasoning_history = reasoning_history
+        # What `--reasoning-history` decided and why, for the run summary; set by the CLI.
+        self.reasoning_decision: dict[str, Any] | None = None
         if price is not None and price.model != model:
             raise ValueError(f"price entry is for {price.model!r}, not {model!r}")
         # An explicit operator price replaces LiteLLM's model-cost map for this

@@ -438,6 +438,35 @@ non-secret local placeholder key expected by OpenAI-compatible clients.
 Override the base with `--api-base`. Use `--no-preflight` only when discovery
 is unavailable but the endpoint is otherwise known.
 
+**Reasoning history.** Dropping a model's earlier reasoning from its tool loop
+is harmless for a template that opens a new, thinking turn after every tool
+result (Qwen3.6). It switches thinking off for one that continues a single model
+turn through the loop (Gemma 4): the model copies its visible thoughtless calls.
+`--reasoning-history keep` resends the reasoning within the current node only:
+the most recent steps in full up to `--reasoning-history-budget` tokens (16,000),
+older ones as a `--reasoning-history-head` (200 tokens), nothing from before the
+last user message (a node start or a harness correction) and nothing from a
+response that made no call. `drop` never resends it. `auto`, **the default**,
+decides per model:
+
+- it reads the chat template LM Studio loaded (`lms ps --json`, the model folder,
+  or a hub model's `model.yaml`), or the file named by `--chat-template`;
+- it renders a one-step tool loop to see whether resent reasoning reaches the
+  prompt and whether a new turn opens after a tool result;
+- unless `--no-preflight`, it sends two one-token requests to check that the
+  server renders the field, and refuses if server and template disagree;
+- it chooses `keep` only for the continuing pattern. Only `keep` enters the
+  configuration digest, so a run that drops hashes as runs always did; the
+  decision, its reason, the template hash and the probe go to `run_summary.json`
+  (`reasoning_history`) for every run.
+
+When nothing can be inferred (a hosted route without `--chat-template`,
+`--no-preflight`, an unreadable template, or a server/template disagreement),
+the default falls back to `drop` and prints why; `--reasoning-history auto`
+given explicitly refuses instead. Gemini always resolves to `drop`; it keeps its
+own thought signatures. See
+`docs/research/model_capability_diagnostic.md` §17a, §18 and §19.
+
 ### Bounded Qwen/Tujia local smoke test
 
 `starostintujia` is a useful small local test dataset: its LanguageTable has
