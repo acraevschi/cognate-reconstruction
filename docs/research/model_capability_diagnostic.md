@@ -18,7 +18,7 @@ LiteLLM 1.81.16, httpx 0.28.1, Pydantic 2.13.4 (`pip freeze` SHA-256
 | B-local | **Not run** (gated on A-local). A missing paired outcome, not a judgment result |
 | Gemini spend | **US$2.4754** by the pre-registered upper-bound price table (no unknown-cost request, no retry); about **US$0.81** with the cached-token counts Gemini reported. Ceiling US$5. Paid wall time 690.5 s of 3,600 s |
 | Local time | 283.9 s of 7,200 s |
-| Follow-ups (local, separate identities) | R03b (Gemma, its published sampler): A **no_commit**, same error classes (§15). R03c (Qwen3.6 35B-A3B, its published sampler): A **success**, 0 rejected; B **10/18, 0/6 pairs**, baseline-level, outgroup absence read as a tie (§16). R03d (Gemma on the `unit_orders`-fixed code): A **no_commit** again, 7/9 rejected; the fix was not exercised (§17). R03e (Gemma with its reasoning resent within the tool loop): thinking sustained, A **success** (1/6 rejected); B **no commit**, three 16k-token thoughts that never reached a call (§18) |
+| Follow-ups (local, separate identities) | R03b (Gemma, its published sampler): A **no_commit**, same error classes (§15). R03c (Qwen3.6 35B-A3B, its published sampler): A **success**, 0 rejected; B **10/18, 0/6 pairs**, baseline-level, outgroup absence read as a tie (§16). R03d (Gemma on the `unit_orders`-fixed code): A **no_commit** again, 7/9 rejected; the fix was not exercised (§17). R03e (Gemma with its reasoning resent within the tool loop): thinking sustained, A **success** (1/6 rejected); B **no commit**, three 16k-token thoughts that never reached a call (§18). R03f (Qwen on creation-time tool-result slimming, Option 1a): A **success**, identical to R03c; B `x` **no commit**, three 16k-token thoughts; no slimmed content reached the model, so not attributable to 1a (§19) |
 | External cost check | **Pending**: the owner reads the AI Studio balance (7.36 CHF before R03) at least 24 h after 19:07 UTC on 2026-10-25 |
 
 **Substantive usability of the current harness:** demonstrated for Gemini 3.8
@@ -775,3 +775,201 @@ Items 1 and 2 change what every model sees, so each needs its own experiment. Th
 ceilings should be set from our own measurement of opaque-ID copying and
 tool-call validity at 16k, 32k, 64k, 96k and 128k on both local models, not from
 the extrapolation above.
+
+## 19. Follow-up R03f — creation-time tool-result slimming (Option 1a) and Qwen on it (2026-10-28)
+
+### 19.1 What was built
+
+Three kinds of content in accepted tool results were never cited by a model and
+are not inputs to any tool. Each is now left out when the result is created, so
+no earlier prompt is ever rewritten (KV-cache prefixes are untouched).
+- **`target_absent` is no longer an exception.** `RuleApplicationReport.exceptions`
+  lists forms the target occurs in and the rule did not apply cleanly to.
+  `results` keeps every form; `forms_evaluated` still counts them. The
+  reconstructor already treated `target_absent` as "not applicable". Affects
+  `test_rule_cascade` (`report_summaries` and `reports`) and `test_sound_law`.
+- **`get_alignments` `detail="summary"` returns no `pairwise_correspondences`.**
+  The n-way `alignments` are unchanged; `full` still returns the pairwise views.
+  The aligner core still renders them (tests moved to the core call).
+- **Forms show their evidence, not their source.** `search_forms` hits and
+  `test_rule_cascade.final_forms` serialize each form without form or
+  membership `provenance`. `cognate_memberships` is omitted when the
+  `cognate_set_id` shorthand already says all of it; partial-cognate,
+  alternative and doubtful judgements keep their memberships, slimmed.
+  Only JSON serialization changes (`model_facing_form`); the stored result
+  objects keep full forms, so `convergence` and commit checks are unaffected.
+- **Not as briefed:** `get_alignments` members never embedded a `LexicalForm`
+  (they carry flat membership fields), so there was no form metadata to strip
+  there. Cascade `final_forms` were added because they carry the same form
+  provenance (1.38 MB recorded).
+- **Digests:** tool schemas `628f0f32…`, trajectory schema `9368c171…` and
+  payload schema `b93ae612…` are unchanged. A known inconsistency remains: the
+  frozen `detail` description still says "Summary includes counts and column
+  pointers". Fixing it would change the tool-schema digest.
+- **Tests:** `tests/workbench/test_tool_result_slimming.py` (9 tests), and three
+  `test_affordable_evidence.py` tests repointed (the summary pairwise view is
+  now tested on the aligner, the reference test on `full`). Portable suite 822
+  passed, 41 deselected.
+
+### 19.2 Offline replay over every recorded session
+
+`runs/experiments/r03f-qwen-slim-metadata-20261028/offline-replay/`. Each
+`events.jsonl` timeline (rehearsals excluded; 327 sessions) is walked in order,
+and every accepted result of the four tools is re-rendered by the current code
+(all 11,530 recorded forms validated). The token difference is subtracted
+from every later request while that result is live. A result the harness already
+compacted stops counting at its compaction. Token counts use Qwen 3.6's and
+Gemma 4's own tokenizers; Gemini uses Gemma's. Calibration against recorded prompt
+growth: Qwen 1.001, Gemma 1.11, Gemini 1.0–1.10 (median ratio), so savings for
+Gemma/Gemini are if anything understated.
+
+| Group | n | Peak in median / p90 / max (recorded → slimmed) | >64k | >100k | >128k | Cumulative median | Chars saved: get_alignments / search_forms / test_rule_cascade / test_sound_law |
+|---|---|---|---|---|---|---|---|
+| Burmish — Gemma 26B | 18 | 89.7k / 111.2k / 342.5k → **64.3k / 81.3k / 318.1k** | 12 → 10 | 5 → 2 | 1 → 1 | 859.2k → 702.3k (-19% total) | 0.56 / 0.00 / 0.24 / 0.10 MB |
+| Polynesian — Gemma 26B | 107 | 54.0k / 81.3k / 252.6k → **45.9k / 67.2k / 144.3k** | 23 → 13 | 9 → 3 | 5 → 1 | 471.5k → 400.8k (-18% total) | 1.31 / 0.76 / 1.28 / 0.22 MB |
+| Polynesian — Qwen 35B | 21 | 77.3k / 109.9k / 118.9k → **67.6k / 93.2k / 98.0k** | 19 → 14 | 6 → 0 | 0 → 0 | 920.6k → 831.3k (-16% total) | 0.45 / 0.42 / 0.00 / 0.00 MB |
+| Burmish — Gemini 3.7 | 23 | 216.5k / 336.2k / 400.7k → **163.3k / 205.8k / 343.3k** | 23 → 23 | 22 → 22 | 22 → 22 | 2485.0k → 1737.7k (-27% total) | 1.87 / 1.75 / 0.00 / 0.00 MB |
+| Polynesian — Gemini 3.7 | 21 | 151.4k / 213.0k / 262.4k → **116.8k / 158.2k / 175.8k** | 21 → 21 | 21 → 19 | 16 → 8 | 2054.4k → 1605.6k (-25% total) | 0.70 / 1.41 / 0.17 / 0.04 MB |
+| R02/R03 panels — gemini-3.8 | 3 | 161.5k / 174.7k / 174.7k → **144.1k / 156.2k / 156.2k** | 2 → 2 | 2 → 2 | 2 → 2 | 1094.3k → 1051.6k (-6% total) | 0.00 / 0.06 / 0.05 / 0.01 MB |
+| R02/R03 panels — gemma-4-26b | 5 | 35.7k / 42.0k / 42.0k → **35.7k / 42.0k / 42.0k** | 0 → 0 | 0 → 0 | 0 → 0 | 207.2k → 207.2k (+0% total) | 0.00 / 0.00 / 0.00 / 0.00 MB |
+| R02/R03 panels — qwen3.6-35b | 3 | 79.4k / 90.5k / 90.5k → **77.5k / 90.5k / 90.5k** | 2 → 2 | 0 → 0 | 0 → 0 | 450.7k → 450.7k (-1% total) | 0.00 / 0.01 / 0.00 / 0.00 MB |
+
+- **Saved overall:** 14.4 MB of tool-result characters: `get_alignments` 5.38,
+  `search_forms` 4.68, `test_rule_cascade` 3.80, `test_sound_law` 0.52 MB. Less
+  than the audit's upper bound because many recorded `get_alignments` calls used
+  `detail="full"` (untouched), and superseded results were already compacted.
+- **Qwen on Polynesian** now stays under 100k in every recorded session (6 → 0);
+  p90 93k. **Gemma** improves but stays above its ~64k soft ceiling in 13/107
+  Polynesian and 10/18 Burmish sessions. **Gemini** saves 25–27% of cumulative
+  input but stays far above any local ceiling.
+- **The R02/R03 panels barely move** (Qwen −1%): Qwen asked for `detail="full"`
+  there, and the synthetic forms carry little provenance.
+- **KV cache:** creation-time only, so every request's prefix is the prefix the
+  slimmed run would have sent before. No prefix is invalidated.
+
+**What still fills the prompt at the slimmed peak** (`residual_composition.py`,
+median share of the peak request):
+
+| Group | Fixed first request | Assistant turns + harness text | `test_proto_assembly` | `get_alignments` | `summarize_correspondences` | Rejected results |
+| --- | --- | --- | --- | --- | --- | --- |
+| Burmish — Gemma | 17% | 20% | 10% | 15% | 8% | 4% |
+| Polynesian — Gemma | 28% | 20% | 11% | 10% | 9% | 3% |
+| Polynesian — Qwen | 34% | 15% | 13% | 11% | 7% | 1% |
+| Polynesian — Gemini | 19% | 29% | 15% | 14% | 10% | 1% |
+
+- The fixed first request is mostly tool schemas: about 14k of Qwen's 17.1k
+  first-request tokens (`commit_reconstruction` 4.5k, `test_proto_assembly` 3.3k).
+  It is re-sent with every request.
+- Upper bounds on the next options, applied to each session's slimmed peak
+  (sessions over 64k / over 100k):
+
+| Group | After 1a | + supersede older previews and rejections | + 8k cap per result | + both |
+| --- | --- | --- | --- | --- |
+| Burmish — Gemma (18) | 10 / 2 | 3 / 1 | 8 / 1 | 3 / 0 |
+| Polynesian — Gemma (107) | 13 / 3 | 7 / 0 | 7 / 0 | 1 / 0 |
+| Polynesian — Qwen (21) | 14 / 0 | 7 / 0 | 14 / 0 | 7 / 0 |
+| Polynesian — Gemini (21) | 21 / 19 | 21 / 12 | 21 / 18 | 21 / 11 |
+
+### 19.3 Live: Qwen3.6 35B-A3B on the slimmed code (R03f)
+
+`runs/experiments/r03f-qwen-slim-metadata-20261028/`; 2026-10-27 23:13:01–23:38:24
+UTC. Frozen: `plan.json` `8709b196…`, manifests A `9b1a7155…` / B `ad1037c5…`,
+`source_manifest.json` `9cfa88ee…` (HEAD `535cca9` + Option 1a and its tests),
+`preregistration.md` `2a6561db…` (written before launch).
+- **Same as R03c:** argv apart from the path; inputs byte-identical; tools
+  `628f0f32…`; first-request digests; the model (sole loaded, 4-bit, 262,144).
+- **Wire:** the offline rehearsal confirmed every sampler value in the body and
+  no reasoning resent.
+- **Code difference besides 1a:** `535cca9`. Its `unit_orders` refusal was not
+  triggered, and reasoning history stayed at the default `drop`.
+
+| Measure | R03c | R03f |
+| --- | --- | --- |
+| **A** outcome | success | **success** |
+| A turns / calls / rejected | 4 / 5 / 0 | 4 / 5 / 0 |
+| A peak / cumulative input | 37,453 / 114,135 | 37,453 / 114,135 |
+| A elapsed | 119 s | 122 s |
+| **B `x`** outcome | committed | **no commit** (`ProtocolStallError`) |
+| B `x` score | 10/18, 0/6 pairs, uniform `retain`; U1/U2 `retain` | 0/18 scored, 18 missing (a missing outcome, not a judgment) |
+| B `x` turns / calls / rejected | 8 / 9 / 0 | 9 / 7 / 1 (`unknown-correspondence-set`: a stale pattern ID in a shared claim) |
+| B `x` 16,384-token thinking-only responses | 1 (recovered) | **3** (2 recovered, the third ended the node) |
+| B `x` peak / cumulative input | 90,509 / 450,708 | 67,185 / 397,203 |
+| B `x` reasoning tokens | 39,024 | 62,336 |
+| B `x` elapsed | 1,265 s | 1,399 s |
+| B `r` | committed, 830 s, peak 79,368 | not run (the root needs `x`) |
+
+**Option 1a was not exercised on Stage B.** At `x`, Qwen called
+`list_available_nodes`, `list_concepts`, `summarize_correspondences` ×3,
+`get_alignments` with `detail="full"`, and one `test_proto_assembly`. None of
+those results contains anything 1a changes. The `get_alignments` result is
+byte-identical to R03c's (same SHA-256). So the model-visible content was the
+same condition as R03c, and the different path is sampling at temperature 0.6.
+On Stage A no slimmed tool was called; the run reproduced R03c token for token
+on the input side.
+
+**Reading (pre-registered).**
+- Stage A: no detectable effect (identical).
+- Stage B: the outcome is a missing judgment. It is not attributable to 1a,
+  because no slimmed content reached the model. It is a second sample of
+  Qwen's unchanged Stage B condition.
+- Across the two samples at `x`, 4 of 17 responses spent the whole 16,384-token
+  budget on thinking. That is Gemma's R03e failure mode. It happened at prompts
+  of only 47k–67k, well inside Qwen's ceiling.
+- So on this panel, context size is not what limits the local models. The
+  limit is thinking that does not converge within the output cap.
+- Whether 1a changes judgment on a path that reads `search_forms` or
+  summary alignments is untested: the panel never forces such a call. That needs
+  a real-data session (Polynesian), where 1a measurably acts.
+
+### 19.4 Next context-saving options (analysis, not implemented)
+
+After 1a, Qwen fits inside its ~100k ceiling on every recorded real-data
+session. Gemma does not: 13/107 Polynesian and 10/18 Burmish sessions stay
+above ~64k. The measured upper bounds in §19.2 rank the options.
+
+1. **Supersession of obsolete previews (largest measured payoff for Gemma).**
+   Over 64k: Polynesian 13 → 7, Burmish 10 → 3, Qwen 14 → 7.
+   - It needs loop safety by design, and measurement makes that cheap:
+     rejected results are only 1–4% of the peak. **Never compact a rejection**;
+     keep every error message verbatim.
+   - Compact only accepted, superseded `test_proto_assembly`, `test_rule_cascade`
+     and `test_sound_law` results, into a harness-written stub. The stub keeps:
+     the call ID; a hash of the arguments; the hypothesis/validation IDs; the
+     outcome counts (conflicts, unresolved, residue); and the superseding call
+     ID.
+   - **Repeat guard.** A new call with the same argument hash as a compacted
+     one gets "identical to call N; result unchanged", plus the stub. The model
+     then cannot loop through re-running a forgotten draft, and it always knows
+     why each draft failed.
+   - A commit still needs the validation ID of the exact preview it cites. So
+     the newest preview, and any preview a later commit refers to, stays in full.
+   - **KV cost.** The harness already rewrites superseded read-only results in
+     place. The superseded preview is usually one or two turns back, so the
+     prefix lost is short.
+2. **Watermark-gated compaction (3) is the right *trigger*, not a separate
+   mechanism.** Below a low watermark (e.g. 48k for Gemma, 80k for Qwen) nothing
+   is rewritten, so the cache is fully reused. On crossing it, apply option 1's
+   rules once, then turn the oldest read-only evidence into breadcrumbs: what
+   was queried, the `csu-*`/`csp-*`/`hyp-*` IDs it returned, and "call again to
+   retrieve". This invalidates the cache once per crossing, not per turn.
+   - Breadcrumbs must be written deterministically by the harness, never
+     summarized by a model.
+   - The main risk is re-query loops. The repeat guard above covers them, and
+     the stall detector already counts repeats.
+3. **Pagination / guardrails / economical descriptions.**
+   - **Opt-in pagination does little:** models do not opt in, and an 8k cap alone
+     moves Polynesian Gemma 13 → 7 but Qwen 14 → 14. It helps only the long tail.
+     A harness-side cap with explicit `truncated: true` and `next_offset` is the
+     useful form. `search_forms` already pages.
+   - **The larger lever is the tool definitions.** They are about 14k of every
+     request (`commit_reconstruction` 4.5k, `test_proto_assembly` 3.3k), and 17–34%
+     of the peak. Trimming duplicated `$defs` and long descriptions could take
+     5–8k off every request, so cumulative input falls by the same per turn.
+   - That deliberately changes the tool-schema digest. It is a new interface
+     version with its own Stage A check, not a silent edit. The same holds for
+     correcting the stale `detail` description noted in §19.1.
+
+Recommended order: (1) supersession of previews with the repeat guard; (2) put it
+behind the watermark; (3) a versioned schema diet. Separately, the Stage B
+blocker for both local models is non-converging thinking under the 16,384-token
+cap. No context option addresses it.

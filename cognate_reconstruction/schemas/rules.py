@@ -141,8 +141,17 @@ class RuleApplicationReport(WorkbenchModel):
     @computed_field
     @property
     def exceptions(self) -> tuple[FormRuleResult, ...]:
+        # Forms the target occurs in and the rule did not apply cleanly to. A
+        # form without the target is not an exception to the rule, and the
+        # reconstructor already counts it as not applicable. Those forms were
+        # 92–99% of this list in recorded cascade previews, each a full record
+        # the model never cited; they stay in `results`. (A comment, not a
+        # docstring: pydantic would publish a docstring as a schema description.)
         return tuple(
-            result for result in self.results if result.status is not ApplicationStatus.APPLIED
+            result
+            for result in self.results
+            if result.status
+            not in (ApplicationStatus.APPLIED, ApplicationStatus.TARGET_ABSENT)
         )
 
 

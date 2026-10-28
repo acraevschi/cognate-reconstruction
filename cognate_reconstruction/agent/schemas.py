@@ -7,7 +7,7 @@ from enum import StrEnum
 from collections.abc import Sequence
 from typing import Any, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
 from cognate_reconstruction.schemas.alignment import (
     ComplementaryCandidate,
@@ -31,7 +31,12 @@ from cognate_reconstruction.schemas.inventory import (
     SegmentRestoration,
     normalize_written_gaps,
 )
-from cognate_reconstruction.schemas.lexicon import LexicalForm
+from cognate_reconstruction.schemas.lexicon import (
+    CognateMembership,
+    CognateMembershipInterpretation,
+    CognateMembershipScope,
+    LexicalForm,
+)
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.rules import (
     AnomalyReport,
@@ -369,12 +374,60 @@ class SearchFormsArgs(WorkbenchModel):
     limit: int = Field(default=50, ge=1, le=200)
 
 
+def _shorthand_describes(form: LexicalForm) -> bool:
+    """Whether `cognate_set_id` says everything the memberships would."""
+    return form.cognate_set_id is not None and all(
+        membership.scope is CognateMembershipScope.WHOLE_FORM
+        and membership.interpretation is CognateMembershipInterpretation.ASSERTED
+        and not membership.provenance.doubt
+        and membership.provenance.comment is None
+        for membership in form.cognate_memberships
+    )
+
+
+def _membership_view(membership: CognateMembership) -> dict[str, Any]:
+    view: dict[str, Any] = membership.model_dump(
+        mode="json", exclude={"provenance"}, exclude_defaults=True
+    )
+    if membership.provenance.doubt is not None:
+        view["doubt"] = membership.provenance.doubt
+    if membership.provenance.comment is not None:
+        view["comment"] = membership.provenance.comment
+    return view
+
+
+def model_facing_form(form: LexicalForm) -> dict[str, Any]:
+    """A form as a tool result shows it to the model: the evidence, not its source.
+
+    Dropped: `provenance` (dataset row, source reference, compatibility rules)
+    on the form and on each cognate membership. Across 267 recorded
+    `search_forms` calls those two were 55% of the tool's characters, and no
+    tool takes any of it as input. `cognate_memberships` is dropped too when the
+    `cognate_set_id` shorthand already says all of it; partial, alternative or
+    doubtful judgements keep their membership, without its provenance.
+
+    Only what is serialized changes. The harness keeps and reads the full form.
+    """
+    view = form.model_dump(mode="json", exclude={"provenance"})
+    if not form.cognate_memberships or _shorthand_describes(form):
+        del view["cognate_memberships"]
+    else:
+        view["cognate_memberships"] = [
+            _membership_view(membership) for membership in form.cognate_memberships
+        ]
+    return view
+
+
 class FormSearchHit(WorkbenchModel):
     node_id: NonEmptyStr
     evidence_kind: EvidenceKind
     relation: EvidenceRelation
     concept: ConceptMetadata
     form: LexicalForm
+
+    @field_serializer("form", when_used="json")
+    def serialize_form(self, form: LexicalForm) -> dict[str, Any]:
+        return model_facing_form(form)
 
 
 class SearchFormsResult(WorkbenchModel):
@@ -1196,6 +1249,12 @@ class CascadeFinalForm(WorkbenchModel):
     child_id: NonEmptyStr
     form: LexicalForm
 
+    @field_serializer("form", when_used="json")
+    def serialize_form(self, form: LexicalForm) -> dict[str, Any]:
+        # `convergence` reads the full form from the stored result; only the
+        # model's copy loses the source metadata. See `model_facing_form`.
+        return model_facing_form(form)
+
 
 class CascadeRuleSummary(WorkbenchModel):
     """One rule's effect, without the per-form record of what simply worked.
@@ -1223,9 +1282,10 @@ class CascadeRuleSummary(WorkbenchModel):
     exceptions: tuple[FormRuleResult, ...] = Field(
         default=(),
         description=(
-            "Every form the rule did not apply cleanly to. Not a sample: the "
-            "exceptions are the reason to read a preview, so they are complete "
-            "even in the summary."
+            "Every form the target occurs in that the rule did not apply "
+            "cleanly to. Not a sample: the exceptions are the reason to read a "
+            "preview, so they are complete even in the summary. Forms without "
+            "the target are not exceptions; forms_evaluated counts them."
         ),
     )
     applied_form_ids: tuple[NonEmptyStr, ...] = Field(

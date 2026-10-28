@@ -416,5 +416,115 @@
     "test": "tests/workbench/test_reasoning_history.py",
     "suite": "853 passed",
     "default": "drop"
+  },
+  "tool_result_slimming_option_1a": {
+    "changes": [
+      "RuleApplicationReport.exceptions excludes target_absent",
+      "get_alignments detail=summary omits pairwise_correspondences",
+      "search_forms hits and test_rule_cascade final_forms serialize forms without provenance; memberships only when the cognate_set_id shorthand does not cover them"
+    ],
+    "digests_unchanged": {
+      "tool_schemas": "628f0f32",
+      "trajectory_schema": "9368c171",
+      "payload_schema": "b93ae612"
+    },
+    "tests": {
+      "new": "tests/workbench/test_tool_result_slimming.py (9)",
+      "portable_suite": "822 passed, 41 deselected"
+    },
+    "offline_replay": {
+      "directory": "runs/experiments/r03f-qwen-slim-metadata-20261028/offline-replay",
+      "sessions": 327,
+      "saved_chars_mb": {
+        "get_alignments": 5.38,
+        "search_forms": 4.68,
+        "test_rule_cascade": 3.8,
+        "test_sound_law": 0.52
+      },
+      "peak_median_p90_max": {
+        "burmish_gemma": [
+          [
+            89698,
+            111239,
+            342463
+          ],
+          [
+            64334,
+            81312,
+            318081
+          ]
+        ],
+        "polynesian_gemma": [
+          [
+            53969,
+            81348,
+            252648
+          ],
+          [
+            45864,
+            67199,
+            144279
+          ]
+        ],
+        "polynesian_qwen": [
+          [
+            77331,
+            109937,
+            118873
+          ],
+          [
+            67618,
+            93198,
+            97995
+          ]
+        ]
+      },
+      "tokenizer_calibration_median": {
+        "qwen": 1.001,
+        "gemma": 1.114,
+        "gemini_3_7": 1.104
+      },
+      "kv_prefix_invalidation": "none (creation-time)"
+    }
+  },
+  "follow_up_r03f": {
+    "directory": "runs/experiments/r03f-qwen-slim-metadata-20261028",
+    "launch_utc": [
+      "2026-10-27T23:13:01Z",
+      "2026-10-27T23:38:24Z"
+    ],
+    "change": "Option 1a only (creation-time tool-result slimming); argv and inputs as R03c; HEAD 535cca9 (reasoning history default drop; unit_orders refusal not triggered)",
+    "frozen": {
+      "plan.json": "8709b196",
+      "manifest.stage-a.json": "9b1a7155",
+      "manifest.stage-b.json": "ad1037c5",
+      "source_manifest.json": "9cfa88ee",
+      "preregistration.md": "2a6561db"
+    },
+    "A": {
+      "outcome": "success",
+      "usable": true,
+      "turns": 4,
+      "tool_calls": 5,
+      "rejected": 0,
+      "wall_seconds": 122,
+      "input_tokens": 114135,
+      "peak_prompt": 37453
+    },
+    "B": {
+      "outcome": "no_commit",
+      "stop": "ProtocolStallError after three 16,384-token thinking-only responses at x",
+      "rejected": 1,
+      "rejected_codes": {
+        "unknown-correspondence-set": 1
+      },
+      "scored": "18 missing (0/18, 0/6), a missing outcome",
+      "x_wall_seconds": 1399,
+      "x_input_tokens": 397203,
+      "x_peak_prompt": 67185,
+      "x_reasoning_tokens": 62336
+    },
+    "slimmed_content_reached_model": false,
+    "reading": "Stage A identical to R03c; Stage B a second sample of the unchanged condition (get_alignments detail=full, byte-identical to R03c); thinking-only truncations at 47k-67k prompts, not context"
   }
 }

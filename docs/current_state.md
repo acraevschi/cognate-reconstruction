@@ -159,6 +159,18 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   outgroup use); peak prompt 39k. Report §18 also records per-node context
   measurements (real-data Gemma median peaks 54k–90k, tool results up to 129k)
   and context-budget design options; none of those are implemented.
+- **Creation-time tool-result slimming (Option 1a, R03f).** Implemented:
+  `exceptions` no longer list `target_absent` forms; `get_alignments`
+  `detail="summary"` omits pairwise views; `search_forms` hits and cascade
+  `final_forms` show forms without provenance (memberships only when the
+  `cognate_set_id` shorthand does not cover them). Tool schemas stay `628f0f32…`.
+  Offline replay of 327 recorded sessions: 14.4 MB less tool output; Qwen
+  Polynesian peaks p90 110k → 93k (none over 100k), Gemma Polynesian median 54k
+  → 46k, Burmish Gemma 90k → 64k. Live Qwen (R03f): Stage A identical to R03c;
+  Stage B `x` no commit after three 16k thinking-only responses, with no slimmed
+  content in its prompt (so not attributable to 1a). Report §19 has the
+  next-option analysis (supersession with a repeat guard, watermark trigger,
+  versioned schema diet). Uncommitted.
 
 ## Authority and reading order
 
