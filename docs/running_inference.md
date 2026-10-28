@@ -465,7 +465,7 @@ When nothing can be inferred (a hosted route without `--chat-template`,
 the default falls back to `drop` and prints why; `--reasoning-history auto`
 given explicitly refuses instead. Gemini always resolves to `drop`; it keeps its
 own thought signatures. See
-`docs/research/model_capability_diagnostic.md` §17a, §18 and §19.
+`docs/research/model_capability_diagnostic.md` §17a, §18 and §20.
 
 ### Bounded Qwen/Tujia local smoke test
 

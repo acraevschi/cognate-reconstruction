@@ -128,7 +128,7 @@ def _hash_text(value: str) -> str:
 
 
 def _auto_reasoning_history(args, preset, model, api_base, api_key, *, strict: bool) -> tuple[str, dict[str, Any]]:
-    """Resolve `--reasoning-history auto` from the chat template (R03 §17a, §18, §19).
+    """Resolve `--reasoning-history auto` from the chat template (R03 §17a, §18, §20).
 
     Keep when the template renders resent reasoning and continues one model turn
     through tool results (Gemma 4); drop otherwise (Qwen3.6 opens a new turn

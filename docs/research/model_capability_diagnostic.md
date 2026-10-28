@@ -974,7 +974,7 @@ behind the watermark; (3) a versioned schema diet. Separately, the Stage B
 blocker for both local models is non-converging thinking under the 16,384-token
 cap. No context option addresses it.
 
-## 19. `--reasoning-history auto`: deciding from the chat template (2026-10-28)
+## 20. `--reasoning-history auto`: deciding from the chat template (2026-10-28)
 
 Owner request: choose `keep` or `drop` per model, inferred rather than listed.
 
@@ -1034,7 +1034,7 @@ template is refused. Gemini always resolves to `drop`.
   is not pooled.
 - **Tests:** synthetic templates for the three patterns, a fake LM Studio home
   (folder, hub, ambiguous variant, override), the probe, CLI resolution and
-  refusal, and the run-summary record. Suite: 870 passed.
+  refusal, and the run-summary record. Suite: 870 passed (871 on `350ef65`).
 
 **Limits.**
 - LM Studio renders with its own Jinja implementation. The live probe covers the

@@ -165,7 +165,7 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   probe. Resolves Gemma 4 → keep, Qwen3.6/3.8 → drop, Gemini → drop. `auto`
   is the default; only `keep` enters the digest (dropping runs hash as
   before), and every decision is written to `run_summary.json`. When nothing
-  can be inferred the default falls back to drop with a warning (report §19).
+  can be inferred the default falls back to drop with a warning (report §20).
 - **Creation-time tool-result slimming (Option 1a, R03f).** Implemented:
   `exceptions` no longer list `target_absent` forms; `get_alignments`
   `detail="summary"` omits pairwise views; `search_forms` hits and cascade
@@ -177,7 +177,7 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   Stage B `x` no commit after three 16k thinking-only responses, with no slimmed
   content in its prompt (so not attributable to 1a). Report §19 has the
   next-option analysis (supersession with a repeat guard, watermark trigger,
-  versioned schema diet). Uncommitted.
+  versioned schema diet). Committed in `7e6d637`.
 
 ## Authority and reading order
 
