@@ -705,3 +705,49 @@ def test_an_unserved_model_is_refused_before_the_run(monkeypatch) -> None:
         cli._provider_and_configuration(
             _infer_args("--model", "gemini-9-imaginary", preflight=True)
         )
+
+
+def _truncated_then_call(captured: list):
+    """A thinking-only response cut off at the cap (no text, no call), then a call."""
+    def completion(**kwargs):
+        captured.append(kwargs)
+        if len(captured) == 1:
+            return {"id": "cut", "model": "gemini-3.8-flash", "choices": [
+                {"finish_reason": "length", "message": {"content": None, "reasoning_content": "thinking"}}],
+                "usage": {"prompt_tokens": 1000, "completion_tokens": 32768, "total_tokens": 33768,
+                          "completion_tokens_details": {"reasoning_tokens": 32760}}}
+        return {"id": "next", "model": "gemini-3.8-flash", "choices": [{"finish_reason": "tool_calls", "message": {
+            "content": None, "tool_calls": [{"id": "call_1", "function": {
+                "name": "commit_reconstruction", "arguments": "{}"}}]}}]}
+    return completion
+
+
+@pytest.mark.parametrize("model,sent", [("gemini/gemini-3.8-flash", False), ("openai/local-model", True)])
+def test_a_reply_cut_off_without_text_or_call_is_an_empty_turn(model: str, sent: bool) -> None:
+    # Before, building the assistant message failed validation: the node
+    # failed, and the billed response was never priced.
+    captured: list = []
+    provider = LiteLLMProvider(model, completion_fn=_truncated_then_call(captured))
+    opening = (LLMMessage(role=MessageRole.USER, content="reconstruct"),)
+    cut = provider.complete(opening, _TOOL)
+    assert cut.message.content == "" and not cut.message.tool_calls
+    assert cut.metadata.finish_reason == "length" and cut.metadata.usage.output_tokens == 32768
+    recovery = LLMMessage(role=MessageRole.USER, content="Your previous response was cut off.")
+    provider.complete((*opening, cut.message, recovery), _TOOL)
+    turn = captured[1]["messages"][1]
+    assert turn["role"] == "assistant"
+    # Gemini gets the turn as it came, without content (LiteLLM drops it); the
+    # OpenAI-shaped route keeps sending the empty string it always sent.
+    assert ("content" in turn) is sent
+
+
+def test_an_empty_turn_never_reaches_gemini_as_an_empty_text_part() -> None:
+    from litellm.llms.vertex_ai.gemini.transformation import _gemini_convert_messages_with_history
+    captured: list = []
+    provider = LiteLLMProvider("gemini/gemini-3.8-flash", completion_fn=_truncated_then_call(captured))
+    opening = (LLMMessage(role=MessageRole.USER, content="reconstruct"),)
+    cut = provider.complete(opening, _TOOL)
+    provider.complete((*opening, cut.message, LLMMessage(role=MessageRole.USER, content="cut off")), _TOOL)
+    contents = _gemini_convert_messages_with_history(messages=captured[1]["messages"])
+    assert [c.get("role") for c in contents] == ["user", "user"]
+    assert all(part.get("text") for c in contents for part in c["parts"])

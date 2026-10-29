@@ -106,6 +106,7 @@ from cognate_reconstruction.schemas.rules import AnchorPolicy
 from cognate_reconstruction.traversal import (
     CheckpointStore,
     FamilyCheckpoint,
+    PlannedStop,
     RuleBasedReconstructor,
 )
 
@@ -1335,7 +1336,15 @@ def _command_infer(args: argparse.Namespace) -> None:
             dataset, anchors_by_node=anchors_by_node,
             resume_steps=checkpoint.steps_by_node if checkpoint else None,
             seed_trajectories=seed_trajectories, on_step_complete=save_step,
+            stop_after_node=args.stop_after_node,
         )
+    except PlannedStop as stop:
+        _write_run_summary(summary_path, _with_reasoning_history(
+            {**service.last_run_summary, "stop_after_node": args.stop_after_node}, decision), request_journal)
+        print(f"PLANNED STOP: {stop}. Completed nodes are in {summary_path}"
+              f"{' and the checkpoint' if checkpoint_store else ''}; no result.json is written.",
+              file=sys.stderr)
+        return
     except (Exception, KeyboardInterrupt):
         if service.last_run_summary is not None:
             _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
@@ -2120,6 +2129,16 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--max-total-tool-calls", type=int)
     infer.add_argument("--max-run-seconds", type=float)
     infer.add_argument("--max-total-cost-usd", type=float)
+    infer.add_argument(
+        "--stop-after-node",
+        help=(
+            "End the traversal once this internal node's step is recorded; later "
+            "nodes are not attempted. The run summary is written as a planned "
+            "stop (status interrupted, failure_kind planned_stop) with the "
+            "completed steps, the checkpoint keeps them, and no result.json is "
+            "written. For diagnostics that score one node."
+        ),
+    )
     infer.add_argument(
         "--price-table",
         help=(

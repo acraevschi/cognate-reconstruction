@@ -27,6 +27,18 @@ from cognate_reconstruction.tree import (
 from cognate_reconstruction.traversal.beam import beam_to_lexicon, make_leaf_beam
 from cognate_reconstruction.traversal.protocol import NodeReconstructor
 from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
+
+
+class PlannedStop(RuntimeError):
+    """The traversal reached the node it was asked to stop after.
+
+    Raised, not returned, so the caller's ordinary interruption path keeps the
+    completed steps and the usage record exactly as for any other stop, while
+    `failure_kind` tells a reader that no node failed and no cap was hit."""
+
+    failure_kind = "planned_stop"
+
+
 class TreeTraverser:
     def __init__(
         self,
@@ -49,6 +61,7 @@ class TreeTraverser:
         resume_steps: Mapping[str, ReconstructionStep] | None = None,
         on_step_complete: Callable[[ReconstructionStep], None] | None = None,
         on_step_recorded: Callable[[ReconstructionStep], None] | None = None,
+        stop_after_node: str | None = None,
     ) -> TraversalSnapshot:
         root = parse_newick(dataset.tree.newick)
         node_ids = assign_node_ids(root)
@@ -74,6 +87,11 @@ class TreeTraverser:
         }
         if unknown := sorted(set(resumed) - valid_internal_ids):
             raise ValueError(f"checkpoint contains unknown internal node IDs: {unknown}")
+        if stop_after_node is not None and stop_after_node not in valid_internal_ids:
+            raise ValueError(
+                f"stop_after_node {stop_after_node!r} is not an internal node: "
+                f"{sorted(valid_internal_ids)}"
+            )
         reconstructed_evidence: dict[str, tuple[LanguageLexicon, tuple[str, ...]]] = {}
         # Nodes whose beam came from, or was built on, a failure fallback. They
         # are deliberately kept out of the checkpoint: a resumed run must
@@ -160,6 +178,11 @@ class TreeTraverser:
             completed.append(parent_id)
             if on_step_recorded is not None:
                 on_step_recorded(step)
+            if parent_id == stop_after_node and len(completed) < len(valid_internal_ids):
+                raise PlannedStop(
+                    f"planned stop after node {parent_id}; "
+                    f"{len(valid_internal_ids) - len(completed)} later node(s) not attempted"
+                )
         return TraversalSnapshot(
             root_node_id=node_ids[id(root)],
             completed_node_ids=tuple(completed),

@@ -134,6 +134,7 @@ class ReconstructionService:
         resume_steps: Mapping[str, ReconstructionStep] | None = None,
         seed_trajectories: Sequence[AgentTrajectory] = (),
         on_step_complete: Callable[[ReconstructionStep], None] | None = None,
+        stop_after_node: str | None = None,
     ) -> FamilyReconstructionResult:
         # Seeds are taken here rather than set by the caller beforehand:
         # `clear_run_results` wipes prior hypotheses, so anything seeded ahead
@@ -159,7 +160,7 @@ class ReconstructionService:
             ).traverse(
                 dataset, anchors_by_node=active_anchors,
                 resume_steps=resume_steps, on_step_complete=on_step_complete,
-                on_step_recorded=partial_steps.append,
+                on_step_recorded=partial_steps.append, stop_after_node=stop_after_node,
             )
         except (Exception, KeyboardInterrupt) as caught:
             error = RunCancelled("run cancelled by keyboard interrupt") if isinstance(caught, KeyboardInterrupt) else caught

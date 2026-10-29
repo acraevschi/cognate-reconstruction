@@ -115,7 +115,9 @@ def _target_layout(form, layout):
 # piece-level presence/absence. Operator fields (question, notes, supplied
 # hypothesis, opportunities, design labels, history) never enter the payload.
 
-EXPLICIT_SUITE_VERSIONS = ("r02-stage-a-v1", "r02-stage-b-v1")
+# R04 Stage C (`r04-stage-c-v1`) reuses the Stage B layout with three
+# outgroups, other-unit forms and tied items; its scorer is evaluation/judgment.py.
+EXPLICIT_SUITE_VERSIONS = ("r02-stage-a-v1", "r02-stage-b-v1", "r04-stage-c-v1")
 
 
 def load_explicit_case(path: str | Path) -> dict:

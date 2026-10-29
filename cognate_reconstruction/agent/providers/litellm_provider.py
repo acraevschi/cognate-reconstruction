@@ -39,6 +39,8 @@ def _value(item: object, name: str, default: Any = None) -> Any:
 # arrival, keeps the short ID everywhere the harness and the model can see, and
 # restores the signature on the way out through the field LiteLLM reads first.
 THOUGHT_SIGNATURE_SEPARATOR = "__thought__"
+# LiteLLM provider prefixes that reach Gemini (AI Studio or Vertex AI).
+GEMINI_ROUTES = ("gemini", "vertex_ai")
 
 
 def _split_thought_signature(call_id: str) -> tuple[str, str | None]:
@@ -159,8 +161,16 @@ class LiteLLMProvider:
 
     def _message_payload(self, message: LLMMessage) -> dict[str, Any]:
         payload: dict[str, Any] = {"role": message.role.value}
-        if message.content is not None:
-            payload["content"] = message.content
+        content = message.content
+        if (content == "" and message.role is MessageRole.ASSISTANT and not message.tool_calls
+                and self.model.partition("/")[0] in GEMINI_ROUTES):
+            # A turn cut off with neither text nor a call goes back as Gemini
+            # sent it: without content, which LiteLLM drops. An empty text
+            # part has never been sent to Gemini; a user message straight
+            # after tool results has, in the banked runs, and was answered.
+            content = None
+        if content is not None:
+            payload["content"] = content
         if message.tool_calls:
             payload["tool_calls"] = [
                 self._tool_call_payload(call) for call in message.tool_calls
@@ -331,10 +341,18 @@ class LiteLLMProvider:
             # Without a reported count, about four characters per token.
             count = int(reasoning_tokens) if reasoning_tokens is not None else len(reasoning_text) // 4 + 1
             self._reasoning[calls[0].call_id] = (reasoning_text, count)
+        content = _value(raw_message, "content")
+        if content is None and not calls:
+            # Gemini cut off at max_output_tokens while thinking returns no
+            # text and no call. Kept as an empty turn, the orchestrator's
+            # truncation recovery runs and the response's usage is recorded;
+            # an assistant message with neither would fail validation and,
+            # with it, the node, leaving a billed response unpriced.
+            content = ""
         return ProviderResponse(
             message=LLMMessage(
                 role=MessageRole.ASSISTANT,
-                content=_value(raw_message, "content"),
+                content=content,
                 tool_calls=tuple(calls),
             ),
             metadata=ProviderResponseMetadata(

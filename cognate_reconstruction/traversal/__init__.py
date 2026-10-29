@@ -14,13 +14,14 @@ from cognate_reconstruction.traversal.checkpoint import (
     CheckpointStore,
     FamilyCheckpoint,
 )
-from cognate_reconstruction.traversal.traverser import TreeTraverser
+from cognate_reconstruction.traversal.traverser import PlannedStop, TreeTraverser
 
 __all__ = [
     "ProtoInventoryAssembler",
     "RuleBasedReconstructor",
     "CheckpointStore",
     "FamilyCheckpoint",
+    "PlannedStop",
     "TreeTraverser",
     "beam_to_lexicon",
     "derive_branch_rules",
