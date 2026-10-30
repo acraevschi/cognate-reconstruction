@@ -467,6 +467,14 @@ given explicitly refuses instead. Gemini always resolves to `drop`; it keeps its
 own thought signatures. See
 `docs/research/model_capability_diagnostic.md` §17a, §18 and §20.
 
+**Stopping after a single internal node (`--stop-after-node NODE`).** When a
+diagnostic panel scores an intermediate node (such as node `x` in Stage B or
+Stage C) and has Outgroup leaves attached at a higher root, passing
+`--stop-after-node x` to `cognate-reconstruct infer` stops the traversal cleanly
+once `x` is reconstructed and checkpointed (`status: "interrupted"`,
+`failure_kind: "planned_stop"`, exit code `0`), without starting or paying for
+later internal nodes.
+
 ### Bounded Qwen/Tujia local smoke test
 
 `starostintujia` is a useful small local test dataset: its LanguageTable has

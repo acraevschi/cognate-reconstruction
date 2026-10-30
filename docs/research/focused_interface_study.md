@@ -1,23 +1,26 @@
 # R04 — Focused study: Gemini judgment where the outgroup-witness rule is not the answer
 
 2026-10-30, branch `r01-contract-repairs`. Environment `llm_reconstruction`
-(Python 3.11.0, LiteLLM 1.81.16). **Live status: v2 re-frozen after review
-mitigations; pending v2 diff review and launch confirmation.** No model request,
-model discovery or paid call has been made yet.
+(Python 3.11.0, LiteLLM 1.81.16, httpx 0.28.1, Pydantic 2.13.4). **Live status:
+complete — both Gemini 3.8 Flash (R04 v2) and local dense `qwen3.8-27b-splash`
+(R04b, 32k output cap) scored 19/19 primary, 5/5 matched pairs, and 4/4 ties
+marked at 0.5 (`criterion-sensitive on this panel` / `warranted uncertainty`).**
 
 ## 0. Status at a glance
 
 | Item | Status |
 | --- | --- |
 | Upstream recommendation (R03 §13 and its amendments) | Verified against the R03 report, results and code; adopted |
-| Interface redesign (dossier, selection surface, reduced IDs) | **Deferred** with reasons (§2); not built |
+| Interface redesign (dossier, selection surface, reduced IDs) | **Deferred** with reasons (§2); not built, and not needed after both Gemini and local Qwen3.8 27B scored 19/19 (§9) |
 | Stage C panel `r04-stage-c-v1` and scorer `r04-judgment-v1` | Built and updated with review mitigations; key re-derived from observed forms in a test |
 | Frozen deployable baselines | R02 rule 13/19; best shallow rule 15/19; stated criterion 19/19 (ceiling by construction) |
-| `--stop-after-node` (score only x) | Built and tested through `cli infer`, the launcher and the ledger |
+| `--stop-after-node` (score only x) | Built and tested through `cli infer`, the launcher and the ledger; exercised live |
 | Defect found by rehearsal: a Gemini reply cut off at the cap crashed the node | Reproduced, repaired, red→green tests; approved by the owner (2026-10-28) |
 | Frozen launch candidate | `runs/experiments/r04-stage-c-20261029-v2/` (`20261028` superseded, never launched) |
-| Independent read-only review | v1 review returned launch-ready with 5 mitigations (§7); all 5 applied in v2 |
-| Live Gemini trial | **Pending**: US$3.50 / 35 min approved (2026-10-28), awaiting v2 confirmation |
+| Independent read-only review | v1 review returned launch-ready with 5 mitigations; v2 review (`review.md`) returned **launch-ready** (§7) |
+| Live Gemini trial (`C-gemini-r04`) | **Complete (2026-10-30)**: **19/19** decided, **5/5** pairs, **6/6** on R02 rule's errors, **4/4** ties marked at 0.5, **0** false confident claims, **19/19** concepts' outgroup forms seen; 10 requests (1 rejected), US$0.7603 upper bound (≈US$0.3424 cached), 283.9 s (§9) |
+| Live tier-2 local trial (`C-local-qwen38-27b-r04`, R04b) | **Complete (2026-10-30)**: `qwen3.8-27b-splash` (32k cap) scored **19/19** decided, **5/5** pairs, **6/6** on R02 rule's errors, **4/4** ties marked at 0.5, **0** false confident claims, **19/19** concepts' outgroup forms seen; 9 requests (**0 rejected**), peak output 23,668 tokens, peak input 80,200 tokens, 1,577.5 s (§9.4) |
+| Live tier-3 local trial (`C-local-qwen36-35b-r04`, R04c) | **Complete (2026-10-30)**: MoE `qwen3.6-35b-a3b-splash` (35B total / 3B active, 32k cap) ended **`no commit`** (`ProtocolStallError` after 3×32,768 thinking-only responses; never called `search_forms`/`get_alignments`/`polarize`, `0` outgroup forms seen [`1/19` vacuous on outgroup-less `y08`]; previewed only 13 of 57 local sets [1 per reflex pair], which assembled only 10/19 concepts and would have scored **4/19**; 666.0 s, §9.5) |
 | Tests | Stage C 19, Gemini provider +3; portable suite 852 passed, 41 deselected |
 
 ## 1. Question
@@ -225,6 +228,9 @@ by `python tools/r04_judgment.py freeze --output-dir <dir>`, never hand-edited:
 
 | Artifact | SHA-256 |
 | --- | --- |
+| `manifest.stage-c.json` | `ee973d3742dc62dcdd21b78d5797d522f1ee50b5f52637c1a7b173f448e555fc` |
+| `plan.json` | `63182413a72dd16e9483d2ec0f5f93d69986ad4178e06736312cbdda99212566` |
+| `source_manifest.json` (clean HEAD `dee06a5`, `dirty_paths: []`) | `73b7d77621b8ccb9cf63d5fdc10cbfafe001cc819f3b9637bef8fdd6b970ad0f` |
 | `inputs/stage-c.payload.json` | `0d4b669641e7c48d20d86c180ae78afe463c323ac36422a2da81f310f84b0654` |
 | `inputs/stage-c.instructions.md` | `0a5d680eabc833d4c71853e2e2e1656e29dbfa3b775e831af1665d9d9f423959` |
 | `inputs/gemini-r04.provider-config.json` (`{"max_tokens": 32768}`) | `027bbb0a9e0d8ac63339623ff801caecd5de86d0d5f381feff0775ab5c13b01b` |
@@ -282,6 +288,12 @@ All five findings and Notes 6–7 are resolved in the v2 freeze:
    for R03 parity with the unknown-billing retry caveat stated in pre-registration
    §4, and `gemini-truncated-first` is rehearsed and tested.
 
+An independent read-only review of the `7e860f9..dee06a5` diff and the v2 freeze
+(`runs/experiments/r04-stage-c-20261029-v2/review.md`, subagent
+`5fc6c236-cc25-4c90-8dbb-4b5a52685eb1`) verified all 5 findings and Notes 6–7,
+all frozen hashes, clean `HEAD` `dee06a5`, and zero evidence or secret leaks,
+returning **`launch-ready`** before any live request was made.
+
 ## 8. Pre-registered reading and what each outcome selects
 
 The full rules are in the pre-registration (`preregistration.md` in the frozen
@@ -310,7 +322,212 @@ directory) and in code. Headline: model-committed correct of 19.
 | No commit through rejections | Protocol/interface study | — |
 | Resource or provider stop | Resource outcome only | — |
 
-## 9. Limits
+## 9. Live trial result (`C-gemini-r04`, 2026-10-30)
+
+Launched once, serially, from `runs/experiments/r04-stage-c-20261029-v2/` at
+`2026-10-30T13:19:18Z` (`finished` `2026-10-30T13:24:04Z`, exit code `0`).
+`grep -rlF "$GEMINI_API_KEY"` over the batch directory returned nothing.
+
+### 9.1 Headline, shallow-rule error sets, pairs, uncertainty and navigation
+
+| Metric | Live `gemini-r04` | Stated criterion (ceiling) | R02 outgroup-witness | Best shallow rule (unanimity) | Union (all retain) |
+| --- | --- | --- | --- | --- | --- |
+| Decided correct / 19 | **19 / 19** (`1.00`) | 19 / 19 | 13 / 19 | 15 / 19 | 10 / 19 |
+| R02 witness-rule errors / 6 | **6 / 6** | 6 / 6 | 0 / 6 | 6 / 6 | 0 / 6 |
+| Unanimity errors / 4 | **4 / 4** | 4 / 4 | 4 / 4 | 0 / 4 | 4 / 4 |
+| Majority-of-three errors / 5 | **5 / 5** | 5 / 5 | 5 / 5 | 5 / 5 | 5 / 5 |
+| Spelling-majority errors / 5 | **5 / 5** | 5 / 5 | 4 / 5 | 5 / 5 | 3 / 5 |
+| Matched pairs / 5 | **5 / 5** (`Pa`–`Pe`) | 5 / 5 | 1 / 5 | 3 / 5 | 0 / 5 |
+| By basis (`outgroup_majority` / `wrong_scope` / `no_observation`) | **11/11, 5/5, 3/3** | 11/11, 5/5, 3/3 | 6/11, 4/5, 3/3 | 7/11, 5/5, 3/3 | 6/11, 3/5, 1/3 |
+| Ties marked (`confidence ≤ 0.5`) / 4 | **4 / 4** (`T1`–`T4` all at `0.5`) | 4 / 4 | 0 / 4 | 0 / 4 | 0 / 4 |
+| Decided items hedged (`≤ 0.5`) | **0** (all 19 decided at `0.9`) | 0 | 0 | 0 | 0 |
+| False confident claims | **0** | 0 | 10 | 8 | 13 |
+| Decided by explicit claim | **19 / 19** | 19 / 19 | 19 / 19 | 19 / 19 | 19 / 19 |
+| Raw `task02-v1` top exact at `x` | **19 / 19** (`1.00`) | 19 / 19 | 13 / 19 | 15 / 19 | 10 / 19 |
+| Value label | **`criterion-sensitive on this panel`** | `criterion-sensitive on this panel` | `witness-rule level` | `baseline-level` | `uniform (regularity) reading` |
+| Uncertainty label | **`warranted uncertainty`** | `warranted uncertainty` | `no uncertainty marking` | `no uncertainty marking` | `no uncertainty marking` |
+
+- **Attribution of wrong or missing decisions (checked before reading labels):**
+  **0 wrong and 0 missing decisions.** Every planned primary opportunity
+  (`19/19`) and every tied item (`4/4`) was decided by an explicit local claim
+  (`csu-*`) with a unit-scoped rationale citing the exact outgroup attestations
+  and absences.
+- **How the model inferred the outgroup correspondences without a cheat-sheet:**
+  Although `task_block` named no reflex tokens (`g`, `k`, `kʰ`), Gemini
+  inspected the outgroups' forms and alignments, recognized `c`'s `g`, `d`'s
+  `k`, and `f`'s `kʰ` as regular reflexes of the final velar slot (e.g. `K9` /
+  `y04`: *"Outgroup c attests voiced velar reflex g in cs379, favoring retention
+  of \*k"*; `T2` / `y03`: *"Outgroup evidence in cs311 is evenly split between
+  attestation in f (t-a-kʰ) and absence in d (t-a), requiring 2 changes under
+  either hypothesis; unresolved, confidence assigned 0.5"*), ignored
+  replacement-unit (`w0`, `w1`) and suffix-piece (`s1` on `K8` / `y14`)
+  look-alikes, and treated missing outgroup forms (`-`) as no observation.
+- **Navigation and tool sequence (10 turns, 10 calls, 1 rejected):**
+  1. `list_available_nodes({})` — identified `c`, `d`, `f` as `outgroup` leaves.
+  2. `summarize_correspondences({"reading": "recurrence", "min_support": 1})`
+  3. `summarize_correspondences({"reading": "local", "min_support": 1})`
+  4. `search_forms({"node_ids": ["a", "b", "c", "d", "f"], "limit": 100})` —
+     **rejected** (`unknown-node`, because `scope` defaults to
+     `active_children`).
+  5. `search_forms({"scope": "available_tree", "node_ids": ["a", "b", "c", "d", "f"], "limit": 100})` —
+     repaired on the next turn; read all observed forms across all 5 varieties.
+  6. `polarize({"child_ids": ["a", "b"], "position": "final", "correspondence": ["k", null]})`
+  7. `get_alignments({"concept_ids": ["y01", ..., "y19"], "node_ids": ["a", "b", "c", "d", "f"], "detail": "full"})`
+  8. `summarize_correspondences({"reading": "local", "limit": 60, "offset": 0, "min_support": 1})` —
+     fetched all 57 local `csu-*` sets.
+  9. `test_proto_assembly({"residue_policy": "drop", "choices": <57 choices>, "detail": "summary"})` —
+     `commit_ready: true` on the first preview (`hyp-eebd5a959a81840e28b8a8cd`).
+  10. `commit_reconstruction` — committed `x`; traversal stopped cleanly via
+      `PlannedStop` (`status: interrupted`, `failure_kind: planned_stop`, root
+      `r` not attempted).
+
+### 9.2 Resources and why the 32,768 output cap mattered
+
+| Request | Tool called | Input tokens | Cached input | Output tokens | Reasoning tokens | Table cost (USD) |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | `list_available_nodes` | 15,986 | 0 | 61 | 49 | 0.012218 |
+| 2 | `summarize_correspondences` (recurrence) | 16,338 | 13,934 | 96 | 71 | 0.012614 |
+| 3 | `summarize_correspondences` (local, p. 1) | 26,595 | 16,369 | 98 | 74 | 0.020314 |
+| 4 | `search_forms` (rejected: default scope) | 40,080 | 26,624 | 78 | 38 | 0.030353 |
+| 5 | `search_forms` (`available_tree`) | 40,211 | 38,026 | 73 | 25 | 0.030432 |
+| 6 | `polarize` (`["k", null]`, final) | 58,917 | 40,245 | 1,899 | 1,863 | 0.051309 |
+| 7 | `get_alignments` (all 19 concepts, full) | 64,949 | 58,920 | 269 | 110 | 0.049721 |
+| 8 | `summarize_correspondences` (local, all 57) | 163,551 | 65,037 | 13,859 | 13,826 | 0.174635 |
+| 9 | `test_proto_assembly` (57 choices) | 196,361 | 163,569 | **16,718** | 11,530 | 0.209963 |
+| 10 | `commit_reconstruction` | 217,882 | 196,368 | 1,422 | 1,065 | 0.168744 |
+| **Total** | **10 requests (0 retries, 0 unknown cost)** | **840,870** | **619,092 (73.6%)** | **34,573** | **28,651 (82.9%)** | **0.760301** |
+
+- **Cost and wall time:** Upper-bound uncached table cost **US$0.7603** (versus
+  the US$2.50 run cap and US$3.50 batch ceiling); using reported cached input
+  tokens at US$0.075/M, estimated spend is **≈US$0.3424**. Wall time **283.9 s**
+  (4m 44s, versus 1,800 s cap). AI Studio console balance check is due ≥ 24 h
+  after `2026-10-30T13:24:04Z` (alongside R03's pending check).
+- **Validation of the 32,768 output cap:** Request 9 (`test_proto_assembly` with
+  57 explicit local choices after 11,530 thinking tokens) used **16,718 output
+  tokens**—334 tokens above R03's 16,384 cap. Under a 16,384 cap, Request 9
+  would have been truncated mid-tool-call. Raising `max_tokens` to 32,768 let
+  the preview complete in one turn without truncation.
+
+### 9.3 What this outcome selects next
+
+Per the pre-registered table (§8), **`criterion-sensitive on this panel`** with
+**`warranted uncertainty`** supports:
+- **No interface redesign for Gemini 3.8 Flash (or dense local Qwen3.8 27B).**
+  With the current tool surface, both models navigated multi-outgroup evidence
+  across 19 concepts (`search_forms`, `polarize`, `get_alignments`), inferred
+  the `g / k / kʰ` reflex correspondence from tip forms without a cheat-sheet,
+  overrode the survey's presence-only witness label and general manual defaults
+  as instructed, and scored 19/19, 5/5 pairs, and 4/4 marked ties.
+- **What could reverse this:** Failure on a multi-node or real-language dataset
+  where cognate units, tree topology or parsimony assumptions are not supplied
+  as clean ground truth; or high variance across additional seeds.
+- **Downstream briefs:** R05 stays **deferred** unless the owner selects a
+  specific two-level propagation question (Stage C stopped after `x` by design,
+  and both Gemini and local `qwen3.8-27b-splash` now provide clean 19/19,
+  4-marked-tie intermediate beams at `x`). R06 and R07 are not selected by the
+  pre-registered table.
+
+### 9.4 Owner-requested tier-2 local follow-up: `qwen3.8-27b-splash` (`R04b`, 2026-10-30)
+
+Following Gemini's 19/19 result, the owner loaded `qwen3.8-27b-splash` (27B
+dense + speculative draft, 4-bit, 128,000 context window in LM Studio) to test
+the next model tier down on the identical Stage C panel and instructions
+(`runs/experiments/r04b-local-qwen38-27b-20261030/`, manifest `2ee72c13…`, plan
+`76dfa331…`, source `73b7d776…`, provider config `7a5b9b19…`: `max_tokens:
+32768`, Qwen thinking-mode sampler `temperature: 0.6, top_k: 20, top_p: 0.95,
+min_p: 0.0, repeat_penalty: 1.0, presence_penalty: 0.0`, `--reasoning-history
+drop`, `--stop-after-node x`).
+
+- **Judgment (`r04-judgment-v1`):** **`19 / 19`** decided opportunities
+  (`explicit_claim` on all 19), **`5 / 5`** matched pairs (`Pa`–`Pe`), **`6 /
+  6`** on R02's `outgroup-witness` error set, **`4 / 4`** on `unanimous`, **`5 /
+  5`** on `majority-of-three`, **`5 / 5`** on `spelling-majority`, **`4 / 4`**
+  tied items (`T1`–`T4`) marked at confidence `0.5`, **`0`** false confident
+  claims, and **`19 / 19`** concepts with every outgroup form seen. Labels:
+  **`criterion-sensitive on this panel`** / **`warranted uncertainty`**.
+- **Error attribution:** **0 wrong and 0 missing decisions, and 0 rejected tool
+  calls** across 12 tool calls in 9 turns. Like Gemini, `qwen3.8-27b-splash`
+  inferred from the tip forms that `c`'s `g`, `d`'s `k`, and `f`'s `kʰ` are the
+  regular reflexes of the final velar slot (e.g. `K9` / `y04`: *"Same-unit
+  outgroup c=pag (k-slot present, g reflex)"*), identified `f`'s `kʰ` in `K8`
+  (`y14`) as belonging to suffix unit `cs338` rather than `cs312`, ignored
+  replacement units (`w0`, `w1`), and graded its confidence by evidence strength
+  (`0.85` for 3-of-3 outgroups, `0.70` for 1-of-1, `0.65` for 2-of-3, and `0.50`
+  for all 4 ties).
+- **Decisive validation of the 32,768 output cap for local models:**
+
+| Request | Tool(s) called | Input tokens | Output tokens | Reasoning tokens |
+| --- | --- | --- | --- | --- |
+| 1 | `list_available_nodes`, `summarize_correspondences` (recurrence) | 17,285 | 83 | 22 |
+| 2 | `list_concepts`, `summarize_correspondences` (local) | 26,058 | 247 | 173 |
+| 3 | `search_forms` (`active_children`) | 27,230 | 83 | 40 |
+| 4 | `search_forms` (`available_tree`, `c, d, f`) | 36,018 | 403 | 341 |
+| 5 | `get_alignments` (`a, b`, 6 concepts, full) | 43,407 | 6,063 | 5,905 |
+| 6 | `summarize_correspondences` (`local`, `min_support: 1`, `limit: 60`) | 49,907 | **16,748** | 16,451 |
+| 7 | `polarize` (`["k", null]` final) + `polarize` (`[null, "h"]` initial) | 65,742 | **23,668** | 23,214 |
+| 8 | `test_proto_assembly` (57 choices, `residue_policy: "drop"`) | 70,655 | 15,016 | 9,956 |
+| 9 | `commit_reconstruction` (`hyp-10a376a53df5c842dc9289f6`) | 80,200 | 1,036 | 377 |
+| **Total** | **9 requests, 12 tool calls (0 rejected)** | **416,502** | **63,347** | **56,479 (89.2%)** |
+
+  In R03e and R03f, local models failed Stage B by hitting the 16,384 output cap
+  while thinking. Here, **Requests 6 (`16,748` tokens) and 7 (`23,668` tokens)
+  both exceeded 16,384 tokens** during chain-of-thought analysis of the 19
+  concepts, and converged cleanly inside the 32,768 cap without a single
+  truncation. Peak prompt size was `80,200` tokens (well inside the 128,000
+  context window); wall time was `1,577.5 s` (26m 18s), at US$0.00 paid cost.
+
+### 9.5 Owner-requested tier-3 local follow-up: MoE `qwen3.6-35b-a3b-splash` (`R04c`, 2026-10-30)
+
+To test where model capability degrades along the tier ladder, the owner next
+loaded the Mixture-of-Experts `qwen3.6-35b-a3b-splash` (`35B` total parameters,
+`3B` active parameters, 128,000 context window in LM Studio) under the identical
+Stage C panel, instructions, sampler, and `max_tokens: 32768` cap
+(`runs/experiments/r04c-local-qwen36-35b-20261030/`, manifest `a471d7f3…`, plan
+`59c24569…`, source `73b7d776…`, provider config `7a5b9b19…`,
+`--reasoning-history drop`, `--stop-after-node x`).
+
+- **Outcome:** **`no commit`** (`ProtocolStallError` after three `32,768`-token
+  thinking-only responses on Requests 3, 5, and 8; `666.0 s` wall time, `8`
+  requests, `6` tool calls, `1` rejected call, `277,395` input tokens, peak
+  prompt `47,177` tokens, `115,379` output tokens of which `112,038` [`97.1%`]
+  were reasoning tokens).
+- **Double failure mode (truncation loop + shallow navigation/representation):**
+  1. **Runaway thinking even at `32,768` tokens:** Unlike dense `qwen3.8-27b-splash`
+     (which peaked at `23,668` tokens and converged), the `3B`-active MoE model
+     hit the `32,768` output cap three times (`32,724`, `32,628`, and `32,768`
+     reasoning tokens) without emitting a tool call—including on Request 8
+     immediately *after* receiving `commit_ready: true` (`hyp-548d4474d15cd0a3bad6f32c`)
+     from `test_proto_assembly`.
+  2. **Failure to inspect outgroup forms or commit per-concept sets:** Across its
+     8 turns, `qwen3.6-35b-a3b-splash` called only `list_concepts` (1),
+     `summarize_correspondences` (3), and `test_proto_assembly` (2). It **never
+     called `search_forms`, `get_alignments`, or `polarize`**
+     (`outgroup_forms_seen: []` — **0 outgroup forms seen**;
+     `concepts_with_every_outgroup_form_seen` is `1 / 19` only because `y08` has
+     no outgroup forms in the panel, so the empty subset check is vacuously
+     true). In its `test_proto_assembly` preview on Request 7
+     (`hyp-548d4474d15cd0a3bad6f32c`), it committed **only 13 of the 57 local
+     `csu-*` sets**—selecting one `csu-*` ID per distinct reflex pair (`a:a`,
+     `e:e`, `i:i`, `o:o`, `u:u`, `k:Ø`, `Ø:h`, `m:m`, `n:n`, `t:t`, `l:l`,
+     `p:p`, `s:s`) and mistaking each single local `csu-*` ID for a global rule
+     over all occurrences of that reflex pair (for example, committing only `y01`'s
+     `csu-a26f6177f60d0b20f8936d2b` with the rationale *"Nineteen correspondence
+     sets show 'k' in child a and null in child b. Outgroups (c, d, f) regularly
+     show velar stops (k, kʰ, g)"*), while setting `residue_policy: "drop"` on
+     the other 44 local sets. Because 9 of the 19 concepts had *all* of their
+     columns in those uncommitted local sets, the preview assembled non-empty
+     forms for only `10 / 19` concepts (`unaccounted_column_rate: 0.567`), and
+     even had it been committed on Request 8 instead of truncating, it would
+     have scored only **`4 / 19` (`21.1%`)** (`retain: 2, absent: 5, other: 1,
+     missing: 11`; `0 / 5` pairs; `0 / 4` ties marked).
+
+| Tier | Model | Active params | Primary / 19 | Pairs / 5 | Witness-rule errors / 6 | Ties (`≤ 0.5`) / 4 | Outgroup forms seen | Rejected calls | Peak output tokens | Outcome label |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Tier 1 (Cloud) | `gemini-3.8-flash` | Frontier | **19 / 19** | **5 / 5** | **6 / 6** | **4 / 4** | **19 / 19** | 1 | 16,718 | `criterion-sensitive` / `warranted` |
+| Tier 2 (Local Dense) | `qwen3.8-27b-splash` | 27B | **19 / 19** | **5 / 5** | **6 / 6** | **4 / 4** | **19 / 19** | **0** | 23,668 | `criterion-sensitive` / `warranted` |
+| Tier 3 (Local MoE) | `qwen3.6-35b-a3b-splash` | 3B (of 35B) | **0 / 19** *(preview: 4/19)* | **0 / 5** | **0 / 6** | **0 / 4** | **0 forms** *(1/19 vacuous)* | 1 (+ 3×32k trunc) | **32,768 (×3)** | `no commit` (`ProtocolStallError`) |
+
+## 10. Limits
 
 - One trial at temperature 1.0: feasibility, not reliability or a ranking.
 - Synthetic development material written with known answers. The criterion is
@@ -322,7 +539,7 @@ directory) and in code. Headline: model-committed correct of 19.
   more ties under parsimony.
 - No real-language outcome: no validated real targets exist (R02 §6).
 
-## 10. Commands
+## 11. Commands
 
 ```sh
 PY=/opt/anaconda3/envs/llm_reconstruction/bin/python

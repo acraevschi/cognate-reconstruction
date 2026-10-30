@@ -135,3 +135,16 @@ versions sit beside them for the R02 stages ([design](model_diagnostic_design.md
 
 Explicit diagnostic definitions (`r02-stage-a-v1`, `r02-stage-b-v1`) build
 payloads from observed pieces; their operator fields never enter model evidence.
+
+## R04 amendment — Stage C multi-outgroup judgment, 2026-10-30
+
+- `r04-judgment-v1` (Stage C, [focused study](focused_interface_study.md)): sits
+  beside `r02-decisions-v1` (whose value readings it reuses unchanged),
+  `task02-v1` and `task04-units-v1` on `r04-stage-c-v1`
+  (`benchmarks/diagnostic/r04-stage-c-v1.json`). It adds the deciding committed
+  claim's confidence and rationale per opportunity, warranted-uncertainty
+  readings (`confidence ≤ 0.5` on tied items; hedged decided items; false
+  confident claims), shallow-rule error-set scores, outgroup navigation
+  sightings (`search_forms`, `get_alignments`, `polarize`), and descriptive
+  labels gated on `no commit` and `uniform (regularity) reading`. Missing,
+  unscorable and fallback outputs remain in every denominator.

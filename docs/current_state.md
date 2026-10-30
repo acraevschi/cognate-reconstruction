@@ -179,9 +179,9 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   next-option analysis (supersession with a repeat guard, watermark trigger,
   versioned schema diet). Committed in `7e6d637`.
 
-## R04 focused study — prepared 2026-10-28, v2 re-frozen 2026-10-30, live trial pending
+## R04 focused study — completed 2026-10-30
 
-[R04](research/focused_interface_study.md) follows R03's narrowed question:
+[R04](research/focused_interface_study.md) tested R03's narrowed question:
 does Gemini 3.8 Flash decide by the stated criterion where R02's deployable
 outgroup-witness rule is not the answer? Interface redesign (dossier,
 selection surface, reduced IDs) is deferred: no Gemini navigation or
@@ -207,9 +207,48 @@ transcription failure has been observed, and the local blockers lie elsewhere.
   with no text and no call crashed the node and went unpriced. It is now an
   empty turn: the truncation recovery runs, the response is priced, and Gemini
   receives the turn without content. The local route is unchanged.
-- **Pending:** v2 review and owner confirmation of the approved US$3.50 / 35 min
-  envelope for `runs/experiments/r04-stage-c-20261029-v2/` (`r04-stage-c-20261028/`
-  superseded, never launched).
+- **Live result (`runs/experiments/r04-stage-c-20261029-v2/`, 2026-10-30):**
+  Gemini 3.8 Flash (`--preset gemini --reasoning-effort medium`, `max_tokens`
+  32,768, `--stop-after-node x`) scored **19/19** decided opportunities
+  (`explicit_claim` on all 19), **5/5** matched pairs, **6/6** on R02's
+  outgroup-witness errors, **4/4** on unanimity, **5/5** on majority-of-three,
+  **5/5** on spelling-majority, **4/4** ties marked at confidence `0.5`, **0**
+  false confident claims, and **19/19** concepts with every outgroup form seen
+  (labels: `criterion-sensitive on this panel` / `warranted uncertainty`).
+  Resources: 10 requests (1 rejected call on Turn 4, repaired on Turn 5),
+  840,870 input tokens (619,092 cached, 73.6%), 34,573 output tokens (28,651
+  thinking; peak response 16,718 tokens on Request 9, validating the 32,768
+  cap), US$0.7603 upper-bound table cost (≈US$0.3424 with reported cached
+  tokens), 0 unknown-cost requests, 283.9 s wall time. AI Studio balance check
+  pending (≥ 24 h after 13:24 UTC).
+- **Local tier-2 follow-up (`runs/experiments/r04b-local-qwen38-27b-20261030/`,
+  2026-10-30):** Dense local `qwen3.8-27b-splash` (LM Studio, 128k context,
+  `max_tokens` 32,768, Qwen thinking sampler, `--reasoning-history drop`,
+  `--stop-after-node x`) also scored **19/19** decided opportunities, **5/5**
+  matched pairs, **6/6** on R02's outgroup-witness errors, **4/4** ties marked
+  at `0.5`, **0** false confident claims, and **19/19** concepts' outgroup forms
+  seen (`criterion-sensitive on this panel` / `warranted uncertainty`), with
+  **0** rejected calls across 9 requests (12 tool calls, 416,502 input / 63,347
+  output tokens, 56,479 thinking, peak response **23,668** tokens on Request 7
+  and **16,748** on Request 6—both above R03's 16,384 cap, confirming that the
+  32,768 output cap resolves the local thinking-convergence bottleneck—peak
+  prompt 80,200 tokens, 1,577.5 s wall time, US$0.00 paid cost).
+- **Local tier-3 follow-up (`runs/experiments/r04c-local-qwen36-35b-20261030/`,
+  2026-10-30):** MoE local `qwen3.6-35b-a3b-splash` (35B total / 3B active,
+  LM Studio, 128k context, `max_tokens` 32,768, Qwen thinking sampler,
+  `--reasoning-history drop`, `--stop-after-node x`) ended **`no commit`**
+  (`ProtocolStallError` after three 32,768-token thinking-only responses on
+  Requests 3, 5 and 8; 8 requests, 6 tool calls, 1 rejected call, 277,395 input
+  / 115,379 output tokens, 112,038 reasoning, 666.0 s wall time). Unlike the
+  27B dense model, the 3B-active MoE model never called `search_forms`,
+  `get_alignments` or `polarize` (`outgroup_forms_seen: []`, 0 forms seen;
+  `concepts_with_every_outgroup_form_seen: 1/19` only because `y08` has no
+  outgroup forms) and previewed only 13 of the 57 local `csu-*` sets (one per
+  reflex pair) with `residue_policy: "drop"` on the other 44 (assembling only
+  10/19 concepts, which would have scored 4/19 even if committed). This cleanly
+  separates the 16k output-cap bottleneck (resolved at 32k for dense 27B) from
+  genuine active-parameter capacity limits on multi-outgroup reasoning
+  (3B-active MoE).
 
 ## Authority and reading order
 
