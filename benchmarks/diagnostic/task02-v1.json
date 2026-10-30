@@ -1,0 +1,696 @@
+{
+  "suite_version": "task02-v1",
+  "cases": [
+    {
+      "case_id": "retention",
+      "question": "Combine complementary retained onset and coda; no daughter has the entire word.",
+      "identifiability": "conditional_retention_test",
+      "independent_evidence": "Six independent etyma, two independent leaf branches retain each position, three vowels and two onsets. Under no unsupported insertion and conservative retention, both complementary positions are licensed.",
+      "equivalent_solutions": "Arbitrary proto-symbol relabelings and unconstrained histories remain equivalent; recovery is conditional on conservative retention and the stated restricted mechanism.",
+      "family": {
+        "schema_version": "1.0",
+        "name": "diag_retention",
+        "description": "Offline diagnostic family retention",
+        "newick": "(a,b,c,d)p;",
+        "proto_lexicon": [
+          {
+            "concept_id": "c001",
+            "segments": [
+              "p",
+              "a",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c002",
+            "segments": [
+              "p",
+              "i",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c003",
+            "segments": [
+              "p",
+              "u",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c004",
+            "segments": [
+              "t",
+              "a",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c005",
+            "segments": [
+              "t",
+              "i",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c006",
+            "segments": [
+              "t",
+              "u",
+              "k"
+            ]
+          }
+        ],
+        "branches": [
+          {
+            "node_id": "a",
+            "rules": [
+              "k > Ø / _#"
+            ]
+          },
+          {
+            "node_id": "d",
+            "rules": [
+              "k > Ø / _#"
+            ]
+          },
+          {
+            "node_id": "b",
+            "rules": [
+              "p > Ø / #_",
+              "t > Ø / #_"
+            ]
+          },
+          {
+            "node_id": "c",
+            "rules": [
+              "p > Ø / #_",
+              "t > Ø / #_"
+            ]
+          }
+        ],
+        "hidden_target_node_ids": [
+          "p"
+        ]
+      }
+    },
+    {
+      "case_id": "conditioned",
+      "question": "Change p to f only before i; recover p without changing unconditioned p or t.",
+      "identifiability": "conditional_retention_test",
+      "independent_evidence": "Two independent i-conditioned p etyma, two non-i p controls, and two t controls; c retains the pre-change forms. Histories with c innovating inversely remain possible without the retention constraint.",
+      "equivalent_solutions": "Arbitrary proto-symbol relabelings and unconstrained histories remain equivalent; recovery is conditional on conservative retention and the stated restricted mechanism.",
+      "family": {
+        "schema_version": "1.0",
+        "name": "diag_conditioned",
+        "description": "Offline diagnostic family conditioned",
+        "newick": "(a,b,c)p;",
+        "proto_lexicon": [
+          {
+            "concept_id": "c001",
+            "segments": [
+              "p",
+              "i",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c002",
+            "segments": [
+              "p",
+              "i",
+              "t"
+            ]
+          },
+          {
+            "concept_id": "c003",
+            "segments": [
+              "p",
+              "a",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c004",
+            "segments": [
+              "p",
+              "u",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c005",
+            "segments": [
+              "t",
+              "i",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c006",
+            "segments": [
+              "t",
+              "a",
+              "k"
+            ]
+          }
+        ],
+        "branches": [
+          {
+            "node_id": "a",
+            "rules": [
+              "p > f / _i"
+            ]
+          },
+          {
+            "node_id": "b",
+            "rules": [
+              "p > f / _i"
+            ]
+          }
+        ],
+        "hidden_target_node_ids": [
+          "p"
+        ]
+      }
+    },
+    {
+      "case_id": "morphology",
+      "question": "Keep independently identified cognate pieces separate from whole-word order and extra morphology.",
+      "identifiability": "underdetermined",
+      "independent_evidence": "Four combinations independently repeat four pieces; observed cognate IDs explicitly identify reordered/extra pieces. Root piece identities are recoverable; ancestral order/extra-piece polarity is not identified by these daughters.",
+      "equivalent_solutions": "Arbitrary proto-symbol relabelings and unconstrained histories remain equivalent; recovery is conditional on conservative retention and the stated restricted mechanism.",
+      "family": {
+        "schema_version": "1.0",
+        "name": "diag_morphology",
+        "description": "Offline diagnostic family morphology",
+        "newick": "(a,b,c)p;",
+        "proto_lexicon": [
+          {
+            "concept_id": "c001",
+            "segments": [
+              "p",
+              "a",
+              "+",
+              "t",
+              "i"
+            ]
+          },
+          {
+            "concept_id": "c002",
+            "segments": [
+              "p",
+              "a",
+              "+",
+              "k",
+              "u"
+            ]
+          },
+          {
+            "concept_id": "c003",
+            "segments": [
+              "m",
+              "e",
+              "+",
+              "t",
+              "i"
+            ]
+          },
+          {
+            "concept_id": "c004",
+            "segments": [
+              "m",
+              "e",
+              "+",
+              "k",
+              "u"
+            ]
+          }
+        ],
+        "branches": [],
+        "hidden_target_node_ids": [
+          "p"
+        ]
+      },
+      "observed_unit_layouts": {
+        "a": {
+          "c001": [
+            "u0",
+            "u1",
+            "u4"
+          ],
+          "c002": [
+            "u0",
+            "u3",
+            "u4"
+          ],
+          "c003": [
+            "u2",
+            "u1",
+            "u4"
+          ],
+          "c004": [
+            "u2",
+            "u3",
+            "u4"
+          ]
+        },
+        "b": {
+          "c001": [
+            "u1",
+            "u0"
+          ],
+          "c002": [
+            "u3",
+            "u0"
+          ],
+          "c003": [
+            "u1",
+            "u2"
+          ],
+          "c004": [
+            "u3",
+            "u2"
+          ]
+        },
+        "c": {
+          "c001": [
+            "u5",
+            "u1",
+            "u0"
+          ],
+          "c002": [
+            "u5",
+            "u3",
+            "u0"
+          ],
+          "c003": [
+            "u5",
+            "u1",
+            "u2"
+          ],
+          "c004": [
+            "u5",
+            "u3",
+            "u2"
+          ]
+        }
+      },
+      "target_unit_layouts": {
+        "c001": [
+          "u0",
+          "u1"
+        ],
+        "c002": [
+          "u0",
+          "u3"
+        ],
+        "c003": [
+          "u2",
+          "u1"
+        ],
+        "c004": [
+          "u2",
+          "u3"
+        ]
+      },
+      "scored_distinction": "explicit cognate-piece recovery only; whole-word order is descriptive, excluded from validated unique-answer summary",
+      "observed_piece_forms": {
+        "a": {
+          "c001": [
+            [
+              "p",
+              "a"
+            ],
+            [
+              "t",
+              "i"
+            ],
+            [
+              "z",
+              "a"
+            ]
+          ],
+          "c002": [
+            [
+              "p",
+              "a"
+            ],
+            [
+              "k",
+              "u"
+            ],
+            [
+              "z",
+              "a"
+            ]
+          ],
+          "c003": [
+            [
+              "m",
+              "e"
+            ],
+            [
+              "t",
+              "i"
+            ],
+            [
+              "z",
+              "a"
+            ]
+          ],
+          "c004": [
+            [
+              "m",
+              "e"
+            ],
+            [
+              "k",
+              "u"
+            ],
+            [
+              "z",
+              "a"
+            ]
+          ]
+        },
+        "b": {
+          "c001": [
+            [
+              "t",
+              "i"
+            ],
+            [
+              "p",
+              "a"
+            ]
+          ],
+          "c002": [
+            [
+              "k",
+              "u"
+            ],
+            [
+              "p",
+              "a"
+            ]
+          ],
+          "c003": [
+            [
+              "t",
+              "i"
+            ],
+            [
+              "m",
+              "e"
+            ]
+          ],
+          "c004": [
+            [
+              "k",
+              "u"
+            ],
+            [
+              "m",
+              "e"
+            ]
+          ]
+        },
+        "c": {
+          "c001": [
+            [
+              "n",
+              "u"
+            ],
+            [
+              "t",
+              "i"
+            ],
+            [
+              "p",
+              "a"
+            ]
+          ],
+          "c002": [
+            [
+              "n",
+              "u"
+            ],
+            [
+              "k",
+              "u"
+            ],
+            [
+              "p",
+              "a"
+            ]
+          ],
+          "c003": [
+            [
+              "n",
+              "u"
+            ],
+            [
+              "t",
+              "i"
+            ],
+            [
+              "m",
+              "e"
+            ]
+          ],
+          "c004": [
+            [
+              "n",
+              "u"
+            ],
+            [
+              "k",
+              "u"
+            ],
+            [
+              "m",
+              "e"
+            ]
+          ]
+        }
+      },
+      "generation_note": "Existing phonological generator supplies the tree/root; explicit observed morphology overlays supply unequal/reordered pieces because the DSL forbids boundary insertion. Standard sound-rule precision is inapplicable to these operations."
+    },
+    {
+      "case_id": "propagation",
+      "question": "Keep two internal transformations distinct and propagate a correct child output to the root.",
+      "identifiability": "conditional_retention_test",
+      "independent_evidence": "Six recurrent independent etyma; b retains x shapes and d retains y shapes. The other subgroup witnesses root codas/onsets; no leaf retains both root positions in p-initial cases. Intermediate truth is conditional on this tree/retention hypothesis.",
+      "equivalent_solutions": "Arbitrary proto-symbol relabelings and unconstrained histories remain equivalent; recovery is conditional on conservative retention and the stated restricted mechanism.",
+      "family": {
+        "schema_version": "1.0",
+        "name": "diag_propagation",
+        "description": "Offline diagnostic family propagation",
+        "newick": "((a,b)x,(c,d)y)p;",
+        "proto_lexicon": [
+          {
+            "concept_id": "c001",
+            "segments": [
+              "p",
+              "a",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c002",
+            "segments": [
+              "p",
+              "i",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c003",
+            "segments": [
+              "p",
+              "u",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c004",
+            "segments": [
+              "t",
+              "a",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c005",
+            "segments": [
+              "t",
+              "i",
+              "k"
+            ]
+          },
+          {
+            "concept_id": "c006",
+            "segments": [
+              "t",
+              "u",
+              "k"
+            ]
+          }
+        ],
+        "branches": [
+          {
+            "node_id": "x",
+            "rules": [
+              "k > g / _#"
+            ]
+          },
+          {
+            "node_id": "a",
+            "rules": [
+              "p > f / #_"
+            ]
+          },
+          {
+            "node_id": "y",
+            "rules": [
+              "p > b / #_"
+            ]
+          },
+          {
+            "node_id": "c",
+            "rules": [
+              "k > h / _#"
+            ]
+          }
+        ],
+        "hidden_target_node_ids": [
+          "x",
+          "y",
+          "p"
+        ]
+      }
+    },
+    {
+      "case_id": "identity",
+      "question": "Conservative identical daughters are legitimate commitments.",
+      "identifiability": "conditional_retention_test",
+      "independent_evidence": "Four independent etyma; all branches agree. No gratuitous distinction/insertion is warranted under the restricted identity hypothesis.",
+      "equivalent_solutions": "Arbitrary proto-symbol relabelings and unconstrained histories remain equivalent; recovery is conditional on conservative retention and the stated restricted mechanism.",
+      "family": {
+        "schema_version": "1.0",
+        "name": "diag_identity",
+        "description": "Offline diagnostic family identity",
+        "newick": "(a,b,c)p;",
+        "proto_lexicon": [
+          {
+            "concept_id": "c001",
+            "segments": [
+              "p",
+              "a"
+            ]
+          },
+          {
+            "concept_id": "c002",
+            "segments": [
+              "p",
+              "i"
+            ]
+          },
+          {
+            "concept_id": "c003",
+            "segments": [
+              "t",
+              "a"
+            ]
+          },
+          {
+            "concept_id": "c004",
+            "segments": [
+              "t",
+              "i"
+            ]
+          }
+        ],
+        "branches": [],
+        "hidden_target_node_ids": [
+          "p"
+        ]
+      }
+    },
+    {
+      "case_id": "lost_contrast",
+      "question": "The p/t contrast merges everywhere; do not score a unique ancestor.",
+      "identifiability": "underdetermined",
+      "independent_evidence": "Every leaf merges p into t. A root with only t and identity histories yields exactly the same observations. Original contrast has no surviving independent witness.",
+      "equivalent_solutions": "Arbitrary proto-symbol relabelings and unconstrained histories remain equivalent; recovery is conditional on conservative retention and the stated restricted mechanism.",
+      "family": {
+        "schema_version": "1.0",
+        "name": "diag_lost_contrast",
+        "description": "Offline diagnostic family lost_contrast",
+        "newick": "(a,b,c)p;",
+        "proto_lexicon": [
+          {
+            "concept_id": "c001",
+            "segments": [
+              "p",
+              "a"
+            ]
+          },
+          {
+            "concept_id": "c002",
+            "segments": [
+              "t",
+              "a"
+            ]
+          },
+          {
+            "concept_id": "c003",
+            "segments": [
+              "p",
+              "i"
+            ]
+          },
+          {
+            "concept_id": "c004",
+            "segments": [
+              "t",
+              "i"
+            ]
+          }
+        ],
+        "branches": [
+          {
+            "node_id": "a",
+            "rules": [
+              "p > t"
+            ]
+          },
+          {
+            "node_id": "b",
+            "rules": [
+              "p > t"
+            ]
+          },
+          {
+            "node_id": "c",
+            "rules": [
+              "p > t"
+            ]
+          }
+        ],
+        "hidden_target_node_ids": [
+          "p"
+        ]
+      },
+      "alternative_proto_lexicon": [
+        "t a",
+        "t a",
+        "t i",
+        "t i"
+      ],
+      "scored_distinction": "none; raw generated-truth agreement is descriptive only"
+    }
+  ]
+}

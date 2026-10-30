@@ -105,11 +105,15 @@ def test_dropping_the_temporary_binding_changes_nothing_else(burmish) -> None:
     without it the selection follows `targets[0]`, and the concept set would
     silently depend on the order of a list someone is about to edit.
     """
-    _, both = build_benchmark(burmish, base_path=DEFINITIONS)
+    with_proxy, both = build_benchmark(burmish, base_path=DEFINITIONS)
     dropped = burmish.model_copy(update={"targets": burmish.targets[:1]})
-    _, without = build_benchmark(dropped, base_path=DEFINITIONS)
+    without_proxy, without = build_benchmark(dropped, base_path=DEFINITIONS)
     assert without.target_node_ids == ("proto_burmish",)
     assert without.selected_concept_ids == both.selected_concept_ids
+    assert without_proxy.newick == with_proxy.newick
+    assert without_proxy.lexicons == with_proxy.lexicons
+    assert internal_node_ids(parse_newick(without_proxy.newick)) == ("maruic", "burmic", "proto_burmish")
+    assert "provisional_proxy" in both.summary()
 
 
 def test_a_segment_the_dsl_cannot_name_is_reported_not_raised() -> None:

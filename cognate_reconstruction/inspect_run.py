@@ -37,6 +37,10 @@ from cognate_reconstruction.schemas.historical import (
 )
 from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon
+from cognate_reconstruction.evaluation.targets import binding_validity
+from cognate_reconstruction.evaluation.diagnostics import diagnostic_text
+from cognate_reconstruction.evaluation.run import render_text as render_evaluation_text
+from cognate_reconstruction.schemas.evaluation import RunEvaluationReport
 
 RESULT_FILE = "result.json"
 TRAJECTORIES_FILE = "trajectories.jsonl"
@@ -125,23 +129,19 @@ def load_run(run_dir: str | Path) -> RunArtifacts:
     else:
         notes.append(f"no {TRAJECTORIES_FILE}: session shape is unavailable")
 
-    result_path = directory / RESULT_FILE
-    result: Mapping[str, Any] | None = None
-    if result_path.exists():
-        # Read as plain JSON rather than through `FamilyReconstructionResult`.
-        # The file is written with computed fields included, which the model's
-        # own `extra="forbid"` then refuses on read-back, so validating it here
-        # would reject every real run. The parts this report needs are validated
-        # individually below, where the models do round-trip.
-        loaded = json.loads(result_path.read_text(encoding="utf-8"))
-        if not isinstance(loaded, dict):
-            raise ValueError(f"{result_path} is not a JSON object")
-        result = loaded
-    else:
-        notes.append(
-            f"no {RESULT_FILE}: reconstructed forms come from the trajectories"
-        )
-
+    from cognate_reconstruction.evaluation.run import load_result_or_summary
+    result = load_result_or_summary(directory)
+    if result is not None and not isinstance(result, dict):
+        raise ValueError("run result/summary must be a JSON object")
+    if result is None:
+        notes.append(f"no {RESULT_FILE}: reconstructed forms come from the trajectories")
+    if result and result.get("status") == "interrupted":
+        notes.append(f"INCOMPLETE RUN: {result.get('failure_kind') or 'unknown'}; "
+                     f"{result.get('interruption_reason') or 'unrecorded'}; "
+                     f"{result.get('missing_evaluation_outputs', 'unknown')} missing evaluation outputs")
+    artifact_run_id = (result or {}).get("run_id") or ((result or {}).get("lifecycle_summary") or {}).get("run_id")
+    if artifact_run_id:
+        trajectories = tuple(t for t in trajectories if t.run_id == artifact_run_id)
     if not trajectories and result is None:
         raise ValueError(
             f"{directory} contains neither {RESULT_FILE} nor {TRAJECTORIES_FILE}"
@@ -550,6 +550,8 @@ NOTABLE_EVENT_KINDS = (
     "truncation_recovery",
     "protocol_correction",
     "node_failed",
+    "node_interrupted",
+    "run_interrupted",
     "node_fallback",
 )
 
@@ -714,6 +716,20 @@ def _gold_rows(
             ),
         )
     ]
+    validity, note = binding_validity(evaluation.node_id, evaluation.source_variety_id,
+                                    evaluation.target_validity, evaluation.target_validity_note)
+    rows.append(("gold binding", (validity.value if validity else "unknown validity")
+                 + (f": {note}" if note else "")))
+    rows.append(("gold token reading", diagnostic_text(evaluation)))
+    if evaluation.descendant_fallback_node_ids:
+        rows.append(("gold provenance", "committed ancestor consumes fallback node(s): "
+                     + ", ".join(evaluation.descendant_fallback_node_ids)))
+    if evaluation.selection:
+        s = evaluation.selection
+        rows.append(("gold selection", f"eligible {s.eligible_concepts}; gold-assisted daughter oracle "
+                     f"{s.oracle_reachable_concepts}; outside-selection top "
+                     f"{s.outside_selection_top_hits} {list(s.outside_selection_top_hit_ids)}; "
+                     f"beam {s.outside_selection_beam_hits} {list(s.outside_selection_beam_hit_ids)}"))
     if graded is not None and graded.top_normalized_edit_distance is not None:
         rows.append(
             (
@@ -740,7 +756,7 @@ def _gold_rows(
             rows.append(
                 (
                     "gold b-cubed",
-                    "structural agreement F1, higher is better — "
+                    "structural agreement F1, higher is better — per-word repetition only; "
                     f"{graded.top_bcubed_f1.compact()}",
                 )
             )
@@ -1125,10 +1141,30 @@ def _target_evaluations(
 ) -> tuple[HistoricalTargetEvaluation, ...]:
     if result is None:
         return ()
-    return tuple(
+    evaluations = tuple(
         _validated(HistoricalTargetEvaluation, raw)
         for raw in result.get("historical_target_evaluations", [])
     )
+    children = {s["parent_node_id"]: s.get("child_node_ids", ())
+                for s in (result.get("snapshot") or {}).get("steps", ())}
+    failed = _failure_fallback_node_ids(result)
+
+    def dependency_fallbacks(node, seen=frozenset()):
+        if node in seen:
+            return set()
+        below = set(children.get(node, ()))
+        for child in children.get(node, ()):
+            below |= dependency_fallbacks(child, seen | {node})
+        return below & failed
+
+    return tuple(e.model_copy(update={
+        "target_validity": binding_validity(e.node_id, e.source_variety_id,
+                                            e.target_validity, e.target_validity_note)[0],
+        "target_validity_note": binding_validity(e.node_id, e.source_variety_id,
+                                                 e.target_validity, e.target_validity_note)[1],
+        "descendant_fallback_node_ids": (e.descendant_fallback_node_ids if e.descendant_fallback_node_ids is not None
+                                          else tuple(sorted(dependency_fallbacks(e.node_id))) if children else None),
+    }) for e in evaluations)
 
 
 def _historical_lines(
@@ -1142,6 +1178,10 @@ def _historical_lines(
     """
     lines = []
     for evaluation in evaluations:
+        validity, validity_note = binding_validity(
+            evaluation.node_id, evaluation.source_variety_id,
+            evaluation.target_validity, evaluation.target_validity_note,
+        )
         line = (
             f"{evaluation.node_id} vs {evaluation.source_variety_id}"
             + (
@@ -1149,7 +1189,7 @@ def _historical_lines(
                 if (note := gold_kind_note(evaluation.gold_evidence_kind))
                 else ""
             )
-            + ": "
+            + f" [{validity.value if validity else 'unknown validity'}]: "
             f"{evaluation.top_exact_matches}/{evaluation.evaluated_concepts} exact "
             f"top matches ({evaluation.top_exact_rate:.2f}), "
             f"{evaluation.beam_exact_matches} in beam "
@@ -1183,8 +1223,40 @@ def _historical_lines(
                 "identity fallback the harness committed after the session "
                 "failed"
             )
+        if validity_note:
+            line += f". Binding: {validity_note}"
+        if evaluation.descendant_fallback_node_ids:
+            line += ". Descendant fallbacks: " + ", ".join(evaluation.descendant_fallback_node_ids)
         lines.append(line)
+        if evaluation.failure_fallback:
+            lines.append("THIS NODE WAS NOT RECONSTRUCTED: identity fallback output, not a model commitment.")
     return tuple(lines)
+
+
+def _run_usage_line(result: Mapping[str, Any] | None) -> str | None:
+    """The run's own cumulative usage record, including the abrupt-loss keys.
+
+    Records written before `abrupt-loss-v1` lack the last three keys; they are
+    shown as not recorded rather than guessed from `history_complete`.
+    """
+    result = result or {}
+    usage = result.get("usage") or (result.get("lifecycle_summary") or {}).get("usage")
+    if not isinstance(usage, Mapping):
+        return None
+
+    def flag(key: str) -> str:
+        value = usage.get(key)
+        return "not recorded" if value is None else ("yes" if value else "no")
+
+    cost = usage.get("reported_cost_usd")
+    return (
+        f"{usage.get('turns', '?')} turns, {usage.get('tool_calls', '?')} tool calls, "
+        f"${cost or 0:.4f} reported cost, {usage.get('responses_without_cost', '?')} "
+        f"response(s) without cost; history complete: {flag('history_complete')}, "
+        f"effort counts known: {flag('effort_counts_known')}, unrecorded requests: "
+        f"{_reported(usage.get('unrecorded_requests'))}, accounting: "
+        f"{usage.get('usage_accounting_version') or 'not recorded (legacy record)'}"
+    )
 
 
 def build_report(
@@ -1193,6 +1265,8 @@ def build_report(
     form_limit: int | None = DEFAULT_FORM_LIMIT,
 ) -> RunReport:
     trajectories = artifacts.trajectories
+    active_ids = ((artifacts.result or {}).get("lifecycle_summary") or artifacts.result or {}).get("active_trajectory_ids")
+    current = tuple({t.node_id: t for t in trajectories if active_ids is None or t.trajectory_id in active_ids}.values())
     events = _event_counts(artifacts.events)
     fallbacks = _failure_fallback_node_ids(artifacts.result)
     evaluations = _target_evaluations(artifacts.result)
@@ -1208,7 +1282,7 @@ def build_report(
             failure_fallback=trajectory.node_id in fallbacks,
             evaluation=evaluations_by_node.get(trajectory.node_id),
         )
-        for trajectory in trajectories
+        for trajectory in current
     )
     fallback_nodes = tuple(
         sorted(fallbacks & {trajectory.node_id for trajectory in trajectories})
@@ -1229,7 +1303,7 @@ def build_report(
         (
             "artifacts",
             f"{len(trajectories)} trajectory record(s), "
-            f"{(len(artifacts.result.get('internal_nodes', [])) if artifacts.result else 0) - len(fallback_nodes)} "
+            f"{len((artifacts.result or {}).get('completed_node_ids', [])) if (artifacts.result or {}).get('status') == 'interrupted' else (len(artifacts.result.get('internal_nodes', [])) if artifacts.result else 0) - len(fallback_nodes)} "
             f"reconstructed internal node(s), {len(artifacts.events)} event(s)",
         ),
     )
@@ -1245,7 +1319,7 @@ def build_report(
                 "export.",
             ),
         )
-    completed = [item for item in trajectories if item.completed]
+    completed = [item for item in current if item.completed]
     total_calls = sum(item.metrics.tool_call_count for item in trajectories)
     total_failed = sum(item.metrics.failed_tool_call_count for item in trajectories)
     total_protocol = sum(item.metrics.protocol_failures for item in trajectories)
@@ -1255,8 +1329,8 @@ def build_report(
     family = (
         (
             "nodes",
-            f"{len(trajectories)} attempted, {len(completed)} completed, "
-            f"{len(trajectories) - len(completed)} failed"
+            f"{len(current)} attempted, {len(completed)} completed, "
+            f"{len(current) - len(completed)} failed"
             + (
                 f" ({len(fallback_nodes)} of them walked over as identity "
                 "fallbacks)"
@@ -1290,13 +1364,21 @@ def build_report(
             "of model-loop time",
         ),
     )
+    usage_line = _run_usage_line(artifacts.result)
+    if usage_line is not None:
+        family += (("run usage", usage_line),)
+    evaluation_lines = ()
+    if artifacts.result and artifacts.result.get("evaluation_report"):
+        evaluation_lines = tuple(render_evaluation_text(
+            RunEvaluationReport.model_validate_json(json.dumps(artifacts.result["evaluation_report"]))
+        ).splitlines())
     return RunReport(
         run_dir=str(artifacts.run_dir),
         header=header,
         nodes=nodes,
         family=family,
-        historical=_historical_lines(evaluations),
-        observations=cross_node_observations(trajectories, artifacts.result),
+        historical=_historical_lines(evaluations) + evaluation_lines,
+        observations=cross_node_observations(current, artifacts.result),
         notes=artifacts.notes,
         fallback_nodes=fallback_nodes,
     )
@@ -1780,8 +1862,18 @@ def _inventory_diagnostic_rows(
             "column decisions",
             f"{_reported(diagnostics.columns_decided_by_residue_policy)} by "
             "residue policy, "
-            f"{_reported(diagnostics.columns_decided_by_tie_break)} by an "
-            "arbitrary tie-break",
+            # `columns_decided_by_tie_break` keeps its historical name; it
+            # counts columns another distinct set also matched.
+            f"{_reported(diagnostics.columns_decided_by_tie_break)} with a "
+            "competing set"
+            + (
+                ""
+                if diagnostics.columns_with_competing_choices is None
+                else f", {diagnostics.columns_with_competing_choices} with "
+                "competing applicable choices, "
+                f"{_reported(diagnostics.columns_decided_by_equal_confidence)} "
+                "of them decided arbitrarily between equal-confidence values"
+            ),
         ),
     ]
     if diagnostics.restored_segment_count:

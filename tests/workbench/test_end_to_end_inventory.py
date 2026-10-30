@@ -127,7 +127,7 @@ class InventoryWorkflowProvider:
             call = LLMToolCall(
                 call_id="survey",
                 name="summarize_correspondences",
-                arguments={"min_support": 1},
+                arguments={"min_support": 1, "reading": "local"},
             )
         elif self.turn == 2:
             call = LLMToolCall(
@@ -208,7 +208,7 @@ def test_the_step_comes_from_the_assembler_and_reports_assembly(
     diagnostics = step.diagnostics
     assert step.rule_reports == ()
     assert step.assembly_reports
-    assert diagnostics.committed_set_count == 8
+    assert diagnostics.committed_set_count == 11
     assert diagnostics.proto_phoneme_count == 7
     assert diagnostics.unaccounted_column_rate == 0.0
     # The mechanism check, and worth reading carefully because the number is
@@ -243,7 +243,8 @@ def test_the_trajectory_stamps_the_new_version_and_stays_readable(
     assert len(trajectories) == 1
     trajectory = trajectories[0]
     assert trajectory.completed
-    assert trajectory.schema_version == "3.0"
+    assert trajectory.schema_version == "5.0"
+    assert trajectory.committed_reconstruction.evidence_contract_version == "units-v2"
     assert trajectory.commit_shape == "inventory"
     commit = trajectory.committed_reconstruction
     assert isinstance(commit, CommittedProtoInventory)
@@ -252,7 +253,7 @@ def test_the_trajectory_stamps_the_new_version_and_stays_readable(
     # Every derived rule is a real DSL rule, re-parseable and applicable.
     assert commit.derived_rules
     assert trajectory.metrics.assembly_tests == 1
-    assert trajectory.metrics.committed_rule_count == 8
+    assert trajectory.metrics.committed_rule_count == 11
     assert trajectory.metrics.sound_law_tests == 0
     # And the gate can see it: a preview covered the inventory, so it passes for
     # a reason rather than by default.
@@ -267,7 +268,7 @@ def test_inspect_run_prints_the_inventory_rather_than_a_blank_cascade(
     trajectories = TrajectoryDatasetBuilder.read_jsonl(path)
     rows = dict(inspect_run._diagnostic_rows(trajectories[0]))
     assert "proto-inventory" in rows
-    assert "7 phoneme(s) from 8 correspondence set(s)" in rows["proto-inventory"]
+    assert "7 phoneme(s) from 11 correspondence set(s)" in rows["proto-inventory"]
     assert "unaccounted columns" in rows
     assert "cross-branch assembly" in rows
     assert "non-invertible children" in rows

@@ -41,6 +41,7 @@ from cognate_reconstruction.schemas.alignment import (
 )
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.traversal import EvidenceRelation
+from cognate_reconstruction.alignment.units import evidence_map
 
 
 def _matches_segment(
@@ -65,6 +66,9 @@ def _outgroup_profiles(
     segmentation_overlay_id,
     respect_cognate_sets,
     selected_concepts,
+    local_reading=None,
+    reading_kind="local",
+    work_summary=None,
 ):
     """What every node outside the active children shows in each set's columns.
 
@@ -84,12 +88,39 @@ def _outgroup_profiles(
     polarize anything, and a reader who does not know that will read an empty
     profile as missing data.
     """
-    outside = outside_nodes(context, ())
+    outside = tuple(item for item in outside_nodes(context, ()) if item.node_id not in node_ids)
     if not outside:
         return (), (
             "No node outside the active children is available, so nothing here "
             "can polarize these correspondences."
         )
+    if local_reading is not None:
+        from cognate_reconstruction.agent.tools.inventory_evidence import column_bindings
+        from cognate_reconstruction.agent.tools.local_witnesses import local_witnesses
+        bindings = {b.column_id: b.set_id for b in column_bindings(local_reading, node_ids)}
+        profiles = []
+        wanted = {s.set_id: set(s.member_set_ids or (s.set_id,)) for s in page if len(set(s.segments)) > 1}
+        ids = {cid for cid, sid in bindings.items() if any(sid in selected for selected in wanted.values())}
+        try:
+            witnesses, _work = local_witnesses(context, local_reading, outside,
+                segmentation_overlay_id=segmentation_overlay_id, column_ids=ids)
+        except ValueError as error:
+            return (), f"Local outgroup reading refused: {error}; no alternative was silently selected."
+        if work_summary is not None:
+            work_summary.update(_work)
+        for item in page:
+            selected = wanted.get(item.set_id, set())
+            local = tuple(w for w in witnesses if bindings[w.evidence_column_id] in selected)
+            if not local:
+                continue
+            by_segment = {}
+            for w in local:
+                by_segment.setdefault(w.segment, []).append(w)
+            profiles.append(SetOutgroupProfile(set_id=item.set_id, reading=reading_kind, scope_id=item.scope_id,
+                witnesses=local[:8], witness_count=len(local), witnesses_truncated=len(local)>8, reflexes=tuple(OutgroupReflex(segment=segment,
+                    node_ids=tuple(sorted({w.node_id for w in rows})), columns=len(rows))
+                    for segment, rows in sorted(by_segment.items()))))
+        return tuple(profiles), _outgroup_note(outside)
     lexicons = [
         restrict(
             context.evidence_lexicon(node_id, segmentation_overlay_id),
@@ -279,20 +310,25 @@ def summarize_correspondences(
     # anchors are passed: they are not columns of a correspondence set, and an
     # anchor that changed the support counts would make recurrence depend on
     # whether one happened to be supplied.
+    work = None
     try:
-        alignment_map = context.aligner.align_multiple(
-            # One reading per node, so a correspondence is between the nodes'
-            # reported forms and so the set IDs below are ones the assembler can
-            # reproduce from a candidate tuple. See `one_reading_per_node`.
-            one_reading_per_node(lexicons),
-            respect_cognate_sets=arguments.respect_cognate_sets,
-            correspondence_detail=CorrespondenceDetail.SUMMARY,
-        )
-        alignment_map = apply_alignment_overrides(
-            alignment_map,
-            context.alignment_overrides(arguments.alignment_overlay_id),
-            node_ids,
-        )
+        if arguments.respect_cognate_sets:
+            full = tuple(context.evidence_lexicon(node, arguments.segmentation_overlay_id)
+                         for node in node_ids)
+            alignment_map, work = evidence_map(full, context.aligner,
+                unit_orders=arguments.unit_orders,
+                overrides=context.alignment_overrides(arguments.alignment_overlay_id),
+                overlay_ids=(arguments.segmentation_overlay_id, arguments.alignment_overlay_id),
+                cache=context.unit_alignment_cache)
+            if selected_concepts:
+                alignment_map = alignment_map.model_copy(update={"alignments": tuple(
+                    a for a in alignment_map.alignments if a.concept_id in selected_concepts)})
+        else:
+            alignment_map = context.aligner.align_multiple(
+                one_reading_per_node(lexicons), respect_cognate_sets=False,
+                correspondence_detail=CorrespondenceDetail.SUMMARY)
+            alignment_map = apply_alignment_overrides(
+                alignment_map, context.alignment_overrides(arguments.alignment_overlay_id), node_ids)
         inventory = build_correspondence_sets(
             alignment_map,
             node_ids=node_ids,
@@ -304,9 +340,10 @@ def summarize_correspondences(
     except ValueError as error:
         raise ToolInputError(str(error), code="alignment-failed") from error
 
+    rows = inventory.recurrence_patterns if arguments.reading == "recurrence" and alignment_map.evidence_revision else inventory.sets
     filtered = tuple(
         item
-        for item in inventory.sets
+        for item in rows
         if _matches_segment(
             item, node_ids, arguments.segment, arguments.segment_node_id
         )
@@ -321,6 +358,7 @@ def summarize_correspondences(
     )
     profiles: tuple = ()
     note = ""
+    outgroup_work = {}
     if arguments.include_outgroup:
         profiles, note = _outgroup_profiles(
             context,
@@ -329,13 +367,23 @@ def summarize_correspondences(
             segmentation_overlay_id=arguments.segmentation_overlay_id,
             respect_cognate_sets=arguments.respect_cognate_sets,
             selected_concepts=selected_concepts,
+            local_reading=alignment_map if alignment_map.evidence_revision else None,
+            reading_kind=arguments.reading,
+            work_summary=outgroup_work,
         )
     return SummarizeCorrespondencesResult(
+        evidence_revision=alignment_map.evidence_revision,
+        work=work,
         node_ids=node_ids,
         outgroup_reflexes=profiles,
         outgroup_note=note,
+        outgroup_work=outgroup_work or None,
         alignment_count=inventory.alignment_count,
-        total_set_count=len(inventory.sets),
+        total_set_count=len(rows),
+        local_set_count=len(inventory.sets),
+        recurrence_pattern_count=len(inventory.recurrence_patterns),
+        reading=arguments.reading if alignment_map.evidence_revision else "legacy",
+        count_semantics="independent-etyma-v1" if alignment_map.evidence_revision else None,
         suppressed_below_min_support=len(filtered) - len(matched),
         matched_set_count=len(matched),
         min_support=arguments.min_support,

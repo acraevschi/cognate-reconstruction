@@ -1,0 +1,67 @@
+{
+  "suite_version": "r02-stage-a-v1",
+  "case_id": "stage-a-supplied-conditioned-unit",
+  "stage": "A",
+  "newick": "(a,b)r;",
+  "question": "Protocol usability only: can the model execute an explicitly supplied nonempty token-conditioned inventory with a source-unit decision, make one specified harmless revision, re-preview and commit the revised handle with intact provenance?",
+  "identifiability": "supplied_hypothesis",
+  "independent_evidence": "Not a reconstruction question. The desired hypothesis is supplied in the Stage A instruction text; reference forms are the deterministic execution of that hypothesis, not historical claims.",
+  "equivalent_solutions": "Any other hypothesis is a protocol deviation here, whatever its historical merit.",
+  "observed": {
+    "a": {
+      "q01": [["u01", "p i"], ["u07", "m a"]],
+      "q02": [["u02", "p i n"], ["u07", "m a"]],
+      "q03": [["u03", "p a"], ["u07", "m a"]],
+      "q04": [["u04", "p u n"]],
+      "q05": [["u05", "m a n"], ["u07", "m a"]],
+      "q06": [["u06", "m i"]]
+    },
+    "b": {
+      "q01": [["u01", "f i"], ["u07", "m a"]],
+      "q02": [["u02", "f i n"], ["u07", "m a"]],
+      "q03": [["u03", "p a"], ["u07", "m a"]],
+      "q04": [["u04", "p u n"]],
+      "q05": [["u05", "m a n"], ["u07", "m a"]],
+      "q06": [["u06", "m i"]]
+    }
+  },
+  "targets": {
+    "r": {
+      "validity": "validated_target",
+      "note": "Execution reference for the supplied Stage A hypothesis; usability only, never a reconstruction-quality claim.",
+      "forms": {
+        "q01": [[["u01", "p i"]]],
+        "q02": [[["u02", "p i n"]]],
+        "q03": [[["u03", "p a"]]],
+        "q04": [[["u04", "p u n"]]],
+        "q05": [[["u05", "m a n"]]],
+        "q06": [[["u06", "m i"]]]
+      }
+    }
+  },
+  "supplied_hypothesis": {
+    "node_id": "r",
+    "residue_policy": "retain_from_witness",
+    "residue_witness_child_id": "b",
+    "shared_claims": [
+      {"label": "conditioned-p", "reflexes": ["p", "f"], "member_scope": "all members of the recurrence pattern",
+       "proto_segment": "p", "confidence": 0.8, "revised_confidence": 0.9,
+       "conditioning": {"right": {"tokens": ["i"]}},
+       "rationale": "Stage A supplied claim: p:f is p before i."},
+      {"label": "boundary", "reflexes": ["+", "+"], "member_scope": "all members of the recurrence pattern",
+       "proto_segment": null, "confidence": 0.7,
+       "rationale": "Stage A supplied claim: no boundary once the u07 piece is absent.",
+       "directionality_rationale": "Stage A supplied claim; the u07 piece is treated as later than r."}
+    ],
+    "choices": [
+      {"label": "u07-m", "unit": "u07", "reflexes": ["m", "m"], "proto_segment": null, "confidence": 0.7,
+       "rationale": "Stage A supplied claim: the u07 piece is absent at r.",
+       "directionality_rationale": "Stage A supplied claim; the u07 piece is treated as later than r."},
+      {"label": "u07-a", "unit": "u07", "reflexes": ["a", "a"], "proto_segment": null, "confidence": 0.7,
+       "rationale": "Stage A supplied claim: the u07 piece is absent at r.",
+       "directionality_rationale": "Stage A supplied claim; the u07 piece is treated as later than r."}
+    ],
+    "revision": {"label": "conditioned-p", "field": "confidence", "from": 0.8, "to": 0.9},
+    "source_unit_hazard": "The m:m recurrence pattern also contains core u05/u06 members; nulling the pattern instead of the u07 local set would delete core m."
+  }
+}

@@ -27,10 +27,11 @@ from collections.abc import Sequence
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from cognate_reconstruction.schemas.alignment import GAP_SEGMENT_TOKENS
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.evidence import ColumnBinding, UnitOrderClaim, PieceSource
 from cognate_reconstruction.schemas.rules import (
     AnomalyReport,
     ReconstructionRule,
@@ -152,109 +153,71 @@ class CorrespondenceCommitment(WorkbenchModel):
 
     set_id: NonEmptyStr = Field(
         description=(
-            "The set_id of the correspondence set this commits a value for, "
-            "exactly as returned by summarize_correspondences or "
-            "test_proto_assembly. The harness re-derives the set from this "
-            "node's own forms and refuses a commitment whose cited set it "
-            "cannot reproduce. A realign call invalidates every set_id derived "
-            "under the previous alignment overlay."
+            'Exact local csu-* ID under this evidence/orders/overlays. Re-derived; stale or pattern IDs cannot authorize a local commitment.'
         ),
     )
     reflexes: tuple[str | None, ...] = Field(
         min_length=2,
         description=(
-            "The set's segments: exactly one entry per child in "
-            "child_node_ids, in that order, INCLUDING the children that show "
-            "nothing there — write those as null. A set only one child attests "
-            "is still ['ʔ', null] and never ['ʔ']. 'Ø' and '∅' are accepted "
-            "for a gap and mean the same as null. Required even though set_id "
-            "determines it: a commit a human cannot read without re-running a "
-            "tool is not an audit record."
+            'Required: exactly one entry per active child in child_node_ids order, including null gaps. Ø/∅ normalize to null. Full payloads must match the surveyed tuple.'
         ),
     )
     proto_segment: NonEmptyStr | None = Field(
         description=(
-            "Required, with no default: the proto-phoneme you reconstruct for "
-            "this set, or an explicit null for 'this set reconstructs "
-            "nothing' — every branch showing material here innovated it. There "
-            "is no default because those are different claims and omitting the "
-            "field would silently make the stronger one. It is deliberately "
-            "not restricted to the segments in 'reflexes': Proto-Polynesian *w "
-            "survives as v or as nothing in every daughter, and a schema that "
-            "could only emit an observed reflex would make it "
-            "unreconstructable."
+            'Required proto value or explicit null for no parent material; omission is refused. New output symbols are allowed; expressibility does not establish historical truth.'
         ),
     )
     conditioning: RuleEnvironment | None = Field(
         default=None,
         description=(
-            "The environment in which this commitment holds, in the DSL's own "
-            "left/right/word-edge vocabulary. Evaluated in *proto* terms: the "
-            "neighbouring proto-phonemes, not any one child's segments."
+            'Optional environment evaluated on reconstructed neighbours, using literal left/right/word-edge DSL vocabulary.'
         ),
     )
     merges_with_set_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "This set and that one are one phoneme in complementary "
-            "distribution. Both commitments must name the same proto_segment "
-            "and both must carry a conditioning; the harness checks the claim "
-            "against the node's own columns and refuses it if they share an "
-            "environment."
+            'Explicit complementary split claim. Both commitments need equal proto values and conditioning; overlapping environments are refused.'
         ),
     )
     support: int = Field(
         ge=1,
         description=(
-            "Aligned columns showing this set, copied from the harness's own "
-            "inventory. Re-derived and refused on mismatch: it is the one "
-            "number separating a correspondence from residue and it must not "
-            "be a model claim."
+            'Exact harness local count: supplied etyma plus unresolved concept/unit opportunities, under independent-etyma-v1. Refused on mismatch; not a model estimate.'
         ),
     )
     confidence: float = Field(
         gt=0.0,
         le=1.0,
         description=(
-            "Required on every commitment, with no default: your confidence "
-            "in this reconstruction, in (0, 1]. An inventory of thirty sets "
-            "carries thirty of these, and a single commitment omitting it "
-            "refuses the whole commit — a set written as {'set_id': …, "
-            "'reflexes': ['p', 'f'], 'proto_segment': 'p', 'support': 11} is "
-            "rejected for exactly that. There is no default because a "
-            "confidence you did not state is not 1.0: the deterministic "
-            "assembler consumes this as a score weight, so a default would "
-            "score an unstated guess above a stated doubt. Your own "
-            "judgement, and nothing checks it against the evidence."
+            'Required explicit confidence in (0,1], with no default; used as a score weight and never inferred.'
         ),
     )
     rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Set-specific justification. Optional on a single-commitment "
-            "inventory, where the required top-level 'summary' carries it; "
-            "required on every commitment of an inventory carrying more than "
-            "one."
+            'Required for every expanded local commitment when there is more than one. A single-set full inventory may use the final summary.'
         ),
     )
     directionality_rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Which branch innovated, and why you believe it. Required on any "
-            "commitment that discards material — a non-null reflex against a "
-            "null proto_segment, or two sets sharing one proto_segment without "
-            "complementary conditioning. The harness detects those "
-            "mechanically and never judges what you write; it records that you "
-            "wrote it."
+            'Required for null against non-null material or distinct reflex tuples sharing a value without complementary conditioning. State proposed history, evidence and uncertainty; repeated identical retention is not a merger. Presence is checked, historical truth is not.'
         ),
     )
 
-    @model_validator(mode="before")
+    @field_validator("reflexes", mode="before")
     @classmethod
     def accept_gap_spellings(cls, value):
-        if not isinstance(value, dict) or "reflexes" not in value:
-            return value
-        return {**value, "reflexes": normalize_written_gaps(value["reflexes"])}
+        """Normalize gap spellings in `reflexes` only.
+
+        A field validator, not a model-level one: a `mode="before"` model
+        validator hands every other field on in strict python mode, so a JSON
+        `conditioning.right.tokens` array reached `SegmentExpression` as a list
+        and was refused as a tuple. That rejected the full-payload preview of a
+        token-conditioned claim and failed the stored-handle commit when its
+        JSON snapshot was read back (R01 finding 1).
+        """
+        return normalize_written_gaps(value)
 
     @model_validator(mode="after")
     def validate_merger_claim(self) -> CorrespondenceCommitment:
@@ -270,32 +233,29 @@ class CorrespondenceCommitment(WorkbenchModel):
         return self
 
 
+def claim_key(item: CorrespondenceCommitment) -> tuple[str, str | None]:
+    """A set under one conditioning environment: what a spec commits once.
+
+    Adding the proto segment gives a choice identity, which is what makes two
+    applicable claims on one column competitors (see `CompetingChoice`).
+    """
+    return (
+        item.set_id,
+        item.conditioning.model_dump_json() if item.conditioning is not None else None,
+    )
+
+
 class ResiduePolicy(StrEnum):
     """What happens to an alignment column no committed set explains."""
 
     RETAIN_FROM_WITNESS = "retain_from_witness"
-    """Carry through whatever `residue_witness_child_id` shows, unexplained.
+    """Use the named child on unexplained columns; its gaps emit nothing.
 
-    **An unaccounted column carries through; it does not vanish.** That is what
-    makes assembly monotonic: committing more sets refines a reconstruction and
-    committing none leaves it where the children are, with no cliff between the
-    two. Naming a witness is a linguistic claim — *this branch is the most
-    conservative* — made once, recorded, and readable by a reviewer.
+    This records a qualified witness choice, not proof of conservatism.
     """
 
     DROP = "drop"
-    """Treat unexplained material as branch-specific innovation.
-
-    The opt-in, not the default reading. A model choosing this asserts that
-    everything its inventory does not explain is innovation, which is a strong
-    claim and usually a wrong one on a partial inventory.
-
-    A `majority_reflex` option was drafted here and removed: "carry the segment
-    most children show" is a majority vote over daughters, and
-    `tools/outgroup_probe.py` measured that averaging over daughters scores
-    exactly what alphabetical order scores, because it degenerates into a vote
-    over shared innovations. See `docs/proto_inventory_design.md` §6.3.
-    """
+    """Contribute nothing on unexplained columns; record this omission claim."""
 
 
 class ResidueDisposition(WorkbenchModel):
@@ -303,22 +263,17 @@ class ResidueDisposition(WorkbenchModel):
 
     concept_id: NonEmptyStr
     column_index: int = Field(ge=0)
+    evidence_column_id: NonEmptyStr | None = None
     proto_segment: NonEmptyStr | None
     explanation: NonEmptyStr
 
 
 class SegmentRestoration(WorkbenchModel):
-    """A segment every active child lost, restored on cited out-group evidence.
-
-    Not a correspondence, and deliberately not routed through one: nothing
-    corresponds, which is the entire situation. `build_correspondence_sets`
-    skips all-gap columns outright, and retaining them would make `support`
-    count columns the model itself inserted — the one number that must never be
-    a model claim. So this is a per-position claim, beside `ResidueDisposition`
-    rather than among the commitments.
-    """
+    """A segment every active child lost, restored on cited out-group evidence."""
 
     concept_id: NonEmptyStr
+    before_evidence_column_id: NonEmptyStr | None = None
+    unit_id: NonEmptyStr | None = None
     before_column_index: int = Field(
         ge=0,
         description=(
@@ -347,14 +302,32 @@ class SegmentRestoration(WorkbenchModel):
     )
 
 
-class ProtoInventorySpec(WorkbenchModel):
-    """The inventory a `commit_reconstruction` call carries, as the model sends it.
+class SharedCorrespondenceClaim(WorkbenchModel):
+    """One model-approved value over an explicit collection of local sets.
 
-    Split from `CommitProtoInventoryArgs` — which adds the fields both commit
-    shapes share — so that one tool takes `rules` xor `inventory` without
-    duplicating `node_id`, `summary`, and `anomalies` into a second argument
-    model that could drift from the first.
+    A descriptive pattern is a retrieval handle, never automatic equivalence.
+    Exclude local exceptions or provide different conditioned values. Counts and
+    reflexes are re-derived for each member, rather than retranscribed.
     """
+    pattern_id: NonEmptyStr
+    member_set_ids: tuple[NonEmptyStr, ...] = Field(min_length=1)
+    proto_segment: NonEmptyStr | None
+    confidence: float = Field(gt=0.0, le=1.0)
+    rationale: NonEmptyStr
+    directionality_rationale: NonEmptyStr | None = None
+    conditioning: RuleEnvironment | None = None
+
+    @model_validator(mode="after")
+    def unique_members(self):
+        if len(set(self.member_set_ids)) != len(self.member_set_ids):
+            raise ValueError("shared claim must name each local set once")
+        return self
+
+
+class ProtoInventorySpec(WorkbenchModel):
+    """The inventory a `commit_reconstruction` call carries, as the model sends it."""
+
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
 
     child_node_ids: tuple[NonEmptyStr, ...] = Field(
         min_length=2,
@@ -373,26 +346,18 @@ class ProtoInventorySpec(WorkbenchModel):
     assembly_validation_call_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "A successful test_proto_assembly call covering this inventory. "
-            "Optional only in the sense that the harness resolves it from the "
-            "session's previews when omitted; the same-session preview itself "
-            "is not optional."
+            'Optional exact same-session preview ID; omitted IDs resolve from previews of identical hypotheses/evidence. Nonempty/structural claims require validation.'
         ),
     )
+    shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
     commitments: tuple[CorrespondenceCommitment, ...] = Field(
         description=(
-            "This node's correspondence-set commitments. Order carries no "
-            "meaning — sets are independent and nothing reads the sequence. An "
-            "empty inventory is an identity reconstruction, the same claim "
-            "rules=[] makes, with the same deterministic result."
+            'Local commitments; order has no meaning. Shared claims, structural decisions and residue policy also form part of the exact hypothesis.'
         ),
     )
     residue_policy: ResiduePolicy = Field(
         description=(
-            "Required, with no default. What happens to a column no committed "
-            "set explains: 'retain_from_witness' carries through whatever one "
-            "named child shows and marks it unexplained, 'drop' asserts the "
-            "material is branch-specific innovation and contributes nothing."
+            'Required: retain_from_witness uses the named child on unexplained columns (a witness gap emits nothing); drop contributes nothing. Unaccounted columns remain reported.'
         ),
     )
     residue_witness_child_id: NonEmptyStr | None = Field(
@@ -423,11 +388,7 @@ class ProtoInventorySpec(WorkbenchModel):
         # tuple to hang the second value on. Uniqueness over the pair keeps what
         # the rule was for (the same claim cannot be committed twice) and makes
         # the elsewhere-condition expressible.
-        claims = [
-            (item.set_id, item.conditioning.model_dump_json()
-             if item.conditioning is not None else None)
-            for item in self.commitments
-        ]
+        claims = [claim_key(item) for item in self.commitments]
         if len(claims) != len(set(claims)):
             raise ValueError(
                 "a correspondence set may be committed once per conditioning "
@@ -457,7 +418,7 @@ class ProtoInventorySpec(WorkbenchModel):
                 "residue_policy 'retain_from_witness'"
             )
         positions = [
-            (item.concept_id, item.column_index)
+            (item.concept_id, item.evidence_column_id or item.column_index)
             for item in self.residue_dispositions
         ]
         if len(positions) != len(set(positions)):
@@ -465,7 +426,7 @@ class ProtoInventorySpec(WorkbenchModel):
                 "a residue disposition may name each concept column only once"
             )
         restored = [
-            (item.concept_id, item.before_column_index)
+            (item.concept_id, item.before_evidence_column_id or item.before_column_index)
             for item in self.restorations
         ]
         if len(restored) != len(set(restored)):
@@ -481,8 +442,7 @@ class CommitProtoInventoryArgs(ProtoInventorySpec):
     The spec the model sent, plus the fields `commit_reconstruction` takes for
     either commit shape. This is what `CommittedProtoInventory.request` holds,
     so a trajectory records one self-contained object rather than a fragment
-    that only makes sense beside the tool call it came from.
-    """
+    that only makes sense beside the tool call it came from."""
 
     node_id: NonEmptyStr
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -497,6 +457,12 @@ class CommittedProtoInventory(WorkbenchModel):
     of a mixed archive can branch without probing which request shape is
     present.
     """
+
+    evidence_contract_version: Literal["legacy", "units-v1", "units-v2"] = "legacy"
+    derived_rules_scope: Literal["global", "unscoped_view"] = "global"
+    evidence_revision: NonEmptyStr | None = None
+    column_bindings: tuple[ColumnBinding, ...] = ()
+    approved_shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
 
     commit_shape: Literal["inventory"] = "inventory"
     request: CommitProtoInventoryArgs
@@ -519,6 +485,24 @@ class CommittedProtoInventory(WorkbenchModel):
     compares like with like across the migration.
     """
 
+    @model_validator(mode="after")
+    def validate_evidence_contract(self):
+        if self.evidence_contract_version != "legacy" and self.evidence_revision is None:
+            raise ValueError("unit inventory requires its evidence revision")
+        if self.evidence_contract_version == "units-v2" and self.request.shared_claims:
+            raise ValueError("persisted units-v2 request must contain expanded local commitments")
+        for claim in self.approved_shared_claims:
+            for set_id in claim.member_set_ids:
+                if not any(c.set_id == set_id and c.proto_segment == claim.proto_segment
+                           and c.confidence == claim.confidence and c.conditioning == claim.conditioning
+                           and c.rationale == claim.rationale and c.directionality_rationale == claim.directionality_rationale
+                           for c in self.request.commitments):
+                    raise ValueError("approved shared claim must match its expanded local commitments")
+        ids = [binding.column_id for binding in self.column_bindings]
+        if len(set(ids)) != len(ids):
+            raise ValueError("column bindings must name each evidence column once")
+        return self
+
     @property
     def anomalies(self) -> tuple[AnomalyReport, ...]:
         """Anomalies the commit carried, under the rule shape's own name."""
@@ -536,6 +520,7 @@ class CommittedProtoInventory(WorkbenchModel):
             self.request.commitments
             or self.request.residue_dispositions
             or self.request.restorations
+            or self.request.unit_orders
         )
 
 
@@ -546,8 +531,28 @@ class AssemblyDetail(StrEnum):
     FULL = "full"
 
 
+class CompetingChoice(WorkbenchModel):
+    """Another applicable claim on a column that the resolution did not emit.
+
+    Identified by choice identity — `(set_id, conditioning, proto_segment)` —
+    not by `set_id` alone: under units-v2 two conditioned claims on one local
+    set can both hold in a column (`#_` and `_#` on a one-token word), and an
+    identity by set would make that competition invisible.
+    """
+
+    set_id: NonEmptyStr
+    proto_segment: NonEmptyStr | None
+    confidence: float = Field(gt=0.0, le=1.0)
+    conditioning: RuleEnvironment | None = None
+
+
 class ColumnResolution(WorkbenchModel):
     """How one alignment column got its proto value, or failed to."""
+
+    source_positions: tuple[PieceSource, ...] = ()
+    evidence_column_id: NonEmptyStr | None = None
+    unit_id: NonEmptyStr | None = None
+    unmatched_reason: NonEmptyStr | None = None
 
     column_index: int = Field(ge=0)
     reflexes: tuple[str | None, ...]
@@ -567,6 +572,24 @@ class ColumnResolution(WorkbenchModel):
     `test_proto_assembly` surfaces so the session can disambiguate it before
     committing. Resolving it silently by segment order would be the harness
     making a call the model is better placed to make.
+
+    Kept as the distinct *other* set IDs; a competitor on the winner's own set
+    is reported in `competing_choices` only.
+    """
+    competing_choices: tuple[CompetingChoice, ...] = ()
+    """Every other distinct applicable choice, including ones on the same set.
+
+    Empty on reports written before the field existed. Identical duplicate
+    claims of the winner are not competitors and are not listed.
+    """
+    decided_by_equal_confidence: bool = False
+    """A competing choice had the winner's confidence and another value.
+
+    The documented order (ascending proto segment, then set ID) picked the
+    value, which is an arbitrary choice. A rival with the same value is still
+    listed in `competing_choices` but does not set this: it would have emitted
+    the same segment. Not to be confused with the beam-level
+    `traversal.beam.decided_by_tie_break`.
     """
 
 
@@ -577,6 +600,9 @@ class ConceptAssemblyReport(WorkbenchModel):
     `correspondence_maps` measurement is the precedent and the warning: 448 KB
     of a 10,017 KB result for something no reader had asked for.
     """
+
+    unit_ids: tuple[NonEmptyStr, ...] = ()
+    unmatched_columns: tuple[ColumnResolution, ...] = ()
 
     concept_id: NonEmptyStr
     alignment_id: NonEmptyStr
@@ -597,14 +623,10 @@ class ConceptAssemblyReport(WorkbenchModel):
 
 
 class AlignmentOverride(WorkbenchModel):
-    """One concept's alignment, re-laid by the model.
+    """One concept's alignment, re-laid by the model."""
 
-    Session-local, immutable, ID'd, and never permanent: overrides never cross a
-    node boundary, never enter the checkpoint, and never persist into another
-    run. The rows must be the children's own forms — dropping the gaps from each
-    row must reproduce that child's form token for token — so material may be
-    moved between columns but never invented, deleted, or reordered.
-    """
+    analysis_ids: tuple[str | None, ...] = ()
+    unit_id: NonEmptyStr | None = Field(default=None, description="Exact evidence unit to realign; required for partial evidence. Whole-form legacy edits omit this.")
 
     concept_id: NonEmptyStr
     rows: tuple[tuple[str | None, ...], ...] = Field(
@@ -635,13 +657,16 @@ class AlignmentOverride(WorkbenchModel):
         rows = value.get("rows")
         if not isinstance(rows, (list, tuple)):
             return value
-        return {**value, "rows": tuple(normalize_written_gaps(row) for row in rows)}
+        return {**value, "rows": tuple(normalize_written_gaps(row) for row in rows),
+                "analysis_ids": tuple(value.get("analysis_ids", ())) }
 
     @model_validator(mode="after")
     def validate_width(self) -> AlignmentOverride:
         widths = {len(row) for row in self.rows}
         if len(widths) != 1:
             raise ValueError("every override row must have the same width")
+        if self.analysis_ids and len(self.analysis_ids) != len(self.rows):
+            raise ValueError("analysis_ids must contain one entry per child row")
         return self
 
 
@@ -653,6 +678,7 @@ __all__ = [
     "ColumnResolution",
     "CommitProtoInventoryArgs",
     "CommittedProtoInventory",
+    "CompetingChoice",
     "ConceptAssemblyReport",
     "CorrespondenceCommitment",
     "ProtoInventorySpec",
@@ -660,6 +686,7 @@ __all__ = [
     "ResiduePolicy",
     "SegmentRestoration",
     "WRITTEN_GAP_SPELLINGS",
+    "claim_key",
     "derive_set_id",
     "normalize_written_gaps",
 ]

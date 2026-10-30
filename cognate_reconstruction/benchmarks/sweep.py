@@ -37,9 +37,13 @@ from cognate_reconstruction.agent.trajectory import (
     AgentTrajectory,
     TrajectoryDatasetBuilder,
 )
-from cognate_reconstruction.inspect_run import directionality_evidence
+from cognate_reconstruction.inspect_run import directionality_evidence, _target_evaluations
 from cognate_reconstruction.schemas.historical import HistoricalTargetEvaluation
 from cognate_reconstruction.schemas.metrics import MetricDistribution
+from cognate_reconstruction.schemas.evaluation import RunEvaluationReport
+from cognate_reconstruction.evaluation.run import load_result_or_summary, evaluate_run, summarize, trajectory_from_artifact
+from cognate_reconstruction.evaluation.targets import binding_validity
+from cognate_reconstruction.schemas.historical import TargetValidity
 
 
 @dataclass(frozen=True)
@@ -76,6 +80,13 @@ class SeedOutcome:
     directionality_claims_without_polarize: tuple[str, ...] = field(default=())
     target_evaluations: tuple[HistoricalTargetEvaluation, ...] = field(default=())
     stderr_tail: str = ""
+    evaluation_report: RunEvaluationReport | None = None
+    linguistic_exclusion_reason: str | None = None
+    interruption_reason: str | None = None
+    interruption_failure_kind: str | None = None
+    nodes_completed: int = 0
+    planned_node_ids: tuple[str, ...] = ()
+    unattempted_node_ids: tuple[str, ...] = ()
 
     @property
     def direction_claims_below_the_root(self) -> tuple[str, ...]:
@@ -109,6 +120,12 @@ class SeedOutcome:
             "result_written": self.result_written,
             "abandoned": self.abandoned,
             "nodes_attempted": self.nodes_attempted,
+            "nodes_completed": self.nodes_completed,
+            "planned_node_ids": list(self.planned_node_ids),
+            "unattempted_node_ids": list(self.unattempted_node_ids),
+            "interruption_reason": self.interruption_reason,
+            "linguistic_exclusion_reason": self.linguistic_exclusion_reason,
+            "interruption_failure_kind": self.interruption_failure_kind,
             "nodes_committed": self.nodes_committed,
             "fallback_nodes": list(self.fallback_nodes),
             "node_failures": [dict(failure) for failure in self.node_failures],
@@ -133,6 +150,10 @@ class SeedOutcome:
                 {
                     "node_id": evaluation.node_id,
                     "failure_fallback": evaluation.failure_fallback,
+                    "target_validity": evaluation.target_validity,
+                    "target_validity_note": evaluation.target_validity_note,
+                    "descendant_fallback_node_ids": evaluation.descendant_fallback_node_ids,
+                    "selection": evaluation.selection.model_dump(mode="json") if evaluation.selection else None,
                     "gold_evidence_kind": (
                         evaluation.gold_evidence_kind.value
                         if evaluation.gold_evidence_kind is not None
@@ -152,6 +173,7 @@ class SeedOutcome:
                 for evaluation in self.target_evaluations
             ],
             "stderr_tail": self.stderr_tail,
+            "evaluation_report": self.evaluation_report.model_dump(mode="json") if self.evaluation_report else None,
         }
 
 
@@ -174,6 +196,8 @@ def read_seed(
     run_dir: Path,
     exit_code: int,
     stderr_tail: str = "",
+    *,
+    payload=None,
 ) -> SeedOutcome:
     """Read one repetition's artifacts, tolerating a run that wrote none."""
     result_path = run_dir / "result.json"
@@ -183,21 +207,35 @@ def read_seed(
         trajectories = list(
             TrajectoryDatasetBuilder.read_jsonl(trajectories_path)
         )
-    result = None
-    if result_path.exists():
-        result = json.loads(result_path.read_text(encoding="utf-8"))
+    result = load_result_or_summary(run_dir)
+    result_written = result_path.exists() and (result or {}).get("status") != "interrupted"
+    # Exact duplicate records do not bill/count effort twice. Distinct retries
+    # retain their effort; operational node totals use latest outcomes.
+    artifact_run_id = (result or {}).get("run_id") or ((result or {}).get("lifecycle_summary") or {}).get("run_id")
+    trajectories = list({t.trajectory_id: t for t in trajectories if artifact_run_id is None or t.run_id == artifact_run_id}.values())
+    if not trajectories and result is not None:
+        trajectories = [trajectory_from_artifact(t)
+                        for t in result.get("trajectories", ())]
     node_failures = tuple(result.get("node_failures", ())) if result else ()
     fallback_nodes = tuple(
         str(failure["node_id"]) for failure in node_failures
     )
-    evaluations = tuple(
-        HistoricalTargetEvaluation.model_validate_json(json.dumps(raw))
-        for raw in (result.get("historical_target_evaluations", ()) if result else ())
-    )
+    evaluations = _target_evaluations(result)
+    evaluation_report = None
+    if payload is not None:
+        evaluation_report = evaluate_run(payload, result, trajectories, exit_code=exit_code)
+    elif result and result.get("evaluation_report"):
+        evaluation_report = RunEvaluationReport.model_validate_json(json.dumps(result["evaluation_report"]))
+    exclusion = "operator_marked_void" if (run_dir / "VOID.txt").exists() or (run_dir.parent / "VOID.txt").exists() else None
+    if evaluation_report is not None and exclusion:
+        evaluation_report = evaluation_report.model_copy(update={"linguistic_exclusion_reason": exclusion})
     codes: Counter[str] = Counter()
     for trajectory in trajectories:
         codes.update(trajectory.metrics.tool_failures_by_code)
-    completed = [item for item in trajectories if item.completed]
+    active_ids = ((result or {}).get("lifecycle_summary") or result or {}).get("active_trajectory_ids")
+    latest = {t.node_id: t for t in trajectories
+              if active_ids is None or t.trajectory_id in active_ids}
+    completed = [item for item in latest.values() if item.completed]
     steps = [
         item.reconstruction_step
         for item in completed
@@ -211,12 +249,18 @@ def read_seed(
         run_id=run_id,
         run_dir=str(run_dir),
         exit_code=exit_code,
-        result_written=result is not None,
+        result_written=result_written,
+        linguistic_exclusion_reason=exclusion,
+        interruption_reason=(result or {}).get("interruption_reason"),
+        interruption_failure_kind=(result or {}).get("failure_kind"),
+        nodes_completed=len(steps),
+        planned_node_ids=tuple(n.node_id for n in evaluation_report.operational_nodes) if evaluation_report else (),
+        unattempted_node_ids=tuple(n.node_id for n in evaluation_report.operational_nodes if n.node_id not in latest) if evaluation_report else (),
         root_node_id=root_node_id,
-        nodes_attempted=len(trajectories),
+        nodes_attempted=len({t.node_id for t in trajectories}),
         # Completion means a session committed. A fallback node has a beam and
         # is not a reconstruction, so it is never counted here.
-        nodes_committed=len(completed),
+        nodes_committed=sum(t.node_id not in fallback_nodes for t in completed),
         fallback_nodes=fallback_nodes,
         node_failures=node_failures,
         tool_calls=sum(item.metrics.tool_call_count for item in trajectories),
@@ -256,6 +300,7 @@ def read_seed(
         ),
         target_evaluations=evaluations,
         stderr_tail=stderr_tail,
+        evaluation_report=evaluation_report,
     )
 
 
@@ -269,7 +314,7 @@ def aggregate(
     """Fold the seeds into one object, always with spread beside every mean."""
     scored = [
         evaluation
-        for seed in seeds
+        for seed in seeds if seed.linguistic_exclusion_reason is None
         for evaluation in seed.target_evaluations
         # A fallback node's beam is the harness's identity commit, so scoring
         # it measures the fallback. Excluded here and counted separately.
@@ -277,7 +322,7 @@ def aggregate(
     ]
     fallback_scored = [
         evaluation
-        for seed in seeds
+        for seed in seeds if seed.linguistic_exclusion_reason is None
         for evaluation in seed.target_evaluations
         if evaluation.failure_fallback
     ]
@@ -293,12 +338,34 @@ def aggregate(
             # its losses are not in node_failures at all. Counting it here is
             # the only way the taxonomy adds up.
             failure_taxonomy["run-abandoned-no-result"] += 1
+    interruption_causes = Counter(seed.interruption_failure_kind or "unknown" for seed in seeds if seed.abandoned)
+    interruption_reasons = Counter(seed.interruption_reason or "unrecorded" for seed in seeds if seed.abandoned)
     error_codes: Counter[str] = Counter()
     for seed in seeds:
         error_codes.update(seed.error_codes)
+    planned_targets = [t for seed in seeds if seed.evaluation_report and seed.linguistic_exclusion_reason is None
+                       for t in seed.evaluation_report.targets]
+    validated_targets = [t for t in planned_targets
+                         if t.evaluation.target_validity is TargetValidity.VALIDATED]
     return {
         "benchmark": benchmark,
         "model": model,
+        "evaluator_version": "task02-v1",
+        "excluded_linguistic_seeds": [{"seed": seed.seed, "run_id": seed.run_id, "reason": seed.linguistic_exclusion_reason}
+                                      for seed in seeds if seed.linguistic_exclusion_reason],
+        "all_run_coverage": {
+            "planned_concepts": sum(seed.evaluation_report.raw_target_summary.planned_concepts for seed in seeds if seed.evaluation_report),
+            "available_outputs": sum(seed.evaluation_report.raw_target_summary.available_outputs for seed in seeds if seed.evaluation_report),
+            "missing_outputs": sum(seed.evaluation_report.raw_target_summary.missing_outputs for seed in seeds if seed.evaluation_report),
+        },
+        "evaluation_views": {
+            "seeds_with_plan": sum(seed.evaluation_report is not None for seed in seeds),
+            "seeds_without_plan": sum(seed.evaluation_report is None for seed in seeds),
+            "raw_targets": summarize(planned_targets).model_dump(mode="json") if planned_targets else None,
+            "validated_targets": summarize(validated_targets).model_dump(mode="json") if planned_targets else None,
+            "by_node": {node: summarize([t for t in planned_targets if t.node_id == node]).model_dump(mode="json")
+                        for node in sorted({t.node_id for t in planned_targets})},
+        },
         "seeds": len(seeds),
         "seeds_with_result": sum(seed.result_written for seed in seeds),
         "seeds_abandoned": sum(seed.abandoned for seed in seeds),
@@ -312,6 +379,10 @@ def aggregate(
             [len(seed.fallback_nodes) for seed in seeds]
         ),
         "failure_taxonomy": dict(sorted(failure_taxonomy.items())),
+        "interruption_causes": dict(sorted(interruption_causes.items())),
+        "interruption_reasons": dict(sorted(interruption_reasons.items())),
+        "nodes_completed": _distribution([seed.nodes_completed for seed in seeds]),
+        "unattempted_nodes_per_seed": _distribution([len(seed.unattempted_node_ids) for seed in seeds]),
         "error_codes": dict(sorted(error_codes.items())),
         "tool_calls": _distribution([seed.tool_calls for seed in seeds]),
         "protocol_failures": _distribution(
@@ -491,8 +562,13 @@ def render_text(summary: dict) -> str:
             f"n={distribution['count']})"
         )
 
+    if summary.get("excluded_linguistic_seeds"):
+        lines.append("  excluded linguistic seeds " + str(summary["excluded_linguistic_seeds"]))
     line("nodes attempted", "nodes_attempted")
     line("nodes committed", "nodes_committed")
+    line("nodes completed", "nodes_completed")
+    line("unattempted nodes", "unattempted_nodes_per_seed")
+    lines.append("  interruptions      " + str(summary.get("interruption_causes", {})))
     line("fallback nodes", "fallback_nodes_per_seed")
     line("tool calls", "tool_calls")
     line("protocol failures", "protocol_failures")
@@ -546,7 +622,7 @@ def render_text(summary: dict) -> str:
         [
             "",
             "-" * 78,
-            "GOLD TARGETS  (proto-forms withheld from the model)",
+            "GOLD TARGETS  (legacy raw scores; validity-specific views below)",
             "-" * 78,
             f"  scored {gold['scored_evaluations']} node evaluation(s); "
             f"{gold['excluded_fallback_evaluations']} excluded as identity "
@@ -558,12 +634,32 @@ def render_text(summary: dict) -> str:
     line("top NED", "mean_top_normalized_edit_distance", gold)
     line("beam best NED", "mean_beam_best_normalized_edit_distance", gold)
     line("B-Cubed F1", "mean_top_bcubed_f1", gold)
-    lines.append("  (NED: lower is better. B-Cubed F1: higher is better.)")
+    lines.append("  (NED: lower is better. Per-word B-Cubed F1: repetition structure; higher is better.)")
     for node_id, per_node in gold["by_node"].items():
         lines.append(f"  node {node_id}")
         line("  top exact", "top_exact_rate", per_node)
         line("  beam exact", "beam_exact_rate", per_node)
         line("  top NED", "mean_top_normalized_edit_distance", per_node)
+    views = summary.get("evaluation_views")
+    if views:
+        lines.append(f"  task02-v1 plans: {views['seeds_with_plan']} seeds; {views['seeds_without_plan']} without plan")
+        for label in ("raw_targets", "validated_targets"):
+            view = views[label]
+            if view is not None:
+                lines.append(f"  {label}: committed exact {view['committed_top_hits']}/{view['committed_node_concepts']}; "
+                             f"end-to-end model {view['committed_top_hits']}/{view['planned_concepts']}; "
+                             f"outputs {view['output_top_hits']}/{view['planned_concepts']}; "
+                             f"{view['missing_outputs']} missing, {view['fallback_outputs']} fallback, "
+                             f"{view['unknown_commitment_outputs']} unknown commitment")
+    for seed in summary["seed_outcomes"]:
+        for target in seed["target_evaluations"]:
+            lines.append(f"  seed {seed['seed']} {target['node_id']}: {target.get('target_validity') or 'unknown validity'}")
+            selection = target.get("selection")
+            if selection:
+                lines.append(f"    selection eligible {selection['eligible_concepts']}; gold-assisted daughter oracle "
+                             f"{selection['oracle_reachable_concepts']}; outside-selection top "
+                             f"{selection['outside_selection_top_hits']} {selection['outside_selection_top_hit_ids']}; "
+                             f"beam {selection['outside_selection_beam_hits']} {selection['outside_selection_beam_hit_ids']}")
     oracle = summary.get("oracle_ceiling")
     if oracle and "error" not in oracle:
         lines.extend(
@@ -598,4 +694,6 @@ def render_text(summary: dict) -> str:
             )
         )
         lines.append(f"           {seed['run_dir']}")
+        if seed.get("interruption_reason"):
+            lines.append(f"           interruption: {seed.get('interruption_failure_kind') or 'unknown'}; {seed['interruption_reason']}")
     return "\n".join(lines) + "\n"

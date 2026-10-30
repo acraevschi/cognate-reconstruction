@@ -143,7 +143,14 @@ def _alignment_map(result) -> MultipleAlignmentMap:
 # --------------------------------------------------------------------------
 
 
-def test_summary_is_the_default_and_carries_counts_without_the_trace() -> None:
+def test_summary_is_the_default_and_returns_the_alignments_without_pairwise_views() -> None:
+    """The n-way alignments are the evidence; the pairwise views are derived.
+
+    One view per node pair grows quadratically with the nodes compared, and in
+    recorded sessions the views were 62% of this tool's characters. Their counts
+    are what `summarize_correspondences` reports, so `summary` leaves them out
+    and `full` keeps them.
+    """
     result = _call(
         "get_alignments",
         context=_context("A", "B", "C"),
@@ -152,6 +159,20 @@ def test_summary_is_the_default_and_carries_counts_without_the_trace() -> None:
     )
     assert result.ok
     payload = _alignment_map(result)
+    assert payload.detail is CorrespondenceDetail.SUMMARY
+    assert payload.pairwise_correspondences == ()
+    assert {alignment.concept_id for alignment in payload.alignments} == {
+        "three", "hand", "fish", "sky"
+    }
+    assert all(len(alignment.members) == 3 for alignment in payload.alignments)
+
+
+def test_the_aligners_summary_view_carries_counts_without_the_trace() -> None:
+    """The aligner still renders a compact pairwise view; only the tool drops it."""
+    payload = LingPyAligner().align_multiple(
+        tuple(_lexicon(variety_id) for variety_id in ("A", "B", "C")),
+        correspondence_detail=CorrespondenceDetail.SUMMARY,
+    )
     assert payload.detail is CorrespondenceDetail.SUMMARY
 
     summaries = [
@@ -185,10 +206,12 @@ def test_pairwise_views_reference_the_alignments_instead_of_copying_them() -> No
         context=context,
         node_ids=["A", "B", "C"],
         concept_ids=concepts,
+        detail="full",
     )
     payload = _alignment_map(result)
     known = {alignment.alignment_id for alignment in payload.alignments}
     assert len(known) == len(concepts)
+    assert len(payload.pairwise_correspondences) == 3
     for pairwise in payload.pairwise_correspondences:
         assert pairwise.alignment_ids
         # Every reference resolves against the single copy of the alignments.
@@ -231,7 +254,10 @@ def test_the_compact_payload_is_smaller_and_stops_growing_quadratically() -> Non
     assert summary.ok and full.ok
     assert _bytes(summary.result) < _bytes(full.result)
 
-    payload = _alignment_map(summary)
+    payload = LingPyAligner().align_multiple(
+        tuple(context.child_lexicons),
+        correspondence_detail=CorrespondenceDetail.SUMMARY,
+    )
     alignments_bytes = _bytes(
         [alignment.model_dump(mode="json") for alignment in payload.alignments]
     )

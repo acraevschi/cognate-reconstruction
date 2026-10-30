@@ -4,20 +4,24 @@ An experimental workbench for LLM-assisted historical language reconstruction.
 The model proposes linguistic hypotheses; deterministic tools expose evidence,
 validate commitments, assemble candidate proto-forms, and preserve an audit trail.
 
-**Status, 2026-09-15:** both rule cascades and proto-inventories are implemented.
-Reliable historical reconstruction has not been demonstrated. The last experiments
-improved completion with a larger turn budget but left Proto-Burmish exact match
-at zero. The next work is diagnosis and evaluation, followed by controlled changes.
+**Status, 2026-10-05:** both rule cascades and proto-inventories are implemented.
+Tasks 01–04 delivered diagnosis, evaluation and evidence repairs; task05 delivered
+offline instruction/protocol changes but its local smoke failed. Substantive live
+commit usability and reliable historical reconstruction remain unverified.
+Task06 provider recovery is delivered offline with completed-node resume and
+explicit interruption accounting. Review the final interface/manifest and verify
+substantive live usability before comparative work.
 
 ## Start here
 
 - [Current state](docs/current_state.md): what exists, the last results, known
   limitations, and which older decisions have been superseded.
 - [Research plan](docs/research_plan.md): implementation order and decision points.
+- Session handoff (`docs/session_handoff.md`, local and untracked): live task
+  status, decisions, unfinished work and amendments carried into the next agent
+  session. Absent from other checkouts.
 - [Experiment policy](docs/experiment_policy.md): local-first testing, budgets,
   provenance, and interpretation of results. Read before any live run.
-- [Implementation prompts](prompts/README.md): local agent briefs for the plan.
-  `prompts/` is excluded through `.git/info/exclude` and will not appear in a clone.
 
 ## How it works
 
@@ -48,9 +52,13 @@ explicit identity fallback, which must be distinguished from a model commitment.
 | [Running inference](docs/running_inference.md) | CLI, inputs, tools, providers, checkpoints, reports |
 | [Benchmarks](docs/benchmarks.md) | Dataset definitions, metrics, recorded experiments |
 | [Analysis tools](docs/analysis_tools.md) | Offline probes, answer-key-assisted measurements, baselines |
+| [Evidence contract](docs/research/evidence_contract.md) | units-v2 counts/bindings and units-v1 inherited pieces |
+| [Evidence migration](docs/research/evidence_migration.md) | Current typed tools, trajectory 5.0 and checkpoint 3.0 compatibility |
+| [Protocol revision](docs/research/protocol_revision.md) | Task05 corrected guidance, commit readiness and immutable preview handles |
+| [Provider recovery](docs/research/provider_recovery.md) | Task06 bounded retries, safe resume and incomplete-outcome accounting |
 | [Report, reject, or score](docs/report_reject_or_score.md) | Separate mechanical validity, workflow quality, and linguistic judgment |
 | [Operator skill](skills/run-cognate-reconstruction/SKILL.md) | Operational recipes; use the experiment policy for current budgets and model preferences |
-| [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Instructions actually sent to reconstruction models; corrections are planned, not yet applied |
+| [Runtime model prompt](cognate_reconstruction/agent/system_prompt.md) | Corrected model instructions; measured and tested in task05 |
 | [Inventory design history](docs/proto_inventory_design.md) | Original design and dated experiment notebook; not the active task queue |
 | [Shared-innovation proposal](docs/shared_innovation_note.md) | Deferred report design, not an implemented feature |
 | [Previous README](docs/history/README-before-2026-09-15.md) | Preserved technical and decision history before this documentation reset |

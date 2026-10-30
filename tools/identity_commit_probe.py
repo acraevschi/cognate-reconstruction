@@ -193,6 +193,8 @@ def best_form_baseline(payload_path):
         scored = 0
         distances = []
         winners: dict[str, int] = {}
+        eligible_ids = []
+        exact_ids = []
         for concept, targets in gold.items():
             best = None
             for name, forms in leaves.items():
@@ -203,13 +205,19 @@ def best_form_baseline(payload_path):
             if best is None:
                 continue
             scored += 1
+            eligible_ids.append(concept)
             distances.append(best[0])
             winners[best[1]] = winners.get(best[1], 0) + 1
             if best[0] == 0.0:
                 exact += 1
+                exact_ids.append(concept)
         out.append(
             {
                 "node_id": binding["node_id"],
+                "measurement": "gold_assisted_best_daughter_oracle",
+                "gold_assisted": True,
+                "eligible_concept_ids": sorted(eligible_ids),
+                "exact_concept_ids": sorted(exact_ids),
                 "concepts": scored,
                 "top_exact_rate": exact / scored if scored else 0.0,
                 "mean_ned": sum(distances) / len(distances) if distances else 0.0,
@@ -276,7 +284,7 @@ def render_baseline(baselines, best_forms):
             if hard["node_id"] != entry["node_id"]:
                 continue
             lines.append(
-                f"    -> BEST ATTESTED FORM PER CONCEPT, chosen against the "
+                f"    -> BEST ATTESTED FORM PER CONCEPT (oracle diagnostic), chosen against the "
                 f"gold: {hard['top_exact_rate']:.3f} exact, "
                 f"mean NED {hard['mean_ned']:.3f}, over {hard['concepts']} concepts"
             )

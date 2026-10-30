@@ -1,0 +1,16 @@
+{
+  "price_table_version": "price-table-v1",
+  "prices": [
+    {
+      "model": "gemini/gemini-3.8-flash",
+      "input_usd_per_million": 0.75,
+      "output_usd_per_million": 3.75,
+      "cached_input_usd_per_million": 0.075,
+      "valid_from": null,
+      "valid_through": "2026-12-31",
+      "tier": "Gemini API paid standard tier; output price includes thinking tokens; no long-context threshold listed",
+      "source_url": "https://ai.google.dev/gemini-api/docs/pricing",
+      "read_on": "2026-10-25"
+    }
+  ]
+}

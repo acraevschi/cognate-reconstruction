@@ -43,6 +43,47 @@ class GoldEvidenceKind(StrEnum):
     """
 
 
+class TargetValidity(StrEnum):
+    """Validity of the binding, separate from truth or attestation of forms."""
+
+    VALIDATED = "validated_target"
+    PROVISIONAL_PROXY = "provisional_proxy"
+    UNDERDETERMINED = "underdetermined"
+
+
+class TokenEvaluationDiagnostics(WorkbenchModel):
+    unit_evaluator_version: NonEmptyStr | None = None
+    cognate_unit_comparisons: tuple[dict[str, object], ...] = ()
+    normalization_version: Literal["task01-v1"] = "task01-v1"
+    analysis_status: NonEmptyStr
+    segment_only_exact: bool | None = None
+    segment_only_ned: float | None = Field(default=None, ge=0, le=1)
+    predicted_tone_tokens: tuple[NonEmptyStr, ...] | None = None
+    target_tone_alternatives: tuple[tuple[NonEmptyStr, ...], ...] = ()
+    tone_status: NonEmptyStr
+    tone_token_exact: bool | None = None
+    morphology_status: NonEmptyStr
+    predicted_pieces: tuple[tuple[NonEmptyStr, ...], ...] | None = None
+    target_piece_alternatives: tuple[tuple[tuple[NonEmptyStr, ...], ...], ...] = ()
+    cognate_unit_exact: bool | None = None
+    """Unknown until independent output memberships exist; never a substring score."""
+
+
+class SelectionEvaluation(WorkbenchModel):
+    """Gold-assisted whole-form selection diagnostic on observed descendant leaves."""
+
+    eligible_concept_ids: tuple[NonEmptyStr, ...] = ()
+    oracle_reachable_concept_ids: tuple[NonEmptyStr, ...] = ()
+    outside_selection_top_hit_ids: tuple[NonEmptyStr, ...] = ()
+    outside_selection_beam_hit_ids: tuple[NonEmptyStr, ...] = ()
+    eligible_concepts: int = Field(ge=0)
+    oracle_reachable_concepts: int = Field(ge=0)
+    outside_selection_top_hits: int = Field(ge=0)
+    outside_selection_beam_hits: int = Field(ge=0)
+    observation_scope: Literal["observed_descendant_leaves"] = "observed_descendant_leaves"
+    gold_assisted: bool = True
+
+
 class HistoricalLineageRelation(WorkbenchModel):
     branch_id: NonEmptyStr
     descendant_variety_id: NonEmptyStr
@@ -62,6 +103,8 @@ class HistoricalFormBinding(WorkbenchModel):
     lineage_relations: tuple[HistoricalLineageRelation, ...] = ()
     source_reference: NonEmptyStr | None = None
     gold_evidence_kind: GoldEvidenceKind | None = None
+    target_validity: TargetValidity | None = None
+    target_validity_note: NonEmptyStr | None = None
     """Whether these forms are attested or are a published reconstruction.
 
     Defaulted `None` so payloads written before the field existed still load.
@@ -93,6 +136,8 @@ class HistoricalBindingRequest(WorkbenchModel):
     lineage_relations: tuple[HistoricalLineageRelation, ...] = ()
     source_reference: NonEmptyStr | None = None
     gold_evidence_kind: GoldEvidenceKind | None = None
+    target_validity: TargetValidity | None = None
+    target_validity_note: NonEmptyStr | None = None
 
 
 class HistoricalBindingFile(WorkbenchModel):
@@ -160,6 +205,8 @@ class TargetConceptEvaluation(WorkbenchModel):
     differently among the candidates it already computed.
     """
 
+    token_diagnostics: TokenEvaluationDiagnostics | None = None
+
 
 class GradedTargetMetrics(WorkbenchModel):
     """Distributions of the graded scores over one node's evaluated concepts.
@@ -216,6 +263,12 @@ class HistoricalTargetEvaluation(WorkbenchModel):
     beam_exact_rate: float = Field(ge=0.0, le=1.0)
     concepts: tuple[TargetConceptEvaluation, ...]
     gold_evidence_kind: GoldEvidenceKind | None = None
+    evaluator_version: Literal["task02-v1"] | None = None
+    target_validity: TargetValidity | None = None
+    target_validity_note: NonEmptyStr | None = None
+    model_committed: bool | None = None
+    descendant_fallback_node_ids: tuple[NonEmptyStr, ...] | None = None
+    selection: SelectionEvaluation | None = None
     """Carried from the binding: is the answer key attested or reconstructed?"""
     failure_fallback: bool = False
     """This node's session failed and its beam is the harness's identity fallback.
@@ -228,4 +281,3 @@ class HistoricalTargetEvaluation(WorkbenchModel):
     """
     graded: GradedTargetMetrics | None = None
     """Distributions of the graded scores; `None` on records that predate them."""
-

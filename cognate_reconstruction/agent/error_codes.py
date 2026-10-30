@@ -83,6 +83,9 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # -- protocol: argument shape, reference, and bookkeeping friction
         # An omitted validation_call_id matched no same-session validation.
         "validation-unresolved": ToolErrorCategory.PROTOCOL,
+        "hypothesis-unknown": ToolErrorCategory.PROTOCOL,
+        "hypothesis-stale": ToolErrorCategory.PROTOCOL,
+        "hypothesis-not-ready": ToolErrorCategory.PROTOCOL,
         # An omitted validation_call_id matched several validations.
         "validation-ambiguous": ToolErrorCategory.PROTOCOL,
         # An explicit validation_call_id names no recorded validation.
@@ -137,6 +140,7 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # contain: a stale or fabricated ID. Stale is the common case — a
         # realignment invalidates every ID derived under the previous overlay.
         "unknown-correspondence-set": ToolErrorCategory.PROTOCOL,
+        "invalid-shared-claim": ToolErrorCategory.PROTOCOL,
         # A commitment's `reflexes` differ from the cited set's own. Split
         # from the support code below on 2026-08-24: they are different
         # mistakes with different fixes — one is a mis-spelled gap, the

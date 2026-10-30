@@ -29,6 +29,9 @@ class AgentEventKind(StrEnum):
     CONTEXT_COMPACTION = "context_compaction"
     PROTOCOL_CORRECTION = "protocol_correction"
     NODE_FAILED = "node_failed"
+    NODE_INTERRUPTED = "node_interrupted"
+    RUN_INTERRUPTED = "run_interrupted"
+    RESUME_SETTINGS_CHANGED = "resume_settings_changed"
     NODE_FALLBACK = "node_fallback"
     CORRESPONDENCE_MAP_DEGRADED = "correspondence_map_degraded"
 

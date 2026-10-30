@@ -1,9 +1,8 @@
-"""LLM provider interfaces and adapters."""
+"""Provider adapters and structured failures."""
+from .litellm_provider import LiteLLMProvider
+from .errors import (ProviderError, ProviderTransientError, ProviderFailureKind,
+                     ProviderFailureMetadata, classify_provider_error)
+from .protocol import LLMProvider
 
-from cognate_reconstruction.agent.providers.litellm_provider import (
-    LiteLLMProvider,
-    ProviderTransientError,
-)
-from cognate_reconstruction.agent.providers.protocol import LLMProvider
-
-__all__ = ["LLMProvider", "LiteLLMProvider", "ProviderTransientError"]
+__all__ = ["LiteLLMProvider", "LLMProvider", "ProviderError", "ProviderTransientError",
+           "ProviderFailureKind", "ProviderFailureMetadata", "classify_provider_error"]

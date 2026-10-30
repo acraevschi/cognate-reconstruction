@@ -104,7 +104,7 @@ def _call(registry, context, name, call_id, **arguments):
 
 def _survey(registry, context, **arguments) -> dict:
     result = _call(
-        registry, context, "summarize_correspondences", "survey", min_support=1,
+        registry, context, "summarize_correspondences", "survey", min_support=1, reading="local",
         **arguments,
     )
     assert result.ok, result.error
@@ -870,6 +870,13 @@ def test_every_set_the_survey_names_is_one_the_assembler_matches() -> None:
     )
     registry = default_tool_registry()
 
+    # The old first-reading survey silently hid this product. units-v1
+    # refuses it explicitly; this invariant then uses a deliberately frozen
+    # one-form-per-concept input, rather than treating it as the full fixture.
+    refused = _call(registry, context, "summarize_correspondences", "too-wide", min_support=1)
+    assert not refused.ok and "32768" in refused.error.message and "no analysis was discarded" in refused.error.message
+    from cognate_reconstruction.alignment.correspondence_sets import one_reading_per_node
+    context = AgentContext(node_id="proto", child_lexicons=one_reading_per_node(dataset.lexicons), aligner=LingPyAligner())
     sets: list[dict] = []
     offset = 0
     while True:
@@ -878,7 +885,7 @@ def test_every_set_the_survey_names_is_one_the_assembler_matches() -> None:
             context,
             "summarize_correspondences",
             f"survey-{offset}",
-            min_support=1,
+            min_support=1, reading="local",
             limit=200,
             offset=offset,
         )

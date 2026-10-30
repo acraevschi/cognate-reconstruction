@@ -1,0 +1,1289 @@
+{
+ "suite_version": "r04-stage-c-v1",
+ "case_id": "stage-c-outgroup-judgment",
+ "stage": "C",
+ "newick": "((a,b)x,c,d,f)r;",
+ "question": "At node x, does the model decide one-sided material by applying the stated parsimony criterion over every outgroup and the supplied cognate units, where the survey's per-column outgroup witness (the R02 deployable rule) is not the answer, and does it mark tied items as unresolved?",
+ "identifiability": "conditional_multi_outgroup_parsimony",
+ "independent_evidence": "Assumptions (stated to the model in the Stage C task block without naming specific reflex tokens): the supplied tree ((a,b)x,c,d,f)r, with c, d and f as three outgroups at the root, and the supplied cognate units are correct; a regularly corresponding reflex in the same cognate unit and position attests the presence of that segment slot without counting as an extra branch change (in the observed forms, c's g, d's k and f's kʰ are the regular reflexes of the final velar slot, and h of the initial slot); within one cognate unit, independent gain and loss of a segment slot or piece cost one event each on a branch (unweighted Fitch parsimony); a form of another cognate unit, or no form, is no observation. With one daughter showing the material and k outgroups observed, m of them showing it: present at x when m > k/2, absent when m < k/2, tied (unresolved) when m = k/2, including k = 0. Values at x come from the daughter that has them.",
+ "equivalent_solutions": "Without the parsimony criterion any mixture of independent gains and losses fits, and proto-symbol relabelings are equivalent. The four tied items (T1-T4 design labels) are excluded from the value denominator; both alternatives are accepted in the raw exact view, and their warranted-uncertainty reading is scored separately.",
+ "observed": {
+  "a": {
+   "y01": [
+    [
+     "cs305",
+     "l o k"
+    ]
+   ],
+   "y02": [
+    [
+     "cs345",
+     "i k"
+    ]
+   ],
+   "y03": [
+    [
+     "cs311",
+     "t a k"
+    ]
+   ],
+   "y04": [
+    [
+     "cs379",
+     "p a k"
+    ]
+   ],
+   "y05": [
+    [
+     "cs397",
+     "s i k"
+    ]
+   ],
+   "y06": [
+    [
+     "cs328",
+     "s u k"
+    ]
+   ],
+   "y07": [
+    [
+     "cs369",
+     "o k"
+    ]
+   ],
+   "y08": [
+    [
+     "cs363",
+     "n e k"
+    ]
+   ],
+   "y09": [
+    [
+     "cs326",
+     "m u k"
+    ]
+   ],
+   "y10": [
+    [
+     "cs388",
+     "n i k"
+    ]
+   ],
+   "y11": [
+    [
+     "cs327",
+     "l u k"
+    ]
+   ],
+   "y12": [
+    [
+     "cs360",
+     "m e k"
+    ]
+   ],
+   "y13": [
+    [
+     "cs353",
+     "t o k"
+    ]
+   ],
+   "y14": [
+    [
+     "cs312",
+     "t e k"
+    ]
+   ],
+   "y15": [
+    [
+     "cs395",
+     "n a k"
+    ]
+   ],
+   "y16": [
+    [
+     "cs346",
+     "m o k"
+    ]
+   ],
+   "y17": [
+    [
+     "cs385",
+     "p i k"
+    ]
+   ],
+   "y18": [
+    [
+     "cs320",
+     "e k"
+    ]
+   ],
+   "y19": [
+    [
+     "cs308",
+     "u k"
+    ]
+   ]
+  },
+  "b": {
+   "y01": [
+    [
+     "cs305",
+     "l o"
+    ]
+   ],
+   "y02": [
+    [
+     "cs345",
+     "h i"
+    ]
+   ],
+   "y03": [
+    [
+     "cs311",
+     "t a"
+    ]
+   ],
+   "y04": [
+    [
+     "cs379",
+     "p a"
+    ]
+   ],
+   "y05": [
+    [
+     "cs397",
+     "s i"
+    ]
+   ],
+   "y06": [
+    [
+     "cs328",
+     "s u"
+    ]
+   ],
+   "y07": [
+    [
+     "cs369",
+     "h o"
+    ]
+   ],
+   "y08": [
+    [
+     "cs363",
+     "n e"
+    ]
+   ],
+   "y09": [
+    [
+     "cs326",
+     "m u"
+    ]
+   ],
+   "y10": [
+    [
+     "cs388",
+     "n i"
+    ]
+   ],
+   "y11": [
+    [
+     "cs327",
+     "l u"
+    ]
+   ],
+   "y12": [
+    [
+     "cs360",
+     "m e"
+    ]
+   ],
+   "y13": [
+    [
+     "cs353",
+     "t o"
+    ]
+   ],
+   "y14": [
+    [
+     "cs312",
+     "t e"
+    ]
+   ],
+   "y15": [
+    [
+     "cs395",
+     "n a"
+    ]
+   ],
+   "y16": [
+    [
+     "cs346",
+     "m o"
+    ]
+   ],
+   "y17": [
+    [
+     "cs385",
+     "p i"
+    ]
+   ],
+   "y18": [
+    [
+     "cs320",
+     "h e"
+    ]
+   ],
+   "y19": [
+    [
+     "cs308",
+     "h u"
+    ]
+   ]
+  },
+  "c": {
+   "y01": [
+    [
+     "cs305",
+     "l o"
+    ]
+   ],
+   "y02": [
+    [
+     "cs381",
+     "w e"
+    ]
+   ],
+   "y03": [
+    [
+     "cs322",
+     "r e g"
+    ]
+   ],
+   "y04": [
+    [
+     "cs379",
+     "p a g"
+    ]
+   ],
+   "y06": [
+    [
+     "cs328",
+     "s u g"
+    ]
+   ],
+   "y07": [
+    [
+     "cs369",
+     "o g"
+    ]
+   ],
+   "y10": [
+    [
+     "cs388",
+     "n i g"
+    ]
+   ],
+   "y11": [
+    [
+     "cs327",
+     "l u g"
+    ]
+   ],
+   "y12": [
+    [
+     "cs360",
+     "m e"
+    ]
+   ],
+   "y13": [
+    [
+     "cs353",
+     "t o"
+    ]
+   ],
+   "y14": [
+    [
+     "cs312",
+     "t e"
+    ]
+   ],
+   "y15": [
+    [
+     "cs395",
+     "n a g"
+    ]
+   ],
+   "y16": [
+    [
+     "cs346",
+     "m o"
+    ]
+   ],
+   "y17": [
+    [
+     "cs385",
+     "p i"
+    ]
+   ],
+   "y19": [
+    [
+     "cs308",
+     "h u"
+    ]
+   ]
+  },
+  "d": {
+   "y01": [
+    [
+     "cs351",
+     "w a k"
+    ]
+   ],
+   "y02": [
+    [
+     "cs345",
+     "h i k"
+    ]
+   ],
+   "y03": [
+    [
+     "cs311",
+     "t a"
+    ]
+   ],
+   "y04": [
+    [
+     "cs332",
+     "w u"
+    ]
+   ],
+   "y05": [
+    [
+     "cs397",
+     "s i k"
+    ]
+   ],
+   "y06": [
+    [
+     "cs328",
+     "s u"
+    ]
+   ],
+   "y07": [
+    [
+     "cs369",
+     "h o k"
+    ]
+   ],
+   "y09": [
+    [
+     "cs331",
+     "j o k"
+    ]
+   ],
+   "y10": [
+    [
+     "cs388",
+     "n i k"
+    ]
+   ],
+   "y12": [
+    [
+     "cs360",
+     "m e k"
+    ]
+   ],
+   "y13": [
+    [
+     "cs353",
+     "t o k"
+    ]
+   ],
+   "y14": [
+    [
+     "cs312",
+     "t e k"
+    ]
+   ],
+   "y15": [
+    [
+     "cs395",
+     "n a"
+    ]
+   ],
+   "y16": [
+    [
+     "cs346",
+     "m o"
+    ]
+   ],
+   "y17": [
+    [
+     "cs385",
+     "p i"
+    ]
+   ],
+   "y19": [
+    [
+     "cs308",
+     "u"
+    ]
+   ]
+  },
+  "f": {
+   "y01": [
+    [
+     "cs323",
+     "j i kʰ"
+    ]
+   ],
+   "y02": [
+    [
+     "cs319",
+     "r a"
+    ]
+   ],
+   "y03": [
+    [
+     "cs311",
+     "t a kʰ"
+    ]
+   ],
+   "y04": [
+    [
+     "cs364",
+     "r o"
+    ]
+   ],
+   "y05": [
+    [
+     "cs397",
+     "s i"
+    ]
+   ],
+   "y06": [
+    [
+     "cs328",
+     "s u"
+    ]
+   ],
+   "y07": [
+    [
+     "cs369",
+     "o"
+    ]
+   ],
+   "y10": [
+    [
+     "cs388",
+     "n i kʰ"
+    ]
+   ],
+   "y12": [
+    [
+     "cs360",
+     "m e kʰ"
+    ]
+   ],
+   "y13": [
+    [
+     "cs353",
+     "t o kʰ"
+    ]
+   ],
+   "y14": [
+    [
+     "cs312",
+     "t e"
+    ],
+    [
+     "cs338",
+     "kʰ a"
+    ]
+   ],
+   "y15": [
+    [
+     "cs395",
+     "n a"
+    ]
+   ],
+   "y16": [
+    [
+     "cs346",
+     "m o kʰ"
+    ]
+   ],
+   "y17": [
+    [
+     "cs385",
+     "p i"
+    ]
+   ],
+   "y18": [
+    [
+     "cs320",
+     "h e"
+    ]
+   ],
+   "y19": [
+    [
+     "cs308",
+     "h u kʰ"
+    ]
+   ]
+  }
+ },
+ "targets": {
+  "x": {
+   "validity": "validated_target",
+   "note": "Conditional on unweighted parsimony on the supplied tree with outgroups c, d and f and the supplied cognate units; tied items carry both alternatives.",
+   "forms": {
+    "y01": [
+     [
+      [
+       "cs305",
+       "l o"
+      ]
+     ]
+    ],
+    "y02": [
+     [
+      [
+       "cs345",
+       "h i k"
+      ]
+     ]
+    ],
+    "y03": [
+     [
+      [
+       "cs311",
+       "t a k"
+      ]
+     ],
+     [
+      [
+       "cs311",
+       "t a"
+      ]
+     ]
+    ],
+    "y04": [
+     [
+      [
+       "cs379",
+       "p a k"
+      ]
+     ]
+    ],
+    "y05": [
+     [
+      [
+       "cs397",
+       "s i k"
+      ]
+     ],
+     [
+      [
+       "cs397",
+       "s i"
+      ]
+     ]
+    ],
+    "y06": [
+     [
+      [
+       "cs328",
+       "s u"
+      ]
+     ]
+    ],
+    "y07": [
+     [
+      [
+       "cs369",
+       "o k"
+      ]
+     ]
+    ],
+    "y08": [
+     [
+      [
+       "cs363",
+       "n e k"
+      ]
+     ],
+     [
+      [
+       "cs363",
+       "n e"
+      ]
+     ]
+    ],
+    "y09": [
+     [
+      [
+       "cs326",
+       "m u k"
+      ]
+     ],
+     [
+      [
+       "cs326",
+       "m u"
+      ]
+     ]
+    ],
+    "y10": [
+     [
+      [
+       "cs388",
+       "n i k"
+      ]
+     ]
+    ],
+    "y11": [
+     [
+      [
+       "cs327",
+       "l u k"
+      ]
+     ]
+    ],
+    "y12": [
+     [
+      [
+       "cs360",
+       "m e k"
+      ]
+     ]
+    ],
+    "y13": [
+     [
+      [
+       "cs353",
+       "t o k"
+      ]
+     ]
+    ],
+    "y14": [
+     [
+      [
+       "cs312",
+       "t e"
+      ]
+     ]
+    ],
+    "y15": [
+     [
+      [
+       "cs395",
+       "n a"
+      ]
+     ]
+    ],
+    "y16": [
+     [
+      [
+       "cs346",
+       "m o"
+      ]
+     ]
+    ],
+    "y17": [
+     [
+      [
+       "cs385",
+       "p i"
+      ]
+     ]
+    ],
+    "y18": [
+     [
+      [
+       "cs320",
+       "h e"
+      ]
+     ]
+    ],
+    "y19": [
+     [
+      [
+       "cs308",
+       "h u"
+      ]
+     ]
+    ]
+   }
+  }
+ },
+ "design_ids": {
+  "y13": "K1",
+  "y16": "K2",
+  "y10": "K3",
+  "y17": "K4",
+  "y11": "K5",
+  "y06": "K6",
+  "y12": "K7",
+  "y14": "K8",
+  "y04": "K9",
+  "y15": "K10",
+  "y01": "K11",
+  "y05": "T1",
+  "y03": "T2",
+  "y09": "T3",
+  "y08": "T4",
+  "y19": "HK1",
+  "y07": "HK2",
+  "y02": "HK3",
+  "y18": "HK4"
+ },
+ "generated_history": "Operator history used to write the forms: x>a h>Ø/#_ and k added after word-final vowels; x>b k>Ø/_# and h added word-initially before vowels; each outgroup shows k (c g, d k, f kʰ) and h per item as the item's parsimony configuration requires, with item-specific gains and losses; c, d, f replace some etyma with other cognate units (w*), and f adds a suffix piece to one etymon (s1). Ties are written to tie.",
+ "opportunities": [
+  {
+   "opportunity_id": "K11-final",
+   "design_id": "K11",
+   "concept_id": "y01",
+   "node_id": "x",
+   "unit": "cs305",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "o",
+   "expected": "absent",
+   "basis": "wrong_scope",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "0",
+    "d": "w1",
+    "f": "w1"
+   },
+   "shallow_rule_errors": [
+    "spelling-majority"
+   ]
+  },
+  {
+   "opportunity_id": "HK3-final",
+   "design_id": "HK3",
+   "concept_id": "y02",
+   "node_id": "x",
+   "unit": "cs345",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "i",
+   "expected": "retain",
+   "basis": "wrong_scope",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "w0",
+    "d": "1",
+    "f": "w0"
+   },
+   "shallow_rule_errors": [
+    "majority-of-three",
+    "spelling-majority"
+   ]
+  },
+  {
+   "opportunity_id": "HK3-initial",
+   "design_id": "HK3",
+   "concept_id": "y02",
+   "node_id": "x",
+   "unit": "cs345",
+   "locus": "initial",
+   "token": "h",
+   "absent_token": "i",
+   "expected": "retain",
+   "basis": "wrong_scope",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "w0",
+    "d": "1",
+    "f": "w0"
+   },
+   "shallow_rule_errors": [
+    "majority-of-three",
+    "spelling-majority"
+   ]
+  },
+  {
+   "opportunity_id": "T2-final",
+   "design_id": "T2",
+   "concept_id": "y03",
+   "node_id": "x",
+   "unit": "cs311",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "a",
+   "expected": "unresolved",
+   "basis": "tie",
+   "class": "unresolved",
+   "pair": null,
+   "outgroup_states": {
+    "c": "w1",
+    "d": "0",
+    "f": "1"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "K9-final",
+   "design_id": "K9",
+   "concept_id": "y04",
+   "node_id": "x",
+   "unit": "cs379",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "a",
+   "expected": "retain",
+   "basis": "wrong_scope",
+   "class": "primary",
+   "pair": "Pe",
+   "outgroup_states": {
+    "c": "1",
+    "d": "w0",
+    "f": "w0"
+   },
+   "shallow_rule_errors": [
+    "majority-of-three",
+    "spelling-majority"
+   ]
+  },
+  {
+   "opportunity_id": "T1-final",
+   "design_id": "T1",
+   "concept_id": "y05",
+   "node_id": "x",
+   "unit": "cs397",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "i",
+   "expected": "unresolved",
+   "basis": "tie",
+   "class": "unresolved",
+   "pair": null,
+   "outgroup_states": {
+    "c": "-",
+    "d": "1",
+    "f": "0"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "K6-final",
+   "design_id": "K6",
+   "concept_id": "y06",
+   "node_id": "x",
+   "unit": "cs328",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "u",
+   "expected": "absent",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pc",
+   "outgroup_states": {
+    "c": "1",
+    "d": "0",
+    "f": "0"
+   },
+   "shallow_rule_errors": [
+    "outgroup-witness"
+   ]
+  },
+  {
+   "opportunity_id": "HK2-final",
+   "design_id": "HK2",
+   "concept_id": "y07",
+   "node_id": "x",
+   "unit": "cs369",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "o",
+   "expected": "retain",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "1",
+    "d": "1",
+    "f": "0"
+   },
+   "shallow_rule_errors": [
+    "unanimous"
+   ]
+  },
+  {
+   "opportunity_id": "HK2-initial",
+   "design_id": "HK2",
+   "concept_id": "y07",
+   "node_id": "x",
+   "unit": "cs369",
+   "locus": "initial",
+   "token": "h",
+   "absent_token": "o",
+   "expected": "absent",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "0",
+    "d": "1",
+    "f": "0"
+   },
+   "shallow_rule_errors": [
+    "outgroup-witness"
+   ]
+  },
+  {
+   "opportunity_id": "T4-final",
+   "design_id": "T4",
+   "concept_id": "y08",
+   "node_id": "x",
+   "unit": "cs363",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "e",
+   "expected": "unresolved",
+   "basis": "tie",
+   "class": "unresolved",
+   "pair": null,
+   "outgroup_states": {
+    "c": "-",
+    "d": "-",
+    "f": "-"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "T3-final",
+   "design_id": "T3",
+   "concept_id": "y09",
+   "node_id": "x",
+   "unit": "cs326",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "u",
+   "expected": "unresolved",
+   "basis": "tie",
+   "class": "unresolved",
+   "pair": null,
+   "outgroup_states": {
+    "c": "-",
+    "d": "w1",
+    "f": "-"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "K3-final",
+   "design_id": "K3",
+   "concept_id": "y10",
+   "node_id": "x",
+   "unit": "cs388",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "i",
+   "expected": "retain",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pb",
+   "outgroup_states": {
+    "c": "1",
+    "d": "1",
+    "f": "1"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "K5-final",
+   "design_id": "K5",
+   "concept_id": "y11",
+   "node_id": "x",
+   "unit": "cs327",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "u",
+   "expected": "retain",
+   "basis": "no_observation",
+   "class": "primary",
+   "pair": "Pc",
+   "outgroup_states": {
+    "c": "1",
+    "d": "-",
+    "f": "-"
+   },
+   "shallow_rule_errors": [
+    "majority-of-three"
+   ]
+  },
+  {
+   "opportunity_id": "K7-final",
+   "design_id": "K7",
+   "concept_id": "y12",
+   "node_id": "x",
+   "unit": "cs360",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "e",
+   "expected": "retain",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pd",
+   "outgroup_states": {
+    "c": "0",
+    "d": "1",
+    "f": "1"
+   },
+   "shallow_rule_errors": [
+    "unanimous"
+   ]
+  },
+  {
+   "opportunity_id": "K1-final",
+   "design_id": "K1",
+   "concept_id": "y13",
+   "node_id": "x",
+   "unit": "cs353",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "o",
+   "expected": "retain",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pa",
+   "outgroup_states": {
+    "c": "0",
+    "d": "1",
+    "f": "1"
+   },
+   "shallow_rule_errors": [
+    "unanimous"
+   ]
+  },
+  {
+   "opportunity_id": "K8-final",
+   "design_id": "K8",
+   "concept_id": "y14",
+   "node_id": "x",
+   "unit": "cs312",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "e",
+   "expected": "absent",
+   "basis": "wrong_scope",
+   "class": "primary",
+   "pair": "Pd",
+   "outgroup_states": {
+    "c": "0",
+    "d": "1",
+    "f": "s1"
+   },
+   "shallow_rule_errors": [
+    "outgroup-witness",
+    "spelling-majority"
+   ]
+  },
+  {
+   "opportunity_id": "K10-final",
+   "design_id": "K10",
+   "concept_id": "y15",
+   "node_id": "x",
+   "unit": "cs395",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "a",
+   "expected": "absent",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pe",
+   "outgroup_states": {
+    "c": "1",
+    "d": "0",
+    "f": "0"
+   },
+   "shallow_rule_errors": [
+    "outgroup-witness"
+   ]
+  },
+  {
+   "opportunity_id": "K2-final",
+   "design_id": "K2",
+   "concept_id": "y16",
+   "node_id": "x",
+   "unit": "cs346",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "o",
+   "expected": "absent",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pa",
+   "outgroup_states": {
+    "c": "0",
+    "d": "0",
+    "f": "1"
+   },
+   "shallow_rule_errors": [
+    "outgroup-witness"
+   ]
+  },
+  {
+   "opportunity_id": "K4-final",
+   "design_id": "K4",
+   "concept_id": "y17",
+   "node_id": "x",
+   "unit": "cs385",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "i",
+   "expected": "absent",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": "Pb",
+   "outgroup_states": {
+    "c": "0",
+    "d": "0",
+    "f": "0"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "HK4-final",
+   "design_id": "HK4",
+   "concept_id": "y18",
+   "node_id": "x",
+   "unit": "cs320",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "e",
+   "expected": "absent",
+   "basis": "no_observation",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "-",
+    "d": "-",
+    "f": "0"
+   },
+   "shallow_rule_errors": []
+  },
+  {
+   "opportunity_id": "HK4-initial",
+   "design_id": "HK4",
+   "concept_id": "y18",
+   "node_id": "x",
+   "unit": "cs320",
+   "locus": "initial",
+   "token": "h",
+   "absent_token": "e",
+   "expected": "retain",
+   "basis": "no_observation",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "-",
+    "d": "-",
+    "f": "1"
+   },
+   "shallow_rule_errors": [
+    "majority-of-three"
+   ]
+  },
+  {
+   "opportunity_id": "HK1-final",
+   "design_id": "HK1",
+   "concept_id": "y19",
+   "node_id": "x",
+   "unit": "cs308",
+   "locus": "final",
+   "token": "k",
+   "absent_token": "u",
+   "expected": "absent",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "0",
+    "d": "0",
+    "f": "1"
+   },
+   "shallow_rule_errors": [
+    "outgroup-witness"
+   ]
+  },
+  {
+   "opportunity_id": "HK1-initial",
+   "design_id": "HK1",
+   "concept_id": "y19",
+   "node_id": "x",
+   "unit": "cs308",
+   "locus": "initial",
+   "token": "h",
+   "absent_token": "u",
+   "expected": "retain",
+   "basis": "outgroup_majority",
+   "class": "primary",
+   "pair": null,
+   "outgroup_states": {
+    "c": "1",
+    "d": "0",
+    "f": "1"
+   },
+   "shallow_rule_errors": [
+    "unanimous"
+   ]
+  }
+ ],
+ "matched_pairs": {
+  "Pa": [
+   "K1-final",
+   "K2-final"
+  ],
+  "Pb": [
+   "K3-final",
+   "K4-final"
+  ],
+  "Pc": [
+   "K5-final",
+   "K6-final"
+  ],
+  "Pd": [
+   "K7-final",
+   "K8-final"
+  ],
+  "Pe": [
+   "K9-final",
+   "K10-final"
+  ]
+ },
+ "shallow_rules": {
+  "outgroup-witness": "R02's frozen deployable rule: keep one-sided material when the survey reports any outgroup witness in that exact column",
+  "unanimous": "keep only when every outgroup with a same-unit form shows it",
+  "majority-of-three": "keep when at least two of the three outgroups show it in the same unit; no form counts as lacking it",
+  "spelling-majority": "keep when at least half of the outgroups with any form for the concept show the reflex by spelling, ignoring cognate units and morph boundaries"
+ },
+ "task_block": [
+  "## Stage C task: the evaluation criterion for this node",
+  "",
+  "This node is a diagnostic for weighing multi-outgroup evidence. Treat the supplied tree and",
+  "the supplied cognate units as correct: a form annotated with a different cognate unit is not",
+  "evidence about this unit. Evidence outside the active children is available through the tools;",
+  "inspect it. Even before higher nodes are reconstructed, you may recognize from the outgroups'",
+  "forms when an outgroup preserves a regularly corresponding reflex in the same cognate unit and",
+  "position (even if shifted in phonetic quality); treat any such regular reflex as attesting the",
+  "presence of that segment slot rather than as an extra branch change. Across the whole supplied",
+  "tree, weigh outgroup attestation against same-unit outgroup absence by preferring the history",
+  "that requires the fewest independent gains and losses of a segment slot or morphological piece",
+  "on the branches, including the branches to the outgroups: a node that has a form in the unit",
+  "but lacks the material is one observation of absence, while a node with no form in that unit",
+  "is no observation. Where this multi-outgroup weighing and any general instruction above or a",
+  "note in a tool result disagree, this criterion governs. Where two histories need the same",
+  "number of gains and losses, the item is unresolved: say so in the rationale and give the",
+  "deciding claim a confidence of 0.5 or lower; either value is then accepted. Give every other",
+  "decision a confidence above 0.5. Decide each etymon and unit on its own evidence.",
+  ""
+ ]
+}

@@ -33,16 +33,18 @@ class BenchmarkBuildReport:
     target_node_ids: tuple[str, ...]
     gold_evidence_kinds: tuple[str, ...]
     gold_form_counts: tuple[int, ...]
+    target_validities: tuple[str, ...] = ()
 
     def summary(self) -> str:
         kinds = ", ".join(
-            f"{node}={kind} ({count} gold form(s))"
-            for node, kind, count in zip(
+            f"{node}={kind} ({count} gold form(s); "
+            f"{self.target_validities[i] if self.target_validities else 'unknown validity'})"
+            for i, (node, kind, count) in enumerate(zip(
                 self.target_node_ids,
                 self.gold_evidence_kinds,
                 self.gold_form_counts,
                 strict=True,
-            )
+            ))
         )
         return (
             f"{self.name}: {self.daughter_count} daughters, "
@@ -167,6 +169,8 @@ def build_benchmark(
                 role=HistoricalFormRole.TARGET,
                 source_reference=target.source_reference,
                 gold_evidence_kind=target.gold_evidence_kind,
+                target_validity=target.target_validity,
+                target_validity_note=target.target_validity_note,
             )
             for target in definition.targets
         )
@@ -199,5 +203,7 @@ def build_benchmark(
             for binding in bindings
         ),
         gold_form_counts=tuple(len(binding.forms) for binding in bindings),
+        target_validities=tuple(binding.target_validity.value if binding.target_validity else "unknown validity"
+                                for binding in bindings),
     )
     return payload, report

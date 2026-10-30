@@ -7,9 +7,19 @@ import math
 from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.evidence import FormAnalysis
+
+
+class BranchCandidateAnalysis(WorkbenchModel):
+    child_id: NonEmptyStr
+    candidate_id: NonEmptyStr
+    segments: tuple[NonEmptyStr, ...]
+    analysis: FormAnalysis | None = None
 
 
 class CandidateDerivation(WorkbenchModel):
+    branch_analyses: tuple[BranchCandidateAnalysis, ...] = ()
+    analysis: FormAnalysis | None = None
     derivation_id: NonEmptyStr
     child_candidate_ids: tuple[NonEmptyStr, ...]
     rule_ids: tuple[NonEmptyStr, ...] = ()
@@ -29,6 +39,7 @@ class CandidateDerivation(WorkbenchModel):
 
 
 class ReconstructionCandidate(WorkbenchModel):
+    analysis: FormAnalysis | None = None
     candidate_id: NonEmptyStr
     segments: tuple[NonEmptyStr, ...] = Field(min_length=1)
     probability: float = Field(ge=0.0, le=1.0)
@@ -37,19 +48,24 @@ class ReconstructionCandidate(WorkbenchModel):
 
     @model_validator(mode="after")
     def validate_finite_scores(self) -> ReconstructionCandidate:
+        if self.analysis is not None:
+            self.analysis.validate_segments(len(self.segments))
         if not math.isfinite(self.probability) or not math.isfinite(self.log_score):
             raise ValueError("candidate probability and log_score must be finite")
         return self
 
 
 class ConceptCandidateDistribution(WorkbenchModel):
+    pre_prune_candidate_count: int | None = Field(default=None, ge=0)
+    pruned_candidate_count: int | None = Field(default=None, ge=0)
     concept_id: NonEmptyStr
     candidates: tuple[ReconstructionCandidate, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def validate_distribution(self) -> ConceptCandidateDistribution:
         candidate_ids = [c.candidate_id for c in self.candidates]
-        segment_sequences = [c.segments for c in self.candidates]
+        segment_sequences = [(c.segments, c.analysis.compatibility_key() if c.analysis else None)
+                             for c in self.candidates]
         if len(set(candidate_ids)) != len(candidate_ids):
             raise ValueError("candidate IDs must be unique within a distribution")
         if len(set(segment_sequences)) != len(segment_sequences):

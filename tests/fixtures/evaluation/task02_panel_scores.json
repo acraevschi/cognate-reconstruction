@@ -1,0 +1,391 @@
+{
+  "provenance": {
+    "source_path": "runs/sweeps/burmish-gemini-t36-r2/seed-01/result.json",
+    "sha256": "7d3ef8e685eb696d24e326f4ac1b934f3ac583b8cc0eddd992442a5cce42b5a7",
+    "extraction": "Top score records only, all alternatives; no claimed beam replay or inferred memberships."
+  },
+  "historical_target_evaluations": [
+    {
+      "node_id": "proto_burmish",
+      "source_variety_id": "hillburmish:ProtoBurmish",
+      "concepts": [
+        {
+          "concept_id": "1350",
+          "target_form_ids": [
+            "hillburmish:ProtoBurmish-308_monkey-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "m",
+              "j",
+              "u",
+              "k",
+              "⁴"
+            ]
+          ],
+          "top_candidate_id": "proto_burmish:1350:a48a4df6563d",
+          "top_candidate_segments": [
+            "m",
+            "j",
+            "u",
+            "k",
+            "³¹"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "m",
+            "j",
+            "u",
+            "k",
+            "⁴"
+          ],
+          "top_edit_distance": 1,
+          "top_normalized_edit_distance": 0.2,
+          "top_bcubed_precision": 1.0,
+          "top_bcubed_recall": 1.0,
+          "top_bcubed_f1": 1.0,
+          "beam_best_candidate_id": "proto_burmish:1350:a48a4df6563d",
+          "beam_best_candidate_segments": [
+            "m",
+            "j",
+            "u",
+            "k",
+            "³¹"
+          ],
+          "beam_best_edit_distance": 1,
+          "beam_best_normalized_edit_distance": 0.2
+        },
+        {
+          "concept_id": "1382",
+          "target_form_ids": [
+            "hillburmish:ProtoBurmish-578_needle-1",
+            "hillburmish:ProtoBurmish-578_needle-2"
+          ],
+          "target_segment_alternatives": [
+            [
+              "ˀŋ",
+              "a",
+              "p",
+              "⁴"
+            ],
+            [
+              "ʔ",
+              "a",
+              "p",
+              "⁴"
+            ]
+          ],
+          "top_candidate_id": "proto_burmish:1382:5c52a2beedca",
+          "top_candidate_segments": [
+            "a",
+            "p",
+            "⁵⁵"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "ʔ",
+            "a",
+            "p",
+            "⁴"
+          ],
+          "top_edit_distance": 2,
+          "top_normalized_edit_distance": 0.5,
+          "top_bcubed_precision": 1.0,
+          "top_bcubed_recall": 1.0,
+          "top_bcubed_f1": 1.0,
+          "beam_best_candidate_id": "proto_burmish:1382:5c52a2beedca",
+          "beam_best_candidate_segments": [
+            "a",
+            "p",
+            "⁵⁵"
+          ],
+          "beam_best_edit_distance": 2,
+          "beam_best_normalized_edit_distance": 0.5
+        },
+        {
+          "concept_id": "406",
+          "target_form_ids": [
+            "hillburmish:ProtoBurmish-171_oldman-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "dz",
+              "a",
+              "²"
+            ]
+          ],
+          "top_candidate_id": "proto_burmish:406:7cd062d4d577",
+          "top_candidate_segments": [
+            "m",
+            "w",
+            "a",
+            "ŋ",
+            "³¹",
+            "+",
+            "ts",
+            "ɔ",
+            "³¹"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "dz",
+            "a",
+            "²"
+          ],
+          "top_edit_distance": 8,
+          "top_normalized_edit_distance": 0.8888888888888888,
+          "top_bcubed_precision": 0.8888888888888888,
+          "top_bcubed_recall": 0.4444444444444444,
+          "top_bcubed_f1": 0.5925925925925926,
+          "beam_best_candidate_id": "proto_burmish:406:7cd062d4d577",
+          "beam_best_candidate_segments": [
+            "m",
+            "w",
+            "a",
+            "ŋ",
+            "³¹",
+            "+",
+            "ts",
+            "ɔ",
+            "³¹"
+          ],
+          "beam_best_edit_distance": 8,
+          "beam_best_normalized_edit_distance": 0.8888888888888888
+        },
+        {
+          "concept_id": "81",
+          "target_form_ids": [
+            "hillburmish:ProtoBurmish-899_fathom-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "l",
+              "a",
+              "m",
+              "¹"
+            ]
+          ],
+          "top_candidate_id": "proto_burmish:81:b575892fecab",
+          "top_candidate_segments": [
+            "l",
+            "a",
+            "m",
+            "⁵⁵"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "l",
+            "a",
+            "m",
+            "¹"
+          ],
+          "top_edit_distance": 1,
+          "top_normalized_edit_distance": 0.25,
+          "top_bcubed_precision": 1.0,
+          "top_bcubed_recall": 1.0,
+          "top_bcubed_f1": 1.0,
+          "beam_best_candidate_id": "proto_burmish:81:b575892fecab",
+          "beam_best_candidate_segments": [
+            "l",
+            "a",
+            "m",
+            "⁵⁵"
+          ],
+          "beam_best_edit_distance": 1,
+          "beam_best_normalized_edit_distance": 0.25
+        },
+        {
+          "concept_id": "96",
+          "target_form_ids": [
+            "hillburmish:ProtoBurmish-1536_crawlofpeople-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "d",
+              "o",
+              "²"
+            ]
+          ],
+          "top_candidate_id": "proto_burmish:96:80e763cb010f",
+          "top_candidate_segments": [
+            "w",
+            "t",
+            "w",
+            "o",
+            "³¹"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "d",
+            "o",
+            "²"
+          ],
+          "top_edit_distance": 4,
+          "top_normalized_edit_distance": 0.8,
+          "top_bcubed_precision": 0.8,
+          "top_bcubed_recall": 0.8,
+          "top_bcubed_f1": 0.8000000000000002,
+          "beam_best_candidate_id": "proto_burmish:96:80e763cb010f",
+          "beam_best_candidate_segments": [
+            "w",
+            "t",
+            "w",
+            "o",
+            "³¹"
+          ],
+          "beam_best_edit_distance": 4,
+          "beam_best_normalized_edit_distance": 0.8
+        }
+      ],
+      "child_node_ids": [
+        "maruic",
+        "burmic"
+      ]
+    },
+    {
+      "node_id": "burmic",
+      "source_variety_id": "hillburmish:OldBurmese",
+      "concepts": [
+        {
+          "concept_id": "1350",
+          "target_form_ids": [
+            "hillburmish:OldBurmese-308_monkey-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "m",
+              "j",
+              "ɔ",
+              "k",
+              "⁴"
+            ]
+          ],
+          "top_candidate_id": "burmic:1350:edff4f8f07b5",
+          "top_candidate_segments": [
+            "m",
+            "j",
+            "u",
+            "ʔ",
+            "⁴"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "m",
+            "j",
+            "ɔ",
+            "k",
+            "⁴"
+          ],
+          "top_edit_distance": 2,
+          "top_normalized_edit_distance": 0.4,
+          "top_bcubed_precision": 1.0,
+          "top_bcubed_recall": 1.0,
+          "top_bcubed_f1": 1.0,
+          "beam_best_candidate_id": "burmic:1350:edff4f8f07b5",
+          "beam_best_candidate_segments": [
+            "m",
+            "j",
+            "u",
+            "ʔ",
+            "⁴"
+          ],
+          "beam_best_edit_distance": 2,
+          "beam_best_normalized_edit_distance": 0.4
+        },
+        {
+          "concept_id": "1382",
+          "target_form_ids": [
+            "hillburmish:OldBurmese-578_needle-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "a",
+              "p",
+              "⁴"
+            ]
+          ],
+          "top_candidate_id": "burmic:1382:e93cff46f7e6",
+          "top_candidate_segments": [
+            "a",
+            "p",
+            "⁴"
+          ],
+          "top_exact_match": true,
+          "beam_exact_match": true,
+          "nearest_target_segments": [
+            "a",
+            "p",
+            "⁴"
+          ],
+          "top_edit_distance": 0,
+          "top_normalized_edit_distance": 0.0,
+          "top_bcubed_precision": 1.0,
+          "top_bcubed_recall": 1.0,
+          "top_bcubed_f1": 1.0,
+          "beam_best_candidate_id": "burmic:1382:e93cff46f7e6",
+          "beam_best_candidate_segments": [
+            "a",
+            "p",
+            "⁴"
+          ],
+          "beam_best_edit_distance": 0,
+          "beam_best_normalized_edit_distance": 0.0
+        },
+        {
+          "concept_id": "96",
+          "target_form_ids": [
+            "hillburmish:OldBurmese-1536_crawlofpeople-1"
+          ],
+          "target_segment_alternatives": [
+            [
+              "t",
+              "ʊ",
+              "⁵"
+            ]
+          ],
+          "top_candidate_id": "burmic:96:80e763cb010f",
+          "top_candidate_segments": [
+            "w",
+            "t",
+            "w",
+            "o",
+            "³¹"
+          ],
+          "top_exact_match": false,
+          "beam_exact_match": false,
+          "nearest_target_segments": [
+            "t",
+            "ʊ",
+            "⁵"
+          ],
+          "top_edit_distance": 4,
+          "top_normalized_edit_distance": 0.8,
+          "top_bcubed_precision": 1.0,
+          "top_bcubed_recall": 1.0,
+          "top_bcubed_f1": 1.0,
+          "beam_best_candidate_id": "burmic:96:80e763cb010f",
+          "beam_best_candidate_segments": [
+            "w",
+            "t",
+            "w",
+            "o",
+            "³¹"
+          ],
+          "beam_best_edit_distance": 4,
+          "beam_best_normalized_edit_distance": 0.8
+        }
+      ],
+      "child_node_ids": [
+        "hillburmish:AchangLongchuan",
+        "hillburmish:Xiandao",
+        "hillburmish:Rangoon"
+      ]
+    }
+  ]
+}

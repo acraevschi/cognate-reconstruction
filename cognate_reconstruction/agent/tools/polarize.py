@@ -221,6 +221,8 @@ def polarize(
         )
 
     selected_concepts = set(arguments.concept_ids)
+    if arguments.respect_cognate_sets and len(arguments.child_ids) >= 2:
+        return _polarize_local(arguments, context, outside)
     lexicons = [
         restrict(lexicon, selected_concepts) for lexicon in child_lexicons
     ]
@@ -355,3 +357,66 @@ def polarize(
 
 
 __all__ = ["polarize"]
+
+
+
+def _polarize_local(arguments, context, outside):
+    from cognate_reconstruction.alignment.units import evidence_map
+    from cognate_reconstruction.alignment.correspondence_sets import build_correspondence_sets
+    from cognate_reconstruction.agent.tools.inventory_evidence import column_bindings
+    from cognate_reconstruction.agent.tools.local_witnesses import local_witnesses
+    lexicons = tuple(context.evidence_lexicon(n, arguments.segmentation_overlay_id) for n in arguments.child_ids)
+    try:
+        reading, _ = evidence_map(lexicons, context.aligner, unit_orders=arguments.unit_orders,
+            overrides=context.alignment_overrides(arguments.alignment_overlay_id),
+            overlay_ids=(arguments.segmentation_overlay_id, arguments.alignment_overlay_id), cache=context.unit_alignment_cache)
+        inventory = build_correspondence_sets(reading, node_ids=arguments.child_ids)
+    except ValueError as error:
+        raise ToolInputError(str(error), code='alignment-failed') from error
+    kind = 'recurrence'
+    selected_sets = None
+    if arguments.set_id:
+        local = next((s for s in inventory.sets if s.set_id == arguments.set_id), None)
+        pattern = next((s for s in inventory.recurrence_patterns if s.set_id == arguments.set_id), None)
+        known = local or pattern
+        if known is None or known.segments != arguments.correspondence:
+            raise ToolInputError('polarize set_id is stale or disagrees with correspondence', code='unknown-correspondence-set')
+        kind = 'local' if local else 'recurrence'
+        selected_sets = set(known.member_set_ids or (known.set_id,))
+    bindings = {b.column_id: b for b in column_bindings(reading, arguments.child_ids)}
+    ids = set()
+    concepts = set()
+    for alignment in reading.alignments:
+        if arguments.concept_ids and alignment.concept_id not in arguments.concept_ids:
+            continue
+        by_node = {m.variety_id: (m,) for m in alignment.members}
+        for index, col in enumerate(alignment.evidence_columns):
+            if selected_sets is not None and bindings[col.column_id].set_id not in selected_sets:
+                continue
+            if matching_column(by_node, index, arguments.child_ids, arguments.correspondence, arguments.position):
+                ids.add(col.column_id)
+                concepts.add(alignment.concept_id)
+    absences = {}
+    witnesses, _ = local_witnesses(context, reading, outside,
+        segmentation_overlay_id=arguments.segmentation_overlay_id, column_ids=ids, absence_observations=absences)
+    reports = []
+    for item in outside:
+        local = [w for w in witnesses if w.node_id == item.node_id]
+        segments = sorted({w.segment for w in local})
+        missing = [(key, value) for key, value in absences.items() if value[1] == item.node_id]
+        reports.append(PolarizeNodeReport(node_id=item.node_id, relation=item.relation, kind=item.kind,
+            is_attestation=item.kind is EvidenceKind.OBSERVED, descendant_leaf_ids=item.descendant_leaf_ids,
+            columns_covered=len({w.evidence_column_id for w in local} | {key[0] for key, _ in missing}), observations=tuple(
+                PolarizeSegmentObservation(segment=t, count=sum(w.segment == t for w in local),
+                    example_concept_ids=tuple(sorted({w.concept_id for w in local if w.segment == t}))[:MAX_CORRESPONDENCE_EXAMPLES]) for t in segments) + ((PolarizeSegmentObservation(segment=None, count=len(missing),
+                    example_concept_ids=tuple(sorted({value[0] for _, value in missing}))[:MAX_CORRESPONDENCE_EXAMPLES]),) if missing else ())))
+    nodes = tuple(reports)
+    candidates = tuple(PolarizeCandidateSummary(segment=t,
+        observed_node_ids=tuple(n.node_id for n in nodes if n.kind is EvidenceKind.OBSERVED and any(o.segment == t for o in n.observations)),
+        reconstructed_node_ids=tuple(n.node_id for n in nodes if n.kind is EvidenceKind.RECONSTRUCTED and any(o.segment == t for o in n.observations)))
+        for t in dict.fromkeys(t for t in arguments.correspondence if t is not None))
+    return PolarizeResult(reading=kind, set_id=arguments.set_id, witnesses=witnesses[:24], witness_count=len(witnesses), witnesses_truncated=len(witnesses)>24,
+        child_ids=arguments.child_ids, correspondence=arguments.correspondence, columns_matched=len(ids),
+        matched_concept_count=len(concepts), matched_concept_ids=tuple(sorted(concepts))[:MAX_POLARIZE_EXAMPLE_CONCEPTS],
+        nodes=nodes, candidates=candidates, segmentation_overlay_id=arguments.segmentation_overlay_id,
+        note=_note(len(ids), arguments.child_ids, outside))

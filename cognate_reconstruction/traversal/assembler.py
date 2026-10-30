@@ -77,11 +77,13 @@ from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
     ColumnResolution,
     CommittedProtoInventory,
+    CompetingChoice,
     ConceptAssemblyReport,
     CorrespondenceCommitment,
     ResidueDisposition,
     ResiduePolicy,
     SegmentRestoration,
+    claim_key,
 )
 from cognate_reconstruction.schemas.lexicon import LanguageLexicon, LexicalForm
 from cognate_reconstruction.schemas.rules import (
@@ -102,6 +104,9 @@ from cognate_reconstruction.traversal.beam import (
     normalize_and_prune,
 )
 from cognate_reconstruction.traversal.reconstructor import RuleBasedReconstructor
+from cognate_reconstruction.alignment.units import align_tuple, evidence_map, MAX_UNIT_TUPLES, source_analyses
+from cognate_reconstruction.traversal.beam import beam_to_lexicon
+from cognate_reconstruction.schemas.evidence import FormAnalysis, EvidencePiece, AssemblyWork, digest
 
 RESIDUE_COLUMN_CONFIDENCE = 0.25
 """Mass a column carries when the residue policy resolved it, not a set.
@@ -435,7 +440,7 @@ def inventory_contrast_reductions(
 
     Read straight off the inventory rather than inferred from a mapping, which
     is both more direct than applying a cascade and better evidence: it sees the
-    merger *as* a merger. Two sets carrying one `proto_segment` whose
+    merger *as* a merger. Sets with distinct reflex tuples carrying one `proto_segment` whose
     conditionings are not both present are a merger — a distinction some child
     makes that the parent does not; a non-null reflex against a null
     `proto_segment` is a deletion.
@@ -457,6 +462,8 @@ def inventory_contrast_reductions(
         # it, so an unconditioned member is what makes this a lost distinction.
         unconditioned = [item for item in items if item.conditioning is None]
         if len(unconditioned) < 2:
+            continue
+        if len({item.reflexes for item in unconditioned}) < 2:
             continue
         for item in unconditioned:
             merged_ids[item.set_id] = (
@@ -500,10 +507,14 @@ class AssemblyPlan:
     restorations: Mapping[str, Mapping[int, SegmentRestoration]]
     overrides: Mapping[str, tuple[AlignmentOverride, ...]]
     by_reflexes: Mapping[tuple[str | None, ...], tuple[CorrespondenceCommitment, ...]]
+    column_bindings: Mapping[str, object] = field(default_factory=dict)
+    unit_orders: tuple = ()
+    overlay_ids: tuple = (None, None)
+    contract_version: str = "legacy"
 
     @property
     def asserts_nothing(self) -> bool:
-        return not (self.commitments or self.dispositions or self.restorations)
+        return not (self.commitments or self.dispositions or self.restorations or self.unit_orders)
 
 
 def build_plan(
@@ -515,6 +526,7 @@ def build_plan(
     residue_dispositions: Sequence[ResidueDisposition] = (),
     restorations: Sequence[SegmentRestoration] = (),
     overrides: Sequence[AlignmentOverride] = (),
+    inventory: CommittedProtoInventory | None = None,
 ) -> AssemblyPlan:
     """Index one inventory for assembly. Pure bookkeeping, no judgement."""
     columns = tuple(child_node_ids)
@@ -525,13 +537,17 @@ def build_plan(
         by_reflexes[tuple(item.reflexes)].append(item)
     restored: dict[str, dict[int, SegmentRestoration]] = defaultdict(dict)
     for item in restorations:
-        restored[item.concept_id][item.before_column_index] = item
+        restored[item.concept_id][item.before_evidence_column_id or item.before_column_index] = item
     by_concept: dict[str, list[AlignmentOverride]] = defaultdict(list)
     for item in overrides:
         by_concept[item.concept_id].append(item)
     return AssemblyPlan(
         child_node_ids=columns,
         commitments=tuple(commitments),
+        column_bindings={b.column_id: b for b in inventory.column_bindings} if inventory else {},
+        unit_orders=inventory.request.unit_orders if inventory else (),
+        overlay_ids=(inventory.request.segmentation_overlay_id, inventory.request.alignment_overlay_id) if inventory else (None, None),
+        contract_version=inventory.evidence_contract_version if inventory else "legacy",
         residue_policy=residue_policy,
         residue_witness_index=(
             columns.index(residue_witness_child_id)
@@ -540,7 +556,7 @@ def build_plan(
             else None
         ),
         dispositions={
-            (item.concept_id, item.column_index): item
+            (item.concept_id, item.evidence_column_id or item.column_index): item
             for item in residue_dispositions
         },
         restorations={key: dict(value) for key, value in restored.items()},
@@ -567,8 +583,10 @@ def _residue_outcome(
     concept_id: str,
     column_index: int,
     reflexes: tuple[str | None, ...],
+    evidence_column_id: str | None = None,
 ) -> ColumnOutcome:
-    disposition = plan.dispositions.get((concept_id, column_index))
+    disposition = (plan.dispositions.get((concept_id, evidence_column_id))
+                   or plan.dispositions.get((concept_id, column_index)))
     if disposition is not None:
         proto = disposition.proto_segment
         return ColumnOutcome(
@@ -606,6 +624,7 @@ def _matched_outcome(
     *,
     conditioned: bool,
     competing: Sequence[str] = (),
+    rivals: Sequence[CorrespondenceCommitment] = (),
 ) -> ColumnOutcome:
     proto = item.proto_segment
     return ColumnOutcome(
@@ -616,6 +635,20 @@ def _matched_outcome(
             proto_segment=proto,
             resolved_by="conditioned_set" if conditioned else "set",
             competing_set_ids=tuple(competing),
+            competing_choices=tuple(
+                CompetingChoice(
+                    set_id=rival.set_id,
+                    proto_segment=rival.proto_segment,
+                    confidence=rival.confidence,
+                    conditioning=rival.conditioning,
+                )
+                for rival in rivals
+            ),
+            decided_by_equal_confidence=any(
+                rival.confidence == item.confidence
+                and rival.proto_segment != item.proto_segment
+                for rival in rivals
+            ),
         ),
         log_mass=math.log(item.confidence),
         reading=frozenset() if proto is None else frozenset({proto}),
@@ -627,13 +660,16 @@ class _ColumnStats:
     unaccounted: int = 0
     residue_policy_decided: int = 0
     tie_broken: int = 0
-    ambiguous: list[ColumnResolution] = field(default_factory=list)
+    """Historical `columns_decided_by_tie_break`: another distinct set matched."""
+    equal_confidence: int = 0
+    competing: int = 0
 
 
 def resolve_columns(
     rows: Sequence[Sequence[str | None]],
     concept_id: str,
     plan: AssemblyPlan,
+    *, evidence_columns: Sequence = (),
 ) -> tuple[tuple[ColumnOutcome, ...], _ColumnStats]:
     """Resolve every column of one alignment against a committed inventory.
 
@@ -647,6 +683,16 @@ def resolve_columns(
     outcomes: dict[int, ColumnOutcome] = {}
     deferred: list[int] = []
 
+    def column_matches(column, reflexes):
+        if plan.contract_version == "legacy":
+            return plan.by_reflexes.get(reflexes, ())
+        binding = plan.column_bindings.get(evidence_columns[column].column_id)
+        if binding is None:
+            return ()
+        if tuple(binding.reflexes) != reflexes:
+            raise ValueError("bound evidence column changed reflexes; re-survey and preview")
+        return tuple(item for item in plan.commitments if item.set_id == binding.set_id)
+
     for column in range(width):
         reflexes = tuple(
             row[column] if column < len(row) else None for row in rows
@@ -654,7 +700,7 @@ def resolve_columns(
         if all(segment is None for segment in reflexes):
             continue
         reflexes_by_column[column] = reflexes
-        matches = plan.by_reflexes.get(reflexes, ())
+        matches = column_matches(column, reflexes)
         if any(item.conditioning is not None for item in matches):
             deferred.append(column)
             continue
@@ -663,7 +709,7 @@ def resolve_columns(
                 matches[0], column, reflexes, conditioned=False
             )
         else:
-            outcomes[column] = _residue_outcome(plan, concept_id, column, reflexes)
+            outcomes[column] = _residue_outcome(plan, concept_id, column, reflexes, evidence_columns[column].column_id if evidence_columns else None)
             stats.unaccounted += 1
             stats.residue_policy_decided += 1
 
@@ -681,7 +727,7 @@ def resolve_columns(
 
     for column in deferred:
         reflexes = reflexes_by_column[column]
-        matches = plan.by_reflexes.get(reflexes, ())
+        matches = column_matches(column, reflexes)
         satisfied: list[CorrespondenceCommitment] = []
         for item in matches:
             if item.conditioning is None:
@@ -691,15 +737,17 @@ def resolve_columns(
                 satisfied.append(item)
         if satisfied:
             best = _choose_column_commitment(satisfied)
-            competing = tuple(
-                item.set_id for item in satisfied if item.set_id != best.set_id
-            )
+            rivals = _competing_choices(best, satisfied)
+            competing = tuple(dict.fromkeys(
+                item.set_id for item in rivals if item.set_id != best.set_id
+            ))
             outcome = _matched_outcome(
-                best, column, reflexes, conditioned=True, competing=competing
+                best, column, reflexes, conditioned=True, competing=competing,
+                rivals=rivals,
             )
-            if competing:
-                stats.tie_broken += 1
-                stats.ambiguous.append(outcome.resolution)
+            stats.tie_broken += bool(competing)
+            stats.competing += bool(rivals)
+            stats.equal_confidence += outcome.resolution.decided_by_equal_confidence
             outcomes[column] = outcome
             continue
         fallback = [item for item in matches if item.conditioning is None]
@@ -708,12 +756,59 @@ def resolve_columns(
                 fallback[0], column, reflexes, conditioned=False
             )
             continue
-        outcomes[column] = _residue_outcome(plan, concept_id, column, reflexes)
+        outcomes[column] = _residue_outcome(plan, concept_id, column, reflexes, evidence_columns[column].column_id if evidence_columns else None)
         stats.unaccounted += 1
         stats.residue_policy_decided += 1
 
+    if evidence_columns:
+        for column, outcome in tuple(outcomes.items()):
+            evidence = evidence_columns[column]
+            resolution = outcome.resolution.model_copy(update={
+                "evidence_column_id": evidence.column_id, "unit_id": evidence.unit_id,
+                "source_positions": evidence.sources,
+                "unmatched_reason": ("no commitment for this exact evidence column"
+                    if outcome.resolution.resolved_by == "residue_policy" else None)})
+            outcomes[column] = ColumnOutcome(resolution, outcome.log_mass, outcome.reading)
     ordered = tuple(outcomes[column] for column in sorted(outcomes))
     return ordered, stats
+
+
+def _choice_identity(
+    item: CorrespondenceCommitment,
+) -> tuple[str, str | None, str | None]:
+    """What makes two applicable claims different choices.
+
+    Not `set_id` alone: units-v2 lets one local set carry several conditioned
+    values, and two of them can hold in the same column. Confidence and
+    rationale are not part of it — they grade a choice, they do not make it a
+    different one.
+    """
+    return (*claim_key(item), item.proto_segment)
+
+
+def _competing_choices(
+    best: CorrespondenceCommitment,
+    satisfied: Sequence[CorrespondenceCommitment],
+) -> tuple[CorrespondenceCommitment, ...]:
+    """Distinct applicable choices other than the one the column emitted.
+
+    Ordered by the resolution key, so the runner-up comes first. A duplicate of
+    the winner's choice identity, or of an already-listed rival, is not a
+    second competitor.
+    """
+    seen = {_choice_identity(best)}
+    rivals: list[CorrespondenceCommitment] = []
+    for item in sorted(satisfied, key=_column_resolution_key):
+        identity = _choice_identity(item)
+        if identity in seen:
+            continue
+        seen.add(identity)
+        rivals.append(item)
+    return tuple(rivals)
+
+
+def _column_resolution_key(item: CorrespondenceCommitment):
+    return (-item.confidence, item.proto_segment or "", item.set_id)
 
 
 def _choose_column_commitment(
@@ -727,10 +822,7 @@ def _choose_column_commitment(
     every such column so a session can condition one of the sets, split a set, or
     say in its summary that the evidence does not decide.
     """
-    return min(
-        satisfied,
-        key=lambda item: (-item.confidence, item.proto_segment or "", item.set_id),
-    )
+    return min(satisfied, key=_column_resolution_key)
 
 
 def _assemble_segments(
@@ -762,9 +854,10 @@ class ConceptAssembly:
     """One concept's winning assembly, and everything a report needs from it."""
 
     report: ConceptAssemblyReport
-    ambiguous_columns: tuple[ColumnResolution, ...]
     residue_policy_columns: int
     tie_broken_columns: int
+    equal_confidence_columns: int
+    competing_choice_columns: int
     anchors_available: bool
 
 
@@ -788,6 +881,7 @@ class ProtoInventoryAssembler:
         aligner: AlignmentProvider | None = None,
         engine: RuleEngine | None = None,
         max_candidate_tuples: int | None = None,
+        semantic_cache: dict | None = None,
     ) -> None:
         if beam_width < 1:
             raise ValueError("beam_width must be positive")
@@ -806,6 +900,7 @@ class ProtoInventoryAssembler:
             else 0.0
         )
         self.max_candidate_tuples = max_candidate_tuples or _tuple_budget(beam_width)
+        self.semantic_cache = semantic_cache
         # Identity is not assembly. An inventory that asserts nothing is walked
         # through the existing rule path with no rules, which is what keeps the
         # empty commit and the node-failure fallback bit-for-bit identical to
@@ -838,10 +933,10 @@ class ProtoInventoryAssembler:
         what `build_correspondence_sets` does with an absent node, and it is
         right on the evidence: neither a gap nor an absence attests anything.
         """
-        key = tuple(
+        key = (digest([plan.overlay_ids, [o.model_dump(mode="json") for o in plan.overrides.get(concept_id, ())]]), tuple(
             (child_id, segments_by_child.get(child_id))
             for child_id in plan.child_node_ids
-        )
+        ))
         cached = cache.get(key)
         if cached is not None:
             return cached
@@ -919,6 +1014,7 @@ class ProtoInventoryAssembler:
     def _candidate_tuples(
         self,
         distributions: Sequence[tuple[str, object]],
+        *, preserve_all: bool = False,
     ) -> list[tuple[tuple[str, str, tuple[str, ...], float], ...]]:
         """The bounded Cartesian product over the attesting children's beams.
 
@@ -927,6 +1023,9 @@ class ProtoInventoryAssembler:
         walks, with the transform replaced by an assembly that needs the whole
         tuple at once.
         """
+        required = math.prod(len(distribution.candidates) for _, distribution in distributions)
+        if preserve_all and required > MAX_UNIT_TUPLES:
+            raise ValueError(f"assembly requires {required} candidate-analysis tuples; limit {MAX_UNIT_TUPLES}; no analysis discarded")
         frontier: list[tuple[tuple[tuple[str, str, tuple[str, ...], float], ...], float]] = [
             ((), 0.0)
         ]
@@ -953,7 +1052,7 @@ class ProtoInventoryAssembler:
                     tuple(entry[2] for entry in item[0]),
                 )
             )
-            frontier = expanded[: self.max_candidate_tuples]
+            frontier = expanded if preserve_all else expanded[: self.max_candidate_tuples]
         return [partial for partial, _score in frontier]
 
     def assemble_concept(
@@ -987,7 +1086,13 @@ class ProtoInventoryAssembler:
         raw: list[RawCandidate] = []
         best: dict[tuple[str, ...], tuple[float, ConceptAssembly]] = {}
         pass_through = len(distributions) < 2
-        for candidate_tuple in self._candidate_tuples(distributions):
+        analyses_by_id = {candidate.candidate_id: candidate.analysis
+                          for _, distribution in distributions for candidate in distribution.candidates}
+        self.work_counts = getattr(self, "work_counts", {"candidate_tuples": 0, "alignment_calls": 0, "cache_hits": 0})
+        for candidate_tuple in self._candidate_tuples(distributions, preserve_all=plan.contract_version != "legacy"):
+            self.work_counts["candidate_tuples"] += 1
+            analysis = None
+            evidence_columns = ()
             segments_by_child = {
                 child_id: segments
                 for child_id, _candidate_id, segments, _score in candidate_tuple
@@ -1000,17 +1105,35 @@ class ProtoInventoryAssembler:
                 rows: tuple[tuple[str | None, ...], ...] = ()
                 column_mass = 0.0
             else:
-                rows = self.align_candidate_tuple(
-                    concept_id, segments_by_child, plan, cache
-                )
-                outcomes, stats = resolve_columns(rows, concept_id, plan)
-                assembled = _assemble_segments(
-                    outcomes, plan.restorations.get(concept_id, {})
-                )
+                if plan.contract_version == "units-v2":
+                    forms = tuple(LexicalForm(form_id=candidate_id, variety_id=child_id,
+                        concept_id=concept_id, segments=segments, analysis=analyses_by_id[candidate_id])
+                        for child_id, candidate_id, segments, _ in candidate_tuple)
+                    forms = tuple(f.model_copy(update={"analysis": source_analyses(f)[0]}) for f in forms)
+                    reading = align_tuple(forms, plan.child_node_ids, self.aligner,
+                        unit_order=next((c for c in plan.unit_orders if c.concept_id == concept_id), None),
+                        overrides=plan.overrides.get(concept_id, ()), overlay_ids=plan.overlay_ids,
+                        cache=cache, counters=self.work_counts)
+                    rows = tuple(member.aligned_segments for member in reading.members)
+                    evidence_columns = reading.evidence_columns
+                else:
+                    rows = self.align_candidate_tuple(concept_id, segments_by_child, plan, cache)
+                outcomes, stats = resolve_columns(rows, concept_id, plan, evidence_columns=evidence_columns)
+                active_restorations = _restorations_for(plan, concept_id, evidence_columns)
+                assembled = _assemble_segments(outcomes, active_restorations)
                 column_mass = sum(outcome.log_mass for outcome in outcomes) + (
                     RESTORATION_LOG_MASS
-                    * len(plan.restorations.get(concept_id, {}))
+                    * len(active_restorations)
                 )
+            if plan.contract_version == "units-v2" and assembled:
+                if pass_through:
+                    analysis = analyses_by_id[candidate_tuple[0][1]]
+                else:
+                    analysis = _assembled_analysis(outcomes, evidence_columns,
+                        active_restorations, forms)
+                    analysis = analysis.model_copy(update={"order_status":
+                        "model_claim" if any(c.concept_id == concept_id for c in plan.unit_orders)
+                        else "unresolved" if len(analysis.pieces) > 1 else "source"})
             if not assembled:
                 # Every column reconstructed nothing. The concept has no parent
                 # form under this reading; it is dropped rather than emitted as
@@ -1040,6 +1163,8 @@ class ProtoInventoryAssembler:
                                 for _child, candidate_id, *_rest in candidate_tuple
                             )
                         ),
+                        analysis=analysis,
+                        alignment_ids=tuple(c.column_id for c in evidence_columns),
                         child_candidate_ids=tuple(
                             candidate_id
                             for _child, candidate_id, *_rest in candidate_tuple
@@ -1057,10 +1182,14 @@ class ProtoInventoryAssembler:
                     ),
                 )
             )
-            previous = best.get(assembled)
+            report_key = (assembled, analysis.compatibility_key() if analysis else "")
+            previous = best.get(report_key)
             if previous is not None and log_score <= previous[0]:
                 continue
             report = ConceptAssemblyReport(
+                unit_ids=tuple(dict.fromkeys(c.unit_id for c in evidence_columns)),
+                unmatched_columns=tuple(o.resolution for o in outcomes
+                    if o.resolution.resolved_by == "residue_policy")[:8] if plan.contract_version == "units-v2" else (),
                 concept_id=concept_id,
                 alignment_id=_assembly_alignment_id(
                     parent_node_id, concept_id, segments_by_child, plan
@@ -1077,13 +1206,14 @@ class ProtoInventoryAssembler:
                     )
                 ),
             )
-            best[assembled] = (
+            best[report_key] = (
                 log_score,
                 ConceptAssembly(
                     report=report,
-                    ambiguous_columns=tuple(stats.ambiguous),
                     residue_policy_columns=stats.residue_policy_decided,
                     tie_broken_columns=stats.tie_broken,
+                    equal_confidence_columns=stats.equal_confidence,
+                    competing_choice_columns=stats.competing,
                     anchors_available=bool(anchor_segments),
                 ),
             )
@@ -1111,12 +1241,22 @@ class ProtoInventoryAssembler:
         if len(set(child_ids)) != len(child_ids):
             raise ValueError("child beam node IDs must be unique")
         request = inventory.request
+        if inventory.evidence_contract_version == "units-v1":
+            raise ValueError("units-v1 execution requires the original checkout; units-v2 count/scope semantics cannot replay it safely")
+        verification_cache = {} if self.semantic_cache is None else self.semantic_cache
+        verification_work = AssemblyWork()
         if tuple(request.child_node_ids) != child_ids:
             raise ValueError(
                 "the committed inventory's child_node_ids do not match the "
                 f"child beams: {list(request.child_node_ids)} against "
                 f"{list(child_ids)}"
             )
+        if inventory.evidence_contract_version == "units-v2":
+            reading, verification_work = evidence_map(tuple(beam_to_lexicon(beam) for beam in child_beams), self.aligner,
+                unit_orders=request.unit_orders, overrides=overrides,
+                overlay_ids=(request.segmentation_overlay_id, request.alignment_overlay_id), cache=verification_cache)
+            if reading.evidence_revision != inventory.evidence_revision:
+                raise ValueError("units-v2 evidence changed since preview; re-survey and preview these exact candidate analyses/overlays")
         plan = build_plan(
             child_ids,
             request.commitments,
@@ -1125,7 +1265,11 @@ class ProtoInventoryAssembler:
             residue_dispositions=request.residue_dispositions,
             restorations=request.restorations,
             overrides=overrides,
+            inventory=inventory,
         )
+        self.work_counts = {"projected_columns": verification_work.projected_columns, "candidate_tuples": 0, "alignment_calls": verification_work.alignment_calls,
+                            "cache_hits": verification_work.cache_hits}
+        pruned_candidates = 0
         if plan.asserts_nothing:
             return self._identity_step(
                 parent_node_id,
@@ -1157,7 +1301,7 @@ class ProtoInventoryAssembler:
         for anchor in active_anchors:
             anchors_by_concept[anchor.concept_id].append(anchor)
 
-        cache: dict[tuple, tuple[tuple[str | None, ...], ...]] = {}
+        cache = verification_cache
         output_distributions = []
         reports: list[ConceptAssemblyReport] = []
         tie_broken_concepts = 0
@@ -1165,6 +1309,8 @@ class ProtoInventoryAssembler:
         unaccounted_columns = 0
         residue_policy_columns = 0
         tie_broken_columns = 0
+        equal_confidence_columns = 0
+        competing_choice_columns = 0
         cross_branch_concepts = 0
         assembled_concepts = 0
         anchor_mismatches = 0
@@ -1190,11 +1336,13 @@ class ProtoInventoryAssembler:
             distribution = normalize_and_prune(
                 parent_node_id, concept_id, raw, beam_width=self.beam_width
             )
+            pruned_candidates += max(0, len(assemblies) - len(distribution.candidates))
             output_distributions.append(distribution)
             tie_broken_concepts += decided_by_tie_break(distribution)
             # The report for the form the beam reports, not for the tuple that
             # scored highest before merging.
-            assembly = assemblies.get(distribution.candidates[0].segments)
+            winner = distribution.candidates[0]
+            assembly = assemblies.get((winner.segments, winner.analysis.compatibility_key() if winner.analysis else ""))
             if assembly is None:
                 continue
             reports.append(assembly.report)
@@ -1202,6 +1350,8 @@ class ProtoInventoryAssembler:
             unaccounted_columns += assembly.report.unaccounted_column_count
             residue_policy_columns += assembly.residue_policy_columns
             tie_broken_columns += assembly.tie_broken_columns
+            equal_confidence_columns += assembly.equal_confidence_columns
+            competing_choice_columns += assembly.competing_choice_columns
             if assembly.report.column_count:
                 assembled_concepts += 1
                 cross_branch_concepts += assembly.report.cross_branch_assembled
@@ -1226,6 +1376,7 @@ class ProtoInventoryAssembler:
             )
         )
         diagnostics = ReconstructionDiagnostics(
+            assembly_work=AssemblyWork(**self.work_counts, pruned_candidates=pruned_candidates) if inventory.evidence_contract_version == "units-v2" else None,
             # Every rule counter below is zero because an inventory commits no
             # rules. The cascade it *derives* lives on the commit, where
             # `inspect-run` reads it; putting derived-rule counts here would
@@ -1273,6 +1424,8 @@ class ProtoInventoryAssembler:
             ),
             columns_decided_by_residue_policy=residue_policy_columns,
             columns_decided_by_tie_break=tie_broken_columns,
+            columns_with_competing_choices=competing_choice_columns,
+            columns_decided_by_equal_confidence=equal_confidence_columns,
             mean_set_support=(sum(supports) / len(supports) if supports else 0.0),
             restored_segment_count=len(request.restorations),
             alignment_overrides=len({item.concept_id for item in overrides}),
@@ -1336,6 +1489,8 @@ class ProtoInventoryAssembler:
                         "cross_branch_assembly_rate": 0.0,
                         "columns_decided_by_residue_policy": 0,
                         "columns_decided_by_tie_break": 0,
+                        "columns_with_competing_choices": 0,
+                        "columns_decided_by_equal_confidence": 0,
                         "mean_set_support": 0.0,
                         "restored_segment_count": 0,
                         "contrast_reducing_set_count": 0,
@@ -1354,6 +1509,49 @@ class ProtoInventoryAssembler:
             }
         )
 
+
+
+
+def _restorations_for(plan, concept_id, evidence_columns):
+    named = {column.column_id: index for index, column in enumerate(evidence_columns)}
+    found = {}
+    for position, restoration in plan.restorations.get(concept_id, {}).items():
+        if isinstance(position, int):
+            found[position] = restoration
+        elif position in named:
+            found[named[position]] = restoration
+    return found
+
+def _assembled_analysis(outcomes, evidence_columns, restorations, forms):
+    metadata = {piece.unit_id: piece for form in forms for piece in form.analysis.pieces}
+    emitted = []
+    by_column = {o.resolution.column_index: o for o in outcomes}
+    for column in sorted(set(by_column) | set(restorations)):
+        restoration = restorations.get(column)
+        if restoration:
+            claimed = metadata.get(restoration.unit_id)
+            emitted.append((restoration.unit_id or f"restoration:{forms[0].concept_id}:{column}",
+                            claimed.cognate_set_id if claimed else None,
+                            claimed.kind if claimed else "restoration", (), ()))
+        outcome = by_column.get(column)
+        if outcome is None or outcome.resolution.proto_segment is None:
+            continue
+        evidence = evidence_columns[column]
+        original = metadata.get(evidence.unit_id)
+        emitted.append((evidence.unit_id, original.cognate_set_id if original else None,
+                        original.kind if original else "whole", evidence.sources, (evidence.column_id,)))
+    pieces = []
+    for index, (unit, cognate, kind, sources, column_ids) in enumerate(emitted):
+        if pieces and pieces[-1].unit_id == unit:
+            previous = pieces.pop()
+            pieces.append(previous.model_copy(update={
+                "segment_indices": (*previous.segment_indices, index),
+                "sources": tuple(dict.fromkeys((*previous.sources, *sources))),
+                "column_ids": (*previous.column_ids, *column_ids)}))
+        else:
+            pieces.append(EvidencePiece(unit_id=unit, cognate_set_id=cognate, kind=kind,
+                segment_indices=(index,), sources=sources, column_ids=column_ids))
+    return FormAnalysis(pieces=tuple(pieces), claim="approved_assembly")
 
 def _assembly_alignment_id(
     parent_node_id: str,

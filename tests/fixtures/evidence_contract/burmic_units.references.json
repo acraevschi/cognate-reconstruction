@@ -1,0 +1,39 @@
+{
+  "purpose": "scorer only; never supplied to a node context or tool",
+  "validity": "provisional_proxy",
+  "source_variety_id": "hillburmish:OldBurmese",
+  "node_id": "burmic",
+  "concepts": [
+    {
+      "concept_id": "1382",
+      "alternatives": [
+        [
+          "a",
+          "p",
+          "⁴"
+        ]
+      ]
+    },
+    {
+      "concept_id": "239",
+      "alternatives": [
+        [
+          "p",
+          "a",
+          "n",
+          "⁵"
+        ]
+      ]
+    },
+    {
+      "concept_id": "96",
+      "alternatives": [
+        [
+          "t",
+          "ʊ",
+          "⁵"
+        ]
+      ]
+    }
+  ]
+}

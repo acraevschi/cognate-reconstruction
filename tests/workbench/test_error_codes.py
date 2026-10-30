@@ -216,15 +216,20 @@ def test_the_triage_driver_agrees_with_the_real_classification(skill: Path) -> N
     assert _driver_exploratory_codes(driver) == expected
 
 
-def test_both_skill_copies_stay_byte_identical() -> None:
-    """The skill is checked in twice; the copies must not diverge."""
-    private, public = SKILL_COPIES
-    if not private.is_dir():
-        pytest.skip(".claude/skills is not present in this checkout")
-    names = {path.name for path in public.iterdir() if path.is_file()}
-    assert names == {path.name for path in private.iterdir() if path.is_file()}
-    for name in sorted(names):
-        assert (private / name).read_bytes() == (public / name).read_bytes(), name
+def test_optional_installed_skill_drift_is_reported(tmp_path) -> None:
+    """Only the public source is tracked; a read-only installation can be stale."""
+    import runpy
+    source = SKILL_COPIES[1]
+    status = runpy.run_path(str(source / "driver.py"))["installed_copy_status"]
+    public = tmp_path / "skills/run-cognate-reconstruction"
+    private = tmp_path / ".claude/skills/run-cognate-reconstruction"
+    public.mkdir(parents=True)
+    private.mkdir(parents=True)
+    for name in ("same", "stale", "missing"):
+        (public / name).write_text("source")
+    (private / "same").write_text("source")
+    (private / "stale").write_text("old")
+    assert status(tmp_path) == {"same": "same", "stale": "stale", "missing": "missing"}
 
 
 @pytest.mark.parametrize(

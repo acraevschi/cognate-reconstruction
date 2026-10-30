@@ -1,9 +1,11 @@
 # Benchmarks and evaluation
 
-> **Current reading, 2026-09-15:** see [current state](current_state.md) and
+> **Current reading, 2026-10-02:** see [current state](current_state.md) and
 > [experiment policy](experiment_policy.md). This guide mixes implemented
-> interfaces with dated measurements. The September evaluation improvements are
-> planned, not yet reflected in the schemas or aggregate behavior below.
+> interfaces with dated measurements. Task02-v1 is implemented; read its
+> [contract](research/evaluation_contract.md), [results](research/evaluation_results.md)
+> and [migration/commands](research/evaluation_migration.md) for current interfaces.
+> Historical measurements below remain unchanged.
 > Outside-selection hits are evidence beyond literal selection, not a proof of
 > historical inference. Old Burmese at `burmic` is a provisional proxy target.
 > Existing per-word B-Cubed measures aligned repetition structure, not consistency
@@ -155,11 +157,11 @@ Two shapes of seed are reported separately and never conflated:
   losses are not in `node_failures` either. The taxonomy counts it under
   `run-abandoned-no-result`.
 
-Current sweep aggregates exclude fallback evaluations from the committed-node
+The legacy raw sweep score block excludes fallback evaluations from its node
 quality distribution and count them separately. A fallback may still have a
 labelled target evaluation in its result. This conditional view is not an
-end-to-end success rate; prompt 02 adds explicit intended-set outcomes without
-counting a fallback as a model commitment.
+end-to-end success rate. Task02-v1 adds intended-set outcomes and faithful
+abandoned-run salvage, labelling direct/descendant fallback and missing outputs.
 
 The aggregate also carries the two numbers that say *how* a node reached its
 coverage — `contrast_reducing_rules_per_node` and

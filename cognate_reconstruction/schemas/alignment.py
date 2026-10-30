@@ -8,6 +8,7 @@ from typing import Literal
 from pydantic import Field, model_validator
 
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
+from cognate_reconstruction.schemas.evidence import EvidenceColumn
 from cognate_reconstruction.schemas.lexicon import (
     CognateMembershipInterpretation,
     CognateMembershipScope,
@@ -31,20 +32,14 @@ model that knows the DSL already knows how to ask for a gap.
 
 
 class CorrespondenceDetail(StrEnum):
-    """How much of the aligner's working trace a correspondence view carries.
-
-    `SUMMARY` keeps the answer — which segments correspond and how often — and
-    reduces the trace to bounded references into the alignments that are
-    serialized once anyway. `FULL` keeps every column occurrence with its
-    contexts, which is the aligner's working trace and costs one record per
-    aligned column per node pair.
-    """
+    """How much of the aligner's working trace a correspondence view carries."""
 
     SUMMARY = "summary"
     FULL = "full"
 
 
 class AlignmentMember(WorkbenchModel):
+    analysis_id: NonEmptyStr | None = None
     form_id: NonEmptyStr
     variety_id: NonEmptyStr
     concept_id: NonEmptyStr
@@ -73,6 +68,7 @@ class AlignmentMember(WorkbenchModel):
 
 
 class AlignmentResult(WorkbenchModel):
+    evidence_columns: tuple[EvidenceColumn, ...] = ()
     alignment_id: NonEmptyStr
     concept_id: NonEmptyStr
     members: tuple[AlignmentMember, ...] = Field(min_length=2)
@@ -86,6 +82,8 @@ class AlignmentResult(WorkbenchModel):
         widths = {len(member.aligned_segments) for member in self.members}
         if len(widths) != 1:
             raise ValueError("all alignment members must have equal width")
+        if self.evidence_columns and len(self.evidence_columns) != next(iter(widths)):
+            raise ValueError("evidence columns must cover the alignment width")
         return self
 
 
@@ -167,6 +165,8 @@ class CorrespondenceMap(WorkbenchModel):
 class MultipleAlignmentMap(WorkbenchModel):
     """N-way alignment plus derived pairwise correspondence views."""
 
+    evidence_revision: NonEmptyStr | None = None
+
     variety_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     alignments: tuple[AlignmentResult, ...]
     pairwise_correspondences: tuple[CorrespondenceMap, ...]
@@ -218,6 +218,18 @@ class CorrespondenceSet(WorkbenchModel):
     this inventory is `get_alignments` or `search_forms` over those concepts.
     """
 
+    count_semantics: NonEmptyStr | None = None
+    etymon_count: int | None = Field(default=None, ge=0)
+    unresolved_unit_count: int | None = Field(default=None, ge=0)
+    source_column_count: int | None = Field(default=None, ge=1)
+    occurrence_count: int | None = Field(default=None, ge=1)
+    # Only recurrence rows carry members; these are descriptive, not cognacy.
+    member_set_ids: tuple[NonEmptyStr, ...] = ()
+    left_context_tokens: tuple[str, ...] = ()
+    right_context_tokens: tuple[str, ...] = ()
+    scope_id: NonEmptyStr | None = None
+    example_column_ids: tuple[NonEmptyStr, ...] = ()
+
     set_id: NonEmptyStr | Literal[""] = ""
     """This set's deterministic ID, or "" when nobody derived one.
 
@@ -235,7 +247,12 @@ class CorrespondenceSet(WorkbenchModel):
 
     @model_validator(mode="after")
     def validate_support(self) -> CorrespondenceSet:
-        if self.concept_count > self.support:
+        if self.count_semantics is not None:
+            if self.etymon_count is None or self.unresolved_unit_count is None or self.support != self.etymon_count + self.unresolved_unit_count:
+                raise ValueError("unit support must equal supplied etyma plus unresolved concept/unit opportunities")
+            if self.occurrence_count is None or self.source_column_count is None or self.source_column_count > self.occurrence_count:
+                raise ValueError("source columns must not exceed alternative-dependent occurrences")
+        if self.count_semantics is None and self.concept_count > self.support:
             raise ValueError(
                 "a correspondence set cannot occur in more concepts than columns"
             )
@@ -304,6 +321,7 @@ class CorrespondenceInventory(WorkbenchModel):
     node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     alignment_count: int = Field(ge=0)
     sets: tuple[CorrespondenceSet, ...] = ()
+    recurrence_patterns: tuple[CorrespondenceSet, ...] = ()
 
     @model_validator(mode="after")
     def validate_inventory(self) -> CorrespondenceInventory:

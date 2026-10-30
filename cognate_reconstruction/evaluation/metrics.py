@@ -154,7 +154,10 @@ def bcubed(left: Sequence[str], right: Sequence[str]) -> BCubedScores:
     4. Precision and recall are the unweighted means over columns; F1 is their
        harmonic mean, and 0.0 when both are 0.
 
-    **This measures structural agreement, not identity, and that is the point.**
+    **This measures within-word repetition structure, not identity or a mapping
+    shared across words.** Each word is aligned and partitioned separately:
+    `p a` vs `b e` and `p u` vs `t o` can each score 1.0 even though `p` maps to
+    different gold consonants across words. High F1 is not linguistic accuracy.
     `p a` against `b e` scores 1.0 here while its normalized edit distance is
     1.0 — the reconstruction is wrong in every segment but wrong *consistently*,
     which is a systematic correspondence rather than noise. A prediction that

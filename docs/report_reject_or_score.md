@@ -5,6 +5,12 @@ Current interpretation (2026-09-15): see [current state](current_state.md) and
 including outside-selection hits. Neither copying nor novelty alone establishes
 historical correctness. The worked examples below retain their original context.
 
+Task02-v1's [evaluation contract](research/evaluation_contract.md) applies the
+same boundary to binding validity, selection overlap, token/morpheme diagnostics,
+conditional quality and end-to-end coverage. None reaches a gate or candidate
+ranking. Proxy/unknown/underdetermined references retain their raw comparisons
+while being excluded from explicitly validated-target summaries.
+
 Where a new signal belongs. This is the reasoning behind the invariant
 "distinguish mechanical correctness, workflow quality, and linguistic truth",
 written down because the three collapse into each other whenever nobody is

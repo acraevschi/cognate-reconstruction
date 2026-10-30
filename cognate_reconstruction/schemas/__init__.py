@@ -38,7 +38,11 @@ from cognate_reconstruction.schemas.historical import (
     HistoricalLineageRelation,
     HistoricalTargetEvaluation,
     TargetConceptEvaluation,
+    TargetValidity,
+    TokenEvaluationDiagnostics,
+    SelectionEvaluation,
 )
+from cognate_reconstruction.schemas.evaluation import RunEvaluationReport, EvaluationSummary
 from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
     AssemblyDetail,

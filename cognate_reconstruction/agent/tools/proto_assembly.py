@@ -47,6 +47,7 @@ from cognate_reconstruction.agent.tools.inventory_evidence import (
     node_inventory,
     verify_commitments,
     verify_restorations,
+    column_bindings, expand_shared_claims,
 )
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.inventory import (
@@ -61,6 +62,7 @@ from cognate_reconstruction.traversal.assembler import (
     derive_branch_rules,
 )
 from cognate_reconstruction.traversal.beam import make_leaf_beam
+from cognate_reconstruction.schemas.evidence import digest, EVIDENCE_CONTRACT_VERSION
 
 
 def _validate_residue_policy(
@@ -77,8 +79,8 @@ def _validate_residue_policy(
                 remediation=(
                     "Name the active child whose material is carried through "
                     "where no committed set explains a column. That is a "
-                    "claim — *this branch is the most conservative* — and it is "
-                    "recorded as one. Active children: "
+                    "qualified witness choice, not proof of conservatism. "
+                    "A witness gap emits nothing. Active children: "
                     + ", ".join(context.child_ids)
                 ),
             )
@@ -131,7 +133,10 @@ def assemble_node(
         context,
         segmentation_overlay_id=segmentation_overlay_id,
         alignment_overlay_id=spec.alignment_overlay_id,
+        unit_orders=spec.unit_orders,
     )
+    submitted_shared = spec.shared_claims
+    spec = expand_shared_claims(spec, inventory_sets)
     verify_commitments(context, spec.commitments, inventory_sets)
     check_complementary_splits(
         context,
@@ -140,10 +145,16 @@ def assemble_node(
         residue_policy=spec.residue_policy,
         residue_witness_child_id=spec.residue_witness_child_id,
     )
-    verify_restorations(context, spec.restorations, alignment_map)
+    verify_restorations(context, spec.restorations, alignment_map, segmentation_overlay_id)
+    verify_positions(spec, alignment_map)
 
     derived = derive_branch_rules(spec.commitments, context.child_ids)
     committed = CommittedProtoInventory(
+        evidence_contract_version=EVIDENCE_CONTRACT_VERSION,
+        approved_shared_claims=submitted_shared,
+        derived_rules_scope="unscoped_view",
+        evidence_revision=alignment_map.evidence_revision,
+        column_bindings=column_bindings(alignment_map, context.child_ids),
         request=CommitProtoInventoryArgs(
             node_id=node_id,
             segmentation_overlay_id=segmentation_overlay_id,
@@ -167,26 +178,19 @@ def assemble_node(
     lexicons = []
     for child_id in context.child_ids:
         lexicon = context.lexicon(child_id, segmentation_overlay_id)
-        if selected:
-            lexicon = lexicon.model_copy(
-                update={
-                    "forms": tuple(
-                        form
-                        for form in lexicon.forms
-                        if form.concept_id in selected
-                    )
-                }
-            )
         lexicons.append(lexicon)
-    beams = [
-        make_leaf_beam(lexicon, beam_width=1)
-        for lexicon in one_reading_per_node(lexicons)
-    ]
+    beams = [make_leaf_beam(lexicon, beam_width=max(1, len(lexicon.forms) * 16))
+             for lexicon in lexicons]
+    if context.child_beams:
+        from cognate_reconstruction.agent.reconstructor import _apply_overlay
+        beams = [_apply_overlay(beam, context, segmentation_overlay_id)
+                 for beam in context.child_beams]
     assembler = ProtoInventoryAssembler(
-        beam_width=1,
+        beam_width=max((beam.beam_width for beam in beams), default=1),
         anchor_policy=context.anchor_policy,
         aligner=context.aligner,
         engine=context.rule_engine,
+        semantic_cache=context.unit_alignment_cache,
     )
     step = assembler.reconstruct(
         node_id,
@@ -195,6 +199,20 @@ def assemble_node(
         anchors=context.active_anchors,
         overrides=context.alignment_overrides(spec.alignment_overlay_id),
     )
+    if selected:
+        reports = tuple(r for r in step.assembly_reports if r.concept_id in selected)
+        columns = sum(r.column_count for r in reports)
+        unaccounted = sum(r.unaccounted_column_count for r in reports)
+        step = step.model_copy(update={
+            "output_beam": step.output_beam.model_copy(update={"distributions": tuple(
+                d for d in step.output_beam.distributions if d.concept_id in selected)}),
+            "assembly_reports": reports,
+            "diagnostics": step.diagnostics.model_copy(update={
+                "assembled_column_count": columns, "unaccounted_column_count": unaccounted,
+                "unaccounted_column_rate": unaccounted / columns if columns else 0.0,
+                "concepts_available": len(selected),
+                "cross_branch_assembly_rate": sum(r.cross_branch_assembled for r in reports) / len(reports) if reports else 0.0}),
+        })
     return step, committed
 
 
@@ -213,7 +231,7 @@ def held_out_unaccounted_column_rate(
     inventory is meant to *look* poor here, not to be forbidden.
     """
     held_out = context.concept_split.held_out_concept_ids
-    if not held_out or not spec.commitments:
+    if not held_out or not (spec.commitments or spec.shared_claims):
         return None
     step, _committed = assemble_node(
         context,
@@ -234,8 +252,11 @@ def assembly_result(
     *,
     segmentation_overlay_id: str | None,
     detail: AssemblyDetail,
+    context: AgentContext | None = None,
 ) -> TestProtoAssemblyResult:
-    derived = derive_branch_rules(spec.commitments, tuple(spec.child_node_ids))
+    from cognate_reconstruction.agent.tools.commit_reconstruction import inventory_commit_requirements
+    missing = inventory_commit_requirements(committed.request.commitments)
+    derived = derive_branch_rules(committed.request.commitments, tuple(spec.child_node_ids))
     reports = step.assembly_reports
     if detail is AssemblyDetail.SUMMARY:
         reports = tuple(
@@ -243,9 +264,17 @@ def assembly_result(
         )
     diagnostics = step.diagnostics
     return TestProtoAssemblyResult(
+        executable=True,
+        commit_ready=not missing,
+        missing_commit_requirements=missing,
+        witness_evidence_digest=context_evidence_digest(context) if context is not None else None,
+        derived_rules_scope=committed.derived_rules_scope,
+        evidence_revision=committed.evidence_revision,
+        hypothesis_digest=hypothesis_digest(spec, segmentation_overlay_id),
+        work=step.diagnostics.assembly_work,
         validation_call_id=call_id,
         covered_set_ids=tuple(
-            dict.fromkeys(item.set_id for item in spec.commitments)
+            dict.fromkeys(item.set_id for item in committed.request.commitments)
         ),
         unaccounted_column_rate=diagnostics.unaccounted_column_rate or 0.0,
         cross_branch_assembly_rate=diagnostics.cross_branch_assembly_rate or 0.0,
@@ -253,7 +282,7 @@ def assembly_result(
             column
             for report in step.assembly_reports
             for column in report.columns
-            if column.competing_set_ids
+            if column.competing_choices or column.competing_set_ids
         ),
         assembled_concept_count=len(step.assembly_reports),
         segmentation_overlay_id=segmentation_overlay_id,
@@ -292,10 +321,12 @@ def test_proto_assembly(
         child_node_ids=context.child_ids,
         alignment_overlay_id=arguments.alignment_overlay_id,
         commitments=arguments.commitments,
+        shared_claims=arguments.shared_claims,
         residue_policy=arguments.residue_policy,
         residue_witness_child_id=arguments.residue_witness_child_id,
         residue_dispositions=arguments.residue_dispositions,
         restorations=arguments.restorations,
+        unit_orders=arguments.unit_orders,
     )
     step, committed = assemble_node(
         context,
@@ -311,9 +342,48 @@ def test_proto_assembly(
         spec,
         segmentation_overlay_id=arguments.segmentation_overlay_id,
         detail=arguments.detail,
+        context=context,
     )
     context.assembly_validations[call_id] = result
     return result
+
+
+def hypothesis_digest(spec, segmentation_overlay_id):
+    fields = ("shared_claims", "commitments", "residue_policy", "residue_witness_child_id",
+              "residue_dispositions", "restorations", "unit_orders", "alignment_overlay_id")
+    value = spec.model_dump(mode="json", include=set(fields))
+    # Commitment order has no linguistic meaning; freeze the actual claims.
+    value["commitments"] = sorted(value["commitments"], key=digest)
+    for claim in value["shared_claims"]:
+        claim["member_set_ids"] = sorted(claim["member_set_ids"])
+    value["shared_claims"] = sorted(value["shared_claims"], key=digest)
+    return digest([value, segmentation_overlay_id])
+
+
+def context_evidence_digest(context):
+    """Freeze supplementary witnesses/anchors as well as the active-column revision."""
+    return digest([context.anchor_policy.value,
+        [item.model_dump(mode="json") for item in context.evidence],
+        [item.model_dump(mode="json") for item in context.active_anchors]])
+
+
+def verify_positions(spec, alignment_map):
+    for item, index, named in [
+        *((d, d.column_index, d.evidence_column_id) for d in spec.residue_dispositions),
+        *((r, r.before_column_index, r.before_evidence_column_id) for r in spec.restorations),
+    ]:
+        relevant = [a for a in alignment_map.alignments if a.concept_id == item.concept_id]
+        ids = {a.evidence_columns[index].column_id for a in relevant if index < len(a.evidence_columns)}
+        append = any(index == len(a.evidence_columns) for a in relevant)
+        if named is not None and named not in ids:
+            raise ToolInputError("position names a stale or unrelated evidence column", code="alignment-failed",
+                remediation="Use evidence_column_id/before_evidence_column_id from a full preview under these exact overlays and analysis.")
+        if named is None and (len(ids) > 1 or (append and ids)):
+            raise ToolInputError("position index is ambiguous across candidate analyses", code="alignment-failed",
+                remediation="Name evidence_column_id for a disposition or before_evidence_column_id for a restoration from the full preview; token equality and column numbers do not select provenance.")
+        if not ids and not (append and hasattr(item, "before_column_index")):
+            raise ToolInputError("position is outside the current evidence", code="alignment-failed",
+                remediation="Inspect this concept with a full preview and use its exact column IDs/indices.")
 
 
 __all__ = [

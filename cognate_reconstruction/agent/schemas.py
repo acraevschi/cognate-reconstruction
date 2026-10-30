@@ -7,7 +7,7 @@ from enum import StrEnum
 from collections.abc import Sequence
 from typing import Any, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_serializer, field_validator, model_validator
 
 from cognate_reconstruction.schemas.alignment import (
     ComplementaryCandidate,
@@ -15,6 +15,7 @@ from cognate_reconstruction.schemas.alignment import (
     CorrespondenceSet,
     MultipleAlignmentMap,
 )
+from cognate_reconstruction.schemas.evidence import UnitOrderClaim, AssemblyWork, PieceAnalysisClaim, PieceSource
 from cognate_reconstruction.schemas.common import NonEmptyStr, WorkbenchModel
 from cognate_reconstruction.schemas.inventory import (
     AlignmentOverride,
@@ -23,14 +24,19 @@ from cognate_reconstruction.schemas.inventory import (
     CommitProtoInventoryArgs,
     CommittedProtoInventory,
     ConceptAssemblyReport,
-    CorrespondenceCommitment,
+    CorrespondenceCommitment, SharedCorrespondenceClaim,
     ProtoInventorySpec,
     ResidueDisposition,
     ResiduePolicy,
     SegmentRestoration,
     normalize_written_gaps,
 )
-from cognate_reconstruction.schemas.lexicon import LexicalForm
+from cognate_reconstruction.schemas.lexicon import (
+    CognateMembership,
+    CognateMembershipInterpretation,
+    CognateMembershipScope,
+    LexicalForm,
+)
 from cognate_reconstruction.schemas.lexicon import ConceptMetadata
 from cognate_reconstruction.schemas.rules import (
     AnomalyReport,
@@ -132,6 +138,22 @@ class ProviderUsage(WorkbenchModel):
         ),
     )
     cost_usd: float | None = Field(default=None, ge=0.0)
+    cost_source: Literal["provider_reported", "price_table"] | None = Field(
+        default=None,
+        description=(
+            "Where cost_usd came from: the provider adapter's reported cost, or "
+            "the operator's explicit price table applied to the token counts. "
+            "Null on records written before the field existed."
+        ),
+    )
+    provider_reported_cost_usd: float | None = Field(
+        default=None,
+        ge=0.0,
+        description=(
+            "The adapter's own reported cost, kept beside a price-table cost "
+            "so the two can be compared; never added to cost_usd."
+        ),
+    )
 
 
 class ProviderResponseMetadata(WorkbenchModel):
@@ -257,6 +279,10 @@ class GetAlignmentsArgs(WorkbenchModel):
     the compact rendering; see `CorrespondenceDetail`.
     """
 
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+    reading: Literal["local", "recurrence"] = Field(default="recurrence",
+        description='Select the descriptive recurrence or exact local correspondence view; this does not assert historical equivalence.')
+
     node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
     concept_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
@@ -276,12 +302,7 @@ class GetAlignmentsArgs(WorkbenchModel):
     detail: CorrespondenceDetail = Field(
         default=CorrespondenceDetail.SUMMARY,
         description=(
-            "'summary' returns each correspondence with its true occurrence "
-            "count and a few example column references into the alignments "
-            "already in the payload. 'full' additionally returns every column "
-            "occurrence with its contexts, which is the aligner's working trace "
-            "and is orders of magnitude larger; ask for it only for a "
-            "correspondence you are actively conditioning."
+            'Summary includes counts and column pointers; full adds occurrences and contexts.'
         ),
     )
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -353,12 +374,60 @@ class SearchFormsArgs(WorkbenchModel):
     limit: int = Field(default=50, ge=1, le=200)
 
 
+def _shorthand_describes(form: LexicalForm) -> bool:
+    """Whether `cognate_set_id` says everything the memberships would."""
+    return form.cognate_set_id is not None and all(
+        membership.scope is CognateMembershipScope.WHOLE_FORM
+        and membership.interpretation is CognateMembershipInterpretation.ASSERTED
+        and not membership.provenance.doubt
+        and membership.provenance.comment is None
+        for membership in form.cognate_memberships
+    )
+
+
+def _membership_view(membership: CognateMembership) -> dict[str, Any]:
+    view: dict[str, Any] = membership.model_dump(
+        mode="json", exclude={"provenance"}, exclude_defaults=True
+    )
+    if membership.provenance.doubt is not None:
+        view["doubt"] = membership.provenance.doubt
+    if membership.provenance.comment is not None:
+        view["comment"] = membership.provenance.comment
+    return view
+
+
+def model_facing_form(form: LexicalForm) -> dict[str, Any]:
+    """A form as a tool result shows it to the model: the evidence, not its source.
+
+    Dropped: `provenance` (dataset row, source reference, compatibility rules)
+    on the form and on each cognate membership. Across 267 recorded
+    `search_forms` calls those two were 55% of the tool's characters, and no
+    tool takes any of it as input. `cognate_memberships` is dropped too when the
+    `cognate_set_id` shorthand already says all of it; partial, alternative or
+    doubtful judgements keep their membership, without its provenance.
+
+    Only what is serialized changes. The harness keeps and reads the full form.
+    """
+    view = form.model_dump(mode="json", exclude={"provenance"})
+    if not form.cognate_memberships or _shorthand_describes(form):
+        del view["cognate_memberships"]
+    else:
+        view["cognate_memberships"] = [
+            _membership_view(membership) for membership in form.cognate_memberships
+        ]
+    return view
+
+
 class FormSearchHit(WorkbenchModel):
     node_id: NonEmptyStr
     evidence_kind: EvidenceKind
     relation: EvidenceRelation
     concept: ConceptMetadata
     form: LexicalForm
+
+    @field_serializer("form", when_used="json")
+    def serialize_form(self, form: LexicalForm) -> dict[str, Any]:
+        return model_facing_form(form)
 
 
 class SearchFormsResult(WorkbenchModel):
@@ -367,22 +436,18 @@ class SearchFormsResult(WorkbenchModel):
 
 
 DEFAULT_MIN_CORRESPONDENCE_SUPPORT = 2
-"""Occurrences a correspondence set needs before it is shown by default.
+"""Default inspection threshold; singleton scope is sparse evidence, not a verdict.
 
-A correspondence attested once is residue: a compound boundary, a loan, a
-segmentation artefact. Recurrence is what the comparative method reasons from,
-so the tail is suppressed by default and counted rather than hidden.
+Suppressed rows remain counted and can be inspected with min_support=1.
 """
 
 
 class SummarizeCorrespondencesArgs(WorkbenchModel):
-    """Request the correspondence-set inventory over the whole evidence set.
+    """Request the correspondence-set inventory over the whole evidence set."""
 
-    Unlike `get_alignments` this deliberately has no batching bound on its
-    input: recurrence is only visible across every cognate set at once, and the
-    inventory over all of them is smaller than a handful of alignments. The
-    *output* is bounded by pagination instead.
-    """
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+    reading: Literal["local", "recurrence"] = Field(default="recurrence",
+        description='Default descriptive csp-* recurrence; local gives executable csu-* scopes. Shared choices require explicit pattern/member selection.')
 
     node_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
@@ -414,9 +479,9 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
         default=DEFAULT_MIN_CORRESPONDENCE_SUPPORT,
         ge=1,
         description=(
-            "Least number of aligned columns a set must show to be returned. "
+            "Least measured support a row must show to be returned. units-v2 separates supplied etyma and unresolved concept/unit opportunities from source columns and alternatives. "
             "Sets below it are counted in 'suppressed_below_min_support' rather "
-            "than dropped silently. Use 1 only to inspect residue."
+            "than dropped silently. Use 1 to inspect sparse material, which may be committed with justification."
         ),
     )
     segment: NonEmptyStr | None = Field(
@@ -476,8 +541,7 @@ class OutgroupReflex(WorkbenchModel):
     `tools/outgroup_probe.py` measured it: a node *showing* a segment puts that
     segment outside the group under study, while a node *lacking* it has no
     distinctive segment to attest, and scoring the empty set as trivially
-    supported drops the measured result below alphabetical tie-breaking.
-    """
+    supported drops the measured result below alphabetical tie-breaking."""
 
     segment: NonEmptyStr = Field(
         description=(
@@ -498,20 +562,39 @@ class OutgroupReflex(WorkbenchModel):
     )
 
 
+class LocalOutgroupWitness(WorkbenchModel):
+    concept_id: NonEmptyStr
+    unit_id: NonEmptyStr
+    evidence_column_id: NonEmptyStr
+    node_id: NonEmptyStr
+    segment: NonEmptyStr
+    source_positions: tuple[PieceSource, ...] = ()
+
+
 class SetOutgroupProfile(WorkbenchModel):
     """One returned set's out-group reading, keyed by its own `set_id`.
 
     Carried beside the sets rather than inside `CorrespondenceSet` because that
     schema is shared with `tools/correspondence_inventory.py` and with every
     record already written; a set built by anything but this tool has no
-    out-group to report and should not grow a field for one.
-    """
+    out-group to report and should not grow a field for one."""
 
     set_id: NonEmptyStr
+    reading: Literal["local", "recurrence", "legacy"] = "legacy"
+    scope_id: NonEmptyStr | None = None
+    witnesses: tuple[LocalOutgroupWitness, ...] = ()
+    witness_count: int = Field(default=0, ge=0)
+    witnesses_truncated: bool = False
     reflexes: tuple[OutgroupReflex, ...] = ()
 
 
 class SummarizeCorrespondencesResult(WorkbenchModel):
+    reading: Literal["local", "recurrence", "legacy"] = "legacy"
+    count_semantics: str | None = None
+    local_set_count: int | None = None
+    recurrence_pattern_count: int | None = None
+    evidence_revision: NonEmptyStr | None = None
+    work: AssemblyWork | None = None
     node_ids: tuple[NonEmptyStr, ...] = Field(
         description="Column order of every returned set's 'segments'."
     )
@@ -527,7 +610,7 @@ class SummarizeCorrespondencesResult(WorkbenchModel):
         ge=0,
         description=(
             "Sets that passed the segment filter but fell below min_support. "
-            "Residue rather than evidence, counted so it is never silent."
+            "Counted inspection filtering; sparse support is not proof of innovation."
         ),
     )
     matched_set_count: int = Field(
@@ -564,6 +647,7 @@ class SummarizeCorrespondencesResult(WorkbenchModel):
             "form, and no residue policy has to explain them."
         ),
     )
+    outgroup_work: dict[str, int] | None = None
     outgroup_note: str = Field(
         default="",
         description=(
@@ -628,6 +712,9 @@ class ColumnPosition(StrEnum):
 
 
 class PolarizeArgs(WorkbenchModel):
+    set_id: NonEmptyStr | None = Field(default=None, description="Local set ID or descriptive recurrence pattern ID under these overlays and unit_orders. Omit for a labelled tuple aggregate.")
+    alignment_overlay_id: NonEmptyStr | None = None
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
     """Ask what the rest of the tree shows where the active children disagree.
 
     Not a prior and not a verdict: this is data retrieval. The evidence that
@@ -773,8 +860,7 @@ class PolarizeCandidateSummary(WorkbenchModel):
     Presence only. A node that lacks the segment is not listed as evidence
     against it: lacking a segment is equally consistent with never having had it
     and with having lost it, while showing it puts the segment outside the node
-    under study.
-    """
+    under study."""
 
     segment: NonEmptyStr
     observed_node_ids: tuple[NonEmptyStr, ...] = ()
@@ -782,6 +868,11 @@ class PolarizeCandidateSummary(WorkbenchModel):
 
 
 class PolarizeResult(WorkbenchModel):
+    reading: Literal["local", "recurrence", "legacy"] = "legacy"
+    set_id: NonEmptyStr | None = None
+    witnesses: tuple[LocalOutgroupWitness, ...] = ()
+    witness_count: int = Field(default=0, ge=0)
+    witnesses_truncated: bool = False
     """A distributional summary, deliberately without a verdict.
 
     Nothing here says which value is original. That judgement is yours, it
@@ -852,8 +943,7 @@ class PriorCommittedSet(WorkbenchModel):
     `set_id` is deliberately stripped. A set ID is derived from a reflex tuple
     over *that* node's children under *that* node's overlays, so it is
     meaningless anywhere else and citing one here would be citing a set this
-    node's data cannot reproduce.
-    """
+    node's data cannot reproduce."""
 
     reflexes: tuple[str | None, ...] = Field(min_length=2)
     proto_segment: NonEmptyStr | None = None
@@ -868,8 +958,7 @@ class PriorNodeInventory(WorkbenchModel):
     node's inventory is another session's hypothesis, carries no independent
     evidential weight, and must never appear as support for a commitment here.
     It carries `child_node_ids` beside the reflex tuples because without them
-    another node cannot interpret a single column.
-    """
+    another node cannot interpret a single column."""
 
     node_id: NonEmptyStr
     child_node_ids: tuple[NonEmptyStr, ...] = Field(min_length=2)
@@ -925,8 +1014,7 @@ class ChildConvergenceSummary(WorkbenchModel):
     Reported, never enforced. A hypothesis under which some children still
     disagree can be entirely legitimate — an unexplained residue is a normal
     state of a comparative argument — so no tool rejects a commit for diverging.
-    The model previously had to work this out by eyeballing intermediate forms.
-    """
+    The model previously had to work this out by eyeballing intermediate forms."""
 
     concepts_evaluated: int = Field(ge=0)
     converged_concepts: int = Field(ge=0)
@@ -962,8 +1050,7 @@ class HeldOutEvaluation(WorkbenchModel):
 
     Anchors are deliberately not applied, exactly as in the commit-time
     convergence summary: this measures the rules against the children's own
-    forms.
-    """
+    forms."""
 
     concept_count: int = Field(
         ge=0,
@@ -1013,8 +1100,7 @@ class ContrastReductionReport(WorkbenchModel):
 
     A rule reported here requires a `directionality_rationale` when it is
     committed. Nothing here rejects on its own: contrast loss is ordinary sound
-    change, and a harness that forbade it would be wrong.
-    """
+    change, and a harness that forbade it would be wrong."""
 
     rule_id: NonEmptyStr
     dsl: NonEmptyStr
@@ -1147,12 +1233,7 @@ class TestRuleCascadeArgs(WorkbenchModel):
     detail: AssemblyDetail = Field(
         default=AssemblyDetail.SUMMARY,
         description=(
-            "How much of the per-form working trace comes back. 'summary' "
-            "reports every rule's applied and exception counts with the "
-            "exceptions themselves, and omits the per-form record of the "
-            "applications that succeeded. 'full' returns every application. "
-            "Use 'full' when you need to see a specific form's derivation; the "
-            "summary already carries everything that did not apply."
+            'Summary retains every exception and application counts/IDs; full adds successful per-form diffs.'
         ),
     )
 
@@ -1167,6 +1248,12 @@ class TestRuleCascadeArgs(WorkbenchModel):
 class CascadeFinalForm(WorkbenchModel):
     child_id: NonEmptyStr
     form: LexicalForm
+
+    @field_serializer("form", when_used="json")
+    def serialize_form(self, form: LexicalForm) -> dict[str, Any]:
+        # `convergence` reads the full form from the stored result; only the
+        # model's copy loses the source metadata. See `model_facing_form`.
+        return model_facing_form(form)
 
 
 class CascadeRuleSummary(WorkbenchModel):
@@ -1183,8 +1270,7 @@ class CascadeRuleSummary(WorkbenchModel):
     This carries the counts and the exceptions and drops the rest. What is lost
     is the per-form record of applications that succeeded, which is the part a
     reader almost never reads: a preview is consulted for what did *not* work.
-    `detail="full"` still returns everything.
-    """
+    `detail="full"` still returns everything."""
 
     rule: ParsedSoundRule
     words_applied: int = Field(ge=0)
@@ -1196,9 +1282,10 @@ class CascadeRuleSummary(WorkbenchModel):
     exceptions: tuple[FormRuleResult, ...] = Field(
         default=(),
         description=(
-            "Every form the rule did not apply cleanly to. Not a sample: the "
-            "exceptions are the reason to read a preview, so they are complete "
-            "even in the summary."
+            "Every form the target occurs in that the rule did not apply "
+            "cleanly to. Not a sample: the exceptions are the reason to read a "
+            "preview, so they are complete even in the summary. Forms without "
+            "the target are not exceptions; forms_evaluated counts them."
         ),
     )
     applied_form_ids: tuple[NonEmptyStr, ...] = Field(
@@ -1242,20 +1329,18 @@ class TestRuleCascadeResult(WorkbenchModel):
 class TestProtoAssemblyArgs(WorkbenchModel):
     """Preview what a proposed inventory assembles, before committing it."""
 
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+
+    shared_claims: tuple[SharedCorrespondenceClaim, ...] = ()
     commitments: tuple[CorrespondenceCommitment, ...] = Field(
         description=(
-            "The correspondence-set commitments to preview. Order carries no "
-            "meaning. An empty list previews the identity reconstruction an "
-            "empty inventory commits."
+            'Exact full local commitments to execute; shared_claims selects descriptive pattern members. Commitment order has no meaning.'
         ),
     )
     restorations: tuple[SegmentRestoration, ...] = ()
     residue_policy: ResiduePolicy = Field(
         description=(
-            "What happens to a column no committed set explains. Required, with "
-            "no default, exactly as at commit time — previewing under a "
-            "different policy from the one you commit would preview a different "
-            "reconstruction."
+            'Required policy for unaccounted columns; must equal the committed policy. retain_from_witness also needs an active witness.'
         ),
     )
     residue_witness_child_id: NonEmptyStr | None = None
@@ -1263,9 +1348,7 @@ class TestProtoAssemblyArgs(WorkbenchModel):
     concept_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
         description=(
-            "Concepts to assemble; empty previews every concept at this node. "
-            "Coverage for a commit is over *sets*, not concepts, so batching a "
-            "large family across several calls is fine — their coverage unions."
+            'Empty reports all concepts. Batches may combine only for identical hypotheses/evidence; changing reporting detail or selection does not change choices.'
         ),
     )
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -1273,30 +1356,24 @@ class TestProtoAssemblyArgs(WorkbenchModel):
     detail: AssemblyDetail = Field(
         default=AssemblyDetail.SUMMARY,
         description=(
-            "'summary' (the default) returns the assembled forms and the "
-            "per-concept counts; 'full' adds the per-column resolutions, which "
-            "is what to read when a form came out wrong and you need to see "
-            "which column did it."
+            'Summary reports forms, counts and bounded unmatched-column pointers; full adds exact per-column resolutions and provenance.'
         ),
     )
 
 
 class TestProtoAssemblyResult(WorkbenchModel):
-    """What a proposed inventory assembles, split at the compaction line.
+    """What a proposed inventory assembles, split at the compaction line."""
 
-    Everything above `concepts` is what a commit is checked against and must
-    survive for the whole session: a few hundred bytes. Everything below is
-    re-derivable by calling this tool again, which is exactly the test
-    `COMPACTABLE_TOOL_NAMES` applies.
+    hypothesis_id: NonEmptyStr | None = None
+    executable: bool | None = None
+    commit_ready: bool | None = None
+    missing_commit_requirements: tuple[ToolError, ...] = ()
+    witness_evidence_digest: NonEmptyStr | None = None
+    hypothesis_digest: NonEmptyStr | None = None
+    evidence_revision: NonEmptyStr | None = None
+    work: AssemblyWork | None = None
 
-    That split has to be the shape from the first version, because a result
-    schema is recorded in trajectories the moment the tool ships.
-    `test_rule_cascade` is the cautionary tale and the resemblance is
-    uncomfortable — both are the call that validates a commit, both carry an ID
-    that cannot be re-derived — and it measured 399 KB across three calls at one
-    live node against 22 KB for all the evidence that node inspected.
-    """
-
+    derived_rules_scope: Literal["global", "unscoped_view"] = "global"
     # --- the part a commit is checked against; never compactable, tiny ---
     validation_call_id: NonEmptyStr
     covered_set_ids: tuple[NonEmptyStr, ...] = ()
@@ -1305,10 +1382,12 @@ class TestProtoAssemblyResult(WorkbenchModel):
     ambiguous_columns: tuple[ColumnResolution, ...] = Field(
         default=(),
         description=(
-            "Columns more than one committed set matched. Disambiguate them by "
-            "conditioning one of the sets, by splitting a set, or by saying in "
-            "your summary that the evidence does not decide; otherwise the beam "
-            "picks by mass and then by an arbitrary segment order."
+            "Columns where more than one distinct committed choice (set, "
+            "conditioning and value) applied; competing_choices lists the "
+            "others. Disambiguate them by conditioning one of the sets, by "
+            "splitting a set, or by saying in your summary that the evidence "
+            "does not decide; otherwise the beam picks by mass and then by an "
+            "arbitrary segment order."
         ),
     )
     assembled_concept_count: int = Field(default=0, ge=0)
@@ -1353,6 +1432,8 @@ class RealignArgs(WorkbenchModel):
     accept the aligner's output.
     """
 
+    unit_orders: tuple[UnitOrderClaim, ...] = ()
+
     overrides: tuple[AlignmentOverride, ...] = Field(min_length=1)
     base_alignment_overlay_id: NonEmptyStr | None = None
     segmentation_overlay_id: NonEmptyStr | None = None
@@ -1360,6 +1441,8 @@ class RealignArgs(WorkbenchModel):
 
 
 class RealignResult(WorkbenchModel):
+    count_semantics: str | None = None
+    joined_source_column_delta: dict[str, int] = Field(default_factory=dict)
     alignment_overlay_id: NonEmptyStr
     joined_set_support_delta: dict[str, int] = Field(
         default_factory=dict,
@@ -1399,6 +1482,8 @@ class RealignResult(WorkbenchModel):
 
 
 class MorphemeSegmentation(WorkbenchModel):
+    analysis_claim: tuple[PieceAnalysisClaim, ...] | None = Field(default=None,
+        description="Optional explicit cognate-unit analysis in surface order covering every position. Null preserves known analysis. This is a recorded model claim; cognacy is never inferred from spelling.")
     form_id: NonEmptyStr
     segments: tuple[NonEmptyStr, ...] = Field(min_length=1)
 
@@ -1437,9 +1522,7 @@ class CommittedSoundRule(WorkbenchModel):
     )
     dsl: NonEmptyStr = Field(
         description=(
-            "The child-to-parent rule text, character-identical to the 'dsl' "
-            "argument of the test_sound_law call that validated it, for "
-            "example 'f > p / #_'."
+            'Literal child-to-parent DSL tested under this scope/overlay. Equivalent parsed spelling is resolved mechanically.'
         ),
     )
     direction: Literal["child_to_parent"] = Field(
@@ -1460,64 +1543,37 @@ class CommittedSoundRule(WorkbenchModel):
         gt=0.0,
         le=1.0,
         description=(
-            "Your confidence in this rule, in the open-closed interval (0, 1]. "
-            "This is your own judgement; the harness cannot derive it. The "
-            "deterministic beam uses it as a score weight."
+            'Required explicit confidence in (0,1], used as a beam weight.'
         ),
     )
     validation_call_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "The validation_call_id of the call that applied this exact rule "
-            "to this exact source_child_ids: either a test_sound_law call, or "
-            "a test_rule_cascade call whose order contains this rule. "
-            "Optional: when omitted the harness resolves it from the "
-            "same-session validation whose rule, child scope, and segmentation "
-            "overlay are identical to this one. Supply it explicitly only when "
-            "several matching validations disagree about which forms the rule "
-            "applied to. Setting it here does not make the commit an ordered "
-            "cascade; cascade_validation_call_id still means the whole "
-            "committed order was previewed."
+            'Optional exact same-session test_sound_law or test_rule_cascade validation; cascade_validation_call_id separately names the whole order. Omission resolves identical parsed DSL, scope and overlay; supply an ID when matching validations disagree on supporting forms.'
         ),
     )
     validation_kind: ValidationKind | None = Field(
         default=None,
         description=(
-            "Written by the harness, ignored on input: which kind of call the "
-            "resolved validation was. Defaulted so records written before it "
-            "existed stay loadable."
+            'Harness-resolved validation kind; optional for old records and ignored on input.'
         ),
     )
     supporting_form_ids: tuple[NonEmptyStr, ...] = Field(
         default=(),
         description=(
-            "Exact form IDs this rule applied to. Optional: when omitted it "
-            "defaults to the supporting_form_ids reported by the resolved "
-            "validation. When supplied it must be a subset of them."
+            'Optional supported form subset; omission uses the resolved validation forms.'
         ),
     )
     rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Rule-specific justification. Optional when the commit carries a "
-            "single rule, because the required top-level 'summary' already "
-            "states the reasoning for it. Required on every rule of a commit "
-            "that carries more than one, since one summary cannot attribute "
-            "reasoning to one of several rules."
+            'Required on every rule when there is more than one; a single-rule commit may use summary.'
         ),
     )
     directionality_rationale: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Which branch innovated, and why you believe it. Required on any "
-            "rule that deletes a segment or merges two segments into one — the "
-            "harness detects those mechanically and names the exact rule_ids "
-            "when it rejects a commit for omitting this. Say which of the "
-            "children changed, what the change is called if it has a name, and "
-            "what evidence outside those children polarizes it. The harness "
-            "never judges what you write; it only records that you wrote it, "
-            "because a merger is not reversible and nothing downstream can "
-            "recover the reasoning afterwards."
+            'Required for mechanically detected deletion/merger. State proposed history, available evidence and uncertainty; unavailable outgroups are not a reason to invent evidence. The harness checks presence, not historical truth.'
         ),
     )
 
@@ -1563,34 +1619,25 @@ class CommitReconstructionArgs(WorkbenchModel):
     segmentation_overlay_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "The segmentation_overlay_id returned by segment_morphemes, when "
-            "the committed rules were validated against an overlay. Omit it "
-            "when no overlay was used."
+            'Exact segmentation overlay used by this hypothesis; omit if none. Handle commits freeze their overlay and refuse this field.'
         ),
     )
     cascade_validation_call_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "Only the validation_call_id returned by a successful "
-            "test_rule_cascade call. Omit this field if test_rule_cascade was "
-            "not called; never use a test_sound_law call ID here. A "
-            "test_sound_law ID belongs in the per-rule validation_call_id."
+            'Optional whole-order test_rule_cascade ID, never a single test_sound_law ID. Parsed rules, order, scope and overlay must match.'
         ),
     )
     rules: tuple[CommittedSoundRule, ...] = Field(
         default=(),
         description=(
-            "The ordered rule cascade to commit, under the branch-cascade "
-            "protocol. Mutually exclusive with 'inventory'; a call carrying "
-            "both is refused. Omit both for an identity reconstruction."
+            'Ordered validated rules; mutually exclusive with inventory. Omit both or use [] for explicit identity.'
         ),
     )
     inventory: ProtoInventorySpec | None = Field(
         default=None,
         description=(
-            "The proto-inventory to commit, under the per-correspondence-set "
-            "protocol: a value for each correspondence set, plus the policy for "
-            "columns no set explains. Mutually exclusive with 'rules'."
+            'Full proto-inventory exactly as previewed; mutually exclusive with nonempty rules.'
         ),
     )
     anomalies: tuple[AnomalyReport, ...] = Field(
@@ -1709,8 +1756,7 @@ class ConceptHoldout(WorkbenchModel):
     adversarial test set: inspecting a held-out concept is comparative work, not
     cheating, and a split the session could not see would only produce a number
     it could not act on. What it buys is that every rule report carries a second
-    column measured somewhere the rule was not fitted.
-    """
+    column measured somewhere the rule was not fitted."""
 
     development_concept_ids: tuple[NonEmptyStr, ...] = ()
     held_out_concept_ids: tuple[NonEmptyStr, ...] = ()
@@ -1735,66 +1781,11 @@ class NodePromptPayload(WorkbenchModel):
 
 
 COMMIT_REQUIREMENT_NOTES: tuple[str, ...] = (
-    "This node's hypothesis is committed as an 'inventory' — one proto_segment "
-    "per correspondence set, plus the residue_policy for columns no set "
-    "explains — or as a 'rules' cascade. Never both; a call carrying both is "
-    "refused. Neither is preferred: a rule rewrites one child's own segments, "
-    "so a parent segment no single child preserves cannot be produced by any "
-    "cascade, and correspondence sets carry no order, so a change that only "
-    "makes sense after another change cannot be stated as an inventory. The "
-    "evidence at this node decides which fits it.",
-    "Every commitment copies back the set_id, the reflexes and the support "
-    "exactly as the harness reported them. The inventory is re-derived from "
-    "this node's own forms at commit time: a set the data does not contain is "
-    "refused as 'unknown-correspondence-set', and an altered support as "
-    "'correspondence-support-mismatch'. Support is the one number separating a "
-    "correspondence from residue and it is never a model claim. A realign "
-    "invalidates every set_id derived under the previous alignment.",
-    "Every committed correspondence set needs a successful same-session "
-    "test_proto_assembly covering it. Coverage is over sets rather than "
-    "concepts, so several previews over different concept batches union; the "
-    "assembly_validation_call_id may be omitted and resolved from them.",
-    "Three fields of a commitment are required and are the ones most often "
-    "omitted. 'reflexes' carries one entry per active child in order, "
-    "including the children showing nothing, written as null: a set only one "
-    "child attests is ['ʔ', null] and never ['ʔ']. 'proto_segment' has no "
-    "default and must be present even when the value is null, because "
-    "'reconstructs nothing' and 'not stated' are different claims. "
-    "'confidence' has no default either and belongs on every commitment, not "
-    "only the ones you are unsure of; the assembler scores candidates by it, "
-    "so there is no value it could safely assume for a set you left it off.",
-    "An inventory carrying more than one commitment needs a 'rationale' on "
-    "every one of them; the top-level summary cannot attribute reasoning to an "
-    "individual set. A one-set inventory needs none. The same asymmetry "
-    "applies to a rules commit.",
-    "Every non-empty committed rule, under the 'rules' shape, needs a "
-    "successful same-session test_sound_law call or test_rule_cascade preview "
-    "of the identical rule, child scope, and segmentation overlay.",
-    "Anything that discards material needs a 'directionality_rationale' naming "
-    "which branch innovated and why: under 'inventory', a non-null reflex "
-    "against a null proto_segment, or two sets sharing one proto_segment "
-    "without complementary conditioning; under 'rules', a rule that deletes a "
-    "segment or merges two into one. The harness detects those mechanically "
-    "and rejects a commit that omits it, naming the exact sets or rule_ids; it "
-    "never judges what the rationale says.",
-    "Reconstructing the value that neutralises a contrast the family still "
-    "shows is almost always the wrong direction. Call polarize before "
-    "committing any value the children alone do not force.",
-    "This node's concepts are split into a development set and a held-out set. "
-    "Every report carries a held-out summary; it is reported, never enforced.",
+    "Commit inventory or rules. Literal rules can emit new tokens/sequences; empty targets are forbidden. Operational inverse rewrites do not establish forward historical change.",
+    "Proto values/nulls and confidence are explicit. Full commitments retain every reflex position and exact harness support; compact choices resolve only harness-owned data. Pattern collections need explicit shared member selection.",
+    "Preview exact values, confidence, explanations, conditioning, residue, restorations, orders and overlays. Executable and commit-ready differ; complete missing explanations in a new preview. Handles, when offered, are immutable and session-local.",
+    "Multiple expanded sets/rules need individual rationale. Deletions and actual differing-reflex reductions need directionality_rationale. Explain available evidence and uncertainty; the harness records reasoning without grading historical truth.",
+    "Each rule needs exact same-session DSL/scope/overlay validation. Empty identity hypotheses and qualified sparse choices are allowed. Use scoped polarize when outgroups are available and informative; gaps or singleton scope alone do not establish innovation.",
+    "Final summary and anomalies are required. Reported residue, ambiguity and visible held-out diagnostics do not force a claim or constitute unseen-word evaluation.",
 )
-"""What a session is told about the commit contract before it starts.
-
-A requirement that lives only in code is one the model discovers by being
-rejected, which costs a turn and teaches the wrong lesson — that the harness is
-capricious rather than that the claim needs stating. These sentences duplicate
-`agent/system_prompt.md` on purpose: the system prompt is the manual and this is the checklist
-attached to the specific node.
-
-**Both commit shapes are covered because both are accepted.** Through stages 2
-and 3 of `docs/proto_inventory_design.md` a session may commit either, and a
-checklist naming only one would be a rejection waiting to happen for the other.
-The note that says which to prefer comes first for the same reason the manual
-says it early: a session that reaches for the cascade because nothing told it
-otherwise has already chosen.
-"""
+"""Compact node checklist; schema details and workflow live in their own surfaces."""

@@ -4,10 +4,10 @@
 Stdlib only. Run with any python3; the harness itself is invoked through the
 `llm_reconstruction` Conda interpreter, which this script locates for you.
 
-    python3 .claude/skills/run-cognate-reconstruction/driver.py preflight
-    python3 .claude/skills/run-cognate-reconstruction/driver.py smoke
-    python3 .claude/skills/run-cognate-reconstruction/driver.py run --model google/gemma-4-e4b
-    python3 .claude/skills/run-cognate-reconstruction/driver.py triage --run-dir runs/<dir>
+    python3 skills/run-cognate-reconstruction/driver.py preflight
+    python3 skills/run-cognate-reconstruction/driver.py smoke
+    python3 skills/run-cognate-reconstruction/driver.py run --model google/gemma-4-e4b
+    python3 skills/run-cognate-reconstruction/driver.py triage --run-dir runs/<dir>
 
 `run` writes result.json / trajectories.jsonl / events.jsonl / checkpoint.json
 into a fresh run directory and then triages it.
@@ -28,6 +28,7 @@ this driver shells out to instead of duplicating.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -133,7 +134,7 @@ def lm_studio_models(api_base: str) -> list[str]:
 
 
 def ensure_lm_studio(api_base: str, *, autostart: bool = True) -> list[str]:
-    """Return loaded model IDs, starting the local server if it is down.
+    """Return the server catalogue, starting the local server if it is down.
 
     LM Studio keeps models loaded while its OpenAI-compatible server is off by
     default, so "the model is loaded" does not mean the endpoint answers.
@@ -159,6 +160,21 @@ def ensure_lm_studio(api_base: str, *, autostart: bool = True) -> list[str]:
     raise SystemExit(f"LM Studio still not answering {api_base} after start")
 
 
+def loaded_lm_studio_models() -> list[dict]:
+    """Read actual local loaded instances; catalogue entries are insufficient."""
+    if not LMS_BIN.exists():
+        raise SystemExit("Cannot verify loaded local models: lms is unavailable")
+    try:
+        result = subprocess.run([str(LMS_BIN), "ps", "--json"], capture_output=True,
+            text=True, check=True, timeout=8)
+        rows = json.loads(result.stdout)
+        if not isinstance(rows, list):
+            raise ValueError("unexpected lms ps output")
+        return [row for row in rows if row.get("type") == "llm" and row.get("identifier")]
+    except (OSError, subprocess.SubprocessError, ValueError) as error:
+        raise SystemExit(f"Cannot verify loaded local models: {error}") from error
+
+
 # --------------------------------------------------------------------------
 # commands
 # --------------------------------------------------------------------------
@@ -169,6 +185,7 @@ def cmd_preflight(args: argparse.Namespace) -> int:
     ok = True
 
     print(f"repo            {REPO}")
+    print(f"installed skill {installed_copy_status()}")
     print(f"python          {python}")
     version = subprocess.run(
         [python, "-c", "import sys; print(sys.version.split()[0])"],
@@ -201,15 +218,33 @@ def cmd_preflight(args: argparse.Namespace) -> int:
 
     try:
         models = ensure_lm_studio(args.api_base, autostart=not args.no_autostart)
-        print(f"lm studio       {args.api_base} ({len(models)} models)")
+        print(f"model catalogue {args.api_base} ({len(models)} entries)")
         for model in models:
             print(f"  - {model}")
+        loaded = loaded_lm_studio_models()
+        print(f"loaded local    {len(loaded)} LLM instance(s)")
+        for model in loaded:
+            print(f"  - {model['identifier']} status={model.get('status')} context={model.get('contextLength')} quantization={model.get('quantization')}")
     except SystemExit as error:
         print(f"lm studio       {error}")
         ok = False
 
     print("\nOK" if ok else "\nPREFLIGHT FAILED")
     return 0 if ok else 1
+
+
+def installed_copy_status(repo: Path = REPO) -> dict[str, str]:
+    """Report optional installation drift; the tracked skill is authoritative."""
+    source = repo / "skills/run-cognate-reconstruction"
+    installed = repo / ".claude/skills/run-cognate-reconstruction"
+    result = {}
+    for path in sorted(source.iterdir()):
+        if path.is_file():
+            target = installed / path.name
+            result[path.name] = ("missing" if not target.is_file() else
+                "same" if hashlib.sha256(path.read_bytes()).digest() ==
+                hashlib.sha256(target.read_bytes()).digest() else "stale")
+    return result
 
 
 def cmd_smoke(args: argparse.Namespace) -> int:
@@ -220,7 +255,7 @@ def cmd_smoke(args: argparse.Namespace) -> int:
     # Subprocesses inherit stdout, so flush our own prints to keep the
     # interleaved output in the order a reader expects.
     print("== unit suite ==", flush=True)
-    suite = subprocess.run([python, "-m", "pytest", "-q"], cwd=REPO)
+    suite = subprocess.run([python, "-m", "pytest", "-q", "-k", "not local_run_artifacts"], cwd=REPO)
     failures += suite.returncode != 0
 
     print("\n== CLDF fixture ingestion ==", flush=True)
@@ -257,9 +292,13 @@ def cmd_run(args: argparse.Namespace) -> int:
             args.api_base or DEFAULT_API_BASE, autostart=not args.no_autostart
         )
         bare = args.model.removeprefix("openai/")
-        if bare not in models:
-            print(f"model {bare!r} is not loaded in LM Studio.\nLoaded: "
-                  + ", ".join(models), file=sys.stderr)
+        loaded = {m["identifier"]: m for m in loaded_lm_studio_models()}
+        if bare not in models or bare not in loaded:
+            print(f"model {bare!r} is not confirmed loaded in local LM Studio.\nLoaded: "
+                  + ", ".join(loaded), file=sys.stderr)
+            return 1
+        if loaded[bare].get("status") != "idle" or loaded[bare].get("queued", 0):
+            print(f"model {bare!r} is busy; keep local inference serial", file=sys.stderr)
             return 1
 
     stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -277,7 +316,19 @@ def cmd_run(args: argparse.Namespace) -> int:
         "--checkpoint", str(run_dir / "checkpoint.json"),
         "--max-turns", str(args.max_turns),
         "--max-tool-calls", str(args.max_tool_calls),
+        "--max-run-seconds", str(args.max_run_seconds),
+        "--timeout", str(args.timeout),
+        "--max-retries", str(args.max_retries),
+        "--retry-backoff-seconds", str(args.retry_backoff_seconds),
+        "--max-retry-seconds", str(args.max_retry_seconds),
+        "--retry-max-delay-seconds", str(args.retry_max_delay_seconds),
+        "--inventory-protocol", args.inventory_protocol,
     )
+    for flag, value in (("--provider-config", args.provider_config),
+        ("--agent-instructions", args.agent_instructions),
+        ("--max-total-cost-usd", args.max_total_cost_usd)):
+        if value is not None:
+            command += [flag, str(value)]
     if args.preset:
         command += ["--preset", args.preset]
     if args.api_base and args.preset != "lm-studio":
@@ -460,6 +511,14 @@ def triage(run_dir: Path) -> None:
             if not code.startswith("legacy:"):
                 print(f"        {examples[(name, code)]}")
 
+    interruptions = [e for e in events if e["kind"] == "run_interrupted"]
+    for event in interruptions:
+        details = event.get("details") or {}
+        print(f"\nINCOMPLETE RUN: {details.get('failure_kind') or 'unknown'}; "
+              f"{details.get('interruption_reason') or 'unrecorded'}")
+        print(f"  attempted {details.get('attempted_node_ids', [])}; "
+              f"completed {details.get('completed_node_ids', [])}; "
+              f"unattempted {details.get('unattempted_node_ids', [])}")
     # ---- artifacts ------------------------------------------------------
     # Committed rules, diagnostics, reconstructed forms and the high_quality
     # verdict all live in `cognate-reconstruct inspect-run`, which is the
@@ -529,6 +588,16 @@ def main() -> int:
     run.add_argument("--temperature", type=float)
     run.add_argument("--max-turns", type=int, default=16)
     run.add_argument("--max-tool-calls", type=int, default=32)
+    run.add_argument("--max-run-seconds", type=float, default=1800)
+    run.add_argument("--timeout", type=float, default=300)
+    run.add_argument("--max-retries", type=int, default=0)
+    run.add_argument("--retry-backoff-seconds", type=float, default=10.0)
+    run.add_argument("--max-retry-seconds", type=float, default=300.0)
+    run.add_argument("--retry-max-delay-seconds", type=float, default=60.0)
+    run.add_argument("--max-total-cost-usd", type=float)
+    run.add_argument("--provider-config")
+    run.add_argument("--agent-instructions")
+    run.add_argument("--inventory-protocol", choices=("full-payload", "stored-hypothesis"), default="stored-hypothesis")
     run.add_argument("--no-autostart", action="store_true")
     run.add_argument("--quiet", action="store_true")
     run.set_defaults(func=cmd_run)

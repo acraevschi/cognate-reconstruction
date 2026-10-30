@@ -1,0 +1,852 @@
+{
+  "source": "task05-interface-smoke-20261005/events.jsonl",
+  "interpretation": "Observed malformed model calls; no target data",
+  "calls": [
+    {
+      "call_id": "292017747",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "choices": [
+              {
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "ɑ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118"
+              },
+              {
+                "proto_segment": "p",
+                "reflexes": [
+                  "p",
+                  "p",
+                  "ʔ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118"
+              },
+              {
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "⁴"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118"
+              }
+            ],
+            "concept_id": "1382"
+          },
+          {
+            "choices": [
+              {
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "t"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8"
+              },
+              {
+                "proto_segment": "o",
+                "reflexes": [
+                  "o",
+                  "o",
+                  "w"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8"
+              },
+              {
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  "ɑ"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8"
+              }
+            ],
+            "concept_id": "96"
+          },
+          {
+            "choices": [
+              {
+                "proto_segment": "k",
+                "reflexes": [
+                  "k",
+                  "p",
+                  "ɑ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "ă",
+                "reflexes": [
+                  "ă",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "n",
+                "reflexes": [
+                  "n",
+                  "n",
+                  "+"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "p"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "+",
+                "reflexes": [
+                  "+",
+                  "+",
+                  "w"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "ĩ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "m",
+                "reflexes": [
+                  "m",
+                  "m",
+                  "null"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  "null"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              }
+            ],
+            "concept_id": "239"
+          }
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "schema:commitments[].choices=extra_forbidden,commitments[].concept_id=extra_forbidden,commitments[].confidence=missing,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].set_id=missing,+1"
+    },
+    {
+      "call_id": "195837798",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "ɑ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118"
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "p",
+                "reflexes": [
+                  "p",
+                  "p",
+                  "ʔ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118"
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "⁴"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118"
+              }
+            ],
+            "confidence": 0.9,
+            "set_id": "csu-6313d8afd819556611be6118"
+          },
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "t"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8"
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "o",
+                "reflexes": [
+                  "o",
+                  "o",
+                  "w"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8"
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  "ɑ"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8"
+              }
+            ],
+            "confidence": 0.9,
+            "set_id": "csu-562f428962bab2cee6abdcf8"
+          },
+          {
+            "choices": [
+              {
+                "confidence": 0.8,
+                "proto_segment": "k",
+                "reflexes": [
+                  "k",
+                  "p",
+                  "ɑ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "ă",
+                "reflexes": [
+                  "ă",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "n",
+                "reflexes": [
+                  "n",
+                  "n",
+                  "+"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "p"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "+",
+                "reflexes": [
+                  "+",
+                  "+",
+                  "w"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "ĩ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "m",
+                "reflexes": [
+                  "m",
+                  "m",
+                  null
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  null
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801"
+              }
+            ],
+            "confidence": 0.8,
+            "set_id": "csu-15bdf5efa81315ba5d840801"
+          }
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "schema:commitments[].choices=extra_forbidden,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].support=missing"
+    },
+    {
+      "call_id": "585498022",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "ɑ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "p",
+                "reflexes": [
+                  "p",
+                  "p",
+                  "ʔ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "⁴"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              }
+            ],
+            "confidence": 0.9,
+            "set_id": "csu-6313d8afd819556611be6118"
+          },
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "t"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "o",
+                "reflexes": [
+                  "o",
+                  "o",
+                  "w"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  "ɑ"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              }
+            ],
+            "confidence": 0.9,
+            "set_id": "csu-562f428962bab2cee6abdcf8"
+          },
+          {
+            "choices": [
+              {
+                "confidence": 0.8,
+                "proto_segment": "k",
+                "reflexes": [
+                  "k",
+                  "p",
+                  "ɑ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "ă",
+                "reflexes": [
+                  "ă",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "n",
+                "reflexes": [
+                  "n",
+                  "n",
+                  "+"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "p"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "+",
+                "reflexes": [
+                  "+",
+                  "+",
+                  "w"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "ĩ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "m",
+                "reflexes": [
+                  "m",
+                  "m",
+                  null
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  null
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              }
+            ],
+            "confidence": 0.8,
+            "set_id": "csu-15bdf5efa81315ba5d840801"
+          }
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "schema:commitments[].choices=extra_forbidden,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].support=missing"
+    },
+    {
+      "call_id": "781754815",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "ɑ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "p",
+                "reflexes": [
+                  "p",
+                  "p",
+                  "ʔ"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "⁴"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              }
+            ],
+            "confidence": 0.9,
+            "set_id": "csu-6313d8afd819556611be6118"
+          },
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "t"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "o",
+                "reflexes": [
+                  "o",
+                  "o",
+                  "w"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  "ɑ"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              }
+            ],
+            "confidence": 0.9,
+            "set_id": "csu-562f428962bab2cee6abdcf8"
+          },
+          {
+            "choices": [
+              {
+                "confidence": 0.8,
+                "proto_segment": "k",
+                "reflexes": [
+                  "k",
+                  "p",
+                  "ɑ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "ă",
+                "reflexes": [
+                  "ă",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "n",
+                "reflexes": [
+                  "n",
+                  "n",
+                  "+"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "⁵⁵",
+                "reflexes": [
+                  "⁵⁵",
+                  "⁵⁵",
+                  "p"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "+",
+                "reflexes": [
+                  "+",
+                  "+",
+                  "w"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "t",
+                "reflexes": [
+                  "t",
+                  "t",
+                  "ĩ"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "a",
+                "reflexes": [
+                  "a",
+                  "a",
+                  "⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "m",
+                "reflexes": [
+                  "m",
+                  "m",
+                  null
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "³¹",
+                "reflexes": [
+                  "³¹",
+                  "³¹",
+                  null
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              }
+            ],
+            "confidence": 0.8,
+            "set_id": "csu-15bdf5efa81315ba5d840801"
+          }
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "schema:commitments[].choices=extra_forbidden,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].support=missing"
+    },
+    {
+      "call_id": "422674444",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "confidence": 0.9,
+            "proto_segment": "a p ⁵⁵",
+            "reflexes": [
+              "a p ⁵⁵",
+              "a p ⁵⁵",
+              "ɑ ʔ ⁴"
+            ],
+            "set_id": "csu-6313d8afd819556611be6118",
+            "support": 3
+          },
+          {
+            "confidence": 0.9,
+            "proto_segment": "t o ³¹",
+            "reflexes": [
+              "t o ³¹",
+              "t o ³¹",
+              "t w ɑ"
+            ],
+            "set_id": "csu-562f428962bab2cee6abdcf8",
+            "support": 3
+          },
+          {
+            "confidence": 0.8,
+            "proto_segment": "k ă n ⁵⁵ + t a m ³¹",
+            "reflexes": [
+              "k ă n ⁵⁵ + t a m ³¹",
+              "p a n ⁵⁵ + t a m ³¹",
+              "ɑ ⁵³ + p w ĩ ⁵³"
+            ],
+            "set_id": "csu-15bdf5efa81315ba5d840801",
+            "support": 3
+          }
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "unknown-correspondence-set"
+    },
+    {
+      "call_id": "581953448",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "choices": [
+              {
+                "confidence": 0.9,
+                "proto_segment": "a p ⁵⁵",
+                "reflexes": [
+                  "a p ⁵⁵",
+                  "a p ⁵⁵",
+                  "ɑ ʔ ⁴"
+                ],
+                "set_id": "csu-6313d8afd819556611be6118",
+                "support": 3
+              },
+              {
+                "confidence": 0.9,
+                "proto_segment": "t o ³¹",
+                "reflexes": [
+                  "t o ³¹",
+                  "t o ³¹",
+                  "t w ɑ"
+                ],
+                "set_id": "csu-562f428962bab2cee6abdcf8",
+                "support": 3
+              },
+              {
+                "confidence": 0.8,
+                "proto_segment": "k ă n ⁵⁵ + t a m ³¹",
+                "reflexes": [
+                  "k ă n ⁵⁵ + t a m ³¹",
+                  "p a n ⁵⁵ + t a m ³¹",
+                  "ɑ ⁵³ + p w ĩ ⁵³"
+                ],
+                "set_id": "csu-15bdf5efa81315ba5d840801",
+                "support": 3
+              }
+            ],
+            "residue_policy": "retain_from_witness",
+            "residue_witness_child_id": "hillburmish:Xiandao"
+          },
+          {},
+          {}
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "schema:commitments[].choices=extra_forbidden,commitments[].confidence=missing,commitments[].proto_segment=missing,commitments[].reflexes=missing,commitments[].residue_policy=extra_forbidden,commitments[].residue_witness_child_id=extra_forbidden,+2"
+    },
+    {
+      "call_id": "516175844",
+      "name": "test_proto_assembly",
+      "arguments": {
+        "commitments": [
+          {
+            "confidence": 0.9,
+            "proto_segment": "a p ⁵⁵",
+            "reflexes": [
+              "a p ⁵⁵",
+              "a p ⁵⁵",
+              "ɑ ʔ ⁴"
+            ],
+            "set_id": "csu-6313d8afd819556611be6118",
+            "support": 3
+          }
+        ],
+        "residue_policy": "retain_from_witness",
+        "residue_witness_child_id": "hillburmish:Xiandao"
+      },
+      "saved_error_code": "unknown-correspondence-set"
+    }
+  ]
+}

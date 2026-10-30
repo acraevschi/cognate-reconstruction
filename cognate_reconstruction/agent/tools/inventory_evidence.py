@@ -22,6 +22,7 @@ is refused. Neither is a judgement about the linguistics.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.tools.errors import (
@@ -51,6 +52,9 @@ from cognate_reconstruction.schemas.inventory import (
 )
 from cognate_reconstruction.schemas.traversal import EvidenceRelation
 from cognate_reconstruction.traversal.assembler import build_plan, resolve_columns
+from cognate_reconstruction.alignment.units import evidence_map
+from cognate_reconstruction.schemas.evidence import ColumnBinding
+from cognate_reconstruction.alignment.correspondence_sets import unit_set_id
 
 MAX_REPORTED_UNKNOWN_SETS = 8
 """Near-miss sets listed in an `unknown-correspondence-set` remediation."""
@@ -62,6 +66,7 @@ def node_alignments(
     segmentation_overlay_id: str | None,
     alignment_overlay_id: str | None,
     concept_ids: Sequence[str] = (),
+    unit_orders: tuple = (),
 ) -> MultipleAlignmentMap:
     """The node's own n-way alignment, with any committed overrides applied.
 
@@ -69,39 +74,22 @@ def node_alignments(
     nothing else, so a session that repaired one compound is reasoning about
     SCA's output everywhere else.
     """
-    selected = set(concept_ids)
-    lexicons = []
-    for child_id in context.child_ids:
-        lexicon = context.lexicon(child_id, segmentation_overlay_id)
-        if selected:
-            lexicon = lexicon.model_copy(
-                update={
-                    "forms": tuple(
-                        form
-                        for form in lexicon.forms
-                        if form.concept_id in selected
-                    )
-                }
-            )
-        lexicons.append(lexicon)
+    lexicons = tuple(context.lexicon(child_id, segmentation_overlay_id)
+                     for child_id in context.child_ids)
     try:
-        alignment_map = context.aligner.align_multiple(
-            # The same reduction `summarize_correspondences` applies, and for
-            # the same reason: the IDs derived here have to be the IDs a model
-            # was handed there, and both have to be columns the assembler can
-            # reproduce from one candidate per child.
-            one_reading_per_node(lexicons),
-            correspondence_detail=CorrespondenceDetail.SUMMARY,
-        )
-    except ToolInputError:
-        raise
+        alignment_map, _work = evidence_map(lexicons, context.aligner,
+            unit_orders=unit_orders,
+            overrides=context.alignment_overrides(alignment_overlay_id),
+            overlay_ids=(segmentation_overlay_id, alignment_overlay_id),
+            cache=context.unit_alignment_cache)
     except ValueError as error:
-        raise ToolInputError(str(error), code="alignment-failed") from error
-    return apply_alignment_overrides(
-        alignment_map,
-        context.alignment_overrides(alignment_overlay_id),
-        context.child_ids,
-    )
+        raise ToolInputError(str(error), code="alignment-failed",
+            remediation="Re-survey with unit_orders for conflicting morphology, or realign the named unit; no analysis was inferred or discarded.") from error
+    if concept_ids:
+        selected = set(concept_ids)
+        alignment_map = alignment_map.model_copy(update={"alignments": tuple(
+            a for a in alignment_map.alignments if a.concept_id in selected)})
+    return alignment_map
 
 
 def apply_alignment_overrides(
@@ -153,6 +141,7 @@ def node_inventory(
     segmentation_overlay_id: str | None,
     alignment_overlay_id: str | None,
     concept_ids: Sequence[str] = (),
+    unit_orders: tuple = (),
 ) -> tuple[CorrespondenceInventory, MultipleAlignmentMap]:
     """The node's correspondence sets, with the alignment they came from."""
     alignment_map = node_alignments(
@@ -160,6 +149,7 @@ def node_inventory(
         segmentation_overlay_id=segmentation_overlay_id,
         alignment_overlay_id=alignment_overlay_id,
         concept_ids=concept_ids,
+        unit_orders=unit_orders,
     )
     inventory = build_correspondence_sets(
         alignment_map,
@@ -168,6 +158,18 @@ def node_inventory(
         alignment_overlay_id=alignment_overlay_id,
     )
     return inventory, alignment_map
+
+
+def column_bindings(alignment_map, child_ids):
+    bindings = {}
+    for alignment in alignment_map.alignments:
+        rows = _rows_for(alignment, {child: i for i, child in enumerate(child_ids)}, len(child_ids))
+        for index, column in enumerate(alignment.evidence_columns):
+            reflexes = tuple(row[index] for row in rows)
+            bindings[column.column_id] = ColumnBinding(column_id=column.column_id,
+                set_id=unit_set_id(reflexes, column.scope_id, tuple(child_ids), alignment_map.evidence_revision),
+                reflexes=reflexes)
+    return tuple(bindings.values())
 
 
 def verify_commitments(
@@ -319,6 +321,9 @@ def _describe_unknown_set(
         "Correspondence sets are named by their content, so a set_id is only "
         "valid for the exact reflex tuple, child order, and overlays it was "
         "derived under. A realign call invalidates every earlier set_id.",
+        "Re-run summarize_correspondences under the current overlays and "
+        "unit_orders, select the intended scope and column provenance, then "
+        "preview the exact hypothesis again. Equal tokens alone cannot select a set.",
     ]
     exact = [
         item
@@ -328,8 +333,8 @@ def _describe_unknown_set(
     if exact:
         lines.append(
             "This node does contain a set with exactly these reflexes, under a "
-            f"different ID: {exact[0].set_id!r} at support {exact[0].support}. "
-            "Cite that one."
+            "different ID. Re-run summarize_correspondences under the committed overlays "
+            "and unit_orders, copy all relevant scoped rows, then preview the exact hypothesis again."
         )
     else:
         near = [
@@ -397,6 +402,9 @@ def check_complementary_splits(
         residue_policy=residue_policy,
         residue_witness_child_id=residue_witness_child_id,
     )
+    if alignment_map.evidence_revision is not None:
+        plan = replace(plan, contract_version="units-v2",
+            column_bindings={b.column_id: b for b in column_bindings(alignment_map, context.child_ids)})
     for claim in claims:
         partners = by_id.get(claim.merges_with_set_id or "")
         if not partners:
@@ -454,7 +462,7 @@ def _check_one_split(
         rows = _rows_for(alignment, order, len(context.child_ids))
         if rows is None:
             continue
-        outcomes, _stats = resolve_columns(rows, alignment.concept_id, plan)
+        outcomes, _stats = resolve_columns(rows, alignment.concept_id, plan, evidence_columns=alignment.evidence_columns)
         decided = {
             outcome.resolution.column_index: outcome.reading
             for outcome in outcomes
@@ -463,6 +471,8 @@ def _check_one_split(
         for column in range(len(rows[0])):
             reflexes = tuple(row[column] for row in rows)
             for item, other in ((left, right), (right, left)):
+                if alignment.evidence_columns and plan.column_bindings[alignment.evidence_columns[column].column_id].set_id != item.set_id:
+                    continue
                 if reflexes != tuple(item.reflexes):
                     continue
                 if item.conditioning is None:
@@ -525,6 +535,7 @@ def verify_restorations(
     context: AgentContext,
     restorations: Sequence[SegmentRestoration],
     alignment_map: MultipleAlignmentMap,
+    segmentation_overlay_id: str | None = None,
 ) -> None:
     """Check that every cited out-group really attests the restored segment.
 
@@ -563,9 +574,6 @@ def verify_restorations(
                 "or drop the restoration."
             ),
         )
-    by_concept = {
-        alignment.concept_id: alignment for alignment in alignment_map.alignments
-    }
     order = {child_id: index for index, child_id in enumerate(context.child_ids)}
     for restoration in restorations:
         descendants = [
@@ -600,7 +608,9 @@ def verify_restorations(
                     "cite, with its relation to this one."
                 ),
             )
-        alignment = by_concept.get(restoration.concept_id)
+        candidates = [a for a in alignment_map.alignments if a.concept_id == restoration.concept_id
+            and (restoration.before_evidence_column_id is None or any(c.column_id == restoration.before_evidence_column_id for c in a.evidence_columns))]
+        alignment = max(candidates, key=lambda a: len(a.evidence_columns), default=None)
         if alignment is None:
             raise ToolInputError(
                 f"restoration cites concept {restoration.concept_id!r}, which "
@@ -626,7 +636,12 @@ def verify_restorations(
                     "test_proto_assembly with detail='full' prints the columns."
                 ),
             )
-        attested = _restoration_is_attested(context, restoration)
+        relevant = [a for a in alignment_map.alignments if a.concept_id == restoration.concept_id]
+        units = {c.unit_id for a in relevant for c in a.evidence_columns}
+        if restoration.unit_id is None and len(units) > 1:
+            raise ToolInputError("restoration on partial evidence must name unit_id for its witness",
+                code="restoration-unattested", remediation="Name the intended unit and an outgroup attesting this segment in that unit; another piece of the same word is not a witness.")
+        attested = _restoration_is_attested(context, restoration, segmentation_overlay_id)
         if not attested:
             raise ToolInputError(
                 f"none of {list(restoration.restored_from_node_ids)} shows "
@@ -645,6 +660,7 @@ def verify_restorations(
 def _restoration_is_attested(
     context: AgentContext,
     restoration: SegmentRestoration,
+    segmentation_overlay_id: str | None = None,
 ) -> bool:
     """Does some cited node show the segment anywhere in this concept's form?
 
@@ -656,7 +672,7 @@ def _restoration_is_attested(
     narrower power than `proto_segment` already has for an ordinary set.
     """
     for node_id in restoration.restored_from_node_ids:
-        lexicon = context.evidence_lexicon(node_id)
+        lexicon = context.evidence_lexicon(node_id, segmentation_overlay_id)
         for form in lexicon.forms:
             if form.concept_id != restoration.concept_id:
                 continue
@@ -665,8 +681,18 @@ def _restoration_is_attested(
             # material now, so it is restorable material too, and reading the
             # phonetic string here would silently exempt the one segment class
             # every child is most likely to have lost.
-            if restoration.proto_segment in form.segments:
-                return True
+            if restoration.unit_id is None:
+                from cognate_reconstruction.alignment.units import source_analyses
+                # Unassociated whole-word claims cannot use a compound's other
+                # morpheme as witness for an unidentified lost segment.
+                if any(len(a.pieces) == 1 and a.pieces[0].kind == "whole" for a in source_analyses(form)) and restoration.proto_segment in form.segments:
+                    return True
+            else:
+                from cognate_reconstruction.alignment.units import source_analyses
+                for analysis in source_analyses(form):
+                    if any(p.unit_id == restoration.unit_id and restoration.proto_segment in
+                           tuple(form.segments[i] for i in p.segment_indices) for p in analysis.pieces):
+                        return True
     return False
 
 
@@ -678,3 +704,33 @@ __all__ = [
     "verify_commitments",
     "verify_restorations",
 ]
+
+
+def expand_shared_claims(spec, inventory):
+    """Expand only explicitly approved members, using their measured counts.
+
+    Patterns never grant execution by tuple equality. Changed selections or
+    claims remain part of the submitted hypothesis digest and require preview.
+    """
+    from cognate_reconstruction.schemas.inventory import ProtoInventorySpec
+    patterns = {p.set_id: p for p in inventory.recurrence_patterns}
+    locals_by_id = {s.set_id: s for s in inventory.sets}
+    expanded = list(spec.commitments)
+    for claim in spec.shared_claims:
+        pattern = patterns.get(claim.pattern_id)
+        if pattern is None or not set(claim.member_set_ids) <= set(pattern.member_set_ids):
+            raise ToolInputError("shared claim names a stale pattern or unrelated local member",
+                code="unknown-correspondence-set",
+                remediation="Re-survey reading='recurrence' under these overlays/unit_orders; explicitly choose member_set_ids. Exclude local exceptions or give them separate values.")
+        for set_id in claim.member_set_ids:
+            local = locals_by_id[set_id]
+            expanded.append(CorrespondenceCommitment(set_id=set_id, reflexes=local.segments,
+                support=local.support, proto_segment=claim.proto_segment,
+                confidence=claim.confidence, conditioning=claim.conditioning,
+                rationale=claim.rationale, directionality_rationale=claim.directionality_rationale))
+    # Existing uniqueness/environment validation covers local+shared overlaps.
+    try:
+        return ProtoInventorySpec.model_validate({**dict(spec), 'commitments': tuple(expanded), 'shared_claims': ()})
+    except ValueError as error:
+        raise ToolInputError(str(error), code="invalid-shared-claim",
+            remediation="Exclude exceptions from the shared member collection. A local set may carry one value per conditioning; competing environments remain expressible.") from error

@@ -55,6 +55,8 @@ from cognate_reconstruction.agent.tools.errors import ToolInputError
 from cognate_reconstruction.agent.tools.inventory_evidence import node_inventory
 from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.inventory import AlignmentOverride
+from cognate_reconstruction.alignment.units import source_analyses
+from cognate_reconstruction.schemas.evidence import digest
 
 
 def _check_rows_are_the_childrens_forms(
@@ -75,6 +77,7 @@ def _check_rows_are_the_childrens_forms(
                 "not attest the concept gets a row of nulls."
             ),
         )
+    analysis_ids = []
     for child_id, row in zip(context.child_ids, override.rows, strict=True):
         gapless = tuple(segment for segment in row if segment is not None)
         forms = [
@@ -88,7 +91,15 @@ def _check_rows_are_the_childrens_forms(
         # boundary-bearing concept could satisfy this check and then match no
         # candidate tuple in `ProtoInventoryAssembler._matching_override`,
         # which compares the gapless rows to the children's own beam segments.
-        attested = {form.segments for form in forms}
+        if override.unit_id is not None:
+            attested = {tuple(form.segments[i] for i in piece.segment_indices)
+                for form in forms for analysis in source_analyses(form)
+                for piece in analysis.pieces if piece.unit_id == override.unit_id}
+        else:
+            if any(len(analysis.pieces) > 1 for form in forms for analysis in source_analyses(form)):
+                raise ToolInputError("partial evidence requires an exact unit_id for realign",
+                    code="overlay-invalid-edit", remediation="Use the unit_id printed in get_alignments or a full assembly preview, and provide only that unit's tokens in the rows.")
+            attested = {form.segments for form in forms}
         if not gapless:
             if attested:
                 raise ToolInputError(
@@ -102,6 +113,7 @@ def _check_rows_are_the_childrens_forms(
                         "child's segments in whichever columns you mean."
                     ),
                 )
+            analysis_ids.append(None)
             continue
         if gapless not in attested:
             raise ToolInputError(
@@ -117,6 +129,19 @@ def _check_rows_are_the_childrens_forms(
                     "in a row, in the position the child's form puts them."
                 ),
             )
+        matching = {digest(analysis.model_dump(mode="json")) for form in forms
+                    for analysis in source_analyses(form)
+                    if any((override.unit_id is None or piece.unit_id == override.unit_id)
+                           and tuple(form.segments[i] for i in piece.segment_indices) == gapless
+                           for piece in analysis.pieces)}
+        supplied = override.analysis_ids[context.child_ids.index(child_id)] if override.analysis_ids else None
+        if supplied is not None:
+            matching &= {supplied}
+        if len(matching) != 1:
+            raise ToolInputError("realignment has ambiguous or stale candidate analysis",
+                code="overlay-invalid-edit", remediation="Supply analysis_ids in child order from get_alignments, for the exact candidate analysis; equal tokens do not select an analysis.")
+        analysis_ids.append(next(iter(matching)))
+    return override.model_copy(update={"analysis_ids": tuple(analysis_ids)})
 
 
 def realign(
@@ -126,7 +151,8 @@ def realign(
 ) -> RealignResult:
     arguments = RealignArgs.model_validate(raw_arguments)
     concepts = [override.concept_id for override in arguments.overrides]
-    if len(concepts) != len(set(concepts)):
+    units = [(override.concept_id, override.unit_id) for override in arguments.overrides]
+    if len(units) != len(set(units)):
         raise ToolInputError(
             "a realign request may re-lay each concept only once",
             code="overlay-invalid-edit",
@@ -142,26 +168,26 @@ def realign(
             f"no form at this node carries concepts: {unknown}",
             code="empty-scope",
         )
-    for override in arguments.overrides:
-        _check_rows_are_the_childrens_forms(
-            context, override, arguments.segmentation_overlay_id
-        )
+    verified = tuple(_check_rows_are_the_childrens_forms(
+        context, override, arguments.segmentation_overlay_id) for override in arguments.overrides)
 
     before, _map = node_inventory(
         context,
         segmentation_overlay_id=arguments.segmentation_overlay_id,
         alignment_overlay_id=arguments.base_alignment_overlay_id,
+        unit_orders=arguments.unit_orders,
     )
     overlay_id = context.store_alignment_overlay(
-        arguments.overrides,
+        verified,
         base_overlay_id=arguments.base_alignment_overlay_id,
     )
     after, _map = node_inventory(
         context,
         segmentation_overlay_id=arguments.segmentation_overlay_id,
         alignment_overlay_id=overlay_id,
+        unit_orders=arguments.unit_orders,
     )
-    delta = _verify_joins(arguments.overrides, before, after, context, overlay_id)
+    delta, source_delta = _verify_joins(arguments.overrides, before, after, context, overlay_id)
 
     invalidated = tuple(
         item.set_id
@@ -173,6 +199,8 @@ def realign(
     return RealignResult(
         alignment_overlay_id=overlay_id,
         joined_set_support_delta=delta,
+        joined_source_column_delta=source_delta,
+        count_semantics="independent-etyma-v1",
         invalidated_set_ids=invalidated,
         override_concept_count=len(overrides),
         node_concept_count=node_concepts,
@@ -189,28 +217,37 @@ def _verify_joins(
     after,
     context: AgentContext,
     overlay_id: str,
-) -> dict[str, int]:
+) -> tuple[dict[str, int], dict[str, int]]:
     """Constraint 3: a named set must actually gain support.
 
     Refused rather than reported, because this is the check that separates a
     repair from a fit. The overlay is discarded on refusal — an overlay a commit
     could cite while its own claim was refuted would be worse than no overlay.
     """
-    support_before = {item.set_id: item.support for item in before.sets}
-    support_after = {item.set_id: item.support for item in after.sets}
+    before_rows = (*before.sets, *before.recurrence_patterns)
+    after_rows = (*after.sets, *after.recurrence_patterns)
+    support_before = {item.set_id: item.support for item in before_rows}
+    support_after = {item.set_id: item.support for item in after_rows}
+    old_sets = {item.set_id: item for item in before_rows}
     delta: dict[str, int] = {}
+    source_delta: dict[str, int] = {}
     for override in overrides:
         named = override.joins_set_id
         if named is None:
             continue
-        gained = support_after.get(named, 0) - support_before.get(named, 0)
+        known = old_sets.get(named)
+        equivalent = next((item for item in after_rows if known is not None
+            and item.segments == known.segments and item.scope_id == known.scope_id), None)
+        gained = (equivalent.support if equivalent else 0) - support_before.get(named, 0)
         delta[named] = gained
-        if gained > 0:
+        source_gained = ((equivalent.source_column_count or equivalent.support) if equivalent else 0) - ((known.source_column_count or known.support) if known else 0)
+        source_delta[named] = source_gained
+        if source_gained > 0:
             continue
         del context.alignment_overlays[overlay_id]
         raise ToolInputError(
             f"the realignment of concept {override.concept_id!r} claims to join "
-            f"set {named!r}, which gained {gained} column(s) of support",
+            f"set {named!r}, which gained {source_gained} source column(s) and {gained} independent support",
             code="realignment-does-not-join-set",
             remediation=(
                 "A realignment that joins a set moves a column into a "
@@ -230,7 +267,7 @@ def _verify_joins(
                 )
             ),
         )
-    return delta
+    return delta, source_delta
 
 
 def _advisory(overrides: int, node_concepts: int, invalidated: int) -> str:

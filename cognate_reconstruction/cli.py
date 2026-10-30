@@ -5,11 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import re
 import subprocess
 import sys
 import uuid
 from collections import Counter
 from collections.abc import Sequence
+from datetime import date
 from pathlib import Path
 from typing import Any
 from urllib.error import URLError
@@ -30,7 +33,25 @@ from cognate_reconstruction.agent import (
     TrajectoryDatasetBuilder,
     default_tool_registry,
 )
+from cognate_reconstruction.agent.events import AgentEventKind
+from cognate_reconstruction.agent.providers.chat_template import (
+    analyze_template, locate_lm_studio_template, probe_reasoning_consumption,
+)
+from cognate_reconstruction.agent.providers.litellm_provider import ReasoningHistory
 from cognate_reconstruction.agent.instructions import load_agent_instructions
+from cognate_reconstruction.agent.request_journal import (
+    REQUEST_JOURNAL_VERSION,
+    USAGE_RECORDED_EVENT,
+    JsonlRequestJournal,
+    ResumeUsage,
+    read_request_journal,
+    reconcile_resume_usage,
+    request_journal_path,
+)
+from cognate_reconstruction.agent.providers.pricing import load_price_table, price_for, price_setting
+from cognate_reconstruction.agent.schemas import COMMIT_REQUIREMENT_NOTES
+from cognate_reconstruction.alignment.lingpy_adapter import LingPyAligner
+from cognate_reconstruction.alignment.units import alignment_identity
 from cognate_reconstruction.benchmarks import (
     answer_key_path,
     available_definitions,
@@ -85,6 +106,7 @@ from cognate_reconstruction.schemas.rules import AnchorPolicy
 from cognate_reconstruction.traversal import (
     CheckpointStore,
     FamilyCheckpoint,
+    PlannedStop,
     RuleBasedReconstructor,
 )
 
@@ -104,6 +126,58 @@ def _api_base(value: str) -> str:
 
 def _hash_text(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
+
+
+def _auto_reasoning_history(args, preset, model, api_base, api_key, *, strict: bool) -> tuple[str, dict[str, Any]]:
+    """Resolve `--reasoning-history auto` from the chat template (R03 §17a, §18, §20).
+
+    Keep when the template renders resent reasoning and continues one model turn
+    through tool results (Gemma 4); drop otherwise (Qwen3.6 opens a new turn
+    that thinks by itself). Unless preflight is off, the server is also asked
+    whether it renders the field. `auto` is the default: when nothing can be
+    inferred it falls back to drop and says so; asked for explicitly
+    (`strict`), it refuses instead.
+    """
+    requested = "auto" if strict else "auto (default)"
+    if model.startswith(_EXPLICIT_GEMINI_PREFIXES):
+        return "drop", {"requested": requested, "reason": "Gemini keeps thought signatures"}
+    raw_model = model.removeprefix("openai/")
+
+    def fallback(reason: str) -> tuple[str, dict[str, Any]]:
+        if strict:
+            raise ValueError(f"--reasoning-history auto: {reason}; choose keep or drop explicitly")
+        print(f"reasoning history: {reason}; dropping earlier reasoning (pass --reasoning-history "
+              "keep or drop to decide explicitly)", file=sys.stderr)
+        return "drop", {"requested": requested, "reason": reason}
+
+    try:
+        if getattr(args, "chat_template", None):
+            path = Path(args.chat_template)
+            text, source, variables = path.read_text(), f"file:{path.name}", {}
+        elif preset == "lm-studio" and (strict or not getattr(args, "no_preflight", False)):
+            located = locate_lm_studio_template(raw_model)
+            text, source, variables = located.text, f"lm-studio:{located.source}", located.variables
+        else:
+            return fallback("no chat template to read (pass --chat-template)")
+        analysis = analyze_template(text, variables)
+    except (OSError, ValueError) as error:  # TemplateAnalysisError is a ValueError
+        return fallback(str(error))
+    record: dict[str, Any] = {
+        "requested": requested, "template_source": source, "template_sha256": _hash_text(text),
+        "template_variables": variables, "consumes_reasoning": analysis.consumes_reasoning,
+        "new_turn_after_tool": analysis.new_turn_after_tool, "reason": analysis.reason, "probe": None,
+    }
+    if not getattr(args, "no_preflight", False) and api_base:
+        try:
+            probe = probe_reasoning_consumption(_api_base(api_base), api_key, raw_model)
+        except (OSError, KeyError, ValueError) as error:
+            return fallback(f"the server probe failed: {error}")
+        record["probe"] = probe
+        if probe["consumed"] != analysis.consumes_reasoning:
+            return fallback(
+                f"the template says resent reasoning is {'rendered' if analysis.consumes_reasoning else 'ignored'}, "
+                f"but the server {'rendered' if probe['consumed'] else 'ignored'} it")
+    return analysis.mode, record
 
 
 def _hash_json(value: object) -> str:
@@ -476,6 +550,7 @@ def _command_run_benchmark(args: argparse.Namespace) -> None:
                 run_dir,
                 completed.returncode,
                 stderr_tail=stderr_tail,
+                payload=WorkbenchPayload.model_validate_json(payload_path.read_text(encoding="utf-8")),
             )
         )
         status = "wrote result.json" if outcomes[-1].result_written else (
@@ -527,9 +602,11 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
 
     Keys are the human-readable phrases used in the refused-resume message.
     """
-    definitions = default_tool_registry().definitions()
+    definitions = default_tool_registry(inventory_protocol=getattr(args, "inventory_protocol", "stored-hypothesis")).definitions()
     return {
-        "the agent instructions": _hash_text(load_agent_instructions()),
+        "the evidence/assembly contract": _hash_json(alignment_identity(LingPyAligner())),
+        "the agent instructions": _hash_text(_selected_instructions(args)),
+        "the node commit requirements": _hash_json(COMMIT_REQUIREMENT_NOTES),
         "the tool schemas": _hash_json(
             [definition.model_dump(mode="json") for definition in definitions]
         ),
@@ -543,10 +620,16 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
     }
 
 
+def _selected_instructions(args: argparse.Namespace) -> str:
+    path = getattr(args, "agent_instructions", None)
+    return Path(path).expanduser().read_text(encoding="utf-8") if path else load_agent_instructions()
+
+
 GIVE_UP_COMPONENT = "the give-up thresholds"
 """Name under which the give-up thresholds are recorded in a checkpoint."""
 
-ADVISORY_CONFIGURATION_COMPONENTS = frozenset({GIVE_UP_COMPONENT})
+RETRY_COMPONENT = "the operational retry settings"
+ADVISORY_CONFIGURATION_COMPONENTS = frozenset({GIVE_UP_COMPONENT, RETRY_COMPONENT})
 """Configuration components recorded in a checkpoint but *not* hashed into it.
 
 These decide when the harness stops trying, and nothing else: they cannot
@@ -580,6 +663,16 @@ DEFAULT_TEMPERATURE = 0.1
 GEMINI_DEFAULT_TEMPERATURE = 1.0
 
 
+GEMINI_THINKING_TRANSPORT = "gemini-thinking-level-v1"
+
+
+def _gemini_thinking_level_model(model: str) -> bool:
+    """Is this a Gemini 3+ model routed through LiteLLM's Gemini adapters?"""
+    route, _, raw = model.partition("/")
+    match = re.match(r"gemini-(\d+)", raw)
+    return f"{route}/" in _EXPLICIT_GEMINI_PREFIXES and match is not None and int(match.group(1)) >= 3
+
+
 def _resolved_temperature(requested: float | None, preset: str | None) -> float:
     if requested is not None:
         return requested
@@ -592,6 +685,7 @@ def _resolved_temperature(requested: float | None, preset: str | None) -> float:
 
 def _provider_and_configuration(
     args: argparse.Namespace,
+    *, compatibility_policy: str = "operational-retry-v1",
 ) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
     options = load_provider_options(args.provider_config)
     preset = "lm-studio" if args.lm_studio else args.preset
@@ -601,11 +695,12 @@ def _provider_and_configuration(
     api_key = api_key_from_environment(api_key_env)
     model = args.model
     api_base = _api_base(args.api_base) if args.api_base else None
+    reasoning_transport = None
     if args.reasoning_effort is not None:
         # Gemini 3 thinks at "low" unless told otherwise, and the comparative
         # method is not a low-thinking task. Passed as the OpenAI-shaped name so
-        # every backend that has a reasoning control gets it; LiteLLM turns it
-        # into thinkingConfig.thinkingLevel for Gemini.
+        # every backend that has a reasoning control gets it, except for the
+        # Gemini 3+ models handled after routing below.
         options["reasoning_effort"] = args.reasoning_effort
     if preset == "gemini":
         assert api_key is not None  # the preset always names a key variable
@@ -663,11 +758,42 @@ def _provider_and_configuration(
             options["api_base"] = api_base
         if api_key:
             options["api_key"] = api_key
+    if args.reasoning_effort is not None and _gemini_thinking_level_model(model):
+        # LiteLLM 1.81.16 sends `medium` as thinkingLevel "high" for every
+        # Gemini 3 name it does not special-case (only `gemini-3-flash*` and
+        # `gemini-3.1-pro-preview`), and refuses `reasoning_effort` outright for
+        # a model missing from its cost map. The level is therefore sent as the
+        # explicit Gemini field, which LiteLLM passes through unchanged.
+        del options["reasoning_effort"]
+        options["thinkingConfig"] = {"thinkingLevel": args.reasoning_effort, "includeThoughts": True}
+        reasoning_transport = GEMINI_THINKING_TRANSPORT
     temperature = _resolved_temperature(args.temperature, preset)
     options["temperature"] = temperature
     options["timeout"] = args.timeout
-    provider = LiteLLMProvider(model, completion_kwargs=options)
+    price_entry = None
+    reasoning_history = None
+    requested_history = getattr(args, "reasoning_history", None)
+    history_record: dict[str, Any] = {}
+    if requested_history in (None, "auto"):
+        requested_history, history_record = _auto_reasoning_history(
+            args, preset, model, api_base, options.get("api_key"), strict=requested_history == "auto")
+    if requested_history == "keep":
+        if model.startswith(_EXPLICIT_GEMINI_PREFIXES):
+            # Gemini carries its reasoning as thought signatures, which the
+            # adapter already returns; resent text would be a second channel.
+            raise ValueError("--reasoning-history keep is for OpenAI-shaped routes; Gemini keeps thought signatures")
+        reasoning_history = ReasoningHistory(budget_tokens=args.reasoning_history_budget,
+                                             older_head_tokens=args.reasoning_history_head)
+    if getattr(args, "price_table", None):
+        table, table_sha256 = load_price_table(args.price_table)
+        price = price_for(table, model, date.today())
+        price_entry = price_setting(price, table_sha256)
+        provider = LiteLLMProvider(model, completion_kwargs=options, price=price,
+                                   reasoning_history=reasoning_history)
+    else:
+        provider = LiteLLMProvider(model, completion_kwargs=options, reasoning_history=reasoning_history)
     settings = {
+        "inventory_protocol": getattr(args, "inventory_protocol", "stored-hypothesis"),
         "model": model,
         "preset": preset,
         "api_base": api_base,
@@ -683,26 +809,57 @@ def _provider_and_configuration(
         "anchor_match_factor": args.anchor_match_factor,
         "max_turns": args.max_turns,
         "max_tool_calls": args.max_tool_calls,
-        "max_retries": args.max_retries,
-        "retry_backoff_seconds": args.retry_backoff_seconds,
         "max_total_turns": args.max_total_turns,
         "max_total_tool_calls": args.max_total_tool_calls,
         "max_run_seconds": args.max_run_seconds,
         "max_total_cost_usd": args.max_total_cost_usd,
     }
+    if price_entry is not None:
+        # Added only when used, so every earlier configuration keeps its digest.
+        settings["price_table"] = price_entry
+    if reasoning_transport is not None:
+        # The wire request changed for these configurations, so their digest does too.
+        settings["reasoning_transport"] = reasoning_transport
+    if reasoning_history is not None:
+        # What the model sees changed; recorded only then, like the above. A run
+        # that drops reasoning, by default or decision, hashes as it always did:
+        # the digest records what was sent. Why it was decided goes to the
+        # run summary (`_with_reasoning_history`).
+        settings["reasoning_history"] = reasoning_history.setting()
+    provider.reasoning_decision = {**history_record, **(
+        reasoning_history.setting() if reasoning_history is not None else {"mode": "drop"})}
+    retry_settings = {
+        "max_retries": args.max_retries,
+        "retry_backoff_seconds": args.retry_backoff_seconds,
+        "max_retry_seconds": args.max_retry_seconds,
+        "retry_max_delay_seconds": args.retry_max_delay_seconds,
+    }
     give_up_settings = _give_up_thresholds(args)
+    if compatibility_policy == "strict-v1":
+        # Reproduce the old digest exactly; no unverifiable migration.
+        settings.update({k: retry_settings[k] for k in ("max_retries", "retry_backoff_seconds")})
+    else:
+        # Token overrides are model-visible budgets, not recovery patience.
+        for key in ("allow_truncation_backoff", "truncation_max_tokens_ceiling"):
+            settings[key] = give_up_settings.pop(key)
     digests = _behavioural_input_digests(args)
     public = {
         **settings,
         "instruction_sha256": digests["the agent instructions"],
         "tool_schema_sha256": digests["the tool schemas"],
+        "commit_requirements_sha256": digests["the node commit requirements"],
         "anchors_sha256": digests["the anchor file"],
     }
+    if compatibility_policy != "strict-v1":
+        public["behavioural_inputs"] = digests
+        public["compatibility_policy"] = compatibility_policy
     components = {
         **digests,
         "the provider and limit settings": _hash_json(settings),
         GIVE_UP_COMPONENT: _hash_json(give_up_settings),
     }
+    if compatibility_policy != "strict-v1":
+        components[RETRY_COMPONENT] = _hash_json(retry_settings)
     return provider, _hash_json(public), public, components
 
 
@@ -748,10 +905,19 @@ def _resume_mismatches(
     the message names the ones that actually moved instead.
     """
     mismatches = []
+    if checkpoint.schema_version == "1.0":
+        mismatches.append("legacy checkpoint 1.0 lacks units-v1 evidence/analysis provenance; start a new run/checkpoint, or replay with the original checkout")
+    if checkpoint.schema_version == "2.0":
+        mismatches.append("checkpoint 2.0 uses units-v1 count/scope semantics; start a new units-v2 run or resume with the original checkout")
     if checkpoint.input_sha256 != input_sha256:
         mismatches.append("the input dataset")
     if checkpoint.normalized_tree_sha256 != tree_sha256:
         mismatches.append("the normalized tree")
+    for name, digest in components.items():
+        if name not in ADVISORY_CONFIGURATION_COMPONENTS and name in checkpoint.configuration_components and checkpoint.configuration_components[name] != digest:
+            mismatches.append(name)
+    if checkpoint.compatibility_policy == "strict-v1" and checkpoint.configuration_components.get(GIVE_UP_COMPONENT, components.get(GIVE_UP_COMPONENT)) != components.get(GIVE_UP_COMPONENT):
+        mismatches.append("legacy give-up controls cannot be verified as non-semantic")
     if checkpoint.configuration_sha256 != configuration_sha256:
         # An older checkpoint recorded no components; `.get` then compares a
         # digest with itself and the message stays honestly generic.
@@ -762,7 +928,7 @@ def _resume_mismatches(
             and checkpoint.configuration_components.get(name, digest) != digest
         ]
         mismatches.extend(changed or ["the configuration"])
-    return mismatches
+    return list(dict.fromkeys(mismatches))
 
 
 def _changed_advisory_components(
@@ -837,6 +1003,8 @@ def _seed_trajectories(
         if trajectory.completed
         and trajectory.committed_reconstruction is not None
         and trajectory.node_id in completed_nodes
+        and (trajectory.reconstruction_step is None or
+             trajectory.reconstruction_step == checkpoint.steps_by_node[trajectory.node_id])
         # The same compatibility notion the checkpoint itself uses: a
         # hypothesis produced under a different model or a different
         # instruction set must not leak into this run.
@@ -854,6 +1022,134 @@ def _seed_trajectories(
     )
 
 
+def _with_reasoning_history(summary: dict, decision: dict | None) -> dict:
+    """The digest alone cannot say what `--reasoning-history` decided, or why."""
+    if not decision:
+        return summary
+    return {**summary, "reasoning_history": decision}
+
+
+def _write_run_summary(path: Path, summary: dict, request_journal: JsonlRequestJournal | None = None) -> None:
+    """Replace the run summary atomically, then mark it in the journal.
+
+    The marker tells a later resume that this summary covers every journaled
+    session so far, so it is written only once the summary is durable.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(json.dumps(summary, ensure_ascii=False, indent=2) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    temporary.replace(path)
+    if request_journal is not None:
+        request_journal.record(USAGE_RECORDED_EVENT, usage=summary.get("usage"))
+
+
+REQUEST_JOURNAL_SETTING = "request_journal"
+"""Checkpoint `operational_settings` key marking a run that journals requests.
+
+A checkpoint with this marker whose journal is missing has lost its record of
+in-flight effort and is treated as missing history, never as zero effort.
+"""
+
+
+def _resume_usage(trajectories_path, checkpoint, checkpoint_path, summary_path,
+                  run_id: str, configuration_sha256: str) -> ResumeUsage:
+    """The cumulative usage a resume restores before it makes any request."""
+    saved_usage = {}
+    if summary_path.exists():
+        saved_summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        if (saved_summary.get("run_id"), saved_summary.get("configuration_sha256")) != (run_id, configuration_sha256):
+            raise ValueError("resume summary belongs to another run/configuration")
+        saved_usage = saved_summary.get("usage", {})
+    # Every distinct attempt's effort counts, while outcomes count each node once.
+    try:
+        previous = tuple({
+            t.trajectory_id: t for t in TrajectoryDatasetBuilder.read_jsonl(trajectories_path)
+            if t.run_id == run_id and t.configuration_sha256 == configuration_sha256
+        }.values()) if Path(trajectories_path).exists() else ()
+    except OSError:
+        previous = ()
+    return reconcile_resume_usage(
+        saved_usage=saved_usage, trajectories=previous,
+        journal=read_request_journal(request_journal_path(checkpoint_path), run_id, configuration_sha256),
+        journaled=checkpoint.operational_settings.get(REQUEST_JOURNAL_SETTING) == REQUEST_JOURNAL_VERSION,
+        checkpointed_node_ids=checkpoint.steps_by_node,
+    )
+
+
+def _warn_incomplete_history(resumed: ResumeUsage) -> None:
+    if resumed.usage["history_complete"]:
+        return
+    lost = resumed.unrecorded
+    detail = (
+        f"{lost.requests} provider request(s) and {lost.turns} turn(s) were journaled by a "
+        "process that exited before recording them; their turns count against caps, their "
+        "cost and time stay unknown"
+        if not lost.empty else "an earlier resume already found effort lost to an abrupt exit"
+    ) if resumed.usage["effort_counts_known"] else "no trustworthy record of earlier effort"
+    print(f"warning: run usage history is incomplete ({detail})", file=sys.stderr)
+
+
+def _recover_finalized_steps(path, checkpoint, dataset, beam_width):
+    """Close the JSONL-before-checkpoint crash window with verified receipts.
+
+    Only the new operational policy permits this recovery. No commit/partial
+    session is executed. Exact child beams and a complete internal subtree must
+    match, besides the run/configuration/schema identity.
+    """
+    if checkpoint.compatibility_policy != "operational-retry-v1" or not Path(path).exists():
+        return checkpoint
+    from cognate_reconstruction.tree import parse_newick, assign_node_ids, postorder_groups
+    from cognate_reconstruction.traversal.beam import make_leaf_beam
+    try:
+        trajectories = TrajectoryDatasetBuilder.read_jsonl(path)
+    except OSError:
+        return checkpoint  # seeding emits the supported missing/unreadable warning
+    except ValueError as error:
+        raise ValueError(f"could not load prior hypotheses from {path}: {error}") from error
+    latest = {t.node_id: t for t in trajectories
+              if t.run_id == checkpoint.run_id and t.configuration_sha256 == checkpoint.configuration_sha256}
+    receipt_positions = {t.trajectory_id: index for index, t in enumerate(trajectories)}
+    root = parse_newick(dataset.tree.newick)
+    ids = assign_node_ids(root)
+    lexicons = {l.variety_id: l for l in dataset.lexicons}
+    beams = {ids[id(leaf)]: make_leaf_beam(lexicons[leaf.label], beam_width=beam_width)
+             for leaf in root.get_leaves()}
+    safe = set()
+    for children, parent in postorder_groups(root):
+        node = ids[id(parent)]
+        child_ids = tuple(ids[id(c)] for c in children)
+        if any(c not in beams for c in child_ids):
+            continue
+        existing = checkpoint.steps_by_node.get(node)
+        receipt = latest.get(node)
+        candidate = existing or (receipt.reconstruction_step if receipt and receipt.completed and receipt.committed_reconstruction is not None and receipt.schema_version == "5.0" else None)
+        if candidate is None or candidate.parent_node_id != node or candidate.diagnostics.failure_fallback:
+            continue
+        if any(not child.is_leaf and child_id not in safe for child, child_id in zip(children, child_ids)):
+            continue
+        if candidate.child_node_ids != child_ids or candidate.input_beams != tuple(beams[c] for c in child_ids):
+            if existing is not None:
+                raise ValueError(f"checkpoint inputs for {node!r} do not match the completed tree")
+            continue
+        if existing is None:
+            # A prior ancestor built on fallback must not be laundered merely
+            # because a later identity commit has an equal child beam.
+            if any(not child.is_leaf and (latest.get(child_id) is None or
+                   not latest[child_id].completed or
+                   latest[child_id].reconstruction_step != checkpoint.steps_by_node.get(child_id) or
+                   receipt_positions[latest[child_id].trajectory_id] >= receipt_positions[receipt.trajectory_id])
+                   for child, child_id in zip(children, child_ids)):
+                continue
+            checkpoint = checkpoint.with_step(candidate)
+            print(f"restored finalized node {node} from matching JSONL; no provider request replayed", file=sys.stderr)
+        safe.add(node)
+        beams[node] = candidate.output_beam
+    return checkpoint
+
+
 def _command_infer(args: argparse.Namespace) -> None:
     if args.allow_truncation_backoff and args.truncation_max_tokens_ceiling is None:
         raise ValueError(
@@ -866,17 +1162,20 @@ def _command_infer(args: argparse.Namespace) -> None:
     payload = WorkbenchPayload.model_validate_json(input_text)
     dataset = ingest_payload(payload)
     anchors_by_node = _load_anchors(args.anchors, dataset)
-    provider, configuration_sha256, _, components = _provider_and_configuration(
-        args
-    )
-
     checkpoint_store = (
         CheckpointStore(args.checkpoint) if args.checkpoint else None
     )
     checkpoint: FamilyCheckpoint | None = None
+    if args.resume and checkpoint_store is not None:
+        checkpoint = checkpoint_store.load()
+    provider, configuration_sha256, _, components = _provider_and_configuration(
+        args, compatibility_policy=checkpoint.compatibility_policy if checkpoint else "operational-retry-v1",
+    )
+    decision = getattr(provider, "reasoning_decision", None)
     seed_trajectories: tuple[AgentTrajectory, ...] = ()
     input_sha256 = _hash_text(input_text)
     tree_sha256 = _hash_text(dataset.tree.newick)
+    request_journal: JsonlRequestJournal | None = None
     if args.resume:
         if args.run_id is not None:
             raise ValueError("--run-id cannot be changed during --resume")
@@ -903,6 +1202,10 @@ def _command_infer(args: argparse.Namespace) -> None:
                 "original run used.",
                 file=sys.stderr,
             )
+        recovered = _recover_finalized_steps(args.trajectories, checkpoint, dataset, args.beam_width)
+        if recovered != checkpoint:
+            checkpoint_store.save(recovered)
+            checkpoint = recovered
         run_id = checkpoint.run_id
         seed_trajectories = _seed_trajectories(
             args.trajectories, checkpoint, configuration_sha256
@@ -915,21 +1218,52 @@ def _command_infer(args: argparse.Namespace) -> None:
             )
         run_id = args.run_id or f"run-{uuid.uuid4()}"
         if checkpoint_store is not None:
+            journal_path = request_journal_path(checkpoint_store.path)
+            if journal_path.exists():
+                # Its sessions would be read as this run's lost effort.
+                raise ValueError(
+                    f"request journal already exists: {journal_path}; it belongs to an "
+                    "earlier run at this checkpoint path. Remove it or choose a new "
+                    "checkpoint path"
+                )
+            request_journal = JsonlRequestJournal(
+                journal_path, run_id=run_id, configuration_sha256=configuration_sha256,
+            )
+            # The journal exists before the checkpoint does, so a checkpoint
+            # carrying the marker without a journal means the journal was lost.
+            request_journal.record("journal_opened", resumed=False)
             checkpoint = FamilyCheckpoint(
                 run_id=run_id,
                 input_sha256=input_sha256,
                 configuration_sha256=configuration_sha256,
                 normalized_tree_sha256=tree_sha256,
                 configuration_components=components,
+                compatibility_policy="operational-retry-v1",
+                operational_settings={
+                    "max_retries": args.max_retries,
+                    "retry_backoff_seconds": args.retry_backoff_seconds,
+                    "max_retry_seconds": args.max_retry_seconds,
+                    "retry_max_delay_seconds": args.retry_max_delay_seconds,
+                    REQUEST_JOURNAL_SETTING: REQUEST_JOURNAL_VERSION,
+                },
             )
             checkpoint_store.save(checkpoint)
 
+    if request_journal is None and checkpoint_store is not None:
+        request_journal = JsonlRequestJournal(
+            request_journal_path(checkpoint_store.path), run_id=run_id,
+            configuration_sha256=configuration_sha256,
+        )
     orchestrator = AgentOrchestrator(
         provider,
+        instructions=_selected_instructions(args),
+        registry=default_tool_registry(inventory_protocol=getattr(args, "inventory_protocol", "stored-hypothesis")),
         max_turns=args.max_turns,
         max_tool_calls=args.max_tool_calls,
         max_retries=args.max_retries,
         retry_backoff_seconds=args.retry_backoff_seconds,
+        max_retry_seconds=args.max_retry_seconds,
+        retry_max_delay_seconds=args.retry_max_delay_seconds,
         max_total_turns=args.max_total_turns,
         max_total_tool_calls=args.max_total_tool_calls,
         max_run_seconds=args.max_run_seconds,
@@ -943,6 +1277,7 @@ def _command_infer(args: argparse.Namespace) -> None:
         event_sink=_event_sink(args),
         run_id=run_id,
         configuration_sha256=configuration_sha256,
+        request_journal=request_journal,
     )
     deterministic = RuleBasedReconstructor(
         beam_width=args.beam_width,
@@ -974,14 +1309,51 @@ def _command_infer(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
 
-    result = service.reconstruct_family(
-        dataset,
-        anchors_by_node=anchors_by_node,
-        resume_steps=checkpoint.steps_by_node if checkpoint else None,
-        seed_trajectories=seed_trajectories,
-        on_step_complete=save_step,
-    )
+    summary_path = Path(args.output).expanduser().with_name("run_summary.json")
+    if args.resume:
+        for name in _changed_advisory_components(checkpoint, components):
+            orchestrator._emit(
+                AgentEventKind.RESUME_SETTINGS_CHANGED, "run", f"{name} changed on resume",
+                component=name, original_digest=checkpoint.configuration_components.get(name),
+                current_digest=components[name],
+                original_retry_settings={
+                    k: v for k, v in checkpoint.operational_settings.items() if k != REQUEST_JOURNAL_SETTING
+                },
+                current_retry_settings={
+                    "max_retries": args.max_retries, "retry_backoff_seconds": args.retry_backoff_seconds,
+                    "max_retry_seconds": args.max_retry_seconds,
+                    "retry_max_delay_seconds": args.retry_max_delay_seconds,
+                },
+            )
+        resumed = _resume_usage(args.trajectories, checkpoint, checkpoint_store.path,
+                                summary_path, run_id, configuration_sha256)
+        _warn_incomplete_history(resumed)
+        orchestrator.restore_usage(resumed.usage)
+        request_journal.record("journal_opened", resumed=True,
+                               restored_usage=orchestrator.usage_snapshot())
+    try:
+        result = service.reconstruct_family(
+            dataset, anchors_by_node=anchors_by_node,
+            resume_steps=checkpoint.steps_by_node if checkpoint else None,
+            seed_trajectories=seed_trajectories, on_step_complete=save_step,
+            stop_after_node=args.stop_after_node,
+        )
+    except PlannedStop as stop:
+        _write_run_summary(summary_path, _with_reasoning_history(
+            {**service.last_run_summary, "stop_after_node": args.stop_after_node}, decision), request_journal)
+        print(f"PLANNED STOP: {stop}. Completed nodes are in {summary_path}"
+              f"{' and the checkpoint' if checkpoint_store else ''}; no result.json is written.",
+              file=sys.stderr)
+        return
+    except (Exception, KeyboardInterrupt):
+        if service.last_run_summary is not None:
+            _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
+                               request_journal)
+            print(f"INCOMPLETE RUN: progress and missing evaluations saved to {summary_path}", file=sys.stderr)
+        raise
     _write_json(args.output, result.model_dump_json(indent=2))
+    _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
+                       request_journal)
     reconstructed = len(result.internal_nodes) - len(result.node_failures)
     print(
         f"wrote {args.output}: {reconstructed} reconstructed "
@@ -998,7 +1370,7 @@ def _command_infer(args: argparse.Namespace) -> None:
             file=sys.stderr,
         )
     print(
-        f"appended {len(result.trajectories)} new trajectories to "
+        f"appended {len(service.reconstructor.trajectories)} new trajectories to "
         f"{args.trajectories}",
         file=sys.stderr,
     )
@@ -1078,7 +1450,8 @@ def _trajectory_summary(trajectories) -> dict[str, Any]:
     # protocol friction says the session was a poor tool-use example.
     total_protocol_failures = sum(item.metrics.protocol_failures for item in trajectories)
     return {
-        "schema_version": "2.0",
+        "schema_version": "5.0",
+        "readable_trajectory_versions": ["2.0", "3.0", "4.0", "5.0"],
         "current_trajectory_schema_sha256": _current_trajectory_schema_sha256(),
         "schema_variants": _schema_variants(trajectories),
         "trajectory_count": len(trajectories),
@@ -1697,6 +2070,36 @@ def _parser() -> argparse.ArgumentParser:
             "configuration digest. Gemini 3 thinks at 'low' when this is unset."
         ),
     )
+    infer.add_argument(
+        "--reasoning-history",
+        choices=("drop", "keep", "auto"),
+        default=None,
+        help=(
+            "Whether earlier steps of the current tool loop go back with the "
+            "model's own reasoning (OpenAI-shaped routes). 'keep' resends it "
+            "within --reasoning-history-budget. 'auto', the default, decides from "
+            "the chat template (keep only where the template needs it) and falls "
+            "back to drop with a warning when it cannot; given explicitly, it "
+            "refuses instead. 'keep' enters the digest; every decision is in "
+            "run_summary.json."
+        ),
+    )
+    infer.add_argument(
+        "--chat-template",
+        help="Chat template file for --reasoning-history auto, instead of LM Studio's loaded one.",
+    )
+    infer.add_argument(
+        "--reasoning-history-budget",
+        type=int,
+        default=16000,
+        help="Tokens of the most recent steps' reasoning resent in full under 'keep'.",
+    )
+    infer.add_argument(
+        "--reasoning-history-head",
+        type=int,
+        default=200,
+        help="Tokens kept from each older step's reasoning once the budget is spent.",
+    )
     infer.add_argument("--beam-width", type=int, default=5)
     infer.add_argument(
         "--anchor-policy",
@@ -1715,13 +2118,36 @@ def _parser() -> argparse.ArgumentParser:
     )
     infer.add_argument("--timeout", type=float, default=300.0)
     infer.add_argument("--max-turns", type=int, default=24)
+    infer.add_argument("--agent-instructions", help="Explicit system-text arm; content is hashed. Default: packaged corrected instructions.")
+    infer.add_argument("--inventory-protocol", choices=("full-payload", "stored-hypothesis"), default="stored-hypothesis", help="Independently select compact choices/immutable handles or full inventory payloads; both commit shapes remain supported.")
     infer.add_argument("--max-tool-calls", type=int, default=64)
-    infer.add_argument("--max-retries", type=int, default=2)
-    infer.add_argument("--retry-backoff-seconds", type=float, default=1.0)
+    infer.add_argument("--max-retries", type=int, default=6)
+    infer.add_argument("--retry-backoff-seconds", type=float, default=10.0)
+    infer.add_argument("--max-retry-seconds", type=float, default=300.0, help="Elapsed cap per rejected request, including attempts/backoff.")
+    infer.add_argument("--retry-max-delay-seconds", type=float, default=60.0, help="Exponential backoff ceiling; a longer Retry-After is honored only within remaining caps.")
     infer.add_argument("--max-total-turns", type=int)
     infer.add_argument("--max-total-tool-calls", type=int)
     infer.add_argument("--max-run-seconds", type=float)
     infer.add_argument("--max-total-cost-usd", type=float)
+    infer.add_argument(
+        "--stop-after-node",
+        help=(
+            "End the traversal once this internal node's step is recorded; later "
+            "nodes are not attempted. The run summary is written as a planned "
+            "stop (status interrupted, failure_kind planned_stop) with the "
+            "completed steps, the checkpoint keeps them, and no result.json is "
+            "written. For diagnostics that score one node."
+        ),
+    )
+    infer.add_argument(
+        "--price-table",
+        help=(
+            "Versioned JSON price table (price-table-v1) for a model LiteLLM "
+            "cannot price. Its entry for --model replaces LiteLLM's reported "
+            "cost with an upper bound from token counts; the table digest joins "
+            "the configuration digest. Refused outside the entry's dates."
+        ),
+    )
     infer.add_argument(
         "--max-repeated-tool-failures",
         type=int,

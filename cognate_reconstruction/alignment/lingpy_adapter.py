@@ -136,6 +136,16 @@ def _alignment_inputs(
     respect_cognate_sets: bool,
     include_boundaries: bool = INCLUDE_BOUNDARIES_BY_DEFAULT,
 ) -> tuple[_AlignmentInput, ...]:
+    if respect_cognate_sets and form.analysis is not None:
+        return tuple(_AlignmentInput(
+            form=form,
+            segments=tuple(form.segments[index] for index in piece.segment_indices
+                if include_boundaries or form.segments[index] not in form.morphological_boundary_tokens),
+            cognate_set_id=piece.cognate_set_id,
+            membership_id=None, membership_scope=None, membership_interpretation=None,
+            source_segment_indices=(), source_slice_unit=None, is_anchor=is_anchor,
+        ) for piece in form.analysis.pieces if any(form.segments[index]
+             not in form.morphological_boundary_tokens for index in piece.segment_indices))
     if respect_cognate_sets and form.cognate_memberships:
         return tuple(
             _AlignmentInput(

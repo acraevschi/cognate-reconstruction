@@ -1276,7 +1276,9 @@ def measure(
     beams = {}
     forms_by_node: dict[str, dict[str, tuple[str, ...]]] = {}
     for leaf in root.get_leaves():
-        beams[id(leaf)] = make_leaf_beam(lexicons[leaf.label], beam_width=beam_width)
+        # Preserve the banked probe's whole-string reading. units-v1 controls
+        # live in evidence_contract_probe.py; these are distinct estimands.
+        beams[id(leaf)] = make_leaf_beam(lexicons[leaf.label], beam_width=beam_width, carry_analysis=False)
         forms_by_node[leaf.label] = {
             form.concept_id: form.segments for form in lexicons[leaf.label].forms
         }
@@ -1452,24 +1454,31 @@ def run(
         reachable = selection_reachable(payload, binding)
         hits = set(result.top_exact_concept_ids)
         overlap = {
+            "measurement": "gold_assisted_daughter_selection_oracle",
+            "gold_assisted": True,
+            "eligible_concepts": result.evaluated,
+            "selection_reachable_concept_ids": sorted(reachable),
             "selection_bar": len(reachable),
             "selection_bar_rate": (
                 len(reachable) / result.evaluated if result.evaluated else 0.0
             ),
             "top_exact_inside_bar": len(hits & reachable),
             "top_exact_outside_bar": sorted(hits - reachable),
+            "top_exact_outside_bar_count": len(hits - reachable),
         }
     if as_json:
         _bootstrap.emit_json(
             {
                 **_bootstrap.measurement_envelope(payload_path),
                 "measurement": "oracle_ceiling",
+                "evidence_contract": "legacy_whole_string",
                 **result.as_dict(),
                 **({"selection_overlap": overlap} if overlap else {}),
             }
         )
         return 0
     print(f"benchmark: {payload_path}")
+    print("evidence contract: legacy whole-string oracle; units-v1 source-unit controls are a separate probe")
     # State which source produced the number. A figure quoted from this tool is
     # meaningless without it: the script and the package it measures can come
     # from different checkouts. See tools/_bootstrap.py.

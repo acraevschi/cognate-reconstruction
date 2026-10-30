@@ -10,6 +10,7 @@ from typing import Literal, Protocol
 
 from pydantic import Field, model_validator
 
+from cognate_reconstruction.agent.providers.errors import ProviderFailureMetadata
 from cognate_reconstruction.agent.schemas import (
     CommittedHypothesis,
     LLMMessage,
@@ -238,9 +239,12 @@ class AgentNodeMetrics(WorkbenchModel):
         return self.protocol_failures / self.tool_call_count
 
 
+EVIDENCE_SCHEMA_VERSION = "5.0"
+
+
 class AgentTrajectory(WorkbenchModel):
     trajectory_id: NonEmptyStr
-    schema_version: Literal["2.0", "3.0"] = TRAJECTORY_SCHEMA_VERSION
+    schema_version: Literal["2.0", "3.0", "4.0", "5.0"] = EVIDENCE_SCHEMA_VERSION
     run_id: NonEmptyStr
     configuration_sha256: NonEmptyStr
     node_id: NonEmptyStr
@@ -265,6 +269,10 @@ class AgentTrajectory(WorkbenchModel):
     reconstruction_step: ReconstructionStep | None = None
     completed: bool
     failure: NonEmptyStr | None = None
+    failure_error_type: str | None = None
+    failure_kind: str | None = None
+    provider_failure: ProviderFailureMetadata | None = None
+    interruption_reason: str | None = None
 
     @model_validator(mode="after")
     def validate_outcome(self) -> AgentTrajectory:
@@ -438,7 +446,7 @@ class JsonlTrajectorySink:
 
 class TrainingExample(WorkbenchModel):
     example_id: NonEmptyStr
-    schema_version: Literal["2.0", "3.0"] = TRAJECTORY_SCHEMA_VERSION
+    schema_version: Literal["2.0", "3.0", "4.0", "5.0"] = EVIDENCE_SCHEMA_VERSION
     run_id: NonEmptyStr
     node_id: NonEmptyStr
     messages: tuple[LLMMessage, ...]

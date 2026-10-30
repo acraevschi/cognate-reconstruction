@@ -4,6 +4,35 @@ Research-owner preferences recorded 2026-09-15. Applies to every implementation
 prompt. These are resource defaults for future work, not an instruction to start
 inference during documentation or review tasks.
 
+## Post-review sequence amendment — 2026-10-08
+
+The owner requested detailed follow-up briefs after the independent assessment,
+including an early stronger-model diagnostic before substantial redesign or pivot.
+The active follow-ups are R01–R07 in `prompts/post-review/`; historical Task01–08
+numbers and artifacts retain their meanings. R01 repairs and R02 instrument/design
+work are offline. R03 compares one local baseline and one stronger candidate on
+the same repaired harness, separating supplied-hypothesis usability from independent
+linguistic judgment. Local-model success or availability is not a prerequisite for
+the authorized stronger-model arm. No local retry ladder is required before it.
+
+This changes experimental order, not an unspecified paid allowance. R02 prepares
+the concrete model/provider choice, cost estimate, all-attempt ledger and manifests;
+R03 checks existing owner authorization and resolves only missing choices before
+launch. Existing bounded Flash authorization can be used for R03 when selected;
+another provider/model or larger cap requires an explicit applicable decision.
+Carry that decision across sessions without asking again. The initial proposal is
+at most one usability and one conditional judgment trial per model; a frozen
+manifest may be smaller. Additional replication must be prespecified and within
+the same total authorized envelope, including usability, failures and retries.
+
+R04/R05 are conditional studies, R06/R07 optional alternatives. A new prompt or
+experiment directory does not reset spend or grant a fresh paid budget. Prior
+resources are not automatically extended to a new study. Only the main agent
+launches reconstruction inference, serially. As clarified 2026-10-13, the user
+selects the main agent and thinking level outside the prompt; implementation
+subagents use Claude Opus 5.5 with medium thinking. These settings do not select an
+experimental reconstruction model. Prompt preparation itself runs no inference.
+
 ## Test in this order
 
 1. **Offline checks first.** Inspect banked results, run pure deterministic probes,
@@ -15,9 +44,10 @@ inference during documentation or review tasks.
    `conda run -n llm_reconstruction python -m pytest -q -k 'not local_run_artifacts'`.
    The excluded cases opportunistically read local runs; checked-in fixtures must
    cover required compatibility. Run local-artifact cases only when relevant.
-4. **A bounded local smoke if model behavior changed.** Prove the interface works,
-   not that reconstruction quality improved. Pure metrics, schema migrations and
-   retry logic normally need no live model.
+4. **A bounded usability check if model behavior changed.** Prove the interface
+   works, not that reconstruction quality improved. R03 may test its chosen
+   stronger model before a local model succeeds. Pure metrics, schema migrations
+   and retry logic normally need no live model.
 5. **Controlled local experiments only for a stated unresolved question.** A
    repeated full-family sweep is not routine regression testing.
 
@@ -61,8 +91,8 @@ For implementation smoke checks: one representative node/fixture, one run,
 caps, not targets or promises that a run completes. Start smaller when sufficient.
 The optional reminder experiment must distinguish the turn cap from the call cap.
 
-For prompt 06: begin with one baseline and one candidate run on the same small
-fixture. Plan at most **two hours total local inference** for the first pilot
+For R03 (successor to the original Task07 pilot): begin with the frozen small
+usability/judgment stages. Plan at most **two hours total local inference** for the first pilot
 batch, serially. Only use remaining time for a prespecified replication if it
 can answer the question. A larger study requires a concrete expanded plan with
 estimated runtime; do not keep appending seeds because results are disappointing.
@@ -79,10 +109,16 @@ The user permits sparing Gemini Flash use; do not demand approval again merely
 because a task uses a paid API within this scope. It is not a test-suite dependency
 or the automatic fallback when local inference is inconvenient.
 
-Only prompt 06 (or an explicitly authorized later experiment) should spend API
-money under this plan, after offline/local evidence identifies a specific question
-that a stronger/different model could resolve. Default ceiling: **one small pilot,
+Only R03 (or an explicitly authorized later experiment) should spend API
+money under this plan, after offline/banked evidence identifies a specific question
+that a stronger/different model could resolve. A new successful local smoke is
+not required before the stronger arm. Default ceiling: **one small pilot,
 up to US$2 total across requests and retries**, with a 30-minute wall-clock cap.
+This is one aggregate paid envelope across its usability/judgment stages, not
+US$2 per arm, seed or prompt. For R03's Gemini 3.8 Flash arm the owner confirmed US$5
+aggregate with 60 minutes of paid wall time on 2026-10-25; that replaces only
+these two fields. Different approved model/budget decisions supersede
+only the expressly changed fields; writing a recommendation does not approve it.
 Use existing credentials through their environment variable; never print keys,
 inspect secret files in logs, or record them in manifests. Confirm the currently
 available Flash identifier and pricing before estimating a run; old costs and

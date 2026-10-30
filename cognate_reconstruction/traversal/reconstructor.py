@@ -19,6 +19,8 @@ from cognate_reconstruction.schemas.alignment import (
     CorrespondenceMap,
 )
 from cognate_reconstruction.schemas.beam import CandidateDerivation, NodeBeamState
+from cognate_reconstruction.schemas.evidence import FormAnalysis, EvidencePiece, merge_compatible_analyses
+from cognate_reconstruction.schemas.beam import BranchCandidateAnalysis
 from cognate_reconstruction.schemas.lexicon import LexicalForm
 from cognate_reconstruction.schemas.rules import (
     ApplicationStatus,
@@ -141,6 +143,12 @@ def _extend_anchor_matches(
     )
 
 
+
+def _partial_signature(partial):
+    return (_support_signature(partial.branch_supports), partial.anchor_matches,
+            tuple((a.child_id, a.segments, a.analysis.compatibility_key())
+                  for a in partial.derivations[0].branch_analyses if a.analysis is not None))
+
 def _merge_and_prune_partials(
     partials: Sequence[_PartialCombination],
     *,
@@ -164,7 +172,7 @@ def _merge_and_prune_partials(
     ] = defaultdict(list)
     for partial in partials:
         grouped[
-            (_support_signature(partial.branch_supports), partial.anchor_matches)
+            _partial_signature(partial)
         ].append(partial)
     merged = [
         _PartialCombination(
@@ -178,9 +186,10 @@ def _merge_and_prune_partials(
                 derivation
                 for item in items
                 for derivation in item.derivations
-            )[:beam_width],
+            ) if any(d.branch_analyses for item in items for d in item.derivations) else tuple(
+                derivation for item in items for derivation in item.derivations)[:beam_width],
         )
-        for (_signature, anchor_matches), items in grouped.items()
+        for (_signature, anchor_matches, _analysis_signature), items in grouped.items()
     ]
     return sorted(
         merged,
@@ -389,6 +398,7 @@ class RuleBasedReconstructor:
         child_beams = tuple(children)
         if len(child_beams) < 2:
             raise ValueError("reconstruction requires at least two child beams")
+        preserve_analysis = any(c.analysis is not None for child in child_beams for d in child.distributions for c in d.candidates)
         child_ids = tuple(child.node_id for child in child_beams)
         if len(set(child_ids)) != len(child_ids):
             raise ValueError("child beam node IDs must be unique")
@@ -412,6 +422,7 @@ class RuleBasedReconstructor:
         convergence_outputs: dict[str, dict[str, tuple[tuple[str, ...], ...]]] = {}
         winning_support: list[float] = []
         tie_broken_concepts = 0
+        partial_states_pruned = 0
         for concept_id in concept_ids:
             available = [
                 (child, distributions[concept_id])
@@ -420,7 +431,11 @@ class RuleBasedReconstructor:
                 )
                 if concept_id in distributions
             ]
+            required = math.prod(len(distribution.candidates) for _, distribution in available)
+            if preserve_analysis and required > 4096:
+                raise ValueError(f"rule combination requires {required} candidate-analysis tuples; limit 4096; reduce input beam explicitly, no analysis discarded")
             partials: list[_PartialCombination] = []
+            analysis_outputs = {}
             child_top_outputs: dict[str, tuple[str, ...]] = {}
             for child_index, (child, distribution) in enumerate(available):
                 transformed_candidates = []
@@ -436,6 +451,13 @@ class RuleBasedReconstructor:
                     )
                     all_reports.extend(reports)
                     transformed_candidates.append((candidate, transformed))
+                    analysis = candidate.analysis
+                    if analysis is not None and transformed.applied_rule_ids:
+                        analysis = FormAnalysis(claim="unresolved_rules", pieces=(EvidencePiece(
+                            unit_id="whole:unknown", kind="whole", segment_indices=tuple(range(len(transformed.segments))),
+                            sources=tuple(source for piece in analysis.pieces for source in piece.sources),
+                            column_ids=tuple(column for piece in analysis.pieces for column in piece.column_ids)),)) if transformed.segments else None
+                    analysis_outputs[(child.node_id, candidate.candidate_id, transformed.segments)] = analysis
                 # Candidates are sorted by descending mass, so the first is the
                 # form this child would report on its own.
                 child_top_outputs[child.node_id] = transformed_candidates[0][
@@ -470,6 +492,9 @@ class RuleBasedReconstructor:
                                             f"{candidate.candidate_id}"
                                         ),
                                         child_candidate_ids=(candidate.candidate_id,),
+                                        branch_analyses=(BranchCandidateAnalysis(child_id=child.node_id,
+                                            candidate_id=candidate.candidate_id, segments=transformed.segments,
+                                            analysis=analysis_outputs[(child.node_id, candidate.candidate_id, transformed.segments)]),) if preserve_analysis else (),
                                         rule_ids=transformed.applied_rule_ids,
                                         note=note,
                                     ),
@@ -505,6 +530,10 @@ class RuleBasedReconstructor:
                                             *transformed.applied_rule_ids,
                                         )
                                     ),
+                                    branch_analyses=(*derivation.branch_analyses, BranchCandidateAnalysis(
+                                        child_id=child.node_id, candidate_id=candidate.candidate_id,
+                                        segments=transformed.segments,
+                                        analysis=analysis_outputs[(child.node_id, candidate.candidate_id, transformed.segments)])) if preserve_analysis else (),
                                     note="incremental n-ary child-beam derivation",
                                 )
                                 for derivation in partial.derivations
@@ -521,6 +550,7 @@ class RuleBasedReconstructor:
                                     derivations=derivations,
                                 )
                             )
+                partial_states_pruned += max(0, len({_partial_signature(p) for p in expanded}) - self.beam_width)
                 partials = _merge_and_prune_partials(
                     expanded,
                     beam_width=self.beam_width,
@@ -532,24 +562,24 @@ class RuleBasedReconstructor:
                 total_support = partial.total_support
                 anchor_matches = dict(partial.anchor_matches)
                 for output, supporting_child_ids in partial.branch_supports:
-                    raw.append(
-                        (
-                            output,
-                            partial.log_score
-                            + _branch_log_weight(
-                                len(supporting_child_ids), total_support
-                            )
-                            + len(anchor_matches.get(output, ()))
-                            * self.anchor_match_log_boost,
-                            # One derivation per output, naming the branches that
-                            # produced exactly this form.
-                            partial.derivations[0].model_copy(
-                                update={
-                                    "supporting_child_ids": supporting_child_ids
-                                }
-                            ),
-                        )
-                    )
+                    variants = {}
+                    for branch in partial.derivations[0].branch_analyses:
+                        if branch.child_id in supporting_child_ids and branch.segments == output:
+                            analysis = branch.analysis
+                            variants.setdefault(analysis.compatibility_key() if analysis else "", []).append(analysis)
+                    if not variants:
+                        variants[""] = [None]
+                    for group in variants.values():
+                        analysis = merge_compatible_analyses(group)
+                        for derivation in partial.derivations:
+                            raw.append((
+                                output,
+                                partial.log_score - math.log(len(variants)) - math.log(len(partial.derivations))
+                                + _branch_log_weight(len(supporting_child_ids), total_support)
+                                + len(anchor_matches.get(output, ())) * self.anchor_match_log_boost,
+                                derivation.model_copy(update={"supporting_child_ids": supporting_child_ids,
+                                                              "analysis": analysis}),
+                            ))
             distribution = normalize_and_prune(
                 parent_node_id,
                 concept_id,
@@ -629,6 +659,7 @@ class RuleBasedReconstructor:
             engine=self.engine,
         )
         diagnostics = ReconstructionDiagnostics(
+            partial_states_pruned=partial_states_pruned if preserve_analysis else None,
             rule_count=len(scoped_rules),
             rule_complexity_cost=complexity,
             rule_results_evaluated=len(evaluated_results),

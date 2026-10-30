@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from enum import StrEnum
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import Field, computed_field, field_serializer, model_validator
 
 from cognate_reconstruction.schemas.common import (
     MORPHOLOGICAL_BOUNDARY_TOKENS,
     NonEmptyStr,
     WorkbenchModel,
+    sorted_token_set,
 )
 
 
@@ -18,6 +19,10 @@ class SegmentExpression(WorkbenchModel):
 
     tokens: tuple[NonEmptyStr, ...]
     morphological_boundary_tokens: frozenset[str] = MORPHOLOGICAL_BOUNDARY_TOKENS
+
+    @field_serializer("morphological_boundary_tokens", when_used="json")
+    def serialize_boundary_tokens(self, value: frozenset[str]) -> list[str]:
+        return sorted_token_set(value)
 
     @model_validator(mode="after")
     def validate_boundary_vocabulary(self) -> SegmentExpression:
@@ -136,19 +141,22 @@ class RuleApplicationReport(WorkbenchModel):
     @computed_field
     @property
     def exceptions(self) -> tuple[FormRuleResult, ...]:
+        # Forms the target occurs in and the rule did not apply cleanly to. A
+        # form without the target is not an exception to the rule, and the
+        # reconstructor already counts it as not applicable. Those forms were
+        # 92–99% of this list in recorded cascade previews, each a full record
+        # the model never cited; they stay in `results`. (A comment, not a
+        # docstring: pydantic would publish a docstring as a schema description.)
         return tuple(
-            result for result in self.results if result.status is not ApplicationStatus.APPLIED
+            result
+            for result in self.results
+            if result.status
+            not in (ApplicationStatus.APPLIED, ApplicationStatus.TARGET_ABSENT)
         )
 
 
 class AnomalyType(StrEnum):
-    """Why a form resists the regular correspondences, in four kinds.
-
-    A closed vocabulary rather than free text, because an anomaly is counted:
-    `committed_anomaly_count` is a diagnostic, and a category a reviewer can
-    tally is worth more than a phrase only its author can read. The categories
-    are about *provenance*, not about how confident the session is.
-    """
+    """Why a form resists the regular correspondences, in four kinds."""
 
     LOANWORD = "loanword"
     """Borrowed, so it never underwent the changes the cognates did.
@@ -175,56 +183,28 @@ class AnomalyType(StrEnum):
 
 
 class AnomalyReport(WorkbenchModel):
-    """One irregularity a session could not resolve, and what it is about.
-
-    Reported, never a gate: nothing here filters a trajectory, weights a
-    candidate, or decides whether a run was valid. `commit_reconstruction`
-    accepts an empty list and the harness never judges what an explanation
-    says — it checks only that the object identifies its subject.
-
-    Every field is described because the model writes these objects and reads
-    nothing but this schema. On the sweeps of 2026-08-24 they were not, and 20
-    rejections followed: `anomalies[].anomaly_type=missing`,
-    `anomalies[].explanation=missing`, and — the shape the model reached for
-    when the schema told it nothing — `anomalies[].type=extra_forbidden` and
-    `anomalies[].issue=extra_forbidden`. This is the largest schema rejection
-    class that is not specific to the inventory protocol; 13 of the 20 are on
-    the pre-stage-3 instructions.
-    """
+    """One irregularity a session could not resolve, and what it is about."""
 
     anomaly_type: AnomalyType = Field(
         description=(
-            "Required. One of exactly four values: 'loanword', "
-            "'morphological_leveling', 'taboo_deformation', "
-            "'unknown_irregularity'. The field is named 'anomaly_type', not "
-            "'type'. Use 'unknown_irregularity' whenever the other three would "
-            "be a guess — an unresolved cause recorded as unresolved is a "
-            "correct report."
+            'Required field anomaly_type, not \'type\': loanword, morphological_leveling, taboo_deformation or unknown_irregularity. Use unknown_irregularity when cause is unresolved.'
         ),
     )
     explanation: NonEmptyStr = Field(
         description=(
-            "Required. What is irregular, and what you tested before calling "
-            "it irregular. The field is named 'explanation', not 'issue' or "
-            "'description'. Nothing checks what it says; it is the audit "
-            "record a reviewer reads instead of re-deriving your reasoning."
+            'Required field explanation, not \'issue\': what is irregular and what you inspected. This records reasoning, not a historical grade.'
         ),
     )
     form_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "The single form this is about, when one form is. Give this or "
-            "'concept_id' — an anomaly naming neither is refused, because an "
-            "irregularity nothing can be traced to is not a report. Both is "
-            "legal."
+            'Give form_id or concept_id (or both) from this node; naming neither is refused.'
         ),
     )
     concept_id: NonEmptyStr | None = Field(
         default=None,
         description=(
-            "The concept this is about, when the irregularity spans the "
-            "children's forms rather than sitting in one of them. Give this or "
-            "'form_id'; an anomaly naming neither is refused."
+            'Give concept_id or form_id (or both) from this node; naming neither is refused.'
         ),
     )
 

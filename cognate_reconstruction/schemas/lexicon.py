@@ -5,12 +5,14 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_serializer, model_validator
+from cognate_reconstruction.schemas.evidence import FormAnalysis
 
 from cognate_reconstruction.schemas.common import (
     MORPHOLOGICAL_BOUNDARY_TOKENS,
     NonEmptyStr,
     WorkbenchModel,
+    sorted_token_set,
 )
 
 
@@ -142,11 +144,18 @@ class LexicalForm(WorkbenchModel):
     # membership. It is deliberately null for partial or alternative analyses.
     cognate_set_id: NonEmptyStr | None = None
     cognate_memberships: tuple[CognateMembership, ...] = ()
+    analysis: FormAnalysis | None = None
     morphological_boundary_tokens: frozenset[str] = MORPHOLOGICAL_BOUNDARY_TOKENS
     provenance: FormProvenance = Field(default_factory=FormProvenance)
 
+    @field_serializer("morphological_boundary_tokens", when_used="json")
+    def serialize_boundary_tokens(self, value: frozenset[str]) -> list[str]:
+        return sorted_token_set(value)
+
     @model_validator(mode="after")
     def validate_boundaries(self) -> LexicalForm:
+        if self.analysis is not None:
+            self.analysis.validate_segments(len(self.segments))
         if not self.morphological_boundary_tokens:
             raise ValueError("morphological_boundary_tokens must not be empty")
         if self.morphological_boundary_tokens - MORPHOLOGICAL_BOUNDARY_TOKENS:
