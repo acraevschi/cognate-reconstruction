@@ -22,7 +22,7 @@ from cognate_reconstruction.evaluation.decisions import score_decisions
 from cognate_reconstruction.evaluation.run import evaluate_run
 from cognate_reconstruction.evaluation.usability import check_stage_a, instruction_block
 from cognate_reconstruction.synthesis.diagnostics import build_explicit_case, load_explicit_case
-from tools.r02_diagnostics import (
+from tools.model_diagnostic_probe import (
     STAGE_A, STAGE_B, StageAOperator, StageBBaseline, evaluate_stage_a, evaluate_stage_b,
     fixed_daughter_step, run_scripted, stage_a_instruction_file, stage_b_instruction_file,
 )
@@ -198,7 +198,7 @@ class ProseThenFix(StageAOperator):
 class InventoryCommitInStoredProfile(StageAOperator):
     def next_call(self, node, prompt, results):
         if len(results) == 4:
-            from tools.r02_diagnostics import _children
+            from tools.model_diagnostic_probe import _children
             # The stored profile's inventory path takes full commitments.
             self.protocol = "full-payload"
             inventory = {"child_node_ids": _children(prompt),
@@ -536,9 +536,9 @@ import json, sys
 sys.path.insert(0, {repo!r})
 from cognate_reconstruction import cli
 from cognate_reconstruction.agent.providers.litellm_provider import LiteLLMProvider
-from tests.workbench.test_r02_instruments import completion_from, CASE_A, CASE_B
-from tools.r02_diagnostics import StageAOperator, StageBBaseline
-from tests.workbench.test_r02_instruments import IdentityOnly
+from tests.workbench.test_model_diagnostic_instruments import completion_from, CASE_A, CASE_B
+from tools.model_diagnostic_probe import StageAOperator, StageBBaseline
+from tests.workbench.test_model_diagnostic_instruments import IdentityOnly
 
 argv = sys.argv[1:]
 arm = argv[argv.index("--preset") + 1]
@@ -571,7 +571,7 @@ cli.main(["infer"] + out)
 def test_frozen_plan_runs_serially_with_gating_and_a_whole_batch_ledger(tmp_path):
     import subprocess
     import sys
-    from tools.r02_diagnostics import freeze
+    from tools.model_diagnostic_probe import freeze
     repo = Path(__file__).resolve().parents[2]
     batch = tmp_path / "batch"
     freeze(batch)
@@ -613,7 +613,7 @@ def test_frozen_plan_runs_serially_with_gating_and_a_whole_batch_ledger(tmp_path
 def test_local_sampler_variant_sends_gemma_s_published_sampler(tmp_path, monkeypatch):
     # R03's local requests carried only temperature 0.1 and max_tokens; the
     # follow-up arm must send every sampler value itself, and nothing else may change.
-    from tools.r02_diagnostics import freeze
+    from tools.model_diagnostic_probe import freeze
     freeze(tmp_path, ("local-vendor-sampling",))
     plan = json.loads((tmp_path / "plan.json").read_text())
     assert [t["trial_id"] for t in plan["trials"]] == ["A-local-vendor-sampling", "B-local-vendor-sampling"]
@@ -636,7 +636,7 @@ def test_local_sampler_variant_sends_gemma_s_published_sampler(tmp_path, monkeyp
 def test_qwen_arm_sends_the_model_card_s_precise_sampler(tmp_path):
     # R03c: Qwen at its card's thinking-mode "precise coding" sampler, with
     # presence_penalty sent as 0 so no server default can penalise re-cited IDs.
-    from tools.r02_diagnostics import freeze
+    from tools.model_diagnostic_probe import freeze
     freeze(tmp_path, ("local-qwen",))
     plan = json.loads((tmp_path / "plan.json").read_text())
     assert [t["trial_id"] for t in plan["trials"]] == ["A-local-qwen", "B-local-qwen"]
@@ -652,7 +652,7 @@ def test_qwen_arm_sends_the_model_card_s_precise_sampler(tmp_path):
 
 
 def test_reasoning_arm_differs_from_r03b_only_by_reasoning_history(tmp_path):
-    from tools.r02_diagnostics import freeze
+    from tools.model_diagnostic_probe import freeze
     freeze(tmp_path / "base", ("local-vendor-sampling",))
     freeze(tmp_path / "keep", ("local-vendor-sampling-reasoning",))
     base = json.loads((tmp_path / "base/plan.json").read_text())["trials"][0]["argv"]

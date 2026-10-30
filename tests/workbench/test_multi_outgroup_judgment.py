@@ -18,9 +18,9 @@ from cognate_reconstruction.benchmarks.ledger import read_run_resources
 from cognate_reconstruction.evaluation.judgment import navigation, score_judgment
 from cognate_reconstruction.synthesis.diagnostics import build_explicit_case, load_explicit_case
 from cognate_reconstruction.tree import parse_newick
-from tests.workbench.test_r02_instruments import CASE_A, CASE_B, _price_table, completion_from
-from tools.r02_diagnostics import Scripted, StageBBaseline, _identity, run_scripted
-from tools.r04_judgment import (
+from tests.workbench.test_model_diagnostic_instruments import CASE_A, CASE_B, _price_table, completion_from
+from tools.model_diagnostic_probe import Scripted, StageBBaseline, _identity, run_scripted
+from tools.multi_outgroup_judgment_probe import (
     ARM, STAGE_C, PanelBaseline, evaluate_stage_c, freeze, stage_c_instruction_file,
 )
 
@@ -336,9 +336,9 @@ import sys
 sys.path.insert(0, {repo!r})
 from cognate_reconstruction import cli
 from cognate_reconstruction.agent.providers.litellm_provider import LiteLLMProvider
-from tests.workbench.test_r02_instruments import completion_from
-from tests.workbench.test_r04_judgment import CASE_C
-from tools.r04_judgment import PanelBaseline
+from tests.workbench.test_model_diagnostic_instruments import completion_from
+from tests.workbench.test_multi_outgroup_judgment import CASE_C
+from tools.multi_outgroup_judgment_probe import PanelBaseline
 
 argv, out, skip = sys.argv[1:], [], 0
 for value in argv:

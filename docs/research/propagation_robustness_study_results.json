@@ -1,0 +1,7435 @@
+{
+  "study_id": "two-level-propagation-and-robustness-v1",
+  "fixture_path": "benchmarks/diagnostic/two-level-propagation-v1.json",
+  "fixture_sha256": "49089bef878c1c6f8129f9668f5a8cb7e859f30c8d6343d5d28d540e1bd3fa09",
+  "stage_b_sha256": "5a997c02adbc328b68afe3f78653b5dc296b1da8e0d3cb0576884616e0b18377",
+  "stage_c_sha256": "fe66f5468a6ddb36879d68ab113cdf8e1d1846bfe1648e166124a071f77f4b67",
+  "two_level_arms": {
+    "a1_single_winner_absent_on_tie": {
+      "arm_id": "a1_single_winner_absent_on_tie",
+      "description": "Ordinary single-winner assembly at x (1-1 leaf-outgroup ties on R1-R4 and L2 committed as null at 0.50); r uses active-child parsimony.",
+      "traversal_order": [
+        "x",
+        "y",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": false,
+        "deployable_baseline": true,
+        "origin": "committed_proto_inventory",
+        "preserves_unit_analysis": true
+      },
+      "tied_confidence_threshold": null,
+      "x_outgroup_node_ids": [
+        "c",
+        "d"
+      ],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 6,
+        "beam_exact_matches": 6,
+        "mean_ned": 0.1333,
+        "cognate_unit_exact_matches": 6,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 7,
+        "beam_exact_matches": 7,
+        "mean_ned": 0.1212,
+        "cognate_unit_exact_matches": 7,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 4,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 8
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "absent",
+            "reason": null,
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "absent",
+            "reason": null,
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "absent",
+            "reason": null,
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "absent",
+            "reason": null,
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "absent",
+            "reason": null,
+            "correct": null,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 4,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 8
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [],
+        "y_multi_candidate_concepts": [],
+        "r_multi_candidate_concepts": [],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 56,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [],
+      "l2_root_restoration_check": null
+    },
+    "a2_single_winner_over_retain": {
+      "arm_id": "a2_single_winner_over_retain",
+      "description": "Ordinary single-winner assembly where x over-retains -k on all <a k : b \u00d8> columns (including A1-A4); r discounts <x k : y \u00d8> -> null while retaining <x k : y g> -> *k.",
+      "traversal_order": [
+        "x",
+        "y",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": false,
+        "deployable_baseline": true,
+        "origin": "committed_proto_inventory",
+        "preserves_unit_analysis": true
+      },
+      "tied_confidence_threshold": null,
+      "x_outgroup_node_ids": [
+        "c",
+        "d"
+      ],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 10,
+        "beam_exact_matches": 10,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 10,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 7,
+        "beam_exact_matches": 7,
+        "mean_ned": 0.1212,
+        "cognate_unit_exact_matches": 7,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": "explicit_claim",
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": "explicit_claim",
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": "explicit_claim",
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": "explicit_claim",
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "absent",
+            "reason": null,
+            "correct": null,
+            "decided_by": "explicit_claim",
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 4,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "retain": 8
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [],
+        "y_multi_candidate_concepts": [],
+        "r_multi_candidate_concepts": [],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "probability": 1.0
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 65,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [],
+      "l2_root_restoration_check": null
+    },
+    "b1_privileged_oracle_x_full": {
+      "arm_id": "b1_privileged_oracle_x_full",
+      "description": "Option 1 operator control: x replaced by generator-truth forms + source FormAnalysis (cog:two_level_propagation_v1:c001..c012).",
+      "traversal_order": [
+        "x",
+        "y",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": true,
+        "deployable_baseline": false,
+        "origin": "operator_privileged_synthetic_truth_full",
+        "preserves_unit_analysis": true
+      },
+      "tied_confidence_threshold": null,
+      "x_outgroup_node_ids": [],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 10,
+        "beam_exact_matches": 10,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 10,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "absent",
+            "reason": null,
+            "correct": null,
+            "decided_by": "explicit_claim",
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [],
+        "y_multi_candidate_concepts": [],
+        "r_multi_candidate_concepts": [],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "probability": 1.0
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": null,
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [],
+      "l2_root_restoration_check": null
+    },
+    "b2_privileged_oracle_x_segments_only": {
+      "arm_id": "b2_privileged_oracle_x_segments_only",
+      "description": "Option 1 operator control: x replaced by generator-truth segment strings with whole:unknown analysis (no cognate_set_id).",
+      "traversal_order": [
+        "x",
+        "y",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": true,
+        "deployable_baseline": false,
+        "origin": "operator_privileged_synthetic_truth_segments_only",
+        "preserves_unit_analysis": false
+      },
+      "tied_confidence_threshold": null,
+      "x_outgroup_node_ids": [],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 10,
+        "beam_exact_matches": 10,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 0,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 0,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 0,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 0,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": null,
+            "morphology_status": "unanalyzed_output_memberships_unknown",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 0,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "unit_missing": 8
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": false,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "unit_missing",
+            "reason": "unit piece absent or relabelled",
+            "correct": null,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 0,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "unit_missing": 8
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [],
+        "y_multi_candidate_concepts": [],
+        "r_multi_candidate_concepts": [],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "probability": 1.0
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": null,
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [],
+      "l2_root_restoration_check": null
+    },
+    "c1_tied_beam_retention": {
+      "arm_id": "c1_tied_beam_retention",
+      "description": "Option 2a: exact same x and y commitments as a1, with tied_confidence_threshold=0.5 retaining competing proto-segments on <=0.50 commitments.",
+      "traversal_order": [
+        "x",
+        "y",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": false,
+        "deployable_baseline": true,
+        "origin": "committed_proto_inventory",
+        "preserves_unit_analysis": true
+      },
+      "tied_confidence_threshold": 0.5,
+      "x_outgroup_node_ids": [
+        "c",
+        "d"
+      ],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 10,
+        "beam_exact_matches": 10,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 10,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 7,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.1212,
+        "cognate_unit_exact_matches": 7,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": true,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": true,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": true,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": true,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "absent",
+            "reason": null,
+            "correct": null,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 4,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 8
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [
+          "c001",
+          "c002",
+          "c003",
+          "c004",
+          "c012"
+        ],
+        "y_multi_candidate_concepts": [
+          "c012"
+        ],
+        "r_multi_candidate_concepts": [
+          "c001",
+          "c002",
+          "c003",
+          "c004",
+          "c012"
+        ],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 0.5
+          },
+          {
+            "segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "probability": 0.5
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 0.5063
+          },
+          {
+            "segments": [
+              "k",
+              "o",
+              "t"
+            ],
+            "probability": 0.4937
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 104,
+          "candidate_tuples": 19,
+          "alignment_calls": 19,
+          "cache_hits": 19,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [],
+      "l2_root_restoration_check": null
+    },
+    "c2_leaf_witness_at_r": {
+      "arm_id": "c2_leaf_witness_at_r",
+      "description": "Option 2b: single-winner assembly a1 at x and y, with r querying raw leaf witnesses (search_forms) and committing non-invertible <x \u00d8 : y g> -> *k.",
+      "traversal_order": [
+        "x",
+        "y",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": false,
+        "deployable_baseline": true,
+        "origin": "committed_proto_inventory",
+        "preserves_unit_analysis": true
+      },
+      "tied_confidence_threshold": null,
+      "x_outgroup_node_ids": [
+        "c",
+        "d"
+      ],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 10,
+        "beam_exact_matches": 10,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 10,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 7,
+        "beam_exact_matches": 7,
+        "mean_ned": 0.1212,
+        "cognate_unit_exact_matches": 7,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.3333
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "absent",
+            "reason": null,
+            "correct": null,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 4,
+        "primary_total": 8,
+        "matched_pairs_correct": 0,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 8
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [],
+        "y_multi_candidate_concepts": [],
+        "r_multi_candidate_concepts": [],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 56,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [
+        "x"
+      ],
+      "l2_root_restoration_check": {
+        "ok": false,
+        "error_code": "restoration-without-outgroup",
+        "error_message": "1 restoration(s) were requested at a node with no out-group, so nothing can license one"
+      }
+    },
+    "d1_tree_rotation_y_before_x": {
+      "arm_id": "d1_tree_rotation_y_before_x",
+      "description": "Option 3 tree rotation ((c,d)y,(a,b)x)r;: y reconstructs first and becomes a visible reconstructed outgroup for x.",
+      "traversal_order": [
+        "y",
+        "x",
+        "r"
+      ],
+      "origin_metadata": {
+        "node_id": "x",
+        "privileged_operator_control": false,
+        "deployable_baseline": true,
+        "origin": "committed_proto_inventory",
+        "preserves_unit_analysis": true
+      },
+      "tied_confidence_threshold": null,
+      "x_outgroup_node_ids": [
+        "c",
+        "d",
+        "y"
+      ],
+      "r_validated": {
+        "node_id": "r",
+        "validity": "validated_target",
+        "evaluated_concepts": 10,
+        "top_exact_matches": 10,
+        "beam_exact_matches": 10,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 10,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_underdetermined": {
+        "node_id": "r",
+        "validity": "underdetermined",
+        "evaluated_concepts": 2,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.25,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "w",
+                "o"
+              ]
+            ],
+            "top_exact": false,
+            "beam_exact": false,
+            "cognate_unit_exact": false,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.5
+          },
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_validated": {
+        "node_id": "x",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "k"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "k"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "x_underdetermined": {
+        "node_id": "x",
+        "validity": "underdetermined",
+        "evaluated_concepts": 1,
+        "top_exact_matches": 1,
+        "beam_exact_matches": 1,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 1,
+        "concepts": {
+          "c012": {
+            "top_segments": [
+              "k",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "k",
+                "o",
+                "t"
+              ],
+              [
+                "k",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "y_validated": {
+        "node_id": "y",
+        "validity": "validated_target",
+        "evaluated_concepts": 11,
+        "top_exact_matches": 11,
+        "beam_exact_matches": 11,
+        "mean_ned": 0.0,
+        "cognate_unit_exact_matches": 11,
+        "concepts": {
+          "c001": {
+            "top_segments": [
+              "p",
+              "i",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "i",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c002": {
+            "top_segments": [
+              "t",
+              "e",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "e",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c003": {
+            "top_segments": [
+              "p",
+              "a",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "p",
+                "a",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c004": {
+            "top_segments": [
+              "t",
+              "u",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "t",
+                "u",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c005": {
+            "top_segments": [
+              "m",
+              "i"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "i"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c006": {
+            "top_segments": [
+              "n",
+              "e"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "e"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c007": {
+            "top_segments": [
+              "m",
+              "a"
+            ],
+            "target_segments": [
+              [
+                "m",
+                "a"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c008": {
+            "top_segments": [
+              "n",
+              "u"
+            ],
+            "target_segments": [
+              [
+                "n",
+                "u"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c009": {
+            "top_segments": [
+              "l",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c010": {
+            "top_segments": [
+              "s",
+              "o",
+              "g"
+            ],
+            "target_segments": [
+              [
+                "s",
+                "o",
+                "g"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          },
+          "c011": {
+            "top_segments": [
+              "l",
+              "o"
+            ],
+            "target_segments": [
+              [
+                "l",
+                "o"
+              ]
+            ],
+            "top_exact": true,
+            "beam_exact": true,
+            "cognate_unit_exact": true,
+            "morphology_status": "explicit_cognate_units",
+            "ned": 0.0
+          }
+        }
+      },
+      "r_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        },
+        "opportunities": [
+          {
+            "opportunity_id": "R1",
+            "concept_id": "c001",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P1",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R2",
+            "concept_id": "c002",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P2",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R3",
+            "concept_id": "c003",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P3",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "R4",
+            "concept_id": "c004",
+            "class": "primary",
+            "basis": "clade_y_shifted_cognate",
+            "pair": "P4",
+            "expected": "retain",
+            "reading": "retain",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A1",
+            "concept_id": "c005",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P1",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A2",
+            "concept_id": "c006",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P2",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A3",
+            "concept_id": "c007",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P3",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "A4",
+            "concept_id": "c008",
+            "class": "primary",
+            "basis": "daughter_a_innovation",
+            "pair": "P4",
+            "expected": "absent",
+            "reading": "absent",
+            "reason": null,
+            "correct": true,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          },
+          {
+            "opportunity_id": "L2",
+            "concept_id": "c012",
+            "class": "unresolved",
+            "basis": "whole_tree_2v2_tie",
+            "pair": null,
+            "expected": null,
+            "reading": "absent",
+            "reason": null,
+            "correct": null,
+            "decided_by": null,
+            "node_fallback": false,
+            "model_committed": true
+          }
+        ]
+      },
+      "x_decisions": {
+        "primary_correct": 8,
+        "primary_total": 8,
+        "matched_pairs_correct": 4,
+        "matched_pairs_total": 4,
+        "counts_by_reading": {
+          "absent": 4,
+          "retain": 4
+        }
+      },
+      "beam_widths": {
+        "x_multi_candidate_concepts": [],
+        "y_multi_candidate_concepts": [],
+        "r_multi_candidate_concepts": [],
+        "x_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ],
+        "r_l2_candidates": [
+          {
+            "segments": [
+              "k",
+              "o"
+            ],
+            "probability": 1.0
+          }
+        ]
+      },
+      "work_metrics": {
+        "x": {
+          "projected_columns": 61,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "y": {
+          "projected_columns": 57,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        },
+        "r": {
+          "projected_columns": 60,
+          "candidate_tuples": 12,
+          "alignment_calls": 12,
+          "cache_hits": 12,
+          "pruned_candidates": 0
+        }
+      },
+      "r_non_invertible_child_ids": [],
+      "l2_root_restoration_check": null
+    }
+  },
+  "presentation_invariance": {
+    "commitment_order_reversal": {
+      "declared_expectation": "strictly_invariant",
+      "x_top_forms_identical": true,
+      "r_top_forms_identical": true,
+      "x_evidence_revision_identical": true
+    },
+    "child_order_swap_ba_vs_ab": {
+      "declared_expectation": "forms_and_probabilities_invariant_revision_hash_changes",
+      "x_child_node_ids_base": [
+        "a",
+        "b"
+      ],
+      "x_child_node_ids_swapped": [
+        "b",
+        "a"
+      ],
+      "x_evidence_revision_changed": true,
+      "x_top_forms_identical": true,
+      "r_top_forms_identical": true
+    },
+    "source_duplication": {
+      "single_form_duplicate_expectation": "candidate_segments_and_probability_invariant_provenance_sources_lengthened",
+      "single_form_candidate_count_orig": 1,
+      "single_form_candidate_count_dup": 1,
+      "single_form_probability_orig": 1.0,
+      "single_form_probability_dup": 1.0,
+      "single_form_source_count_orig": 1,
+      "single_form_source_count_dup": 2,
+      "two_variant_duplicate_expectation": "legitimate_prior_shift",
+      "two_variant_equal_probs": {
+        "f i": 0.5,
+        "f i k": 0.5
+      },
+      "two_variant_duplicated_probs": {
+        "f i k": 0.6667,
+        "f i": 0.3333
+      }
+    },
+    "operational_weight_sensitivity": {
+      "description": "When unanimous identity columns carry confidence < 1.0 (e.g. 0.95), a 3-column tuple (k o t, k o t) pays an extra log(0.95) length penalty relative to a 2-column tuple (k o, k o); at identity_confidence=1.0 both candidates tie at exact 0.5 / 0.5.",
+      "l2_r_candidates_at_identity_095": [
+        {
+          "segments": [
+            "k",
+            "o"
+          ],
+          "probability": 0.5063
+        },
+        {
+          "segments": [
+            "k",
+            "o",
+            "t"
+          ],
+          "probability": 0.4937
+        }
+      ],
+      "l2_r_decided_by_tie_break_at_095": false,
+      "l2_r_candidates_at_identity_100": [
+        {
+          "segments": [
+            "k",
+            "o"
+          ],
+          "probability": 0.5
+        },
+        {
+          "segments": [
+            "k",
+            "o",
+            "t"
+          ],
+          "probability": 0.5
+        }
+      ],
+      "l2_r_decided_by_tie_break_at_100": true,
+      "validated_r_top_forms_identical_095_vs_100": true
+    }
+  },
+  "banked_live_replays": {
+    "b-gemini": {
+      "stage": "r02-stage-b-v1",
+      "run_dir": "runs/experiments/r03-model-diagnostic-20261025-v2/runs/b-gemini",
+      "checkpoint_sha256": "866476294b4d6656c397667a626800af0619edb8023740a0395842b6133149af",
+      "trajectories_sha256": "650e3ef19d041762b70169e494540429639b9309d47278d544bc9ba52463b18d",
+      "single_winner_reproduces_banked_beam_exactly": true,
+      "low_confidence_commitments_count": 2,
+      "non_tied_concepts_changed_count": 0,
+      "r_evidence_work_single": {
+        "projected_columns": 84,
+        "candidate_tuples": 14,
+        "alignment_calls": 18,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "r_evidence_work_tied": {
+        "projected_columns": 84,
+        "candidate_tuples": 14,
+        "alignment_calls": 18,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "tied_concepts": {
+        "w13": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "k",
+                "u"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "k",
+                "u"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "k",
+                "u",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [],
+          "r_tuple_alignments_tied": []
+        },
+        "w08": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "k",
+                "e"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "k",
+                "e"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "k",
+                "e",
+                "n"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [],
+          "r_tuple_alignments_tied": []
+        }
+      }
+    },
+    "c-gemini-r04": {
+      "stage": "r04-stage-c-v1",
+      "run_dir": "runs/experiments/r04-stage-c-20261029-v2/runs/c-gemini-r04",
+      "checkpoint_sha256": "af3fe01c6988f2df7e422c979e1350414a3f0d89b04cd9cf1c6a3c6608a3907e",
+      "trajectories_sha256": "f94aee22f898b9d14f5aeab6f3ae5e8f6e0ed27d5d898f3fde6bdef8f8d00373",
+      "single_winner_reproduces_banked_beam_exactly": true,
+      "low_confidence_commitments_count": 4,
+      "non_tied_concepts_changed_count": 0,
+      "r_evidence_work_single": {
+        "projected_columns": 162,
+        "candidate_tuples": 18,
+        "alignment_calls": 17,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "r_evidence_work_tied": {
+        "projected_columns": 187,
+        "candidate_tuples": 21,
+        "alignment_calls": 19,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "tied_concepts": {
+        "y05": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "s",
+                "i",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "s",
+                "i"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "s",
+                "i",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [
+            {
+              "x": [
+                "s",
+                "i",
+                "k"
+              ],
+              "c": [
+                null,
+                null,
+                null
+              ],
+              "d": [
+                "s",
+                "i",
+                "k"
+              ],
+              "f": [
+                "s",
+                "i",
+                null
+              ]
+            }
+          ],
+          "r_tuple_alignments_tied": [
+            {
+              "x": [
+                "s",
+                "i",
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null
+              ],
+              "d": [
+                "s",
+                "i",
+                "k"
+              ],
+              "f": [
+                "s",
+                "i",
+                null
+              ]
+            },
+            {
+              "x": [
+                "s",
+                "i",
+                "k"
+              ],
+              "c": [
+                null,
+                null,
+                null
+              ],
+              "d": [
+                "s",
+                "i",
+                "k"
+              ],
+              "f": [
+                "s",
+                "i",
+                null
+              ]
+            }
+          ]
+        },
+        "y03": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "t",
+                "a",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "t",
+                "a"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "t",
+                "a",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [
+            {
+              "x": [
+                "t",
+                "a",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                "r",
+                "e",
+                "g"
+              ],
+              "d": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "f": [
+                "t",
+                "a",
+                "k\u02b0",
+                null,
+                null,
+                null
+              ]
+            }
+          ],
+          "r_tuple_alignments_tied": [
+            {
+              "x": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                "r",
+                "e",
+                "g"
+              ],
+              "d": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "f": [
+                "t",
+                "a",
+                "k\u02b0",
+                null,
+                null,
+                null
+              ]
+            },
+            {
+              "x": [
+                "t",
+                "a",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                "r",
+                "e",
+                "g"
+              ],
+              "d": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "f": [
+                "t",
+                "a",
+                "k\u02b0",
+                null,
+                null,
+                null
+              ]
+            }
+          ]
+        },
+        "y09": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "m",
+                "u",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "m",
+                "u"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "m",
+                "u",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [
+            {
+              "x": [
+                "m",
+                "u",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d": [
+                null,
+                null,
+                null,
+                "j",
+                "o",
+                "k"
+              ],
+              "f": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          ],
+          "r_tuple_alignments_tied": [
+            {
+              "x": [
+                "m",
+                "u",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d": [
+                null,
+                null,
+                "j",
+                "o",
+                "k"
+              ],
+              "f": [
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            },
+            {
+              "x": [
+                "m",
+                "u",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d": [
+                null,
+                null,
+                null,
+                "j",
+                "o",
+                "k"
+              ],
+              "f": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          ]
+        },
+        "y08": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "n",
+                "e",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "n",
+                "e"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "n",
+                "e",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [],
+          "r_tuple_alignments_tied": []
+        }
+      }
+    },
+    "c-local-qwen38-27b-r04": {
+      "stage": "r04-stage-c-v1",
+      "run_dir": "runs/experiments/r04b-local-qwen38-27b-20261030/runs/c-local-qwen38-27b-r04",
+      "checkpoint_sha256": "362da5a069a4c22516d909dddf0af3eb20087ed2f37e8b40c488e39dc51357df",
+      "trajectories_sha256": "443a9139184913f946da824dc5857ef22bdb1cdd723c34ff58ea44f665d86ffd",
+      "single_winner_reproduces_banked_beam_exactly": true,
+      "low_confidence_commitments_count": 4,
+      "non_tied_concepts_changed_count": 0,
+      "r_evidence_work_single": {
+        "projected_columns": 162,
+        "candidate_tuples": 18,
+        "alignment_calls": 17,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "r_evidence_work_tied": {
+        "projected_columns": 187,
+        "candidate_tuples": 21,
+        "alignment_calls": 19,
+        "cache_hits": 0,
+        "pruned_candidates": 0
+      },
+      "tied_concepts": {
+        "y05": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "s",
+                "i",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "s",
+                "i"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "s",
+                "i",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [
+            {
+              "x": [
+                "s",
+                "i",
+                "k"
+              ],
+              "c": [
+                null,
+                null,
+                null
+              ],
+              "d": [
+                "s",
+                "i",
+                "k"
+              ],
+              "f": [
+                "s",
+                "i",
+                null
+              ]
+            }
+          ],
+          "r_tuple_alignments_tied": [
+            {
+              "x": [
+                "s",
+                "i",
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null
+              ],
+              "d": [
+                "s",
+                "i",
+                "k"
+              ],
+              "f": [
+                "s",
+                "i",
+                null
+              ]
+            },
+            {
+              "x": [
+                "s",
+                "i",
+                "k"
+              ],
+              "c": [
+                null,
+                null,
+                null
+              ],
+              "d": [
+                "s",
+                "i",
+                "k"
+              ],
+              "f": [
+                "s",
+                "i",
+                null
+              ]
+            }
+          ]
+        },
+        "y03": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "t",
+                "a",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "t",
+                "a"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "t",
+                "a",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [
+            {
+              "x": [
+                "t",
+                "a",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                "r",
+                "e",
+                "g"
+              ],
+              "d": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "f": [
+                "t",
+                "a",
+                "k\u02b0",
+                null,
+                null,
+                null
+              ]
+            }
+          ],
+          "r_tuple_alignments_tied": [
+            {
+              "x": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                "r",
+                "e",
+                "g"
+              ],
+              "d": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "f": [
+                "t",
+                "a",
+                "k\u02b0",
+                null,
+                null,
+                null
+              ]
+            },
+            {
+              "x": [
+                "t",
+                "a",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                "r",
+                "e",
+                "g"
+              ],
+              "d": [
+                "t",
+                "a",
+                null,
+                null,
+                null,
+                null
+              ],
+              "f": [
+                "t",
+                "a",
+                "k\u02b0",
+                null,
+                null,
+                null
+              ]
+            }
+          ]
+        },
+        "y09": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "m",
+                "u",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "m",
+                "u"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "m",
+                "u",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [
+            {
+              "x": [
+                "m",
+                "u",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d": [
+                null,
+                null,
+                null,
+                "j",
+                "o",
+                "k"
+              ],
+              "f": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          ],
+          "r_tuple_alignments_tied": [
+            {
+              "x": [
+                "m",
+                "u",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d": [
+                null,
+                null,
+                "j",
+                "o",
+                "k"
+              ],
+              "f": [
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            },
+            {
+              "x": [
+                "m",
+                "u",
+                "k",
+                null,
+                null,
+                null
+              ],
+              "c": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ],
+              "d": [
+                null,
+                null,
+                null,
+                "j",
+                "o",
+                "k"
+              ],
+              "f": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+              ]
+            }
+          ]
+        },
+        "y08": {
+          "x_single_candidates": [
+            {
+              "segments": [
+                "n",
+                "e",
+                "k"
+              ],
+              "probability": 1.0
+            }
+          ],
+          "x_tied_candidates": [
+            {
+              "segments": [
+                "n",
+                "e"
+              ],
+              "probability": 0.5
+            },
+            {
+              "segments": [
+                "n",
+                "e",
+                "k"
+              ],
+              "probability": 0.5
+            }
+          ],
+          "x_single_decided_by_tie_break": false,
+          "x_tied_decided_by_tie_break": true,
+          "r_tuple_alignments_single": [],
+          "r_tuple_alignments_tied": []
+        }
+      }
+    }
+  }
+}

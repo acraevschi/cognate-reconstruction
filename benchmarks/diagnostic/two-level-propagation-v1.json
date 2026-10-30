@@ -1,0 +1,196 @@
+{
+  "suite_version": "two-level-propagation-v1",
+  "purpose": "Two-level synthetic diagnostic for testing whether intermediate reconstruction helps or loses useful information under one-way post-order traversal.",
+  "cases": [
+    {
+      "case_id": "two_level_propagation",
+      "phenomenon": "two-level intermediate propagation, over-retention vs tie-collapse asymmetry, unit-analysis preservation, and tree-rotation information availability",
+      "identifiability": "identifiable",
+      "independent_evidence": "10 validated concepts (c001-c010: R1-R4 complementary retention across clades x and y, A1-A4 daughter-a nasal-coda innovation, U1-U2 unanimous velar retention) plus 2 explicit underdetermined/loss controls (c011 L1 parallel w>l root merger; c012 L2 whole-tree 2-vs-2 parsimony tie).",
+      "equivalent_solutions": "At r, x, and y, c001-c010 have unique parsimonious reconstructions; c011 (*l o at x and y, *w o at r) is identifiable at x and y but unidentifiable at r after parallel w>l merger; c012 (*k o t vs *k o) is a genuine 2-vs-2 parsimony tie at x, y, and r.",
+      "survival_ledger": {
+        "tree": "((a,b)x,(c,d)y)r;",
+        "rotated_tree": "((c,d)y,(a,b)x)r;",
+        "units_surviving_all_children_and_parents": [
+          "cog:two_level_propagation_v1:c001", "cog:two_level_propagation_v1:c002", "cog:two_level_propagation_v1:c003", "cog:two_level_propagation_v1:c004",
+          "cog:two_level_propagation_v1:c005", "cog:two_level_propagation_v1:c006", "cog:two_level_propagation_v1:c007", "cog:two_level_propagation_v1:c008",
+          "cog:two_level_propagation_v1:c009", "cog:two_level_propagation_v1:c010", "cog:two_level_propagation_v1:c011", "cog:two_level_propagation_v1:c012"
+        ],
+        "distinctions_by_group": {
+          "R1_R4_complementary_retention": {
+            "concepts": ["c001", "c002", "c003", "c004"],
+            "root_forms": {"c001": "p i k", "c002": "t e k", "c003": "p a k", "c004": "t u k"},
+            "x_forms": {"c001": "p i k", "c002": "t e k", "c003": "p a k", "c004": "t u k"},
+            "y_forms": {"c001": "p i g", "c002": "t e g", "c003": "p a g", "c004": "t u g"},
+            "leaf_losses": "a shifts initial *p > f (c001, c003) while retaining final -k; b retains *p while deleting final *-k after {i,e,a,u}; y shifts final *-k > *-g; c deletes -g after {i,a} (c001, c003); d deletes -g after {e,u} (c002, c004).",
+            "propagation_property": "When x runs before y, raw leaf outgroups (c, d) split 1-1 on final velar presence for every R1-R4 item, while clade y reconstructs *g on all four. Collapsing x's 1-1 leaf-outgroup tie to null erases -k from x's beam before r compares x with y."
+          },
+          "A1_A4_daughter_a_innovation": {
+            "concepts": ["c005", "c006", "c007", "c008"],
+            "root_forms": {"c005": "m i", "c006": "n e", "c007": "m a", "c008": "n u"},
+            "x_forms": {"c005": "m i", "c006": "n e", "c007": "m a", "c008": "n u"},
+            "y_forms": {"c005": "m i", "c006": "n e", "c007": "m a", "c008": "n u"},
+            "leaf_losses": "a innovates final -k after nasal + vowel (m i k, n e k, m a k, n u k); b, c, d retain open syllables (m i, n e, m a, n u).",
+            "propagation_property": "Shares the local <a k : b Ø> daughter correspondence at x with R1-R4. Even if x over-retains -k on A1-A4, r sees <x k : y Ø> against zero outgroups and can still discount -k to null at r (though x's own score stays unrevised)."
+          },
+          "U1_U2_unanimous_velar_anchors": {
+            "concepts": ["c009", "c010"],
+            "root_forms": {"c009": "l o k", "c010": "s o k"},
+            "x_forms": {"c009": "l o k", "c010": "s o k"},
+            "y_forms": {"c009": "l o g", "c010": "s o g"},
+            "leaf_losses": "No velar loss after o: a and b show l o k / s o k; c and d show l o g / s o g.",
+            "propagation_property": "Establishes the regular <x k : y g> -> *k correspondence at r (and <a k : c/d g> across clades) on 2 unambiguous concepts."
+          },
+          "L1_unrecoverable_root_merger": {
+            "concepts": ["c011"],
+            "root_forms": {"c011": "w o"},
+            "x_forms": {"c011": "l o"},
+            "y_forms": {"c011": "l o"},
+            "leaf_losses": "Parallel w > l / #_ on both branch x and branch y merges *w with *l (attested in c009 *l o k) across all four leaves (l o).",
+            "propagation_property": "Identifiable as *l o at x and y, but strictly underidentified at r (*w o vs *l o) even when r is supplied with exact generator-truth intermediates at x and y."
+          },
+          "L2_whole_tree_parsimony_tie": {
+            "concepts": ["c012"],
+            "root_forms": {"c012": "k o t"},
+            "x_forms": {"c012": "k o t"},
+            "y_forms": {"c012": "k o t"},
+            "leaf_losses": "b and d delete final -t (k o), while a and c retain k o t.",
+            "propagation_property": "Genuine 2-vs-2 parsimony tie at x, y, and r (2 losses vs 2 gains). If both x and y collapse their 0.5 tie to null (*k o), r receives only <x k : y k> and <x o : y o>; final -t is absent from r's alignment and verify_restorations forbids restoring it at the root."
+          }
+        }
+      },
+      "target_unit_layouts": {
+        "c001": ["two_level_propagation_v1:c001"],
+        "c002": ["two_level_propagation_v1:c002"],
+        "c003": ["two_level_propagation_v1:c003"],
+        "c004": ["two_level_propagation_v1:c004"],
+        "c005": ["two_level_propagation_v1:c005"],
+        "c006": ["two_level_propagation_v1:c006"],
+        "c007": ["two_level_propagation_v1:c007"],
+        "c008": ["two_level_propagation_v1:c008"],
+        "c009": ["two_level_propagation_v1:c009"],
+        "c010": ["two_level_propagation_v1:c010"],
+        "c011": ["two_level_propagation_v1:c011"],
+        "c012": ["two_level_propagation_v1:c012"]
+      },
+      "underdetermined_concepts": {
+        "c011": {
+          "nodes": ["r"],
+          "note": "L1 unrecoverable root merger: parallel w > l / #_ on both x and y erases *w at all descendants, leaving *w o underidentified at r while *l o is identifiable at x and y."
+        },
+        "c012": {
+          "nodes": ["r", "x", "y"],
+          "alternative_segments": [["k", "o", "t"], ["k", "o"]],
+          "note": "L2 genuine whole-tree 2-vs-2 parsimony tie: a and c show k o t, b and d show k o; retention (2 losses) and absence (2 gains) tie at 2 changes across the tree."
+        }
+      },
+      "matched_pairs": {
+        "P1": ["R1", "A1"],
+        "P2": ["R2", "A2"],
+        "P3": ["R3", "A3"],
+        "P4": ["R4", "A4"]
+      },
+      "opportunities": [
+        {"opportunity_id": "R1", "node_id": "r", "concept_id": "c001", "unit": "two_level_propagation_v1:c001", "locus": "final", "token": "k", "absent_token": "i", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P1", "expected": "retain"},
+        {"opportunity_id": "R2", "node_id": "r", "concept_id": "c002", "unit": "two_level_propagation_v1:c002", "locus": "final", "token": "k", "absent_token": "e", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P2", "expected": "retain"},
+        {"opportunity_id": "R3", "node_id": "r", "concept_id": "c003", "unit": "two_level_propagation_v1:c003", "locus": "final", "token": "k", "absent_token": "a", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P3", "expected": "retain"},
+        {"opportunity_id": "R4", "node_id": "r", "concept_id": "c004", "unit": "two_level_propagation_v1:c004", "locus": "final", "token": "k", "absent_token": "u", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P4", "expected": "retain"},
+        {"opportunity_id": "A1", "node_id": "r", "concept_id": "c005", "unit": "two_level_propagation_v1:c005", "locus": "final", "token": "k", "absent_token": "i", "class": "primary", "basis": "daughter_a_innovation", "pair": "P1", "expected": "absent"},
+        {"opportunity_id": "A2", "node_id": "r", "concept_id": "c006", "unit": "two_level_propagation_v1:c006", "locus": "final", "token": "k", "absent_token": "e", "class": "primary", "basis": "daughter_a_innovation", "pair": "P2", "expected": "absent"},
+        {"opportunity_id": "A3", "node_id": "r", "concept_id": "c007", "unit": "two_level_propagation_v1:c007", "locus": "final", "token": "k", "absent_token": "a", "class": "primary", "basis": "daughter_a_innovation", "pair": "P3", "expected": "absent"},
+        {"opportunity_id": "A4", "node_id": "r", "concept_id": "c008", "unit": "two_level_propagation_v1:c008", "locus": "final", "token": "k", "absent_token": "u", "class": "primary", "basis": "daughter_a_innovation", "pair": "P4", "expected": "absent"},
+        {"opportunity_id": "L2", "node_id": "r", "concept_id": "c012", "unit": "two_level_propagation_v1:c012", "locus": "final", "token": "t", "absent_token": "o", "class": "unresolved", "basis": "whole_tree_2v2_tie", "pair": null, "expected": null}
+      ],
+      "opportunities_by_node": {
+        "x": [
+          {"opportunity_id": "R1", "node_id": "x", "concept_id": "c001", "unit": "two_level_propagation_v1:c001", "locus": "final", "token": "k", "absent_token": "i", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P1", "expected": "retain"},
+          {"opportunity_id": "R2", "node_id": "x", "concept_id": "c002", "unit": "two_level_propagation_v1:c002", "locus": "final", "token": "k", "absent_token": "e", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P2", "expected": "retain"},
+          {"opportunity_id": "R3", "node_id": "x", "concept_id": "c003", "unit": "two_level_propagation_v1:c003", "locus": "final", "token": "k", "absent_token": "a", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P3", "expected": "retain"},
+          {"opportunity_id": "R4", "node_id": "x", "concept_id": "c004", "unit": "two_level_propagation_v1:c004", "locus": "final", "token": "k", "absent_token": "u", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P4", "expected": "retain"},
+          {"opportunity_id": "A1", "node_id": "x", "concept_id": "c005", "unit": "two_level_propagation_v1:c005", "locus": "final", "token": "k", "absent_token": "i", "class": "primary", "basis": "daughter_a_innovation", "pair": "P1", "expected": "absent"},
+          {"opportunity_id": "A2", "node_id": "x", "concept_id": "c006", "unit": "two_level_propagation_v1:c006", "locus": "final", "token": "k", "absent_token": "e", "class": "primary", "basis": "daughter_a_innovation", "pair": "P2", "expected": "absent"},
+          {"opportunity_id": "A3", "node_id": "x", "concept_id": "c007", "unit": "two_level_propagation_v1:c007", "locus": "final", "token": "k", "absent_token": "a", "class": "primary", "basis": "daughter_a_innovation", "pair": "P3", "expected": "absent"},
+          {"opportunity_id": "A4", "node_id": "x", "concept_id": "c008", "unit": "two_level_propagation_v1:c008", "locus": "final", "token": "k", "absent_token": "u", "class": "primary", "basis": "daughter_a_innovation", "pair": "P4", "expected": "absent"},
+          {"opportunity_id": "L2", "node_id": "x", "concept_id": "c012", "unit": "two_level_propagation_v1:c012", "locus": "final", "token": "t", "absent_token": "o", "class": "unresolved", "basis": "whole_tree_2v2_tie", "pair": null, "expected": null}
+        ],
+        "r": [
+          {"opportunity_id": "R1", "node_id": "r", "concept_id": "c001", "unit": "two_level_propagation_v1:c001", "locus": "final", "token": "k", "absent_token": "i", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P1", "expected": "retain"},
+          {"opportunity_id": "R2", "node_id": "r", "concept_id": "c002", "unit": "two_level_propagation_v1:c002", "locus": "final", "token": "k", "absent_token": "e", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P2", "expected": "retain"},
+          {"opportunity_id": "R3", "node_id": "r", "concept_id": "c003", "unit": "two_level_propagation_v1:c003", "locus": "final", "token": "k", "absent_token": "a", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P3", "expected": "retain"},
+          {"opportunity_id": "R4", "node_id": "r", "concept_id": "c004", "unit": "two_level_propagation_v1:c004", "locus": "final", "token": "k", "absent_token": "u", "class": "primary", "basis": "clade_y_shifted_cognate", "pair": "P4", "expected": "retain"},
+          {"opportunity_id": "A1", "node_id": "r", "concept_id": "c005", "unit": "two_level_propagation_v1:c005", "locus": "final", "token": "k", "absent_token": "i", "class": "primary", "basis": "daughter_a_innovation", "pair": "P1", "expected": "absent"},
+          {"opportunity_id": "A2", "node_id": "r", "concept_id": "c006", "unit": "two_level_propagation_v1:c006", "locus": "final", "token": "k", "absent_token": "e", "class": "primary", "basis": "daughter_a_innovation", "pair": "P2", "expected": "absent"},
+          {"opportunity_id": "A3", "node_id": "r", "concept_id": "c007", "unit": "two_level_propagation_v1:c007", "locus": "final", "token": "k", "absent_token": "a", "class": "primary", "basis": "daughter_a_innovation", "pair": "P3", "expected": "absent"},
+          {"opportunity_id": "A4", "node_id": "r", "concept_id": "c008", "unit": "two_level_propagation_v1:c008", "locus": "final", "token": "k", "absent_token": "u", "class": "primary", "basis": "daughter_a_innovation", "pair": "P4", "expected": "absent"},
+          {"opportunity_id": "L2", "node_id": "r", "concept_id": "c012", "unit": "two_level_propagation_v1:c012", "locus": "final", "token": "t", "absent_token": "o", "class": "unresolved", "basis": "whole_tree_2v2_tie", "pair": null, "expected": null}
+        ]
+      },
+      "task_block": [
+        "Diagnostic task criterion (two-level comparative-method propagation):",
+        "- Decide one-sided material by comparative parsimony across the tree, counting each independent retention loss or innovation on a branch as one change.",
+        "- Outgroup and sister-clade cognates may show regular shifted reflexes of the same ancestral segment; infer regular correspondences across cognate units before deciding polarity.",
+        "- When retention and innovation require the exact same number of changes across the available evidence, mark the commitment with confidence <= 0.50 and state the tie in directionality_rationale."
+      ],
+      "family": {
+        "schema_version": "1.0",
+        "name": "two_level_propagation_v1",
+        "description": "Two-level synthetic family for propagation and robustness diagnostics.",
+        "newick": "((a,b)x,(c,d)y)r;",
+        "hidden_target_node_ids": ["r", "x", "y"],
+        "proto_lexicon": [
+          {"concept_id": "c001", "gloss": "R1_pik", "segments": ["p", "i", "k"]},
+          {"concept_id": "c002", "gloss": "R2_tek", "segments": ["t", "e", "k"]},
+          {"concept_id": "c003", "gloss": "R3_pak", "segments": ["p", "a", "k"]},
+          {"concept_id": "c004", "gloss": "R4_tuk", "segments": ["t", "u", "k"]},
+          {"concept_id": "c005", "gloss": "A1_mi", "segments": ["m", "i"]},
+          {"concept_id": "c006", "gloss": "A2_ne", "segments": ["n", "e"]},
+          {"concept_id": "c007", "gloss": "A3_ma", "segments": ["m", "a"]},
+          {"concept_id": "c008", "gloss": "A4_nu", "segments": ["n", "u"]},
+          {"concept_id": "c009", "gloss": "U1_lok", "segments": ["l", "o", "k"]},
+          {"concept_id": "c010", "gloss": "U2_sok", "segments": ["s", "o", "k"]},
+          {"concept_id": "c011", "gloss": "L1_wo_merged", "segments": ["w", "o"]},
+          {"concept_id": "c012", "gloss": "L2_kot_tie", "segments": ["k", "o", "t"]}
+        ],
+        "branches": [
+          {"node_id": "x", "rules": ["w > l / #_"]},
+          {
+            "node_id": "a",
+            "rules": [
+              "p > f / #_",
+              "i > i k / m _ #",
+              "e > e k / n _ #",
+              "a > a k / m _ #",
+              "u > u k / n _ #"
+            ]
+          },
+          {
+            "node_id": "b",
+            "rules": [
+              "k > Ø / i _ #",
+              "k > Ø / e _ #",
+              "k > Ø / a _ #",
+              "k > Ø / u _ #",
+              "t > Ø / _#"
+            ]
+          },
+          {"node_id": "y", "rules": ["w > l / #_", "k > g / _#"]},
+          {
+            "node_id": "c",
+            "rules": [
+              "g > Ø / i _ #",
+              "g > Ø / a _ #"
+            ]
+          },
+          {
+            "node_id": "d",
+            "rules": [
+              "g > Ø / e _ #",
+              "g > Ø / u _ #",
+              "t > Ø / _#"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

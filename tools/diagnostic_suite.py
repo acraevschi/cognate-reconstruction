@@ -74,7 +74,7 @@ def score_controls(built):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--definition", type=Path, default=Path(__file__).resolve().parents[1] / "benchmarks/diagnostic/task02-v1.json")
+    parser.add_argument("--definition", type=Path, default=Path(__file__).resolve().parents[1] / "benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json")
     parser.add_argument("--output-dir", type=Path, help="Write separate runnable payloads and answer keys")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()

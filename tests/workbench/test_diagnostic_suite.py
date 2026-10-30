@@ -24,7 +24,7 @@ from cognate_reconstruction.synthesis.generator import generate_family
 from tests.workbench.test_evaluation_contract import InspectThenCommit
 
 ROOT = Path(__file__).resolve().parents[2]
-SUITE = load_suite(ROOT / "benchmarks/diagnostic/task02-v1.json")
+SUITE = load_suite(ROOT / "benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json")
 
 
 @pytest.mark.parametrize("case", SUITE["cases"], ids=lambda c:c["case_id"])

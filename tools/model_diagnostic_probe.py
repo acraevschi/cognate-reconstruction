@@ -38,8 +38,8 @@ from cognate_reconstruction.synthesis.diagnostics import build_explicit_case, lo
 from cognate_reconstruction.traversal.checkpoint import CheckpointStore
 
 ROOT = Path(__file__).resolve().parents[1]
-STAGE_A = ROOT / "benchmarks/diagnostic/r02-stage-a-v1.json"
-STAGE_B = ROOT / "benchmarks/diagnostic/r02-stage-b-v1.json"
+STAGE_A = ROOT / "benchmarks/diagnostic/stage-a-usability-v1.json"
+STAGE_B = ROOT / "benchmarks/diagnostic/stage-b-retention-v1.json"
 PROTOCOLS = ("stored-hypothesis", "full-payload")
 SURVEY_LIMIT = 200
 
@@ -644,7 +644,7 @@ def freeze(output_dir: Path, arm_names: tuple[str, ...] = DEFAULT_ARMS) -> dict:
                 "argv": trial_argv(name, stage, inputs),
                 "reservation": {"cost_usd": bound.get("cost_reservation_usd"), "wall_seconds": bound["wall_reservation_seconds"]},
                 "requires_usable": f"A-{name}" if stage == "B" else None,
-                "evaluate_argv": ["{python}", str(ROOT / "tools/r02_diagnostics.py"), "evaluate", "--stage", stage,
+                "evaluate_argv": ["{python}", str(ROOT / "tools/model_diagnostic_probe.py"), "evaluate", "--stage", stage,
                                   "--run-dir", "{run_dir}", "--protocol", "stored-hypothesis"]})
     (output_dir / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     return {"manifests": {k: _file_hash(output_dir / f"manifest.stage-{k.lower()}.json") for k in manifests},

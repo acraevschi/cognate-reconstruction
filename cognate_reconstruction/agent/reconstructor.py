@@ -171,6 +171,7 @@ class AgenticNodeReconstructor:
         orchestrator: AgentOrchestrator,
         *,
         deterministic: RuleBasedReconstructor | None = None,
+        assembler: ProtoInventoryAssembler | None = None,
         aligner: AlignmentProvider | None = None,
         fail_fast: bool = False,
         max_failed_nodes: int | None = DEFAULT_MAX_FAILED_NODES,
@@ -183,7 +184,7 @@ class AgenticNodeReconstructor:
         # Same beam width, anchor policy and anchor factor as the rule path, so
         # which protocol a node committed under changes what is assembled and
         # nothing about how the beam is scored or pruned.
-        self.assembler = ProtoInventoryAssembler(
+        self.assembler = assembler or ProtoInventoryAssembler(
             beam_width=self.deterministic.beam_width,
             anchor_policy=self.deterministic.anchor_policy,
             anchor_match_factor=self.deterministic.anchor_match_factor,

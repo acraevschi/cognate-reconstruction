@@ -88,7 +88,7 @@ class MorphologyProvider:
 def run_controls(output_dir):
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    suite = load_suite(Path(__file__).resolve().parents[1] / 'benchmarks/diagnostic/task02-v1.json')
+    suite = load_suite(Path(__file__).resolve().parents[1] / 'benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json')
     built = build_case(next(c for c in suite['cases'] if c['case_id']=='morphology'))
     # Additional two-level traversal is an explicitly labelled scripted fixture.
     payload = built.payload.model_copy(update={'newick':'((a,b)x,c)p;'})

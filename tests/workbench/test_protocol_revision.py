@@ -118,7 +118,7 @@ def test_identity_preview_requires_a_deliberate_empty_collection():
 
 def test_saved_task05_nested_and_invented_id_calls_stay_rejected_with_shape_guidance():
     from tools.protocol_revision_probe import fixture_context
-    saved = json.loads((FIXTURES / "task05_rejections.json").read_text())
+    saved = json.loads((FIXTURES / "units_v2_rejections.json").read_text())
     for row in saved["calls"]:
         ctx = fixture_context()
         rejected = execute(ctx, row["name"], row["call_id"], **row["arguments"])

@@ -849,6 +849,112 @@ def _assemble_segments(
     return tuple(segments)
 
 
+def _column_tied_alternatives(
+    outcome: ColumnOutcome,
+    threshold: float,
+) -> tuple[str | None, ...]:
+    """Competing proto-segments for one tied or low-confidence column outcome."""
+    resolution = outcome.resolution
+    if resolution.resolved_by not in {"set", "conditioned_set"}:
+        return (resolution.proto_segment,)
+    confidence = math.exp(outcome.log_mass)
+    choices: list[str | None] = [resolution.proto_segment]
+    if resolution.decided_by_equal_confidence:
+        for rival in resolution.competing_choices:
+            if (
+                math.isclose(rival.confidence, confidence, abs_tol=1e-12)
+                and rival.proto_segment not in choices
+            ):
+                choices.append(rival.proto_segment)
+    if confidence <= threshold + 1e-12 and len(set(resolution.reflexes)) > 1:
+        for rival in resolution.competing_choices:
+            if rival.confidence <= threshold + 1e-12 and rival.proto_segment not in choices:
+                choices.append(rival.proto_segment)
+        for reflex in sorted(
+            set(resolution.reflexes),
+            key=lambda token: (token is not None, token or ""),
+        ):
+            if (
+                reflex in MORPHOLOGICAL_BOUNDARY_TOKENS
+                and not (resolution.unit_id or "").startswith("boundary:")
+            ):
+                continue
+            if reflex not in choices:
+                choices.append(reflex)
+    return tuple(choices)
+
+
+def _expand_tied_outcomes(
+    outcomes: tuple[ColumnOutcome, ...],
+    threshold: float | None,
+) -> tuple[tuple[ColumnOutcome, ...], ...]:
+    """Expand tied/low-confidence columns into competing outcome tuples when enabled.
+
+    Contiguous tied columns within the same unit that share the same child gap
+    pattern vary together so a multi-segment one-sided morpheme toggles as one
+    piece rather than generating partial-morpheme chimeras.
+    """
+    if threshold is None or not outcomes:
+        return (outcomes,)
+    per_column = [_column_tied_alternatives(outcome, threshold) for outcome in outcomes]
+    if all(len(choices) <= 1 for choices in per_column):
+        return (outcomes,)
+
+    groups: list[tuple[list[int], int]] = []
+    for idx, (outcome, choices) in enumerate(zip(outcomes, per_column, strict=True)):
+        if len(choices) <= 1:
+            continue
+        gap_sig = (
+            outcome.resolution.unit_id,
+            tuple(reflex is None for reflex in outcome.resolution.reflexes),
+            len(choices),
+        )
+        if (
+            groups
+            and groups[-1][0][-1] == idx - 1
+            and (
+                outcomes[groups[-1][0][-1]].resolution.unit_id,
+                tuple(
+                    reflex is None
+                    for reflex in outcomes[groups[-1][0][-1]].resolution.reflexes
+                ),
+                groups[-1][1],
+            )
+            == gap_sig
+        ):
+            groups[-1][0].append(idx)
+        else:
+            groups.append(([idx], len(choices)))
+
+    from itertools import product
+
+    variants: list[tuple[ColumnOutcome, ...]] = []
+    choice_ranges = [range(choice_count) for _indices, choice_count in groups]
+    for combo in product(*choice_ranges):
+        if len(variants) >= MAX_UNIT_TUPLES:
+            break
+        current = list(outcomes)
+        for (indices, _count), choice_index in zip(groups, combo, strict=True):
+            if choice_index == 0:
+                continue
+            for col_idx in indices:
+                base = outcomes[col_idx]
+                alt_proto = per_column[col_idx][choice_index]
+                current[col_idx] = ColumnOutcome(
+                    resolution=base.resolution.model_copy(
+                        update={
+                            "proto_segment": alt_proto,
+                            "decided_by_equal_confidence": True,
+                        }
+                    ),
+                    log_mass=base.log_mass,
+                    reading=frozenset() if alt_proto is None else frozenset({alt_proto}),
+                )
+        variants.append(tuple(current))
+    return tuple(variants)
+
+
+
 @dataclass(frozen=True)
 class ConceptAssembly:
     """One concept's winning assembly, and everything a report needs from it."""
@@ -882,6 +988,7 @@ class ProtoInventoryAssembler:
         engine: RuleEngine | None = None,
         max_candidate_tuples: int | None = None,
         semantic_cache: dict | None = None,
+        tied_confidence_threshold: float | None = None,
     ) -> None:
         if beam_width < 1:
             raise ValueError("beam_width must be positive")
@@ -889,6 +996,10 @@ class ProtoInventoryAssembler:
             raise ValueError("anchor_match_factor must be finite and at least 1")
         if max_candidate_tuples is not None and max_candidate_tuples < 1:
             raise ValueError("max_candidate_tuples must be positive")
+        if tied_confidence_threshold is not None and not (
+            0.0 < tied_confidence_threshold <= 1.0
+        ):
+            raise ValueError("tied_confidence_threshold must be in (0, 1]")
         self.beam_width = beam_width
         self.aligner = aligner or LingPyAligner()
         self.engine = engine or RuleEngine()
@@ -901,6 +1012,7 @@ class ProtoInventoryAssembler:
         )
         self.max_candidate_tuples = max_candidate_tuples or _tuple_budget(beam_width)
         self.semantic_cache = semantic_cache
+        self.tied_confidence_threshold = tied_confidence_threshold
         # Identity is not assembly. An inventory that asserts nothing is walked
         # through the existing rule path with no rules, which is what keeps the
         # empty commit and the node-failure fallback bit-for-bit identical to
@@ -1099,11 +1211,11 @@ class ProtoInventoryAssembler:
             }
             child_score = sum(score for *_rest, score in candidate_tuple)
             if pass_through:
-                assembled = next(iter(segments_by_child.values()))
-                outcomes: tuple[ColumnOutcome, ...] = ()
+                active_restorations = {}
+                forms = ()
                 stats = _ColumnStats()
                 rows: tuple[tuple[str | None, ...], ...] = ()
-                column_mass = 0.0
+                outcome_variants: tuple[tuple[ColumnOutcome, ...], ...] = ((),)
             else:
                 if plan.contract_version == "units-v2":
                     forms = tuple(LexicalForm(form_id=candidate_id, variety_id=child_id,
@@ -1117,106 +1229,131 @@ class ProtoInventoryAssembler:
                     rows = tuple(member.aligned_segments for member in reading.members)
                     evidence_columns = reading.evidence_columns
                 else:
+                    forms = ()
                     rows = self.align_candidate_tuple(concept_id, segments_by_child, plan, cache)
-                outcomes, stats = resolve_columns(rows, concept_id, plan, evidence_columns=evidence_columns)
+                base_outcomes, stats = resolve_columns(rows, concept_id, plan, evidence_columns=evidence_columns)
                 active_restorations = _restorations_for(plan, concept_id, evidence_columns)
-                assembled = _assemble_segments(outcomes, active_restorations)
-                column_mass = sum(outcome.log_mass for outcome in outcomes) + (
-                    RESTORATION_LOG_MASS
-                    * len(active_restorations)
+                outcome_variants = _expand_tied_outcomes(
+                    base_outcomes, self.tied_confidence_threshold
                 )
-            if plan.contract_version == "units-v2" and assembled:
+            for variant_index, outcomes in enumerate(outcome_variants):
+                analysis = None
                 if pass_through:
-                    analysis = analyses_by_id[candidate_tuple[0][1]]
+                    assembled = next(iter(segments_by_child.values()))
+                    column_mass = 0.0
                 else:
-                    analysis = _assembled_analysis(outcomes, evidence_columns,
-                        active_restorations, forms)
-                    analysis = analysis.model_copy(update={"order_status":
-                        "model_claim" if any(c.concept_id == concept_id for c in plan.unit_orders)
-                        else "unresolved" if len(analysis.pieces) > 1 else "source"})
-            if not assembled:
-                # Every column reconstructed nothing. The concept has no parent
-                # form under this reading; it is dropped rather than emitted as
-                # an empty candidate, which `normalize_and_prune` refuses.
-                continue
-            matched_anchors = tuple(
-                sorted(
-                    anchor_id
-                    for anchor_id, expected in anchor_segments.items()
-                    if expected == assembled
+                    assembled = _assemble_segments(outcomes, active_restorations)
+                    column_mass = sum(outcome.log_mass for outcome in outcomes) + (
+                        RESTORATION_LOG_MASS
+                        * len(active_restorations)
+                    )
+                if plan.contract_version == "units-v2" and assembled:
+                    if pass_through:
+                        analysis = analyses_by_id[candidate_tuple[0][1]]
+                    else:
+                        analysis = _assembled_analysis(outcomes, evidence_columns,
+                            active_restorations, forms)
+                        analysis = analysis.model_copy(update={"order_status":
+                            "model_claim" if any(c.concept_id == concept_id for c in plan.unit_orders)
+                            else "unresolved" if len(analysis.pieces) > 1 else "source"})
+                if not assembled:
+                    # Every column reconstructed nothing. The concept has no parent
+                    # form under this reading; it is dropped rather than emitted as
+                    # an empty candidate, which `normalize_and_prune` refuses.
+                    continue
+                matched_anchors = tuple(
+                    sorted(
+                        anchor_id
+                        for anchor_id, expected in anchor_segments.items()
+                        if expected == assembled
+                    )
                 )
-            )
-            log_score = (
-                child_score
-                + column_mass
-                + len(matched_anchors) * self.anchor_match_log_boost
-            )
-            raw.append(
-                (
-                    assembled,
-                    log_score,
-                    CandidateDerivation(
-                        derivation_id=(
-                            f"{parent_node_id}:{concept_id}:"
-                            + ":".join(
+                log_score = (
+                    child_score
+                    + column_mass
+                    + len(matched_anchors) * self.anchor_match_log_boost
+                )
+                base_derivation_id = (
+                    f"{parent_node_id}:{concept_id}:"
+                    + ":".join(
+                        candidate_id
+                        for _child, candidate_id, *_rest in candidate_tuple
+                    )
+                )
+                raw.append(
+                    (
+                        assembled,
+                        log_score,
+                        CandidateDerivation(
+                            derivation_id=(
+                                base_derivation_id
+                                if variant_index == 0
+                                else f"{base_derivation_id}:tie{variant_index}"
+                            ),
+                            analysis=analysis,
+                            alignment_ids=tuple(c.column_id for c in evidence_columns),
+                            child_candidate_ids=tuple(
                                 candidate_id
                                 for _child, candidate_id, *_rest in candidate_tuple
-                            )
+                            ),
+                            rule_ids=(),
+                            supporting_child_ids=tuple(
+                                child_id for child_id, *_rest in candidate_tuple
+                            ),
+                            note=(
+                                "children passed through: fewer than two attest this "
+                                "concept"
+                                if pass_through
+                                else "assembled per correspondence set"
+                                if variant_index == 0
+                                else "assembled per correspondence set (tied alternative retained)"
+                            ),
                         ),
-                        analysis=analysis,
-                        alignment_ids=tuple(c.column_id for c in evidence_columns),
-                        child_candidate_ids=tuple(
-                            candidate_id
-                            for _child, candidate_id, *_rest in candidate_tuple
-                        ),
-                        rule_ids=(),
-                        supporting_child_ids=tuple(
-                            child_id for child_id, *_rest in candidate_tuple
-                        ),
-                        note=(
-                            "children passed through: fewer than two attest this "
-                            "concept"
-                            if pass_through
-                            else "assembled per correspondence set"
-                        ),
+                    )
+                )
+                report_key = (assembled, analysis.compatibility_key() if analysis else "")
+                previous = best.get(report_key)
+                if previous is not None and log_score <= previous[0]:
+                    continue
+                variant_equal_confidence = (
+                    stats.equal_confidence
+                    if variant_index == 0
+                    else sum(
+                        outcome.resolution.decided_by_equal_confidence
+                        for outcome in outcomes
+                    )
+                )
+                report = ConceptAssemblyReport(
+                    unit_ids=tuple(dict.fromkeys(c.unit_id for c in evidence_columns)),
+                    unmatched_columns=tuple(o.resolution for o in outcomes
+                        if o.resolution.resolved_by == "residue_policy")[:8] if plan.contract_version == "units-v2" else (),
+                    concept_id=concept_id,
+                    alignment_id=_assembly_alignment_id(
+                        parent_node_id, concept_id, segments_by_child, plan
+                    ),
+                    assembled_segments=assembled,
+                    columns=tuple(outcome.resolution for outcome in outcomes),
+                    unaccounted_column_count=stats.unaccounted,
+                    column_count=len(outcomes),
+                    matched_anchor_ids=matched_anchors,
+                    cross_branch_assembled=(
+                        not pass_through
+                        and _no_child_reproduces(
+                            assembled, segments_by_child, derived, self.engine
+                        )
                     ),
                 )
-            )
-            report_key = (assembled, analysis.compatibility_key() if analysis else "")
-            previous = best.get(report_key)
-            if previous is not None and log_score <= previous[0]:
-                continue
-            report = ConceptAssemblyReport(
-                unit_ids=tuple(dict.fromkeys(c.unit_id for c in evidence_columns)),
-                unmatched_columns=tuple(o.resolution for o in outcomes
-                    if o.resolution.resolved_by == "residue_policy")[:8] if plan.contract_version == "units-v2" else (),
-                concept_id=concept_id,
-                alignment_id=_assembly_alignment_id(
-                    parent_node_id, concept_id, segments_by_child, plan
-                ),
-                assembled_segments=assembled,
-                columns=tuple(outcome.resolution for outcome in outcomes),
-                unaccounted_column_count=stats.unaccounted,
-                column_count=len(outcomes),
-                matched_anchor_ids=matched_anchors,
-                cross_branch_assembled=(
-                    not pass_through
-                    and _no_child_reproduces(
-                        assembled, segments_by_child, derived, self.engine
-                    )
-                ),
-            )
-            best[report_key] = (
-                log_score,
-                ConceptAssembly(
-                    report=report,
-                    residue_policy_columns=stats.residue_policy_decided,
-                    tie_broken_columns=stats.tie_broken,
-                    equal_confidence_columns=stats.equal_confidence,
-                    competing_choice_columns=stats.competing,
-                    anchors_available=bool(anchor_segments),
-                ),
-            )
+                best[report_key] = (
+                    log_score,
+                    ConceptAssembly(
+                        report=report,
+                        residue_policy_columns=stats.residue_policy_decided,
+                        tie_broken_columns=stats.tie_broken,
+                        equal_confidence_columns=variant_equal_confidence,
+                        competing_choice_columns=stats.competing,
+                        anchors_available=bool(anchor_segments),
+                    ),
+                )
         return raw, {form: entry[1] for form, entry in best.items()}
 
     def reconstruct(

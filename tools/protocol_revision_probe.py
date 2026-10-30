@@ -43,7 +43,7 @@ def fixture_context():
 
 
 def replay_saved_calls():
-    saved = json.loads((FIXTURES / "task03_rejections.json").read_text())
+    saved = json.loads((FIXTURES / "units_v1_rejections.json").read_text())
     ctx = fixture_context()
     inventory, _ = node_inventory(ctx, segmentation_overlay_id=None, alignment_overlay_id=None)
     def key(row):
@@ -92,7 +92,7 @@ class StoredMorphologyProvider(MorphologyProvider):
 def stored_controls(output_dir):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    suite = load_suite(ROOT / "benchmarks/diagnostic/task02-v1.json")
+    suite = load_suite(ROOT / "benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json")
     built = build_case(next(c for c in suite["cases"] if c["case_id"] == "morphology"))
     payload = built.payload.model_copy(update={"newick": "((a,b)x,c)p;"})
     rows = []
@@ -145,7 +145,7 @@ def measure_saved_payloads():
     result["node_payload"] = size(node.model_dump_json(indent=2))
     result["combined"] = {p: {k: result["instructions"][k] + result["node_payload"][k] + s[k]
         for k in ("characters", "utf8_bytes")} for p, s in result["tool_definitions"].items()}
-    saved = json.loads((FIXTURES / "task03_rejections.json").read_text())
+    saved = json.loads((FIXTURES / "units_v1_rejections.json").read_text())
     full = saved["saved_executable_preview"]
     compact = {**full, "choices": [{k: v for k, v in c.items() if k not in {"reflexes", "support"}}
         for c in full["commitments"]]}

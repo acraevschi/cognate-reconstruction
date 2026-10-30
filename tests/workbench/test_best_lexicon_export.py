@@ -118,7 +118,7 @@ def test_best_lexicon_keeps_distinct_analyses_of_equal_surface_forms_and_unknown
 
 def test_best_lexicon_keeps_model_order_claims():
     from tools.evidence_repair_controls import MorphologyProvider
-    suite = load_suite(Path(__file__).resolve().parents[2] / "benchmarks/diagnostic/task02-v1.json")
+    suite = load_suite(Path(__file__).resolve().parents[2] / "benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json")
     payload = build_case(next(c for c in suite["cases"] if c["case_id"] == "morphology")).payload
     result = _service(MorphologyProvider(payload, "reordered")).reconstruct_family(ingest_payload(payload))
     assert all(t.completed for t in result.trajectories)

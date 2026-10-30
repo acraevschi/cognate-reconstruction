@@ -296,7 +296,7 @@ def test_conflicting_saved_steps_are_refused():
 
 def test_real_panel_needle_alternatives_child_hit_root_miss_and_scope():
     fixtures = Path(__file__).resolve().parents[1] / "fixtures/evaluation"
-    saved = json.loads((fixtures / "task02_panel_scores.json").read_text())
+    saved = json.loads((fixtures / "synthetic_diagnostic_panel_scores.json").read_text())
     for record in saved["historical_target_evaluations"]:
         # The checked-in extraction omits unneeded runtime diagnostics; this
         # fixture supplies neutral mechanical counters for a score-only test.

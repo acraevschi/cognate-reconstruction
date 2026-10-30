@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """R04 Stage C instruments: payload, scripted baselines, measurement, evaluation, freeze.
 
-Stage C (`benchmarks/diagnostic/r04-stage-c-v1.json`) is R03's narrowed
+Stage C (`benchmarks/diagnostic/stage-c-multi-outgroup-v1.json`) is R03's narrowed
 question: one-sided material at node x with three outgroups, other-unit forms,
 missing forms and tied items, where R02's deployable outgroup-witness rule is
 not the answer. Every provider here is scripted and offline. The baselines are
@@ -25,14 +25,14 @@ from cognate_reconstruction.evaluation.judgment import JUDGMENT_VERSION, score_j
 from cognate_reconstruction.evaluation.run import evaluate_run
 from cognate_reconstruction.synthesis.diagnostics import build_explicit_case, load_explicit_case
 
-from tools.r02_diagnostics import (
+from tools.model_diagnostic_probe import (
     ARMS, CONTEXT_LIMIT_TOKENS, GEMINI_PRICE_TABLE, ROOT, SURVEY_LIMIT, WALL_OVERHEAD_SECONDS,
     Scripted, StageBBaseline, _children, _file_hash, _hash, _identity, _row, _steps,
     behavioural_digests, first_node_prompt, fixed_daughter_step, read_run_dir, run_scripted,
     source_manifest,
 )
 
-STAGE_C = ROOT / "benchmarks/diagnostic/r04-stage-c-v1.json"
+STAGE_C = ROOT / "benchmarks/diagnostic/stage-c-multi-outgroup-v1.json"
 OUTGROUPS = ("c", "d", "f")
 VOWELS = frozenset("aeiou")
 # R02's StageBBaseline serves the policies that need no outgroup forms. Its
@@ -326,7 +326,7 @@ def freeze(output_dir: Path) -> dict:
         "trial_id": f"C-{ARM_NAME}", "arm": ARM_NAME, "run_dir": f"runs/c-{ARM_NAME}", "argv": argv,
         "reservation": {"cost_usd": bound["cost_reservation_usd"], "wall_seconds": bound["wall_reservation_seconds"]},
         "requires_usable": None,
-        "evaluate_argv": ["{python}", str(ROOT / "tools/r04_judgment.py"), "evaluate", "--run-dir", "{run_dir}"]}]}
+        "evaluate_argv": ["{python}", str(ROOT / "tools/multi_outgroup_judgment_probe.py"), "evaluate", "--run-dir", "{run_dir}"]}]}
     (output_dir / "plan.json").write_text(json.dumps(plan, indent=2) + "\n")
     return {"manifest_sha256": _file_hash(output_dir / "manifest.stage-c.json"),
             "plan_sha256": _file_hash(output_dir / "plan.json"), "inputs": input_hashes,

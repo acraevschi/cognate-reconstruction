@@ -54,7 +54,7 @@ def test_local_outgroup_profiles_never_mix_etyma():
 
 
 def test_generated_morphology_targets_have_scorer_only_units():
-    suite = load_suite(Path(__file__).resolve().parents[2] / 'benchmarks/diagnostic/task02-v1.json')
+    suite = load_suite(Path(__file__).resolve().parents[2] / 'benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json')
     built = build_case(next(c for c in suite['cases'] if c['case_id'] == 'morphology'))
     assert all(annotated_units(f) is not None for b in built.payload.historical_form_bindings for f in b.forms)
 
@@ -281,7 +281,7 @@ def test_scorer_layouts_do_not_enter_scripted_model_requests(tmp_path):
     from cognate_reconstruction.agent.reconstructor import AgenticNodeReconstructor
     from cognate_reconstruction.agent.service import ReconstructionService
     from cognate_reconstruction.ingestion import ingest_payload
-    suite=load_suite(Path(__file__).resolve().parents[2]/'benchmarks/diagnostic/task02-v1.json')
+    suite=load_suite(Path(__file__).resolve().parents[2]/'benchmarks/diagnostic/synthetic-diagnostic-suite-v1.json')
     case=next(c for c in suite['cases'] if c['case_id']=='morphology')
     changed=copy.deepcopy(case)
     changed['target_unit_layouts']={k:['SCORER_SENTINEL',*v[1:]] for k,v in changed['target_unit_layouts'].items()}

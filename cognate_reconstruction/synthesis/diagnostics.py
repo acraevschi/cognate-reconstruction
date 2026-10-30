@@ -20,7 +20,7 @@ from cognate_reconstruction.synthesis.generator import generate_family, Syntheti
 
 def load_suite(path: str | Path) -> dict:
     suite = json.loads(Path(path).read_text())
-    if suite["suite_version"] != "task02-v1":
+    if suite["suite_version"] not in ("task02-v1", "two-level-propagation-v1"):
         raise ValueError("unsupported diagnostic suite version")
     return suite
 
@@ -71,10 +71,55 @@ def build_case(case: dict) -> SyntheticBuildResult:
             binding.model_copy(update={"forms": tuple(_target_layout(form,
                 case["target_unit_layouts"][form.concept_id]) for form in binding.forms)})
             for binding in payload.historical_form_bindings)})
-    bindings = tuple(b.model_copy(update={
-        "target_validity": validity,
-        "target_validity_note": case["independent_evidence"] + " " + case["equivalent_solutions"],
-    }) for b in payload.historical_form_bindings)
+    if "underdetermined_concepts" in case:
+        under_spec = case["underdetermined_concepts"]
+        split_bindings = []
+        for b in payload.historical_form_bindings:
+            val_forms = []
+            und_forms = []
+            for form in b.forms:
+                spec = under_spec.get(form.concept_id)
+                if spec and b.node_id in spec.get("nodes", ("r", "x", "y")):
+                    alts = spec.get("alternative_segments")
+                    if alts:
+                        for alt_idx, segs in enumerate(alts):
+                            alt_form = form.model_copy(update={
+                                "form_id": f"{form.form_id}:alt{alt_idx}",
+                                "segments": tuple(segs),
+                            })
+                            if "target_unit_layouts" in case:
+                                alt_form = _target_layout(
+                                    alt_form, case["target_unit_layouts"][form.concept_id]
+                                )
+                            und_forms.append(alt_form)
+                    else:
+                        und_forms.append(form)
+                else:
+                    val_forms.append(form)
+            if val_forms:
+                split_bindings.append(b.model_copy(update={
+                    "forms": tuple(val_forms),
+                    "target_validity": TargetValidity.VALIDATED,
+                    "target_validity_note": case["independent_evidence"] + " " + case["equivalent_solutions"],
+                }))
+            if und_forms:
+                notes = [
+                    spec.get("note", "")
+                    for cid, spec in under_spec.items()
+                    if any(f.concept_id == cid for f in und_forms) and spec.get("note")
+                ]
+                split_bindings.append(b.model_copy(update={
+                    "source_variety_id": f"{b.source_variety_id}:underdetermined",
+                    "forms": tuple(und_forms),
+                    "target_validity": TargetValidity.UNDERDETERMINED,
+                    "target_validity_note": "; ".join(notes) or "underdetermined control",
+                }))
+        bindings = tuple(split_bindings)
+    else:
+        bindings = tuple(b.model_copy(update={
+            "target_validity": validity,
+            "target_validity_note": case["independent_evidence"] + " " + case["equivalent_solutions"],
+        }) for b in payload.historical_form_bindings)
     key = built.answer_key
     if "observed_unit_layouts" in case:
         observed_by_id = {l.variety_id: l for l in payload.lexicons}

@@ -247,7 +247,57 @@ transcription failure has been observed, and the local blockers lie elsewhere.
   reflex pair) with `residue_policy: "drop"` on the other 44 (assembling only
   10/19 concepts, which would have scored 4/19 even if committed). This cleanly
   separates the 16k output-cap bottleneck (resolved at 32k for dense 27B) from
-  genuine active-parameter capacity limits on multi-outgroup reasoning
+  genuine active-parameter capacity limits on multi-outgroup reasoning.
+
+## R05 propagation and robustness study — completed 2026-10-30
+
+[R05](research/propagation_robustness_study.md) (`two-level-propagation-v1`, offline,
+0 live model calls; probe [`tools/propagation_robustness_probe.py`](../tools/propagation_robustness_probe.py))
+tested how one-way post-order traversal propagates
+intermediate decisions and low-confidence ties from node `x` to root `r` on a
+two-level synthetic family `((a,b)x,(c,d)y)r;` and replayed the banked live
+commits from R03 (`b-gemini`) and R04 (`c-gemini-r04`, `c-local-qwen38-27b-r04`).
+
+- **One-way propagation asymmetry (`a1` vs `a2`):** Over-retaining daughter `a`'s
+  innovated `-k` at `x` (`a2`, `4/8` at `x`) is still discountable at `r` via
+  `⟨x k : y Ø⟩ → null` (`8/8` primary, `10/10` validated exact at `r`, while
+  `x` stays unrevised at `4/8`). Conversely, collapsing a `1–1` leaf-outgroup
+  tie at `x` to `null` (`a1`, `4/8` at `x`) erases `-k` from `x`'s beam before
+  `r` compares `x` with sister clade `y` (`*p i g, *t e g, *p a g, *t u g`),
+  dropping `r` to `4/8` primary (`6/10` validated exact).
+- **Segments vs. `FormAnalysis` provenance (`b1` vs `b2`, operator controls):**
+  Supplying privileged generator-truth segments at `x` with `whole:unknown`
+  analysis (`b2`) yields `10/10` raw whole-word exact at `r`, but collapses
+  `task04-units-v1` `cognate_unit_exact` from `10/10` to `0/10` and
+  `r02-decisions-v1` from `8/8` to `0/8` (`8 unit_missing`), proving that
+  explicit unit-analysis provenance is load-bearing across intermediate nodes.
+  On `L1` (`c011`, parallel `w > l / #_` on `x` and `y`), even full oracle truth
+  at `x` (`b1`) scores `0/1` raw exact (`*l o` vs `*w o`).
+- **Tied-alternative beam retention (`c1`, `tied_confidence_threshold=0.5`) vs.
+  raw leaf witnesses at `r` (`c2`):** Adding opt-in
+  `tied_confidence_threshold: float | None = None` to `ProtoInventoryAssembler`
+  (default `None`, bit-for-bit unchanged) expands `confidence <= 0.5` columns on
+  disagreeing child reflexes into both competing proto-segments at equal mass.
+  With the exact same `x` and `y` commitments as `a1`, `c1` rescues `r` from
+  `4/8` to `8/8` primary (`10/10` validated exact, `10/10` `cognate_unit_exact`,
+  `19` tuples / `104` projected columns vs `12` / `56`) AND preserves both
+  `*k o` and `*k o t` in `r`'s beam on `L2` (`c012`), whereas raw leaf witness
+  lookup at `r` (`c2`) rescues `R1`–`R4` (`⟨x Ø : y g⟩ → *k`) but is
+  mechanically blocked from restoring `-t` on `L2`
+  (`restoration-without-outgroup`).
+- **Tree rotation vs. serialization order (`d1`):** Rotating `((a,b)x,(c,d)y)r;`
+  to `((c,d)y,(a,b)x)r;` changes real information availability (`y` reconstructs
+  first and enters `x`'s `OUTGROUP` evidence, raising `x` and `r` from `4/8` to
+  `8/8`), whereas commitment order reversal, active-child swap `(b,a)` vs
+  `(a,b)`, and single-form source duplication leave reconstructed forms
+  invariant.
+- **Banked live-model replays (`b-gemini`, `c-gemini-r04`,
+  `c-local-qwen38-27b-r04`):** `tied_confidence_threshold=None` reproduces all
+  three banked `output_beam`s at `x` bit-for-bit; `tied_confidence_threshold=0.5`
+  expands only the `confidence <= 0.5` tied concepts (`w13, w08` in Stage B;
+  `y05, y03, y09, y08` in Stage C) into `0.5 / 0.5` candidate pairs (`0`
+  non-tied concepts changed, `+0` tuples at `r` in Stage B and `+3` tuples at
+  `r` in Stage C).
   (3B-active MoE).
 
 ## Authority and reading order
