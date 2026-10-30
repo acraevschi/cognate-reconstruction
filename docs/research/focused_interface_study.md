@@ -1,10 +1,9 @@
 # R04 — Focused study: Gemini judgment where the outgroup-witness rule is not the answer
 
-2026-10-28, branch `r01-contract-repairs`, HEAD `0d7c37b` plus the uncommitted
-changes listed in §5. Environment `llm_reconstruction` (Python 3.11.0, LiteLLM
-1.81.16). **Live status: pending the owner's paid envelope and approval of one
-pre-launch repair (§4.4).** No model request, model discovery or paid call was
-made in this session.
+2026-10-30, branch `r01-contract-repairs`. Environment `llm_reconstruction`
+(Python 3.11.0, LiteLLM 1.81.16). **Live status: v2 re-frozen after review
+mitigations; pending v2 diff review and launch confirmation.** No model request,
+model discovery or paid call has been made yet.
 
 ## 0. Status at a glance
 
@@ -12,14 +11,14 @@ made in this session.
 | --- | --- |
 | Upstream recommendation (R03 §13 and its amendments) | Verified against the R03 report, results and code; adopted |
 | Interface redesign (dossier, selection surface, reduced IDs) | **Deferred** with reasons (§2); not built |
-| Stage C panel `r04-stage-c-v1` and scorer `r04-judgment-v1` | Built; key re-derived from observed forms in a test |
+| Stage C panel `r04-stage-c-v1` and scorer `r04-judgment-v1` | Built and updated with review mitigations; key re-derived from observed forms in a test |
 | Frozen deployable baselines | R02 rule 13/19; best shallow rule 15/19; stated criterion 19/19 (ceiling by construction) |
 | `--stop-after-node` (score only x) | Built and tested through `cli infer`, the launcher and the ledger |
-| Defect found by rehearsal: a Gemini reply cut off at the cap crashed the node | Reproduced, repaired, red→green tests; **needs the owner's approval before launch** |
-| Frozen launch candidate | `runs/experiments/r04-stage-c-20261028/` (hashes §6) |
-| Independent read-only review | Launch-ready with mitigations (§7): fixes need a v2 re-freeze, not yet applied |
-| Live Gemini trial | **Pending**: needs US$3.50 / 35 min approved by the owner |
-| Tests | Stage C 17, Gemini provider +3; portable suite 850 passed, 41 deselected |
+| Defect found by rehearsal: a Gemini reply cut off at the cap crashed the node | Reproduced, repaired, red→green tests; approved by the owner (2026-10-28) |
+| Frozen launch candidate | `runs/experiments/r04-stage-c-20261029-v2/` (`20261028` superseded, never launched) |
+| Independent read-only review | v1 review returned launch-ready with 5 mitigations (§7); all 5 applied in v2 |
+| Live Gemini trial | **Pending**: US$3.50 / 35 min approved (2026-10-28), awaiting v2 confirmation |
+| Tests | Stage C 19, Gemini provider +3; portable suite 852 passed, 41 deselected |
 
 ## 1. Question
 
@@ -68,14 +67,21 @@ present in exactly one active child inside one supplied cognate unit: a final
 `k` (a has it, b does not) or an initial `h` (b has it, a does not). Three
 outgroups sit at the root. They show k as `g` (c), `k` (d) and `kʰ` (f).
 
-**Criterion block** (appended to the packaged text; instructions `216ef02e…`).
+**Criterion block** (appended to the packaged text; instructions `0a5d680e…`).
 It states unweighted parsimony over the whole tree, including the branches to
-the outgroups. A form of another cognate unit is no evidence about this unit.
-A node with the unit but without the material is one observation; a node with
-no form in that unit is no observation. Where the criterion and a general
-tool note disagree, the criterion governs. Ties are unresolved: the deciding
-claim gets confidence ≤ 0.5 and either value is accepted; every other decision
-gets a confidence above 0.5. The block names no item, unit or answer.
+the outgroups. Even before higher nodes are reconstructed, the model may
+recognize from the outgroups' forms when an outgroup preserves a regularly
+corresponding reflex in the same cognate unit and position (even if shifted in
+phonetic quality) and treat that as attesting the presence of the segment slot
+rather than as an extra branch change—without the block naming any specific
+reflex tokens (`g`, `k`, `kʰ`). A form of another cognate unit is no evidence
+about this unit. A node with the unit but without the material is one
+observation of absence; a node with no form in that unit is no observation.
+Where this multi-outgroup weighing and any general instruction above or a note
+in a tool result disagree, this criterion governs. Ties are unresolved: the
+deciding claim gets confidence ≤ 0.5 and either value is accepted; every other
+decision gets a confidence above 0.5. The block names no item, unit, reflex
+token or answer.
 
 **Identification.** With m of the k observed outgroups showing the material:
 present when m > k/2, absent when m < k/2, tied when m = k/2 (including k = 0).
@@ -115,10 +121,13 @@ It reuses `r02-decisions-v1` readings unchanged and adds:
 - **Shallow-rule error sets:** the model's score on the items each frozen rule
   gets wrong, so a partial reading of the criterion shows as the component it
   misses.
-- **Navigation:** calls by tool, rejections, and which outgroup forms appeared
-  in a non-survey tool result (`search_forms` or `get_alignments`), per
-  concept. The survey shows presence only.
-- **Labels** frozen in code and in the pre-registration (§8).
+- **Navigation:** calls by tool, rejections, and which outgroup forms or unit
+  states appeared in a non-survey tool result (`search_forms`,
+  `get_alignments`, or `polarize`), per concept. The survey shows presence
+  only.
+- **Labels** frozen in code and in the pre-registration (§8), gating on a
+  non-fallback model commitment (`no commit`) and a uniform all-retain or
+  all-absent output (`uniform (regularity) reading`) before checking rule labels.
 
 Missing, unscorable and fallback outputs stay in every denominator.
 
@@ -205,36 +214,33 @@ as a deviation, like R03's `anyOf` repair.
   `0b9d91cf…`, price table `f07736e1…`, merged system-text layout under
   `LITELLM_LOCAL_MODEL_COST_MAP=True`.
 
-Uncommitted changes: `agent/providers/litellm_provider.py`,
-`agent/service.py`, `cli.py`, `synthesis/diagnostics.py` (suite version),
-`traversal/{__init__,traverser}.py`, `tests/workbench/test_gemini_provider.py`;
-new `benchmarks/diagnostic/r04-stage-c-v1.json`, `evaluation/judgment.py`,
-`tools/r04_judgment.py`, `tests/workbench/test_r04_judgment.py`.
+All R04 files and review mitigations are committed on `r01-contract-repairs`
+(your six local-only failure-audit paths remain untracked).
 
 ## 6. Frozen manifest and resources
 
-`runs/experiments/r04-stage-c-20261028/` (ignored), regenerated by
-`python tools/r04_judgment.py freeze --output-dir <dir>`, never hand-edited:
+`runs/experiments/r04-stage-c-20261029-v2/` (ignored; supersedes
+`runs/experiments/r04-stage-c-20261028/`, which was never launched), regenerated
+by `python tools/r04_judgment.py freeze --output-dir <dir>`, never hand-edited:
 
 | Artifact | SHA-256 |
 | --- | --- |
-| `manifest.stage-c.json` | `c1f68caede79a65196a238a24ad7567b8c108261da52a0f32694e6d2dfed31c3` |
-| `plan.json` | `3b779b6d1a8b0d49fb2b9cc469265e28664db45bd298e31faee724365573c91b` |
-| `source_manifest.json` (HEAD `0d7c37b` + 11 dirty paths, diff `e56789a2…`) | `c0d22a8c253cd836730d978606e62ba8678748043bf909d4d5824d0ea13f0d8c` |
 | `inputs/stage-c.payload.json` | `0d4b669641e7c48d20d86c180ae78afe463c323ac36422a2da81f310f84b0654` |
-| `inputs/stage-c.instructions.md` | `216ef02e6022801b7cef6c4cc19ed54ee80c84ecc5017751d4a18a29e9048baa` |
+| `inputs/stage-c.instructions.md` | `0a5d680eabc833d4c71853e2e2e1656e29dbfa3b775e831af1665d9d9f423959` |
 | `inputs/gemini-r04.provider-config.json` (`{"max_tokens": 32768}`) | `027bbb0a9e0d8ac63339623ff801caecd5de86d0d5f381feff0775ab5c13b01b` |
 | `inputs/price-table.json` | `f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521` |
 
 First request at x: node prompt `e5393321…` (2,180 characters). The scripted
-criterion session ends near 164k characters (R02 Stage B: 138k).
+criterion session ends near 165k characters (R02 Stage B: 138k).
 
 **Resources.** Cost cap US$2.50 + one response of headroom (the 1,048,576-token
 context limit at US$0.75/M plus 32,768 output tokens at US$3.75/M =
-US$0.909312) = **US$3.409312 worst case**. Paid wall time 1,800 s + 100 s.
-Requested envelope: **US$3.50 and 35 minutes**, this trial only. R03's scored
-x session cost about US$0.98 by the upper-bound table (about US$0.32 at its
-reported cache share); Stage C is somewhat larger. No forecast is certified.
+US$0.909312) = **US$3.409312 worst case** (plus any retried 5xx/APIConnectionError
+attempt of unknown billing under `--max-retries 3`, ~US$0.10–0.30 each in
+practice). Paid wall time 1,800 s + 100 s. Approved envelope: **US$3.50 and 35
+minutes**, this trial only. R03's scored x session cost about US$0.98 by the
+upper-bound table (about US$0.32 at its reported cache share); Stage C is
+somewhat larger. No forecast is certified.
 
 **Rehearsal** (exact frozen argv, real CLI and LiteLLM, only HTTP faked; not
 model results):
@@ -243,51 +249,64 @@ model results):
 | --- | --- |
 | nominal | planned stop after x; x committed, 19/19; `max_output_tokens` 32,768, `thinkingLevel` medium, temperature 1.0 on the wire; system text merged; reasoning history `auto` → `drop` |
 | cut-off reply at request 2 | recovered (after §4.4); 5 priced requests; x 19/19 |
-| client timeout at request 3 | lost response, unknown cost, run stopped |
-| 900k-token prompts | stopped by the cost cap at US$2.715 ≤ cap + headroom |
+| cut-off reply at request 1 (first turn) | recovered; 2 consecutive `user` contents with mode `ANY`, no empty part; 5 priced requests; x 19/19 |
+| client timeout at request 3 | lost response, unknown cost, run stopped; labelled `no commit` |
+| 900k-token prompts | stopped by the cost cap at US$2.715 ≤ cap + headroom; labelled `no commit` |
 
-## 7. Independent review
+## 7. Independent review and v2 mitigations
 
-A read-only Claude Opus 5.5 (medium thinking) reviewed the panel, scorer, harness
-changes and frozen manifest. It returned on 2026-10-28 with **"launch-ready with
-mitigations"**: no blocker, five should-fix findings and three notes. The full
-record and the recommended response are in
-`runs/experiments/r04-stage-c-20261028/review.md`.
+A read-only Claude Opus 5.5 (medium thinking) reviewed the v1 panel, scorer,
+harness changes and frozen manifest (`runs/experiments/r04-stage-c-20261028/review.md`).
+It returned on 2026-10-28 with **"launch-ready with mitigations"**: no blocker,
+five should-fix findings and three notes.
 
-It confirmed:
-
-- the answer key, ties, builder, hashes, isolation, wire shape and planned stop;
-- the cost and wall-time limits.
-
-The findings:
-
-- **Fairness of the task block.** The k/g/kʰ correspondence is never stated, and the packaged instructions contradict the criterion. Both need a sentence in the block.
-- **Readings of the scorer.** A no-commit run and a uniform reading are mislabelled, and the navigation count misses polarize.
-
-The fixes change frozen files, so this directory cannot launch as frozen. A v2
-re-freeze is pending, and the owner paused before any of it was applied.
+All five findings and Notes 6–7 are resolved in the v2 freeze:
+1. **Outgroup reflex recognition without a cheat-sheet.** The task block now
+   states that the model may recognize regularly corresponding outgroup reflexes
+   in the same cognate unit and position from the tip forms (without naming `g`,
+   `k` or `kʰ`) and treat them as attesting presence without an extra branch
+   change; `independent_evidence` is updated to match.
+2. **Precedence over packaged instructions.** The precedence clause in the task
+   block now covers `"any general instruction above or a note in a tool result"`,
+   and `"cites packaged instruction"` is added to pre-registration §5 attribution.
+3. **No-commit runs.** Both `labels.value` and `labels.uncertainty` now return
+   `"no commit"` when the scored node has no non-fallback model commitment.
+4. **Uniform readings.** `primary.uniform_reading` in `("retain", "absent")` is
+   checked before rule labels and labelled `"uniform (regularity) reading"`,
+   separating daughter-only union (`10/19`) and intersection (`9/19`) from
+   `"witness-rule level"`.
+5. **Navigation and `polarize`.** `_form_sightings` now credits `polarize`
+   `observations[].example_concept_ids` and single-concept `polarize` node
+   reports (including `columns_covered: 0` on replacement-unit concepts).
+6. **Retries and first-turn truncation (Notes 6–7).** `--max-retries 3` is kept
+   for R03 parity with the unknown-billing retry caveat stated in pre-registration
+   §4, and `gemini-truncated-first` is rehearsed and tested.
 
 ## 8. Pre-registered reading and what each outcome selects
 
 The full rules are in the pre-registration (`preregistration.md` in the frozen
 directory) and in code. Headline: model-committed correct of 19.
-- **Value label:** *witness-rule level* if at most 2 of the 6 items the R02
-  rule gets wrong are right; *criterion-sensitive on this panel* if ≥ 17/19,
-  ≥ 5/6 of those items, each other shallow rule's error set at most one short,
-  and ≥ 4/5 pairs; *baseline-level* if ≤ 15/19 or ≤ 1/5 pairs; else *mixed*.
-- **Uncertainty label:** *warranted* if ≥ 3/4 ties are marked and at most one
-  decided item is hedged; *none* if no tie is marked; else *partial*.
+- **Value label:** *no commit* if the scored node has no non-fallback model
+  commitment; *uniform (regularity) reading* if every primary opportunity has
+  the same `retain` or `absent` reading; *witness-rule level* if at most 2 of
+  the 6 items the R02 rule gets wrong are right; *criterion-sensitive on this
+  panel* if ≥ 17/19, ≥ 5/6 of those items, each other shallow rule's error set
+  at most one short, and ≥ 4/5 pairs; *baseline-level* if ≤ 15/19 or ≤ 1/5
+  pairs; else *mixed*.
+- **Uncertainty label:** *no commit* if no non-fallback model commitment;
+  *warranted* if ≥ 3/4 ties are marked and at most one decided item is hedged;
+  *none* if no tie is marked; else *partial*.
 - **Attribution first:** each wrong or missing decision is classed as invalid
   submission, tool rejection, truncation, navigation (outgroup forms never
-  read), deference to the tool note, resource stop, or a valid but poor
-  decision.
+  read), deference to the tool note, cites packaged instruction, uniform
+  reading, resource stop, or a valid but poor decision.
 
 | Outcome | Supports | Could reverse it |
 | --- | --- | --- |
 | Criterion-sensitive | No interface redesign for Gemini; the open uncertainty is validity beyond synthetic stated-criterion panels | A second trial disagreeing; evidence that the block over-cues |
 | Failures mainly navigation | The dossier/evidence-presentation comparison becomes R04's question | Rationales showing the forms were known |
-| Forms read, note or label followed | A versioned correction of the presence-only tool note, tested as its own arm | The same errors with the note removed |
-| Baseline-level with forms read | Model capability on this task: the critic direction (R07) or deferral | Better results with another stated criterion layout |
+| Forms read, note, packaged instruction or label followed | A versioned correction of the presence-only instruction/note, tested as its own arm | The same errors with the note removed |
+| Uniform (regularity) or baseline-level with forms read | Model capability on this task: the critic direction (R07) or deferral | Better results with another stated criterion layout |
 | No commit through rejections | Protocol/interface study | — |
 | Resource or provider stop | Resource outcome only | — |
 
@@ -308,15 +327,14 @@ directory) and in code. Headline: model-committed correct of 19.
 ```sh
 PY=/opt/anaconda3/envs/llm_reconstruction/bin/python
 PYTHONDONTWRITEBYTECODE=1 $PY -m pytest -q -p no:cacheprovider tests/workbench/test_r04_judgment.py tests/workbench/test_gemini_provider.py
-PYTHONDONTWRITEBYTECODE=1 $PY -m pytest -q -p no:cacheprovider -k 'not local_run_artifacts'   # 850 passed, 41 deselected
+PYTHONDONTWRITEBYTECODE=1 $PY -m pytest -q -p no:cacheprovider -k 'not local_run_artifacts'   # 852 passed, 41 deselected
 PYTHONDONTWRITEBYTECODE=1 $PY tools/r04_judgment.py controls     # §4.2
 PYTHONDONTWRITEBYTECODE=1 $PY tools/r04_judgment.py measure
-PYTHONDONTWRITEBYTECODE=1 $PY tools/r04_judgment.py freeze --output-dir runs/experiments/<new dir>
-runs/experiments/r04-offline-checks-20261028/rehearsal/run_scenarios.sh nominal gemini-truncated gemini-timeout gemini-costcap
+PYTHONDONTWRITEBYTECODE=1 $PY tools/r04_judgment.py freeze --output-dir runs/experiments/r04-stage-c-20261029-v2
+runs/experiments/r04-offline-checks-20261028/rehearsal/run_scenarios.sh nominal gemini-truncated gemini-truncated-first gemini-timeout gemini-costcap
 # launch (after the owner's approval and preflight), from the frozen directory:
 LITELLM_LOCAL_MODEL_COST_MAP=True PYTHONDONTWRITEBYTECODE=1 $PY /Users/acraev/Work/cognate-reconstruction/tools/experiment_batch.py run --plan plan.json
 ```
 
 The portable suite count: a clean HEAD collects 826 portable tests; with the
-owner's 4 local-only audit tests and the 20 new tests that is 850. The
-handoff's earlier 871 matches a run without the `local_run_artifacts` filter.
+owner's 4 local-only audit tests and the 22 new tests that is 852.

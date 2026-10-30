@@ -21,7 +21,7 @@ except ModuleNotFoundError:
     from tools import _bootstrap  # noqa: F401
 
 from cognate_reconstruction.agent.instructions import load_agent_instructions
-from cognate_reconstruction.evaluation.judgment import score_judgment, stage_c_instructions
+from cognate_reconstruction.evaluation.judgment import JUDGMENT_VERSION, score_judgment, stage_c_instructions
 from cognate_reconstruction.evaluation.run import evaluate_run
 from cognate_reconstruction.synthesis.diagnostics import build_explicit_case, load_explicit_case
 
@@ -309,7 +309,7 @@ def freeze(output_dir: Path) -> dict:
         "suite_version": case["suite_version"], "question": case["question"],
         "inputs": input_hashes, "price_table": {"sha256": table_sha, "entry": json.loads(price.model_dump_json())},
         "evaluator_versions": {"task02": "task02-v1", "units": "task04-units-v1", "evidence_contract": "units-v2",
-                               "decisions": "r02-decisions-v1", "judgment": "r04-judgment-v1",
+                               "decisions": "r02-decisions-v1", "judgment": JUDGMENT_VERSION,
                                "ledger": "r02-ledger-v1", "usage_accounting": "abrupt-loss-v1"},
         "model_visible": {"instructions_sha256": _hash(text),
                           "packaged_instructions_sha256": _hash(load_agent_instructions()),

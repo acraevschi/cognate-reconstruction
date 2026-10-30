@@ -66,12 +66,26 @@ def committed_claims(trajectory) -> dict[str, dict]:
 
 
 def _form_sightings(value, outgroups: frozenset[str], seen: set) -> None:
-    """(node, concept) of every outgroup form a tool result showed with its segments."""
+    """(node, concept) of every outgroup form or unit state a tool result showed."""
     if isinstance(value, Mapping):
         node = value.get("node_id") or value.get("variety_id")
         # `search_forms` hits carry `segments`; `get_alignments` members `aligned_segments`.
         if node in outgroups and value.get("concept_id") and ("segments" in value or "aligned_segments" in value):
             seen.add((node, value["concept_id"]))
+        # `polarize` node reports carry per-unit `observations` with `example_concept_ids`.
+        if node in outgroups and "observations" in value:
+            for obs in value.get("observations") or ():
+                for cid in obs.get("example_concept_ids") or ():
+                    seen.add((node, cid))
+        # A single-concept `polarize` call also reports `columns_covered: 0` when an
+        # outgroup has no form in that cognate unit, resolving its same-unit state.
+        if (value.get("matched_concept_count") == 1
+                and len(value.get("matched_concept_ids") or ()) == 1
+                and isinstance(value.get("nodes"), (list, tuple))):
+            cid = value["matched_concept_ids"][0]
+            for report in value["nodes"]:
+                if isinstance(report, Mapping) and report.get("node_id") in outgroups:
+                    seen.add((report["node_id"], cid))
         for item in value.values():
             _form_sightings(item, outgroups, seen)
     elif isinstance(value, (list, tuple)):
@@ -100,7 +114,8 @@ def navigation(case: Mapping, trajectory) -> dict:
         "concepts": len(complete),
         "concept_outgroup_forms_seen": complete,
         "note": ("A form counts as seen when a non-survey tool result showed that outgroup's form "
-                 "for the concept with its segments; survey witnesses show presence only."),
+                 "or unit state for the concept (search_forms, get_alignments, or polarize); "
+                 "survey witnesses show presence only."),
     }
 
 
@@ -160,7 +175,13 @@ def score_judgment(case: Mapping, steps_by_node: Mapping, *, model_committed: Ma
     witness = defeat.get("outgroup-witness", {"model_correct": 0, "rule_errors": 0})
     others_pass = all(d["model_correct"] >= d["rule_errors"] - 1 for r, d in defeat.items() if r != "outgroup-witness")
     pair_count = sum(pairs.values())
-    if witness["rule_errors"] and witness["model_correct"] <= SURVEY_LABEL_CEILING:
+    has_commit = any(counted(r) for r in rows)
+    uniform = base["primary"]["uniform_reading"]
+    if not has_commit:
+        value_label = "no commit"
+    elif uniform in ("retain", "absent"):
+        value_label = "uniform (regularity) reading"
+    elif witness["rule_errors"] and witness["model_correct"] <= SURVEY_LABEL_CEILING:
         value_label = "witness-rule level"
     elif (model_primary >= CRITERION_PRIMARY and witness["model_correct"] >= WITNESS_RULE_FLOOR
           and others_pass and pair_count >= PAIRS_FLOOR):
@@ -169,7 +190,9 @@ def score_judgment(case: Mapping, steps_by_node: Mapping, *, model_committed: Ma
         value_label = "baseline-level"
     else:
         value_label = "mixed"
-    if uncertainty["ties_marked"] >= len(ties) - 1 and uncertainty["decided_hedged"] <= 1:
+    if not has_commit:
+        uncertainty_label = "no commit"
+    elif uncertainty["ties_marked"] >= len(ties) - 1 and uncertainty["decided_hedged"] <= 1:
         uncertainty_label = "warranted uncertainty"
     elif uncertainty["ties_marked"] == 0:
         uncertainty_label = "no uncertainty marking"
@@ -186,11 +209,15 @@ def score_judgment(case: Mapping, steps_by_node: Mapping, *, model_committed: Ma
         "decided_by": base["decided_by"],
         "navigation": navigation(case, trajectory),
         "labels": {"value": value_label, "uncertainty": uncertainty_label,
-                   "rule": ("value: witness-rule level if at most 2 of the witness rule's 6 errors are right; "
-                            "criterion-sensitive if >=17/19, >=5/6 of those errors, every other shallow "
-                            "rule's error set at most one short, and >=4/5 pairs; baseline-level if <=15/19 "
-                            "or <=1/5 pairs; otherwise mixed. uncertainty: warranted if >=3/4 ties marked "
-                            "and at most one decided item hedged; none if 0 ties marked; otherwise partial.")},
+                   "rule": ("value: no commit if the scored node has no non-fallback model commitment; "
+                            "uniform (regularity) reading if every primary opportunity has the same "
+                            "retain or absent reading; witness-rule level if at most 2 of the witness "
+                            "rule's 6 errors are right; criterion-sensitive if >=17/19, >=5/6 of those "
+                            "errors, every other shallow rule's error set at most one short, and >=4/5 "
+                            "pairs; baseline-level if <=15/19 or <=1/5 pairs; otherwise mixed. "
+                            "uncertainty: no commit if no non-fallback model commitment; warranted if "
+                            ">=3/4 ties marked and at most one decided item hedged; none if 0 ties "
+                            "marked; otherwise partial.")},
         "opportunities": rows,
         "interpretation": (
             "Correct is conditional on the stated multi-outgroup parsimony criterion and the supplied "

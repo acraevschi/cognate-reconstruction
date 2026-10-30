@@ -5,7 +5,7 @@
  "newick": "((a,b)x,c,d,f)r;",
  "question": "At node x, does the model decide one-sided material by applying the stated parsimony criterion over every outgroup and the supplied cognate units, where the survey's per-column outgroup witness (the R02 deployable rule) is not the answer, and does it mark tied items as unresolved?",
  "identifiability": "conditional_multi_outgroup_parsimony",
- "independent_evidence": "Assumptions (stated to the model in the Stage C task block): the supplied tree ((a,b)x,c,d,f)r, with c, d and f as three outgroups at the root, and the supplied cognate units are correct; within one cognate unit, gain and loss of a segment or piece cost one event each on a branch (unweighted Fitch parsimony); a form of another cognate unit, or no form, is no observation; c's g, d's k and f's kʰ correspond to k. With one daughter showing the material and k outgroups observed, m of them showing it: present at x when m > k/2, absent when m < k/2, tied (unresolved) when m = k/2, including k = 0. Values at x come from the daughter that has them.",
+ "independent_evidence": "Assumptions (stated to the model in the Stage C task block without naming specific reflex tokens): the supplied tree ((a,b)x,c,d,f)r, with c, d and f as three outgroups at the root, and the supplied cognate units are correct; a regularly corresponding reflex in the same cognate unit and position attests the presence of that segment slot without counting as an extra branch change (in the observed forms, c's g, d's k and f's kʰ are the regular reflexes of the final velar slot, and h of the initial slot); within one cognate unit, independent gain and loss of a segment slot or piece cost one event each on a branch (unweighted Fitch parsimony); a form of another cognate unit, or no form, is no observation. With one daughter showing the material and k outgroups observed, m of them showing it: present at x when m > k/2, absent when m < k/2, tied (unresolved) when m = k/2, including k = 0. Values at x come from the daughter that has them.",
  "equivalent_solutions": "Without the parsimony criterion any mixture of independent gains and losses fits, and proto-symbol relabelings are equivalent. The four tied items (T1-T4 design labels) are excluded from the value denominator; both alternatives are accepted in the raw exact view, and their warranted-uncertainty reading is scored separately.",
  "observed": {
   "a": {
@@ -1268,18 +1268,22 @@
  "task_block": [
   "## Stage C task: the evaluation criterion for this node",
   "",
-  "This node is a diagnostic with a stated analytic criterion. Treat the supplied tree and the",
-  "supplied cognate units as correct: a form annotated with a different cognate unit is not",
-  "evidence about this unit. Where material occurs in only some descendants, prefer the history",
-  "with the fewest changes on the whole supplied tree, counting the gain and the loss of a",
-  "segment or of a morphological piece as one change each on a branch, including the branches",
-  "to the nodes outside this group. Evidence outside the active children is available through",
-  "the tools; inspect it. A node that has a form in the unit but lacks the material is one",
-  "observation; a node with no form in that unit is no observation. Where this criterion and a",
-  "general note in a tool result disagree, this criterion governs. Where two histories need the",
-  "same number of changes, the item is unresolved: say so in the rationale and give the deciding",
-  "claim a confidence of 0.5 or lower; either value is then accepted. Give every other decision",
-  "a confidence above 0.5. Decide each etymon and unit on its own evidence.",
+  "This node is a diagnostic for weighing multi-outgroup evidence. Treat the supplied tree and",
+  "the supplied cognate units as correct: a form annotated with a different cognate unit is not",
+  "evidence about this unit. Evidence outside the active children is available through the tools;",
+  "inspect it. Even before higher nodes are reconstructed, you may recognize from the outgroups'",
+  "forms when an outgroup preserves a regularly corresponding reflex in the same cognate unit and",
+  "position (even if shifted in phonetic quality); treat any such regular reflex as attesting the",
+  "presence of that segment slot rather than as an extra branch change. Across the whole supplied",
+  "tree, weigh outgroup attestation against same-unit outgroup absence by preferring the history",
+  "that requires the fewest independent gains and losses of a segment slot or morphological piece",
+  "on the branches, including the branches to the outgroups: a node that has a form in the unit",
+  "but lacks the material is one observation of absence, while a node with no form in that unit",
+  "is no observation. Where this multi-outgroup weighing and any general instruction above or a",
+  "note in a tool result disagree, this criterion governs. Where two histories need the same",
+  "number of gains and losses, the item is unresolved: say so in the rationale and give the",
+  "deciding claim a confidence of 0.5 or lower; either value is then accepted. Give every other",
+  "decision a confidence above 0.5. Decide each etymon and unit on its own evidence.",
   ""
  ]
 }

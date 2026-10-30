@@ -179,7 +179,7 @@ model, serially, on the same code, evidence, profile, instructions and tools.
   next-option analysis (supersession with a repeat guard, watermark trigger,
   versioned schema diet). Committed in `7e6d637`.
 
-## R04 focused study — prepared 2026-10-28, live trial pending
+## R04 focused study — prepared 2026-10-28, v2 re-frozen 2026-10-30, live trial pending
 
 [R04](research/focused_interface_study.md) follows R03's narrowed question:
 does Gemini 3.8 Flash decide by the stated criterion where R02's deployable
@@ -189,21 +189,27 @@ transcription failure has been observed, and the local blockers lie elsewhere.
 
 - **Stage C** (`r04-stage-c-v1`): node x with three outgroups at the root,
   other-unit forms, missing forms and four tied items. 19 decided
-  opportunities, 5 matched pairs. Frozen scripted baselines: the R02 rule
+  opportunities, 5 matched pairs. The criterion block lets the model recognize
+  regularly corresponding outgroup reflexes from the tip forms without naming
+  specific reflex tokens, and explicitly overrides earlier packaged instructions
+  as well as tool-result notes. Frozen scripted baselines: the R02 rule
   13/19 (0 of its own 6 errors), unanimity 15, majority of three 14, spelling
   majority 14; the stated criterion 19/19 and 4/4 ties marked (the ceiling by
   construction). The key is re-derived from observed forms in a test.
 - **Scorer** `r04-judgment-v1` adds deciding-claim confidence, warranted
-  uncertainty (ties ≤ 0.5), false confident claims, per-rule error sets and a
-  navigation reading.
+  uncertainty (ties ≤ 0.5), false confident claims, per-rule error sets, a
+  navigation reading (covering `search_forms`, `get_alignments` and `polarize`)
+  and descriptive labels (`no commit` and `uniform (regularity) reading` gated
+  before rule labels).
 - **`infer --stop-after-node NODE`** scores one node without running later
   ones (`failure_kind: planned_stop`).
 - **Repaired before any live use:** a Gemini reply cut off at the output cap
   with no text and no call crashed the node and went unpriced. It is now an
   empty turn: the truncation recovery runs, the response is priced, and Gemini
   receives the turn without content. The local route is unchanged.
-- **Pending:** the owner's envelope (US$3.50 / 35 min proposed) and approval of
-  that repair; then one trial from `runs/experiments/r04-stage-c-20261028/`.
+- **Pending:** v2 review and owner confirmation of the approved US$3.50 / 35 min
+  envelope for `runs/experiments/r04-stage-c-20261029-v2/` (`r04-stage-c-20261028/`
+  superseded, never launched).
 
 ## Authority and reading order
 

@@ -113,7 +113,8 @@ def _judge(tmp_path, policy):
     ("unanimous", 15, 3, "baseline-level"),
     ("majority-of-three", 14, 3, "baseline-level"),
     ("spelling-majority", 14, 3, "baseline-level"),
-    ("union", 10, 0, "witness-rule level"),
+    ("union", 10, 0, "uniform (regularity) reading"),
+    ("intersection", 9, 0, "uniform (regularity) reading"),
     ("identity", 9, 0, "baseline-level"),
 ])
 def test_shallow_rules_each_miss_a_component_the_criterion_does_not(tmp_path, policy, correct, pairs, label):
@@ -160,6 +161,31 @@ def test_navigation_shows_which_outgroup_forms_a_session_read(tmp_path):
     result = run_scripted(PAYLOAD_C, Aligning(), protocol="stored-hypothesis", instructions=C_TEXT)
     seen = navigation(CASE_C, {t.node_id: t for t in result.trajectories}["x"])["outgroup_forms_seen"]
     assert seen == sorted(f"{o}:{c}" for o in ("c", "d", "f") for c in concepts if c in CASE_C["observed"][o])
+    # Scoped polarize per one-sided correspondence set also inspects every outgroup's state.
+    class Polarizing(Scripted):
+        def __init__(self):
+            self.sets = None
+            self.index = 0
+
+        def next_call(self, node, prompt, results):
+            if node != "x":
+                return _identity(node)
+            if not results:
+                return "summarize_correspondences", {"reading": "local", "min_support": 1,
+                                                      "limit": 200, "include_outgroup": True}
+            if self.sets is None:
+                self.sets = [s for s in results[0]["sets"] if None in s["segments"]]
+            if self.index < len(self.sets):
+                item = self.sets[self.index]
+                self.index += 1
+                return "polarize", {"child_ids": ["a", "b"], "correspondence": item["segments"],
+                                    "set_id": item["set_id"]}
+            return _identity(node)
+
+    pol_result = run_scripted(PAYLOAD_C, Polarizing(), protocol="stored-hypothesis", instructions=C_TEXT)
+    pol_nav = navigation(CASE_C, {t.node_id: t for t in pol_result.trajectories}["x"])
+    assert pol_nav["calls"]["polarize"] == len(CASE_C["opportunities"])
+    assert pol_nav["concepts_with_every_outgroup_form_seen"] == 19
 
 
 def test_missing_and_fallback_outputs_stay_in_the_denominators(tmp_path):
@@ -168,14 +194,16 @@ def test_missing_and_fallback_outputs_stay_in_the_denominators(tmp_path):
     trajectory = {t.node_id: t for t in result.trajectories}
     full = score_judgment(CASE_C, {"x": step}, model_committed={"x": True}, trajectories_by_node=trajectory)
     assert full["primary"]["model_committed_correct"] == 19
-    # No output at all: every opportunity is missing and nothing is credited.
+    # No output at all: every opportunity is missing, nothing is credited, and labels say no commit.
     empty = score_judgment(CASE_C, {}, model_committed={}, trajectories_by_node={})
     assert empty["primary"]["planned_opportunities"] == 19 and empty["primary"]["model_committed_correct"] == 0
     assert empty["primary"]["readings"] == {"missing": 19} and empty["uncertainty"]["ties_marked"] == 0
-    # A fallback commit's correct outputs are not model decisions, and its ties are not marked.
+    assert empty["labels"]["value"] == "no commit" and empty["labels"]["uncertainty"] == "no commit"
+    # A fallback commit's correct outputs are not model decisions, its ties are not marked, and labels say no commit.
     fallback = step.model_copy(update={"diagnostics": step.diagnostics.model_copy(update={"failure_fallback": True})})
     reading = score_judgment(CASE_C, {"x": fallback}, model_committed={"x": True}, trajectories_by_node=trajectory)
     assert reading["primary"]["model_committed_correct"] == 0 and reading["uncertainty"]["ties_marked"] == 0
+    assert reading["labels"]["value"] == "no commit" and reading["labels"]["uncertainty"] == "no commit"
     # Analysis removed: unscorable, never credited as absent.
     stripped = step.model_copy(update={"output_beam": step.output_beam.model_copy(update={"distributions": tuple(
         d.model_copy(update={"candidates": tuple(c.model_copy(update={"analysis": None}) for c in d.candidates)})
@@ -217,9 +245,13 @@ def test_operator_fields_and_targets_never_reach_a_request():
     plain = Recording(CASE_C, "identification")
     run_scripted(PAYLOAD_C, plain, protocol="stored-hypothesis", instructions=C_TEXT)
     assert plain.requests == provider.requests
-    # The criterion block names no concept, unit or design label.
-    block = "\n".join(CASE_C["task_block"])
+    # The criterion block names no concept, unit, design label or outgroup reflex token.
+    block = " ".join(CASE_C["task_block"])
     assert not any(o["concept_id"] in block or o["unit"] in block for o in CASE_C["opportunities"])
+    assert "kʰ" not in block
+    assert "regularly corresponding reflex" in block
+    assert "any general instruction above or a note in a tool result" in block
+    assert "c's g, d's k and f's kʰ correspond to k" not in CASE_C["independent_evidence"]
     # Stage C shares no concept or unit ID with the R02 development stages.
     units = lambda c: {u for forms in c["observed"].values() for pieces in forms.values() for u, _ in pieces}
     for other in (CASE_A, CASE_B):
@@ -354,10 +386,11 @@ def test_frozen_plan_runs_once_stops_after_x_and_is_evaluated(tmp_path):
     assert arm["cost_known"] and arm["outcomes"]["interrupted"] == 1
 
 
-def test_a_response_cut_off_at_the_cap_is_recovered_priced_and_x_still_scored(tmp_path, monkeypatch):
+@pytest.mark.parametrize("cut_turn", [1, 2])
+def test_a_response_cut_off_at_the_cap_is_recovered_priced_and_x_still_scored(tmp_path, monkeypatch, cut_turn):
     # The R04 arm raises the cap to 32,768 because a cap hit is likely on the
     # harder panel; on the Gemini route such a reply has no text and no call.
-    run_dir = tmp_path / "cut"
+    run_dir = tmp_path / f"cut-{cut_turn}"
     run_dir.mkdir()
     (run_dir / "input.json").write_text(PAYLOAD_C.model_dump_json())
     (run_dir / "instructions.md").write_text(C_TEXT)
@@ -371,7 +404,7 @@ def test_a_response_cut_off_at_the_cap_is_recovered_priced_and_x_still_scored(tm
 
     def complete(**kwargs):
         sent.append(kwargs["messages"])
-        if len(sent) == 2:
+        if len(sent) == cut_turn:
             return {"id": "cut", "model": "test", "choices": [{"finish_reason": "length", "message": {
                 "content": None}}], "usage": {"prompt_tokens": 2000, "completion_tokens": 32768, "total_tokens": 34768}}
         # As LiteLLM's Gemini mapping does, a content-less model turn is dropped.
@@ -386,7 +419,7 @@ def test_a_response_cut_off_at_the_cap_is_recovered_priced_and_x_still_scored(tm
               "--price-table", str(table), "--max-total-cost-usd", "1", "--stop-after-node", "x",
               "--run-id", "r04-c-cut"])
     # The empty turn was not sent back as content; the recovery message was.
-    after = sent[2]
+    after = sent[cut_turn]
     assert after[-2] == {"role": "assistant"}
     assert "cut off at the output limit" in after[-1]["content"]
     report = evaluate_stage_c(CASE_C, run_dir)
