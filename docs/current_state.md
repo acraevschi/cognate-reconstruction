@@ -300,6 +300,53 @@ commits from R03 (`b-gemini`) and R04 (`c-gemini-r04`, `c-local-qwen38-27b-r04`)
   `r` in Stage C).
   (3B-active MoE).
 
+## R06 forward-prediction feasibility — completed 2026-10-30
+
+[R06](research/forward_prediction_feasibility.md) (`r06-forward-v1`,
+`r06-etymon-split-v1`, offline, 0 live model calls; evaluator
+[`cognate_reconstruction/evaluation/forward.py`](../cognate_reconstruction/evaluation/forward.py),
+fixture [`benchmarks/diagnostic/forward-prediction-v1.json`](../benchmarks/diagnostic/forward-prediction-v1.json),
+probe [`tools/forward_prediction_probe.py`](../tools/forward_prediction_probe.py))
+evaluated explicit parent-to-child cascades under the **inferred-ancestor
+(masked-daughter reflex prediction)** regime, keeping the model-facing tool
+surface (`628f0f32…`) unchanged.
+
+- **Etymon-cluster splitting and withholding (`r06-etymon-split-v1`):**
+  Partitions 17 concepts across 16 independent etyma into 8 development etyma
+  (`d01`–`d08`) and 8 held-out test etyma (`t01`–`t08` validated, with `t07`
+  and `t08` sharing `etym_t07` / `forward_prediction_v1:etym_t07`, plus `u01`
+  underdetermined pan-sister merger control), deterministically refusing splits
+  that separate shared non-affix cognate units across `dev` and `test`. Target
+  daughter `a`'s held-out forms and all `historical_form_bindings` / answer-key
+  rules are physically absent from `masked_payload` and all tool views (`ok = True`).
+- **Observational equivalence vs. arbitrary labels (`h1` vs `h2` vs `h2b`):**
+  Reconstructing `*r` from non-masked sisters `(b, c)` via `ProtoInventoryAssembler`
+  with `*q` (`h1`) vs `*ɢ` (`h2`) for `⟨b ɢ : c ʔ⟩` yields `5/8` (`0.625`) raw
+  proto-form exactness for `h2` against the generator's `*q`, but `1.000`
+  corpus-wide aligned B-Cubed (`is_bijective_relabelling = True`) and **`8/8`
+  (`1.000`, `0.0000` NED)** held-out reflex prediction on daughter `a` (recovering
+  5 sister-unattested ancestor inputs and 6 sister-unattested reflexes).
+  Conversely, held-out forward prediction cannot distinguish `*q` from `*ɢ` or
+  one-step `q > x` from two-step `q > χ > x` (`h2b`, `8/8`) without an attested
+  intermediate anchor.
+- **Rejection of overfit, bleeding-order, and direct-sister baselines (`h3`–`h8`):**
+  Memorized development hypotheses (`h4` with 2 lexical overrides; `h4b` with 0
+  overrides and 6 single-etymon context rules) score `8/8` (`1.000`) in-sample on
+  `dev` but collapse to **`1/8` (`0.125`)** on held-out `test`. Reversed bleeding
+  order (`h3`, `i > e / _#` before `k > tʃ / _i`) and optimal single-sister
+  cascades (`h7` `b -> a`, `h8` `c -> a`) score at most **`5/8` (`0.625`)** on
+  held-out `test`.
+- **Inferred vs. circular in-sample vs. given-ancestor oracle (`u01`):** On pan-sister
+  merger `u01` (`*w a l a`, where both `b` and `c` merged `w > l / #_` while `a`
+  shifted `w > v / #_`), `inferred_ancestor` (`a` masked) scores `0/1`, whereas
+  unmasking `a` (`in_sample_circular_unmasked_check`) and supplying generator
+  truth (`h10_privileged_given_ancestor_oracle`, `deployable_baseline = False`)
+  score `1/1`.
+- **Decision:** Retain the offline `r06-forward-v1` evaluator, residual context
+  autopsy (`build_residual_autopsy`), and before/after cascade comparator
+  (`compare_forward_hypotheses`); defer adding a model-facing forward-rule
+  proposal tool or running live forward sweeps.
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.

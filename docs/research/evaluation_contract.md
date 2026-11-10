@@ -148,3 +148,25 @@ payloads from observed pieces; their operator fields never enter model evidence.
   sightings (`search_forms`, `get_alignments`, `polarize`), and descriptive
   labels gated on `no commit` and `uniform (regularity) reading`. Missing,
   unscorable and fallback outputs remain in every denominator.
+
+## R06 amendment — withheld-daughter forward prediction, 2026-10-30
+
+- `r06-forward-v1` and `r06-etymon-split-v1`
+  ([feasibility study](forward_prediction_feasibility.md),
+  `cognate_reconstruction/evaluation/forward.py`,
+  `benchmarks/diagnostic/forward-prediction-v1.json`): additive, report-only
+  evaluator for explicit parent-to-child cascades (`direction="parent_to_child"`)
+  over etymon-cluster splits where shared non-affix `cognate_set_id`s across
+  development and held-out partitions are refused.
+- Separates `inferred_ancestor` (target daughter physically removed from held-out
+  payloads and tool views), `direct_sister_baseline`, `given_ancestor_control`
+  (`privileged_operator_control=True`, `deployable_baseline=False`), and
+  in-sample unmasked circular checks.
+- Retains raw exact/NED and planned-set versus available-output coverage across
+  `all_planned`, `validated_only`, and `underdetermined_only` views (`mean_ned`
+  over available outputs, never imputing `0.0` for missing outputs), and adds
+  corpus-wide aligned B-Cubed contrast equivalence (`corpus_bcubed_f1`,
+  `is_bijective_relabelling`), development single-etymon lookup-rule and
+  lexical-exception accounting (`ForwardComplexityReport`), DiaSim-style
+  channel-labelled residual context autopsies (`build_residual_autopsy`), and
+  before/after cascade diffs (`compare_forward_hypotheses`).
