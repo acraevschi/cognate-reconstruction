@@ -1,0 +1,1960 @@
+{
+  "corpus_version": "r07-critic-corpus-v1",
+  "study_id": "r07-source-linked-hypothesis-critic-v1",
+  "selected_error_class": "source_linked_claim_evidence_and_provenance_discrepancy",
+  "description": "Balanced paired corpus of source-linked hypothesis claims across R03-R06 traces: 6 development packets (3 matched pairs), 10 held-out evaluation packets (5 matched pairs, anonymized as P01-P10), and 2 offline-only gold residual boundary controls (G01-G02).",
+  "packets": [
+    {
+      "packet_id": "dev_d01_defect_silent_residue_drop",
+      "blind_code": "D01",
+      "split": "development",
+      "pair_id": "DP1_residue_drop_coverage",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r04c-local-qwen36-35b-20261030/runs/c-local-qwen36-35b-r04/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_dev_d01_defect",
+        "node_id": "x",
+        "target_concept_id": "y03",
+        "unit_id": "cog:cs311",
+        "set_ids": [
+          "csu-809df556d0486d91d0f5c168",
+          "csu-340e9584626f33b6462a5781",
+          "csu-a26f6177f60d0b20f8936d2b"
+        ],
+        "validation_call_id": "call_18f5646833af183784b0dd5fc8e8872b_0",
+        "column_indices": [0, 1, 2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.85,
+        "support": 1,
+        "rationale": "Selected one representative csu-* ID per distinct segment correspondence (13 sets total) with residue_policy='drop' to reconstruct all 19 concepts at node x.",
+        "directionality_rationale": "Representative local choices cover the phonological inventory; remaining sets are dropped as residue.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.566667,
+        "total_local_sets_at_node": 57,
+        "covered_local_sets_count": 13,
+        "dropped_concept_ids": [
+          "y03",
+          "y05",
+          "y06",
+          "y08",
+          "y09",
+          "y10",
+          "y12",
+          "y14",
+          "y19"
+        ],
+        "assembled_candidate_unit_id": null,
+        "child_source_unit_ids": ["cog:cs311"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:y03": {
+            "variety_id": "a",
+            "concept_id": "y03",
+            "segments": ["t", "a", "k"],
+            "unit_ids": ["cog:cs311"]
+          },
+          "b:y03": {
+            "variety_id": "b",
+            "concept_id": "y03",
+            "segments": ["t", "a"],
+            "unit_ids": ["cog:cs311"]
+          }
+        },
+        "outgroup_forms": {
+          "c:y03": {
+            "variety_id": "c",
+            "concept_id": "y03",
+            "segments": ["r", "e", "g"],
+            "unit_ids": ["cog:cs322"],
+            "same_unit_as_target": false
+          },
+          "d:y03": {
+            "variety_id": "d",
+            "concept_id": "y03",
+            "segments": ["t", "a"],
+            "unit_ids": ["cog:cs311"],
+            "same_unit_as_target": true
+          },
+          "f:y03": {
+            "variety_id": "f",
+            "concept_id": "y03",
+            "segments": ["t", "a", "kʰ"],
+            "unit_ids": ["cog:cs311"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call_92562571857d365923039fe6118d7eb1_0"
+          ],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:y03", "d:y03", "f:y03"],
+          "survey_witness_segments": ["f:kʰ"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "silent_residue_drop_truncation",
+        "accepted_defect_categories": ["silent_residue_drop_truncation"],
+        "expected_uncertainty_label": "exact_mechanical",
+        "required_source_ids": ["a:y03", "b:y03"],
+        "required_call_ids": ["call_18f5646833af183784b0dd5fc8e8872b_0"],
+        "required_set_ids": ["csu-809df556d0486d91d0f5c168"],
+        "required_column_indices": [0, 1, 2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "In R04c (c-local-qwen36-35b-r04), local csu-* IDs are scoped to individual cognate units, not global phoneme rules. Claiming only 13 of 57 sets under residue_policy='drop' drops 56.7% of columns and produces empty output on 9 of 19 concepts including y03."
+      }
+    },
+    {
+      "packet_id": "dev_d01_legit_complete_local_coverage_drop",
+      "blind_code": "D02",
+      "split": "development",
+      "pair_id": "DP1_residue_drop_coverage",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r04-stage-c-20261029-v2/runs/c-gemini-r04/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_dev_d01_legit",
+        "node_id": "x",
+        "target_concept_id": "y03",
+        "unit_id": "cog:cs311",
+        "set_ids": ["csu-81acc80d199514b75f11d392"],
+        "validation_call_id": "call_77ad3bba106741949603eed9a924",
+        "column_indices": [2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.5,
+        "support": 1,
+        "rationale": "Outgroup evidence in cs311 is evenly split between attestation in f (t-a-kʰ) and absence in d (t-a), requiring 2 changes under either hypothesis; unresolved, confidence assigned 0.5. All 57 local sets are explicitly claimed.",
+        "directionality_rationale": "1-1 tie in same-unit outgroups (d=t a, f=t a kʰ; c=r e g is non-cognate cs322); committed at confidence 0.5.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 57,
+        "covered_local_sets_count": 57,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:cs311",
+        "child_source_unit_ids": ["cog:cs311", "cog:cs311"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:y03": {
+            "variety_id": "a",
+            "concept_id": "y03",
+            "segments": ["t", "a", "k"],
+            "unit_ids": ["cog:cs311"]
+          },
+          "b:y03": {
+            "variety_id": "b",
+            "concept_id": "y03",
+            "segments": ["t", "a"],
+            "unit_ids": ["cog:cs311"]
+          }
+        },
+        "outgroup_forms": {
+          "c:y03": {
+            "variety_id": "c",
+            "concept_id": "y03",
+            "segments": ["r", "e", "g"],
+            "unit_ids": ["cog:cs322"],
+            "same_unit_as_target": false
+          },
+          "d:y03": {
+            "variety_id": "d",
+            "concept_id": "y03",
+            "segments": ["t", "a"],
+            "unit_ids": ["cog:cs311"],
+            "same_unit_as_target": true
+          },
+          "f:y03": {
+            "variety_id": "f",
+            "concept_id": "y03",
+            "segments": ["t", "a", "kʰ"],
+            "unit_ids": ["cog:cs311"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call_dc9b5e3c24f442eab71fc8409ff9",
+            "call_47137f0995844458883e8f8402ee"
+          ],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:y03", "d:y03", "f:y03"],
+          "survey_witness_segments": ["f:kʰ"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Paired control for DP1: uses the same residue_policy='drop' at node x, but explicitly covers all 57/57 local sets (unaccounted_column_rate=0.0) and marks the 1-1 same-unit outgroup split on y03 at confidence=0.5."
+      }
+    },
+    {
+      "packet_id": "dev_d02_defect_unit_provenance_loss",
+      "blind_code": "D03",
+      "split": "development",
+      "pair_id": "DP2_unit_provenance_preservation",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/propagation_robustness_study_results.json#b2_privileged_oracle_x_segments_only",
+      "claim": {
+        "claim_id": "claim_dev_d02_defect",
+        "node_id": "x",
+        "target_concept_id": "c001",
+        "unit_id": "cog:two_level_propagation_v1:c001",
+        "set_ids": [
+          "csu-80ea034cf68be0cbb08776b4",
+          "csu-5d87e026f55c506868f5208e",
+          "csu-fb897ce5692b04499c2c020e"
+        ],
+        "validation_call_id": "call-x-b2-segments-only",
+        "column_indices": [0, 1, 2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.85,
+        "support": 1,
+        "rationale": "Emit reconstructed segment sequence *p i k at node x with whole:unknown FormAnalysis (cognate_set_id=None) since raw segment tokens match *p i k.",
+        "directionality_rationale": "Retain *p i k as unannotated whole-word string.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 32,
+        "covered_local_sets_count": 32,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "whole:unknown",
+        "child_source_unit_ids": [
+          "cog:two_level_propagation_v1:c001",
+          "cog:two_level_propagation_v1:c001"
+        ],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,(c,d)y)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:c001": {
+            "variety_id": "a",
+            "concept_id": "c001",
+            "segments": ["f", "i", "k"],
+            "unit_ids": ["cog:two_level_propagation_v1:c001"]
+          },
+          "b:c001": {
+            "variety_id": "b",
+            "concept_id": "c001",
+            "segments": ["p", "i"],
+            "unit_ids": ["cog:two_level_propagation_v1:c001"]
+          }
+        },
+        "outgroup_forms": {
+          "c:c001": {
+            "variety_id": "c",
+            "concept_id": "c001",
+            "segments": ["p", "i"],
+            "unit_ids": ["cog:two_level_propagation_v1:c001"],
+            "same_unit_as_target": true
+          },
+          "d:c001": {
+            "variety_id": "d",
+            "concept_id": "c001",
+            "segments": ["p", "i", "g"],
+            "unit_ids": ["cog:two_level_propagation_v1:c001"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-x-search"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:c001", "d:c001"],
+          "survey_witness_segments": ["d:g"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "unit_provenance_loss",
+        "accepted_defect_categories": ["unit_provenance_loss"],
+        "expected_uncertainty_label": "exact_mechanical",
+        "required_source_ids": ["a:c001", "b:c001"],
+        "required_call_ids": ["call-x-b2-segments-only"],
+        "required_set_ids": ["csu-fb897ce5692b04499c2c020e"],
+        "required_column_indices": [0, 1, 2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "R05 Arm b2 demonstrates that replacing cog:two_level_propagation_v1:c001 with whole:unknown (cognate_set_id=None) triggers unknown_whole=True in align_tuple at parent r, collapsing task04-units-v1 cognate_unit_exact from 10/10 to 0/10 and r02-decisions-v1 to 0/8 (unit_missing)."
+      }
+    },
+    {
+      "packet_id": "dev_d02_legit_unknown_leaf_analysis",
+      "blind_code": "D04",
+      "split": "development",
+      "pair_id": "DP2_unit_provenance_preservation",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/evidence_contract.md#unknown-analysis-preservation",
+      "claim": {
+        "claim_id": "claim_dev_d02_legit",
+        "node_id": "x",
+        "target_concept_id": "c001",
+        "unit_id": "whole:unknown",
+        "set_ids": ["csu-80ea034cf68be0cbb08776b4"],
+        "validation_call_id": "call-x-unannotated-preview",
+        "column_indices": [0, 1, 2],
+        "reflexes": ["f", "p"],
+        "proto_segment": "p",
+        "confidence": 0.85,
+        "support": 1,
+        "rationale": "Both active child forms a:c001 and b:c001 come from an unannotated whole-word slice (unit_id='whole:unknown', cognate_set_id=None); preserving whole:unknown on the assembled candidate records unknown cognacy honestly.",
+        "directionality_rationale": "Outgroups c and d attest initial p; a innovated p > f / #_.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 3,
+        "covered_local_sets_count": 3,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "whole:unknown",
+        "child_source_unit_ids": ["whole:unknown", "whole:unknown"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,(c,d)y)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:c001": {
+            "variety_id": "a",
+            "concept_id": "c001",
+            "segments": ["f", "i", "k"],
+            "unit_ids": ["whole:unknown"]
+          },
+          "b:c001": {
+            "variety_id": "b",
+            "concept_id": "c001",
+            "segments": ["p", "i", "k"],
+            "unit_ids": ["whole:unknown"]
+          }
+        },
+        "outgroup_forms": {
+          "c:c001": {
+            "variety_id": "c",
+            "concept_id": "c001",
+            "segments": ["p", "i", "k"],
+            "unit_ids": ["whole:unknown"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-x-unannotated-search"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:c001"],
+          "survey_witness_segments": ["c:p"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Paired control for DP2: when the leaf forms themselves have no supplied cognacy annotation (child_source_unit_ids=['whole:unknown', 'whole:unknown']), emitting whole:unknown is required by the evidence contract ('Unknown analysis is unknown, not a manufactured objection')."
+      }
+    },
+    {
+      "packet_id": "dev_d03_defect_misread_outgroup_absence",
+      "blind_code": "D05",
+      "split": "development",
+      "pair_id": "DP3_outgroup_absence_vs_repeated_retention",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r03c-local-qwen-20261025/runs/b-local-qwen/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_dev_d03_defect",
+        "node_id": "x",
+        "target_concept_id": "w01",
+        "unit_id": "cog:c42",
+        "set_ids": ["csu-7ecc02374c440d30eef3361e"],
+        "validation_call_id": "106883545",
+        "column_indices": [2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.5,
+        "support": 1,
+        "rationale": "No outgroup evidence for w01. Tie: *k (b loss) vs *∅ (a innovation). Retaining *k.",
+        "directionality_rationale": "No outgroup evidence for w01; treating <a k : b Ø> as a 1-1 tie and retaining *k.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 60,
+        "covered_local_sets_count": 60,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:c42",
+        "child_source_unit_ids": ["cog:c42", "cog:c42"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:w01": {
+            "variety_id": "a",
+            "concept_id": "w01",
+            "segments": ["p", "a", "k"],
+            "unit_ids": ["cog:c42"]
+          },
+          "b:w01": {
+            "variety_id": "b",
+            "concept_id": "w01",
+            "segments": ["p", "a"],
+            "unit_ids": ["cog:c42"]
+          }
+        },
+        "outgroup_forms": {
+          "c:w01": {
+            "variety_id": "c",
+            "concept_id": "w01",
+            "segments": ["p", "a"],
+            "unit_ids": ["cog:c42"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["148471901"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:w01"],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "false_confident_tie_or_misread_absence",
+        "accepted_defect_categories": [
+          "false_confident_tie_or_misread_absence",
+          "wrong_unit_or_lookalike_support"
+        ],
+        "expected_uncertainty_label": "warranted_inference_critique",
+        "required_source_ids": ["a:w01", "b:w01", "c:w01"],
+        "required_call_ids": ["106883545", "148471901"],
+        "required_set_ids": ["csu-7ecc02374c440d30eef3361e"],
+        "required_column_indices": [2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "In R03c (b-local-qwen), get_alignments call 148471901 showed c:w01 = ['p', 'a'] in the same cognate unit cog:c42. Outgroup c is present in cog:c42 and lacks final -k (attesting absence: 1 gain in a vs 2 losses in b and c). Treating absence of a survey witness as 'No outgroup evidence for w01' confuses attested segment absence with a missing outgroup form."
+      }
+    },
+    {
+      "packet_id": "dev_d03_legit_repeated_retention_and_singleton_unit",
+      "blind_code": "D06",
+      "split": "development",
+      "pair_id": "DP3_outgroup_absence_vs_repeated_retention",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r03-model-diagnostic-20261025-v2/runs/b-gemini/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_dev_d03_legit",
+        "node_id": "x",
+        "target_concept_id": "w01",
+        "unit_id": "cog:c42",
+        "set_ids": [
+          "csu-16bcccf636473e31cd2e44fa",
+          "csu-7ecc02374c440d30eef3361e"
+        ],
+        "validation_call_id": "call_1353dcd88b2844cdbe1cba5b06ff",
+        "column_indices": [0, 2],
+        "reflexes": ["p", "p"],
+        "proto_segment": "p",
+        "confidence": 1.0,
+        "support": 1,
+        "rationale": "Initial [p, p] -> *p in unit cog:c42 (support=1 in local unit reading, recurring identically in cog:c11 on w03) is repeated identical retention, and final <a k : b Ø> -> None because same-unit outgroup c:w01 (p a in cog:c42) attests absence.",
+        "directionality_rationale": "Initial *p retained in a, b, c; final -k innovated in a only (c:w01 = p a in cog:c42).",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 60,
+        "covered_local_sets_count": 60,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:c42",
+        "child_source_unit_ids": ["cog:c42", "cog:c42"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:w01": {
+            "variety_id": "a",
+            "concept_id": "w01",
+            "segments": ["p", "a", "k"],
+            "unit_ids": ["cog:c42"]
+          },
+          "b:w01": {
+            "variety_id": "b",
+            "concept_id": "w01",
+            "segments": ["p", "a"],
+            "unit_ids": ["cog:c42"]
+          }
+        },
+        "outgroup_forms": {
+          "c:w01": {
+            "variety_id": "c",
+            "concept_id": "w01",
+            "segments": ["p", "a"],
+            "unit_ids": ["cog:c42"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call_a40df64b7e5f4411b86d6ec8d47b"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:w01"],
+          "survey_witness_segments": ["c:p"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Paired control for DP3 (and Task 04 false-merger control): support=1 is expected for single-etymon local unit sets, repeated identical retention [p, p] -> *p across units is NOT a merger, and discounting final -k when c:w01='p a' in cog:c42 is parsimoniously exact."
+      }
+    },
+    {
+      "packet_id": "eval_c02_legitimate_inspected_shifted_outgroup",
+      "blind_code": "P01",
+      "split": "held_out_evaluation",
+      "pair_id": "EP2_outgroup_inspection_and_unit_scope",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r04-stage-c-20261029-v2/runs/c-gemini-r04/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_eval_c02",
+        "node_id": "x",
+        "target_concept_id": "y04",
+        "unit_id": "cog:cs379",
+        "set_ids": ["csu-47ff23a41bf7fb99745e4019"],
+        "validation_call_id": "call_77ad3bba106741949603eed9a924",
+        "column_indices": [2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.9,
+        "support": 1,
+        "rationale": "Outgroup c attests voiced velar reflex g in cs379 (c:y04 = p a g), while d:y04 (w u in cs332) and f:y04 (r o in cs364) belong to non-cognate replacement units (no observation for cs379), so 1-of-1 same-unit outgroup supports retention of *k.",
+        "directionality_rationale": "Same-unit outgroup c (p a g in cog:cs379) preserves the final velar slot as g; b lost *-k (1 loss on x->b vs 2 independent gains on x->a and r->c).",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 57,
+        "covered_local_sets_count": 57,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:cs379",
+        "child_source_unit_ids": ["cog:cs379", "cog:cs379"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:y04": {
+            "variety_id": "a",
+            "concept_id": "y04",
+            "segments": ["p", "a", "k"],
+            "unit_ids": ["cog:cs379"]
+          },
+          "b:y04": {
+            "variety_id": "b",
+            "concept_id": "y04",
+            "segments": ["p", "a"],
+            "unit_ids": ["cog:cs379"]
+          }
+        },
+        "outgroup_forms": {
+          "c:y04": {
+            "variety_id": "c",
+            "concept_id": "y04",
+            "segments": ["p", "a", "g"],
+            "unit_ids": ["cog:cs379"],
+            "same_unit_as_target": true
+          },
+          "d:y04": {
+            "variety_id": "d",
+            "concept_id": "y04",
+            "segments": ["w", "u"],
+            "unit_ids": ["cog:cs332"],
+            "same_unit_as_target": false
+          },
+          "f:y04": {
+            "variety_id": "f",
+            "concept_id": "y04",
+            "segments": ["r", "o"],
+            "unit_ids": ["cog:cs364"],
+            "same_unit_as_target": false
+          }
+        },
+        "missing_outgroup_varieties": ["d", "f"],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call_dc9b5e3c24f442eab71fc8409ff9",
+            "call_47137f0995844458883e8f8402ee"
+          ],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:y04", "d:y04", "f:y04"],
+          "survey_witness_segments": ["c:g"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "On Stage C K9 (y04, cog:cs379), outgroups d (cs332) and f (cs364) are non-cognate replacements (0 observations in cs379), while c:y04='p a g' is in cog:cs379 and attests the regular shifted reflex g. All outgroup forms were inspected in call_dc9b5e3c24f442eab71fc8409ff9 and call_47137f0995844458883e8f8402ee."
+      }
+    },
+    {
+      "packet_id": "eval_e01_upstream_tie_collapse",
+      "blind_code": "P02",
+      "split": "held_out_evaluation",
+      "pair_id": "EP1_upstream_tie_propagation",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/propagation_robustness_study_results.json#banked_live_replays.c-gemini-r04.tied_concepts.y05",
+      "claim": {
+        "claim_id": "claim_eval_e01",
+        "node_id": "r",
+        "target_concept_id": "y05",
+        "unit_id": "cog:cs397",
+        "set_ids": ["csu-a58f81c372e40dc2d78b607f"],
+        "validation_call_id": "call-r-single-winner-preview",
+        "column_indices": [2],
+        "reflexes": ["k", null, "k", null],
+        "proto_segment": "k",
+        "confidence": 0.9,
+        "support": 1,
+        "rationale": "At root r, 2 of 3 active children with forms in cog:cs397 (reconstructed child x = s i k at probability 1.0 and leaf d = s i k, against leaf f = s i; c has no form) attest final -k, establishing a 2-of-3 majority for *k at confidence 0.90.",
+        "directionality_rationale": "Active-child majority {x, d} vs {f} requires only 1 loss on r->f, whereas ancestral absence would require 2 independent gains on r->x and r->d.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 52,
+        "covered_local_sets_count": 52,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:cs397",
+        "child_source_unit_ids": ["cog:cs397", "cog:cs397", "cog:cs397"],
+        "competing_beam_candidates": [
+          {
+            "segments": ["s", "i", "k"],
+            "probability": 1.0
+          }
+        ],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": 0.5
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["x", "c", "d", "f"],
+        "active_child_forms": {
+          "x:y05": {
+            "variety_id": "x",
+            "concept_id": "y05",
+            "segments": ["s", "i", "k"],
+            "unit_ids": ["cog:cs397"]
+          },
+          "d:y05": {
+            "variety_id": "d",
+            "concept_id": "y05",
+            "segments": ["s", "i", "k"],
+            "unit_ids": ["cog:cs397"]
+          },
+          "f:y05": {
+            "variety_id": "f",
+            "concept_id": "y05",
+            "segments": ["s", "i"],
+            "unit_ids": ["cog:cs397"]
+          }
+        },
+        "outgroup_forms": {},
+        "missing_outgroup_varieties": ["c"],
+        "prior_node_commit_summary": {
+          "node_id": "x",
+          "set_id": "csu-49b21ea93bc30b4926e9664b",
+          "validation_call_id": "call_77ad3bba106741949603eed9a924",
+          "confidence": 0.5,
+          "proto_segment": "k",
+          "tied_confidence_threshold": null,
+          "emitted_probability": 1.0,
+          "decided_by_tie_break": false,
+          "rationale_at_node": "Outgroup evidence in cs397 is evenly split between attestation in d (s-i-k) and absence in f (s-i), requiring 2 changes under either hypothesis; unresolved, confidence assigned 0.5.",
+          "leaf_reflexes": {
+            "a:y05": ["s", "i", "k"],
+            "b:y05": ["s", "i"]
+          }
+        },
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call-r-prior-x",
+            "call-r-search-leaves"
+          ],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["a:y05", "b:y05", "d:y05", "f:y05"],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "upstream_tie_collapse_majority",
+        "accepted_defect_categories": [
+          "upstream_tie_collapse_majority",
+          "false_confident_tie_or_misread_absence"
+        ],
+        "expected_uncertainty_label": "warranted_inference_critique",
+        "required_source_ids": ["a:y05", "b:y05", "d:y05", "f:y05"],
+        "required_call_ids": [
+          "call-r-single-winner-preview",
+          "call_77ad3bba106741949603eed9a924"
+        ],
+        "required_set_ids": [
+          "csu-a58f81c372e40dc2d78b607f",
+          "csu-49b21ea93bc30b4926e9664b"
+        ],
+        "required_column_indices": [2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "R05 §5 (c-gemini-r04 replay on T1 y05): at child node x, a:y05='s i k' and b:y05='s i' was committed at confidence=0.50 (csu-49b21ea93bc30b4926e9664b) as an unresolved tie. Under single-winner assembly (tied_confidence_threshold=None), x emitted only 's i k' at probability=1.0, turning a genuine 2-vs-2 whole-tree leaf tie ({a, d} vs {b, f}) into a false 2-of-3 active-child majority at r."
+      }
+    },
+    {
+      "packet_id": "eval_e04_identity_confidence_length_bias",
+      "blind_code": "P03",
+      "split": "held_out_evaluation",
+      "pair_id": "EP4_identity_confidence_length_sensitivity",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/propagation_robustness_study_results.json#presentation_invariance.operational_weight_sensitivity",
+      "claim": {
+        "claim_id": "claim_eval_e04",
+        "node_id": "r",
+        "target_concept_id": "c012",
+        "unit_id": "cog:two_level_propagation_v1:c012",
+        "set_ids": [
+          "csu-9ad49ded7d182389af5f59b7",
+          "csu-1abb90a1070d5a13f223012c",
+          "csu-e6f49ff3faa94781cc73d843"
+        ],
+        "validation_call_id": "call-r-preview",
+        "column_indices": [0, 1, 2],
+        "reflexes": ["t", "t"],
+        "proto_segment": "t",
+        "confidence": 0.95,
+        "support": 1,
+        "rationale": "Commit unanimous identity correspondences <x k : y k> -> *k, <x o : y o> -> *o, and <x t : y t> -> *t at confidence = 0.95 under tied_confidence_threshold = 0.5 so that *k o and *k o t remain in an exact 0.5000 / 0.5000 tie at root r.",
+        "directionality_rationale": "Unanimous identity correspondences across x and y at confidence 0.95 preserve the 2-vs-2 parsimony tie without tie-break bias.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 34,
+        "covered_local_sets_count": 34,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:two_level_propagation_v1:c012",
+        "child_source_unit_ids": [
+          "cog:two_level_propagation_v1:c012",
+          "cog:two_level_propagation_v1:c012"
+        ],
+        "competing_beam_candidates": [
+          {
+            "segments": ["k", "o"],
+            "probability": 0.5063,
+            "column_count": 2
+          },
+          {
+            "segments": ["k", "o", "t"],
+            "probability": 0.4937,
+            "column_count": 3
+          }
+        ],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": 1.0
+      },
+      "evidence": {
+        "newick": "((a,b)x,(c,d)y)r;",
+        "active_child_ids": ["x", "y"],
+        "active_child_forms": {
+          "x:c012": {
+            "variety_id": "x",
+            "concept_id": "c012",
+            "segments": ["k", "o", "t"],
+            "unit_ids": ["cog:two_level_propagation_v1:c012"]
+          },
+          "y:c012": {
+            "variety_id": "y",
+            "concept_id": "c012",
+            "segments": ["k", "o", "t"],
+            "unit_ids": ["cog:two_level_propagation_v1:c012"]
+          }
+        },
+        "outgroup_forms": {
+          "a:c012": {
+            "variety_id": "a",
+            "concept_id": "c012",
+            "segments": ["k", "o", "t"],
+            "unit_ids": ["cog:two_level_propagation_v1:c012"],
+            "same_unit_as_target": true
+          },
+          "b:c012": {
+            "variety_id": "b",
+            "concept_id": "c012",
+            "segments": ["k", "o"],
+            "unit_ids": ["cog:two_level_propagation_v1:c012"],
+            "same_unit_as_target": true
+          },
+          "c:c012": {
+            "variety_id": "c",
+            "concept_id": "c012",
+            "segments": ["k", "o", "t"],
+            "unit_ids": ["cog:two_level_propagation_v1:c012"],
+            "same_unit_as_target": true
+          },
+          "d:c012": {
+            "variety_id": "d",
+            "concept_id": "c012",
+            "segments": ["k", "o"],
+            "unit_ids": ["cog:two_level_propagation_v1:c012"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": {
+          "node_id": "x",
+          "set_id": "csu-fb897ce5692b04499c2c020e",
+          "validation_call_id": "call-x-preview",
+          "confidence": 0.5,
+          "proto_segment": null,
+          "tied_confidence_threshold": 0.5,
+          "emitted_probability": 0.5,
+          "decided_by_tie_break": true,
+          "leaf_reflexes": {
+            "a:c012": ["k", "o", "t"],
+            "b:c012": ["k", "o"]
+          }
+        },
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-r-survey-0"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["a:c012", "b:c012", "c:c012", "d:c012"],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "identity_confidence_length_bias",
+        "accepted_defect_categories": ["identity_confidence_length_bias"],
+        "expected_uncertainty_label": "exact_mechanical",
+        "required_source_ids": ["x:c012", "y:c012"],
+        "required_call_ids": ["call-r-preview"],
+        "required_set_ids": [
+          "csu-9ad49ded7d182389af5f59b7",
+          "csu-1abb90a1070d5a13f223012c",
+          "csu-e6f49ff3faa94781cc73d843"
+        ],
+        "required_column_indices": [0, 1, 2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "R05 §4 operational_weight_sensitivity on L2 (c012): because ProtoInventoryAssembler sums log(confidence) across columns, setting confidence=0.95 < 1.0 on unanimous identity sets penalizes 3-column (k o t, k o t) by 3*log(0.95) vs 2*log(0.95) for 2-column (k o, k o), skewing probabilities to 0.5063 vs 0.4937 (decided_by_tie_break=False) instead of an exact 0.5000 / 0.5000 tie at confidence=1.0."
+      }
+    },
+    {
+      "packet_id": "eval_c05_bijective_proto_relabelling",
+      "blind_code": "P04",
+      "split": "held_out_evaluation",
+      "pair_id": "EP5_forward_cascade_and_contrast_equivalence",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/forward_prediction_feasibility_results.json#hypotheses.h2_equivalent_ancestral_label",
+      "claim": {
+        "claim_id": "claim_eval_c05",
+        "node_id": "r",
+        "target_concept_id": "d07",
+        "unit_id": "cog:forward_prediction_v1:etym_d07",
+        "set_ids": ["csu-r-d07-initial-dorsal"],
+        "validation_call_id": "call-r06-h2-preview",
+        "column_indices": [0],
+        "reflexes": ["x", "ɢ", "ʔ"],
+        "proto_segment": "ɢ",
+        "confidence": 0.9,
+        "support": 2,
+        "rationale": "Reconstruct *ɢ (rather than *q) as the proto-phoneme label for the regular dorsal correspondence <a x : b ɢ : c ʔ> on d07 (*ɢ a l a) and d08 (*l a ɢ a), paired with the ordered forward cascade [1] k > tʃ / _ i, [2] i > e / _ #, [3] t > Ø / _ #, [4] ɢ > x, [5] w > v / # _ on branch r -> a.",
+        "directionality_rationale": "The unanchored proto-symbol *ɢ preserves the exact corpus-wide contrast partition (corpus_bcubed_f1 = 1.000, is_bijective_relabelling = True) and predicts 8/8 development reflexes and 8/8 held-out reflexes on daughter a.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 24,
+        "covered_local_sets_count": 24,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:forward_prediction_v1:etym_d07",
+        "child_source_unit_ids": [
+          "cog:forward_prediction_v1:etym_d07",
+          "cog:forward_prediction_v1:etym_d07",
+          "cog:forward_prediction_v1:etym_d07"
+        ],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [
+          "k > tʃ / _ i",
+          "i > e / _ #",
+          "t > Ø / _ #",
+          "ɢ > x",
+          "w > v / # _"
+        ],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "(a,b,c)r;",
+        "active_child_ids": ["a", "b", "c"],
+        "active_child_forms": {
+          "a:d07": {
+            "variety_id": "a",
+            "concept_id": "d07",
+            "segments": ["x", "a", "l", "a"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d07"]
+          },
+          "b:d07": {
+            "variety_id": "b",
+            "concept_id": "d07",
+            "segments": ["ɢ", "a", "l", "a"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d07"]
+          },
+          "c:d07": {
+            "variety_id": "c",
+            "concept_id": "d07",
+            "segments": ["ʔ", "a", "l", "a"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d07"]
+          }
+        },
+        "outgroup_forms": {},
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-r06-h2-survey"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": [],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": {
+          "evaluated_concept_count": 8,
+          "raw_exact_rate": 0.75,
+          "corpus_bcubed_precision": 1.0,
+          "corpus_bcubed_recall": 1.0,
+          "corpus_bcubed_f1": 1.0,
+          "is_bijective_relabelling": true,
+          "note": "Inferred *ɢ maps 1-to-1 with reference *q across all alignment columns without merger or split."
+        },
+        "forward_execution_summary": {
+          "evidence_channel": "inference_available_daughter_fitting",
+          "dev_evaluated_count": 8,
+          "dev_exact_count": 8,
+          "dev_exact_rate": 1.0,
+          "dev_mean_ned": 0.0,
+          "mismatched_concept_ids": [],
+          "repaired_concept_ids": [],
+          "newly_broken_concept_ids": [],
+          "observed_forms": {
+            "a:d07": ["x", "a", "l", "a"],
+            "b:d07": ["ɢ", "a", "l", "a"],
+            "c:d07": ["ʔ", "a", "l", "a"]
+          }
+        }
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "R06 §5.2 (h2_equivalent_ancestral_label): unanchored comparative reconstruction identifies ancestral contrasts up to bijective symbol relabelling. Because (*ɢ, ɢ > x) is bijective (corpus_bcubed_f1=1.0, is_bijective_relabelling=True) and achieves 8/8 exact fit on daughter reflexes, flagging *ɢ vs *q is a false objection."
+      }
+    },
+    {
+      "packet_id": "eval_e03_suffix_lookalike_scope_confusion",
+      "blind_code": "P05",
+      "split": "held_out_evaluation",
+      "pair_id": "EP3_morpheme_scope_vs_genuine_tie",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "benchmarks/diagnostic/stage-c-multi-outgroup-v1.json#K8-final-y14",
+      "claim": {
+        "claim_id": "claim_eval_e03",
+        "node_id": "x",
+        "target_concept_id": "y14",
+        "unit_id": "cog:cs312",
+        "set_ids": ["csu-05d00c26690c20befee39f25"],
+        "validation_call_id": "call-stage-c-spelling-majority-preview",
+        "column_indices": [2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.85,
+        "support": 1,
+        "rationale": "On y14 (cog:cs312), active child a has t e k and b has t e. Outgroups d (t e k) and f (t e + kʰ a) both contain a velar stop after the stem vowel e (2 of 3 outgroups, against c = t e), so 2-of-3 outgroup majority supports retaining stem-final *k in cog:cs312.",
+        "directionality_rationale": "Counting velar stops across outgroups d and f gives 2-of-3 outgroup support for *k in cog:cs312; b and c lost the stop.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 57,
+        "covered_local_sets_count": 57,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:cs312",
+        "child_source_unit_ids": ["cog:cs312", "cog:cs312"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:y14": {
+            "variety_id": "a",
+            "concept_id": "y14",
+            "segments": ["t", "e", "k"],
+            "unit_ids": ["cog:cs312"]
+          },
+          "b:y14": {
+            "variety_id": "b",
+            "concept_id": "y14",
+            "segments": ["t", "e"],
+            "unit_ids": ["cog:cs312"]
+          }
+        },
+        "outgroup_forms": {
+          "c:y14": {
+            "variety_id": "c",
+            "concept_id": "y14",
+            "segments": ["t", "e"],
+            "unit_ids": ["cog:cs312"],
+            "same_unit_as_target": true
+          },
+          "d:y14": {
+            "variety_id": "d",
+            "concept_id": "y14",
+            "segments": ["t", "e", "k"],
+            "unit_ids": ["cog:cs312"],
+            "same_unit_as_target": true
+          },
+          "f:y14": {
+            "variety_id": "f",
+            "concept_id": "y14",
+            "segments": ["t", "e", "+", "kʰ", "a"],
+            "unit_ids": ["cog:cs312", "boundary:+", "cog:cs338"],
+            "piece_breakdown": [
+              {"unit_id": "cog:cs312", "segments": ["t", "e"]},
+              {"unit_id": "cog:cs338", "segments": ["kʰ", "a"]}
+            ],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call-stage-c-search-forms",
+            "call-stage-c-get-alignments"
+          ],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["c:y14", "d:y14", "f:y14"],
+          "survey_witness_segments": ["d:k"]
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "wrong_unit_or_lookalike_support",
+        "accepted_defect_categories": ["wrong_unit_or_lookalike_support"],
+        "expected_uncertainty_label": "warranted_inference_critique",
+        "required_source_ids": ["a:y14", "b:y14", "c:y14", "d:y14", "f:y14"],
+        "required_call_ids": ["call-stage-c-spelling-majority-preview"],
+        "required_set_ids": ["csu-05d00c26690c20befee39f25"],
+        "required_column_indices": [2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Stage C K8 (y14, cog:cs312): in f:y14 ('t e + kʰ a'), the stem piece in cog:cs312 is 't e' (lacking a final stop), while 'kʰ a' belongs to suffix unit cog:cs338. Within cog:cs312, 2 of 3 outgroups (c='t e' and f's cs312 piece 't e') lack the final stop vs only 1 (d='t e k') attesting it, so parsimony requires proto_segment=None (absent), not 'k'."
+      }
+    },
+    {
+      "packet_id": "eval_c01_legitimate_parent_majority",
+      "blind_code": "P06",
+      "split": "held_out_evaluation",
+      "pair_id": "EP1_upstream_tie_propagation",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r04-stage-c-20261029-v2/runs/c-gemini-r04/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_eval_c01",
+        "node_id": "r",
+        "target_concept_id": "y07",
+        "unit_id": "cog:cs369",
+        "set_ids": ["csu-c3aa03239e0b76028f549f19"],
+        "validation_call_id": "call-r-y07-preview",
+        "column_indices": [2],
+        "reflexes": ["k", "g", "k", null],
+        "proto_segment": "k",
+        "confidence": 0.9,
+        "support": 1,
+        "rationale": "At root r on y07 (cog:cs369), 3 of 4 active children (reconstructed child x = o k, committed at confidence = 0.90, plus leaf outgroups c = o g and d = h o k, against f = o) attest the final velar stop, supporting retention of *k at confidence 0.90.",
+        "directionality_rationale": "Child x's *k was established with high confidence (0.90) from 2-of-3 outgroups (c=o g, d=h o k), and across the whole tree {a, c, d} vs {b, f} favors *k (2 losses on b, f vs 3 independent gains).",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 52,
+        "covered_local_sets_count": 52,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:cs369",
+        "child_source_unit_ids": [
+          "cog:cs369",
+          "cog:cs369",
+          "cog:cs369",
+          "cog:cs369"
+        ],
+        "competing_beam_candidates": [
+          {
+            "segments": ["o", "k"],
+            "probability": 1.0
+          }
+        ],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["x", "c", "d", "f"],
+        "active_child_forms": {
+          "x:y07": {
+            "variety_id": "x",
+            "concept_id": "y07",
+            "segments": ["o", "k"],
+            "unit_ids": ["cog:cs369"]
+          },
+          "c:y07": {
+            "variety_id": "c",
+            "concept_id": "y07",
+            "segments": ["o", "g"],
+            "unit_ids": ["cog:cs369"]
+          },
+          "d:y07": {
+            "variety_id": "d",
+            "concept_id": "y07",
+            "segments": ["h", "o", "k"],
+            "unit_ids": ["cog:cs369"]
+          },
+          "f:y07": {
+            "variety_id": "f",
+            "concept_id": "y07",
+            "segments": ["o"],
+            "unit_ids": ["cog:cs369"]
+          }
+        },
+        "outgroup_forms": {},
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": {
+          "node_id": "x",
+          "set_id": "csu-56404af7ee2f2ec746f2e4b7",
+          "validation_call_id": "call_77ad3bba106741949603eed9a924",
+          "confidence": 0.9,
+          "proto_segment": "k",
+          "tied_confidence_threshold": 0.5,
+          "emitted_probability": 1.0,
+          "decided_by_tie_break": false,
+          "rationale_at_node": "Two outgroups (c, d) attest final velar stop in cs369 vs 1 absence in f, favoring retention.",
+          "leaf_reflexes": {
+            "a:y07": ["o", "k"],
+            "b:y07": ["h", "o"]
+          }
+        },
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call-r-prior-x",
+            "call-r-search-leaves"
+          ],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": [
+            "a:y07",
+            "b:y07",
+            "c:y07",
+            "d:y07",
+            "f:y07"
+          ],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Paired control for EP1: at root r on HK2-final (y07, cog:cs369), child x's candidate 'o k' was committed at confidence=0.90 (> 0.50) based on 2-of-3 outgroups (c='o g', d='h o k' vs f='o'), and remains width-1 under tied_confidence_threshold=0.5. Retaining *k at r at confidence=0.90 is a genuine 3-vs-2 whole-tree parsimony win (2 losses on b, f vs 3 gains on a, c, d)."
+      }
+    },
+    {
+      "packet_id": "eval_c03_genuine_tie_and_child_swap_invariance",
+      "blind_code": "P07",
+      "split": "held_out_evaluation",
+      "pair_id": "EP3_morpheme_scope_vs_genuine_tie",
+      "pair_role": "genuine_ambiguity_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r04b-local-qwen38-27b-20261030/runs/c-local-qwen38-27b-r04/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_eval_c03",
+        "node_id": "x",
+        "target_concept_id": "y09",
+        "unit_id": "cog:cs326",
+        "set_ids": ["csu-3f92e026880da561ce1fbee1"],
+        "validation_call_id": "call_dd0d7bc6a8759f1d554e8b26c735b41f_0",
+        "column_indices": [2],
+        "reflexes": [null, "k"],
+        "proto_segment": "k",
+        "confidence": 0.5,
+        "support": 1,
+        "rationale": "Under swapped child order ((b,a)x,c,d,f)r;, active children show <b Ø : a k> in cog:cs326. Outgroups c and f have no form (-), and d:y09 (j o k) belongs to non-cognate replacement unit cog:cs331 (0 same-unit outgroups). Retention (1 loss in b) and absence (1 gain in a) tie at 1 change each; marked unresolved at confidence = 0.50.",
+        "directionality_rationale": "Genuine 1-1 parsimony tie with 0 same-unit outgroup witnesses (d:y09 is non-cognate cog:cs331); child order (b, a) vs (a, b) does not alter the tie.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 57,
+        "covered_local_sets_count": 57,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:cs326",
+        "child_source_unit_ids": ["cog:cs326", "cog:cs326"],
+        "competing_beam_candidates": [
+          {
+            "segments": ["m", "u", "k"],
+            "probability": 0.5
+          },
+          {
+            "segments": ["m", "u"],
+            "probability": 0.5
+          }
+        ],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((b,a)x,c,d,f)r;",
+        "active_child_ids": ["b", "a"],
+        "active_child_forms": {
+          "b:y09": {
+            "variety_id": "b",
+            "concept_id": "y09",
+            "segments": ["m", "u"],
+            "unit_ids": ["cog:cs326"]
+          },
+          "a:y09": {
+            "variety_id": "a",
+            "concept_id": "y09",
+            "segments": ["m", "u", "k"],
+            "unit_ids": ["cog:cs326"]
+          }
+        },
+        "outgroup_forms": {
+          "d:y09": {
+            "variety_id": "d",
+            "concept_id": "y09",
+            "segments": ["j", "o", "k"],
+            "unit_ids": ["cog:cs331"],
+            "same_unit_as_target": false
+          }
+        },
+        "missing_outgroup_varieties": ["c", "f"],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call_7c8f2b82a10142a183f10a91_0"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["d:y09"],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "genuine_ambiguity_noted",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "genuine_underdetermination",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Paired control for EP3 (combining genuine ambiguity T3 y09 with R05's active-child order swap perturbation ((b,a)x,c,d,f)r;): d:y09 ('j o k' in cog:cs331) is rightly excluded as a non-cognate replacement unit, leaving 0 same-unit outgroups and a genuine 1-1 tie committed at confidence=0.50."
+      }
+    },
+    {
+      "packet_id": "eval_e02_uninspected_and_wrong_unit_outgroup",
+      "blind_code": "P08",
+      "split": "held_out_evaluation",
+      "pair_id": "EP2_outgroup_inspection_and_unit_scope",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "runs/experiments/r04c-local-qwen36-35b-20261030/runs/c-local-qwen36-35b-r04/trajectories.jsonl",
+      "claim": {
+        "claim_id": "claim_eval_e02",
+        "node_id": "x",
+        "target_concept_id": "y01",
+        "unit_id": "cog:cs305",
+        "set_ids": ["csu-a26f6177f60d0b20f8936d2b"],
+        "validation_call_id": "call_18f5646833af183784b0dd5fc8e8872b_0",
+        "column_indices": [2],
+        "reflexes": ["k", null],
+        "proto_segment": "k",
+        "confidence": 0.85,
+        "support": 1,
+        "rationale": "Nineteen correspondence sets show 'k' in child a and null in child b. Outgroups (c, d, f) regularly show velar stops (k, kʰ, g). This indicates proto *k was retained as 'k' in a but lost in b.",
+        "directionality_rationale": "Child a shows 'k' consistently across 19 sets while child b shows null. Outgroups c, d, f regularly show velar stops (k, kʰ, g) in corresponding positions, supporting proto *k.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.566667,
+        "total_local_sets_at_node": 57,
+        "covered_local_sets_count": 13,
+        "dropped_concept_ids": [
+          "y03",
+          "y05",
+          "y06",
+          "y08",
+          "y09",
+          "y10",
+          "y12",
+          "y14",
+          "y19"
+        ],
+        "assembled_candidate_unit_id": "cog:cs305",
+        "child_source_unit_ids": ["cog:cs305", "cog:cs305"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,c,d,f)r;",
+        "active_child_ids": ["a", "b"],
+        "active_child_forms": {
+          "a:y01": {
+            "variety_id": "a",
+            "concept_id": "y01",
+            "segments": ["l", "o", "k"],
+            "unit_ids": ["cog:cs305"]
+          },
+          "b:y01": {
+            "variety_id": "b",
+            "concept_id": "y01",
+            "segments": ["l", "o"],
+            "unit_ids": ["cog:cs305"]
+          }
+        },
+        "outgroup_forms": {
+          "c:y01": {
+            "variety_id": "c",
+            "concept_id": "y01",
+            "segments": ["l", "o"],
+            "unit_ids": ["cog:cs305"],
+            "same_unit_as_target": true
+          },
+          "d:y01": {
+            "variety_id": "d",
+            "concept_id": "y01",
+            "segments": ["w", "a", "k"],
+            "unit_ids": ["cog:cs351"],
+            "same_unit_as_target": false
+          },
+          "f:y01": {
+            "variety_id": "f",
+            "concept_id": "y01",
+            "segments": ["j", "i", "kʰ"],
+            "unit_ids": ["cog:cs323"],
+            "same_unit_as_target": false
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": [
+            "call_92562571857d365923039fe6118d7eb1_0"
+          ],
+          "concept_outgroup_forms_seen": false,
+          "outgroup_forms_seen_for_concept": [],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "uninspected_outgroup_citation",
+        "accepted_defect_categories": [
+          "uninspected_outgroup_citation",
+          "wrong_unit_or_lookalike_support",
+          "silent_residue_drop_truncation"
+        ],
+        "expected_uncertainty_label": "exact_mechanical",
+        "required_source_ids": ["a:y01", "b:y01", "c:y01"],
+        "required_call_ids": [
+          "call_18f5646833af183784b0dd5fc8e8872b_0",
+          "call_92562571857d365923039fe6118d7eb1_0"
+        ],
+        "required_set_ids": ["csu-a26f6177f60d0b20f8936d2b"],
+        "required_column_indices": [2],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Banked R04c (c-local-qwen36-35b-r04, call_18f5646833af183784b0dd5fc8e8872b_0 on csu-a26f6177f60d0b20f8936d2b / y01 cog:cs305): (1) the session never called search_forms, get_alignments, or polarize (concept_outgroup_forms_seen=False, 0 outgroup forms seen) yet cited outgroups c, d, f; (2) on y01, only c:y01='l o' is in cog:cs305 (attesting absence of -k), while d:y01 ('w a k' in cs351) and f:y01 ('j i kʰ' in cs323) are non-cognate replacements."
+      }
+    },
+    {
+      "packet_id": "eval_c04_equal_length_and_provisional_proxy",
+      "blind_code": "P09",
+      "split": "held_out_evaluation",
+      "pair_id": "EP4_identity_confidence_length_sensitivity",
+      "pair_role": "legitimate_paired_control",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/propagation_robustness_study_results.json#two_level_arms.c1_tied_beam_retention",
+      "claim": {
+        "claim_id": "claim_eval_c04",
+        "node_id": "r",
+        "target_concept_id": "c009",
+        "unit_id": "cog:two_level_propagation_v1:c009",
+        "set_ids": [
+          "csu-3f81b1236b355352fd751c97",
+          "csu-d18639b1f48104955bb00c8e",
+          "csu-0f6f2cd88495de3c0641471f"
+        ],
+        "validation_call_id": "call-r-preview",
+        "column_indices": [0, 1, 2],
+        "reflexes": ["l", "l"],
+        "proto_segment": "l",
+        "confidence": 0.95,
+        "support": 1,
+        "rationale": "Commit unanimous identity correspondences <x l : y l> -> *l and <x o : y o> -> *o at confidence = 0.95 alongside <x k : y g> -> *k at 0.90 on c009 (*l o k), where both x and y have single width-1 candidates of equal 3-column length (probability = 1.0).",
+        "directionality_rationale": "Unanimous retention of *l and *o across all four leaves (a, b: l o k; c, d: l o g) and regular velar voicing *-k > *-g in clade y.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 34,
+        "covered_local_sets_count": 34,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:two_level_propagation_v1:c009",
+        "child_source_unit_ids": [
+          "cog:two_level_propagation_v1:c009",
+          "cog:two_level_propagation_v1:c009"
+        ],
+        "competing_beam_candidates": [
+          {
+            "segments": ["l", "o", "k"],
+            "probability": 1.0,
+            "column_count": 3
+          }
+        ],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,(c,d)y)r;",
+        "active_child_ids": ["x", "y"],
+        "active_child_forms": {
+          "x:c009": {
+            "variety_id": "x",
+            "concept_id": "c009",
+            "segments": ["l", "o", "k"],
+            "unit_ids": ["cog:two_level_propagation_v1:c009"]
+          },
+          "y:c009": {
+            "variety_id": "y",
+            "concept_id": "c009",
+            "segments": ["l", "o", "g"],
+            "unit_ids": ["cog:two_level_propagation_v1:c009"]
+          }
+        },
+        "outgroup_forms": {
+          "a:c009": {
+            "variety_id": "a",
+            "concept_id": "c009",
+            "segments": ["l", "o", "k"],
+            "unit_ids": ["cog:two_level_propagation_v1:c009"],
+            "same_unit_as_target": true
+          },
+          "b:c009": {
+            "variety_id": "b",
+            "concept_id": "c009",
+            "segments": ["l", "o", "k"],
+            "unit_ids": ["cog:two_level_propagation_v1:c009"],
+            "same_unit_as_target": true
+          },
+          "c:c009": {
+            "variety_id": "c",
+            "concept_id": "c009",
+            "segments": ["l", "o", "g"],
+            "unit_ids": ["cog:two_level_propagation_v1:c009"],
+            "same_unit_as_target": true
+          },
+          "d:c009": {
+            "variety_id": "d",
+            "concept_id": "c009",
+            "segments": ["l", "o", "g"],
+            "unit_ids": ["cog:two_level_propagation_v1:c009"],
+            "same_unit_as_target": true
+          }
+        },
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-r-survey-0"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": ["a:c009", "b:c009", "c:c009", "d:c009"],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": "A single provisional_proxy reference annotation records 'l u k', which is not a validated ancestor of all descendants and does not override unanimous daughter 'o'.",
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "legitimate_no_objection",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "no_defect",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Paired control for EP4: on c009 (*l o k), there is only a single candidate tuple of length 3 (probability=1.0 under both confidence=0.95 and 1.0, validated_r_top_forms_identical_095_vs_100=True), and disagreement with a single provisional_proxy annotation is not historical error."
+      }
+    },
+    {
+      "packet_id": "eval_e05_bleeding_order_and_leaky_revision",
+      "blind_code": "P10",
+      "split": "held_out_evaluation",
+      "pair_id": "EP5_forward_cascade_and_contrast_equivalence",
+      "pair_role": "defective_claim",
+      "evidence_channel": "inference_available_daughter_fitting",
+      "origin_artifact": "docs/research/forward_prediction_feasibility_results.json#hypotheses.h3_wrong_order_bleeding",
+      "claim": {
+        "claim_id": "claim_eval_e05",
+        "node_id": "r",
+        "target_concept_id": "d01",
+        "unit_id": "cog:forward_prediction_v1:etym_d01",
+        "set_ids": ["csu-r-d01-velar-palatalization"],
+        "validation_call_id": "call-r06-h3-preview",
+        "column_indices": [2, 3],
+        "reflexes": ["tʃ", "k", "k"],
+        "proto_segment": "k",
+        "confidence": 0.9,
+        "support": 3,
+        "rationale": "Account for daughter a's reflexes from *r using the ordered parent-to-child cascade [1] i > e / _ #, [2] k > tʃ / _ i, [3] t > Ø / _ #, [4] q > x, [5] w > v / # _; if d01 (*p a k i -> a: p a tʃ e) and d02 (*f a k i -> a: f a tʃ e) fail to palatalize, revise by appending [6] k > tʃ / _ e.",
+        "directionality_rationale": "Apply final vowel lowering i > e / _ # first, then palatalize k before front vowels via k > tʃ / _ e.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 24,
+        "covered_local_sets_count": 24,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:forward_prediction_v1:etym_d01",
+        "child_source_unit_ids": [
+          "cog:forward_prediction_v1:etym_d01",
+          "cog:forward_prediction_v1:etym_d01",
+          "cog:forward_prediction_v1:etym_d01"
+        ],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [
+          "i > e / _ #",
+          "k > tʃ / _ i",
+          "t > Ø / _ #",
+          "q > x",
+          "w > v / # _"
+        ],
+        "candidate_revision_rules": [
+          "i > e / _ #",
+          "k > tʃ / _ i",
+          "k > tʃ / _ e",
+          "t > Ø / _ #",
+          "q > x",
+          "w > v / # _"
+        ],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "(a,b,c)r;",
+        "active_child_ids": ["a", "b", "c"],
+        "active_child_forms": {
+          "a:d01": {
+            "variety_id": "a",
+            "concept_id": "d01",
+            "segments": ["p", "a", "tʃ", "e"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d01"]
+          },
+          "b:d01": {
+            "variety_id": "b",
+            "concept_id": "d01",
+            "segments": ["f", "a", "k", "i"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d01"]
+          },
+          "c:d01": {
+            "variety_id": "c",
+            "concept_id": "d01",
+            "segments": ["p", "a", "k", "e"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d01"]
+          },
+          "a:d02": {
+            "variety_id": "a",
+            "concept_id": "d02",
+            "segments": ["f", "a", "tʃ", "e"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d02"]
+          },
+          "a:d03": {
+            "variety_id": "a",
+            "concept_id": "d03",
+            "segments": ["p", "a", "k", "e"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_d03"]
+          }
+        },
+        "outgroup_forms": {},
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-r06-h3-survey"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": [],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": {
+          "evidence_channel": "inference_available_daughter_fitting",
+          "dev_evaluated_count": 8,
+          "dev_exact_count": 6,
+          "dev_exact_rate": 0.75,
+          "dev_mean_ned": 0.0625,
+          "mismatched_concept_ids": ["d01", "d02"],
+          "per_concept_mismatches": {
+            "d01": {
+              "ancestor_segments": ["p", "a", "k", "i"],
+              "predicted_before": ["p", "a", "k", "e"],
+              "observed_daughter_a": ["p", "a", "tʃ", "e"]
+            },
+            "d02": {
+              "ancestor_segments": ["f", "a", "k", "i"],
+              "predicted_before": ["f", "a", "k", "e"],
+              "observed_daughter_a": ["f", "a", "tʃ", "e"]
+            }
+          },
+          "candidate_revision_diff": {
+            "repaired_concept_ids": ["d01", "d02"],
+            "newly_broken_concept_ids": ["d03"],
+            "d03_ancestor_segments": ["p", "a", "k", "e"],
+            "d03_predicted_after": ["p", "a", "tʃ", "e"],
+            "d03_observed_daughter_a": ["p", "a", "k", "e"]
+          },
+          "repaired_concept_ids": ["d01", "d02"],
+          "newly_broken_concept_ids": ["d03"],
+          "observed_forms": {
+            "a:d01": ["p", "a", "tʃ", "e"],
+            "a:d02": ["f", "a", "tʃ", "e"],
+            "a:d03": ["p", "a", "k", "e"]
+          }
+        }
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "counterexample_or_bleeding_order",
+        "accepted_defect_categories": ["counterexample_or_bleeding_order"],
+        "expected_uncertainty_label": "exact_mechanical",
+        "required_source_ids": ["a:d01", "a:d02", "a:d03"],
+        "required_call_ids": ["call-r06-h3-preview"],
+        "required_set_ids": ["csu-r-d01-velar-palatalization"],
+        "required_column_indices": [2, 3],
+        "expected_repaired_examples": ["d01", "d02"],
+        "expected_newly_broken_examples": ["d03"],
+        "independent_derivation_note": "R06 §5.1 (h3_wrong_order_bleeding): ordering i > e / _ # before k > tʃ / _ i bleeds palatalization on d01 (*p a k i -> p a k e vs observed p a tʃ e) and d02 (*f a k i -> f a k e vs observed f a tʃ e). Appending k > tʃ / _ e repairs d01 and d02 but newly breaks d03 (*p a k e -> p a tʃ e vs observed p a k e); the non-breaking fix is counterbleeding order k > tʃ / _ i before i > e / _ #."
+      }
+    },
+    {
+      "packet_id": "gold_g01_held_out_scorer_residual_guard",
+      "blind_code": "G01",
+      "split": "offline_gold_residual_only",
+      "pair_id": "GP1_offline_gold_boundary_guard",
+      "pair_role": "offline_gold_residual_control",
+      "evidence_channel": "offline_held_out_scorer_only",
+      "origin_artifact": "docs/research/forward_prediction_feasibility_results.json#hypotheses.h4_overfit_dev_lookup.held_out_test",
+      "claim": {
+        "claim_id": "claim_gold_g01",
+        "node_id": "r",
+        "target_concept_id": "t01",
+        "unit_id": "cog:forward_prediction_v1:etym_t01",
+        "set_ids": ["csu-r-t01-withheld-gold"],
+        "validation_call_id": "call-offline-scorer-only-t01",
+        "column_indices": [2, 3],
+        "reflexes": ["k", "k"],
+        "proto_segment": "k",
+        "confidence": 0.9,
+        "support": 1,
+        "rationale": "Offline operator residual autopsy on withheld test concept t01 (*p u k i -> predicted p u k e vs withheld target a:t01 = p u tʃ e).",
+        "directionality_rationale": "Offline scorer-only diagnostic; must never be sent to an inference or model-critic prompt.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 24,
+        "covered_local_sets_count": 24,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:forward_prediction_v1:etym_t01",
+        "child_source_unit_ids": ["cog:forward_prediction_v1:etym_t01"],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": ["i > e / _ #", "k > tʃ / _ i"],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "(a,b,c)r;",
+        "active_child_ids": ["b", "c"],
+        "active_child_forms": {
+          "b:t01": {
+            "variety_id": "b",
+            "concept_id": "t01",
+            "segments": ["f", "u", "k", "i"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_t01"]
+          },
+          "c:t01": {
+            "variety_id": "c",
+            "concept_id": "t01",
+            "segments": ["p", "u", "k", "e"],
+            "unit_ids": ["cog:forward_prediction_v1:etym_t01"]
+          }
+        },
+        "outgroup_forms": {},
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-offline-scorer-only-t01"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": [],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": {
+          "evidence_channel": "offline_held_out_scorer_only",
+          "withheld_target_concept_ids": ["t01"]
+        }
+      },
+      "ground_truth": {
+        "is_defective": true,
+        "expected_verdict": "defect_found",
+        "expected_defect_category": "counterexample_or_bleeding_order",
+        "accepted_defect_categories": ["counterexample_or_bleeding_order"],
+        "expected_uncertainty_label": "exact_mechanical",
+        "required_source_ids": ["b:t01", "c:t01"],
+        "required_call_ids": ["call-offline-scorer-only-t01"],
+        "required_set_ids": ["csu-r-t01-withheld-gold"],
+        "required_column_indices": [2, 3],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Evidence-boundary guard control: carries evidence_channel='offline_held_out_scorer_only' and split='offline_gold_residual_only'. Must be refused by to_model_visible_packet() so withheld test residuals never enter model-visible prompts."
+      }
+    },
+    {
+      "packet_id": "gold_g02_unrecoverable_parallel_merger_oracle_guard",
+      "blind_code": "G02",
+      "split": "offline_gold_residual_only",
+      "pair_id": "GP1_offline_gold_boundary_guard",
+      "pair_role": "offline_gold_residual_control",
+      "evidence_channel": "offline_held_out_scorer_only",
+      "origin_artifact": "docs/research/propagation_robustness_study_results.json#two_level_arms.b1_privileged_oracle_x_full",
+      "claim": {
+        "claim_id": "claim_gold_g02",
+        "node_id": "r",
+        "target_concept_id": "c011",
+        "unit_id": "cog:two_level_propagation_v1:c011",
+        "set_ids": [
+          "csu-4f0c759d66a1e6137e67a26f",
+          "csu-53dbc103696aee180fe8154b"
+        ],
+        "validation_call_id": "call-offline-scorer-only-c011",
+        "column_indices": [0, 1],
+        "reflexes": ["l", "l"],
+        "proto_segment": "l",
+        "confidence": 0.95,
+        "support": 1,
+        "rationale": "Offline answer-key comparison on underdetermined concept L1 (c011: generator root *w o shifted w > l / #_ in parallel on both x and y, so all four leaves show l o).",
+        "directionality_rationale": "Offline scorer-only diagnostic; parallel pre-clade merger is unidentifiable from daughter evidence.",
+        "residue_policy": "drop",
+        "unaccounted_column_rate": 0.0,
+        "total_local_sets_at_node": 34,
+        "covered_local_sets_count": 34,
+        "dropped_concept_ids": [],
+        "assembled_candidate_unit_id": "cog:two_level_propagation_v1:c011",
+        "child_source_unit_ids": [
+          "cog:two_level_propagation_v1:c011",
+          "cog:two_level_propagation_v1:c011"
+        ],
+        "competing_beam_candidates": [],
+        "forward_cascade_rules": [],
+        "candidate_revision_rules": [],
+        "candidate_revision_confidence": null
+      },
+      "evidence": {
+        "newick": "((a,b)x,(c,d)y)r;",
+        "active_child_ids": ["x", "y"],
+        "active_child_forms": {
+          "x:c011": {
+            "variety_id": "x",
+            "concept_id": "c011",
+            "segments": ["l", "o"],
+            "unit_ids": ["cog:two_level_propagation_v1:c011"]
+          },
+          "y:c011": {
+            "variety_id": "y",
+            "concept_id": "c011",
+            "segments": ["l", "o"],
+            "unit_ids": ["cog:two_level_propagation_v1:c011"]
+          }
+        },
+        "outgroup_forms": {},
+        "missing_outgroup_varieties": [],
+        "prior_node_commit_summary": null,
+        "trajectory_navigation_summary": {
+          "inspected_call_ids": ["call-offline-scorer-only-c011"],
+          "concept_outgroup_forms_seen": true,
+          "outgroup_forms_seen_for_concept": [],
+          "survey_witness_segments": []
+        },
+        "provisional_proxy_note": null,
+        "contrast_equivalence_summary": null,
+        "forward_execution_summary": null
+      },
+      "ground_truth": {
+        "is_defective": false,
+        "expected_verdict": "genuine_ambiguity_noted",
+        "expected_defect_category": "none",
+        "accepted_defect_categories": ["none"],
+        "expected_uncertainty_label": "genuine_underdetermination",
+        "required_source_ids": [],
+        "required_call_ids": [],
+        "required_set_ids": [],
+        "required_column_indices": [],
+        "expected_repaired_examples": [],
+        "expected_newly_broken_examples": [],
+        "independent_derivation_note": "Offline answer-key diagnostic control (R05 L1 c011): *w o underwent parallel w > l / #_ on both x and y, so *l o is the only daughter-identifiable reconstruction; answer-key mismatch on an underdetermined parallel merger must remain in offline_held_out_scorer_only."
+      }
+    }
+  ]
+}
