@@ -20,7 +20,7 @@ from cognate_reconstruction.synthesis.generator import generate_family, Syntheti
 
 def load_suite(path: str | Path) -> dict:
     suite = json.loads(Path(path).read_text())
-    if suite["suite_version"] not in ("task02-v1", "two-level-propagation-v1"):
+    if suite["suite_version"] not in ("task02-v1", "two-level-propagation-v1", "r06-forward-v1"):
         raise ValueError("unsupported diagnostic suite version")
     return suite
 
@@ -29,6 +29,24 @@ def build_case(case: dict) -> SyntheticBuildResult:
     definition = SyntheticFamilyDefinition.model_validate_json(json.dumps(case["family"]))
     built = generate_family(definition)
     payload = built.payload
+    if "concept_etymon_ids" in case:
+        etymon_map = case["concept_etymon_ids"]
+        lexicons = tuple(
+            lexicon.model_copy(
+                update={
+                    "forms": tuple(
+                        form.model_copy(
+                            update={
+                                "cognate_set_id": f"{definition.name}:{etymon_map.get(form.concept_id, form.concept_id)}"
+                            }
+                        )
+                        for form in lexicon.forms
+                    )
+                }
+            )
+            for lexicon in payload.lexicons
+        )
+        payload = payload.model_copy(update={"lexicons": lexicons})
     if "observed_unit_layouts" in case:
         lexicons = []
         for lexicon in payload.lexicons:

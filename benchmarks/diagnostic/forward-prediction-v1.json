@@ -1,0 +1,112 @@
+{
+  "suite_version": "r06-forward-v1",
+  "purpose": "Withheld-daughter forward-prediction diagnostic suite testing inferred-ancestor vs given-ancestor reflex prediction, ordered counterbleeding rules, non-invertible mergers/deletions, observationally equivalent ancestral symbol labels, etymon-cluster splitting, and overfit/direct-sister baselines.",
+  "cases": [
+    {
+      "case_id": "forward_prediction_masked_daughter",
+      "regime": "inferred_ancestor_masked_daughter",
+      "target_daughter_id": "a",
+      "sister_daughter_ids": ["b", "c"],
+      "phenomenon": "ordered counterbleeding palatalization and final-vowel lowering (k > tʃ / _i before i > e / _#), final stop deletion (t > Ø / _#), complementary sister mergers (p > f / #_ in b vs i > e / _# and t > Ø / _# in c), observationally equivalent dorsal label (*q vs *ɢ for <a x : b ɢ : c ʔ>), shared-etymon derivative grouping (t07/t08), and unrecoverable pan-sister merger control (u01 w > l / #_ in both b and c).",
+      "identifiability": "identifiable",
+      "independent_evidence": "8 development etyma (d01-d08, all daughters a, b, c observed) and 7 validated held-out test etyma across 8 concepts (t01-t08, with t07 and t08 sharing etym_t07; target daughter a strictly withheld) plus 1 underdetermined pan-sister merger control (u01, where both b and c merged *w > l / #_ while a shifted *w > v / #_).",
+      "equivalent_solutions": "For the dorsal correspondence <b ɢ : c ʔ> (reflex x in a), the generator writes *q at r (with forward rules q > x on a, q > ɢ on b, q > ʔ on c), but reconstructing *ɢ at r (with forward rules ɢ > x on a, identity on b, ɢ > ʔ on c) or a two-stage cascade (q > χ, χ > x on a) is observationally equivalent across all visible data and predicts identical held-out reflexes in daughter a.",
+      "concept_etymon_ids": {
+        "d01": "etym_d01",
+        "d02": "etym_d02",
+        "d03": "etym_d03",
+        "d04": "etym_d04",
+        "d05": "etym_d05",
+        "d06": "etym_d06",
+        "d07": "etym_d07",
+        "d08": "etym_d08",
+        "t01": "etym_t01",
+        "t02": "etym_t02",
+        "t03": "etym_t03",
+        "t04": "etym_t04",
+        "t05": "etym_t05",
+        "t06": "etym_t06",
+        "t07": "etym_t07",
+        "t08": "etym_t07",
+        "u01": "etym_u01"
+      },
+      "development_etymon_ids": [
+        "etym_d01", "etym_d02", "etym_d03", "etym_d04",
+        "etym_d05", "etym_d06", "etym_d07", "etym_d08"
+      ],
+      "held_out_etymon_ids": [
+        "etym_t01", "etym_t02", "etym_t03", "etym_t04",
+        "etym_t05", "etym_t06", "etym_t07", "etym_u01"
+      ],
+      "development_concept_ids": ["d01", "d02", "d03", "d04", "d05", "d06", "d07", "d08"],
+      "held_out_concept_ids": ["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08", "u01"],
+      "validated_held_out_concept_ids": ["t01", "t02", "t03", "t04", "t05", "t06", "t07", "t08"],
+      "underdetermined_held_out_concept_ids": ["u01"],
+      "underdetermined_concepts": {
+        "u01": {
+          "nodes": ["r"],
+          "alternative_segments": [["w", "a", "l", "a"], ["l", "a", "l", "a"]],
+          "note": "Pan-sister merger control: both observed sisters b and c underwent w > l / #_, yielding <b l a l a : c l a l a>, which is indistinguishable from ancestral *l a l a (compare d08 *l a q a) when daughter a (v a l a) is masked."
+        }
+      },
+      "family": {
+        "schema_version": "1.0",
+        "name": "forward_prediction_v1",
+        "description": "Synthetic family for R06 withheld-daughter forward-prediction feasibility.",
+        "newick": "(a,b,c)r;",
+        "hidden_target_node_ids": ["r"],
+        "proto_lexicon": [
+          {"concept_id": "d01", "gloss": "dev_paki", "segments": ["p", "a", "k", "i"]},
+          {"concept_id": "d02", "gloss": "dev_faki", "segments": ["f", "a", "k", "i"]},
+          {"concept_id": "d03", "gloss": "dev_pake", "segments": ["p", "a", "k", "e"]},
+          {"concept_id": "d04", "gloss": "dev_kita", "segments": ["k", "i", "t", "a"]},
+          {"concept_id": "d05", "gloss": "dev_sat", "segments": ["s", "a", "t"]},
+          {"concept_id": "d06", "gloss": "dev_sa", "segments": ["s", "a"]},
+          {"concept_id": "d07", "gloss": "dev_qala", "segments": ["q", "a", "l", "a"]},
+          {"concept_id": "d08", "gloss": "dev_laqa", "segments": ["l", "a", "q", "a"]},
+          {"concept_id": "t01", "gloss": "test_puki", "segments": ["p", "u", "k", "i"]},
+          {"concept_id": "t02", "gloss": "test_fuki", "segments": ["f", "u", "k", "i"]},
+          {"concept_id": "t03", "gloss": "test_puke", "segments": ["p", "u", "k", "e"]},
+          {"concept_id": "t04", "gloss": "test_kimat", "segments": ["k", "i", "m", "a", "t"]},
+          {"concept_id": "t05", "gloss": "test_pamut", "segments": ["p", "a", "m", "u", "t"]},
+          {"concept_id": "t06", "gloss": "test_quli", "segments": ["q", "u", "l", "i"]},
+          {"concept_id": "t07", "gloss": "test_maqi_simplex", "segments": ["m", "a", "q", "i"]},
+          {"concept_id": "t08", "gloss": "test_maqaki_derivative", "segments": ["m", "a", "q", "a", "k", "i"]},
+          {"concept_id": "u01", "gloss": "test_wala_pan_sister_merger", "segments": ["w", "a", "l", "a"]}
+        ],
+        "branches": [
+          {
+            "node_id": "a",
+            "rules": [
+              "k > tʃ / _ i",
+              "i > e / _ #",
+              "t > Ø / _ #",
+              "q > x",
+              "w > v / # _"
+            ],
+            "note": "Target daughter for forward reflex prediction: ordered palatalization before final i-lowering (counterbleeding), final -t deletion, uvular spirantization, and initial w > v."
+          },
+          {
+            "node_id": "b",
+            "rules": [
+              "p > f / # _",
+              "q > ɢ",
+              "w > l / # _"
+            ],
+            "note": "Sister daughter b: merges initial *p with *f into f and *w with *l into l, voices *q > ɢ, but retains final *-i vs *-e and final *-t."
+          },
+          {
+            "node_id": "c",
+            "rules": [
+              "i > e / _ #",
+              "t > Ø / _ #",
+              "q > ʔ",
+              "w > l / # _"
+            ],
+            "note": "Sister daughter c: merges final *-i with *-e into -e (without palatalizing k), deletes final *-t, shifts *q > ʔ, and merges *w > l / #_, while retaining initial *p vs *f."
+          }
+        ]
+      }
+    }
+  ]
+}
