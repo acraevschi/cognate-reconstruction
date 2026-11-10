@@ -649,30 +649,25 @@ node, input, width and alignment reading whenever quoting them.
 
 ## What is next
 
-Tasks 01–03 provide offline diagnosis, task02-v1 interpretation and units-v1
-mechanics. The 2026-10-04 independent review reproduced false merger requirements
-on identical scoped retention mappings, cross-etymon mixing in scoped outgroup
-profiles, alternative-dependent support, and missing target-piece integration in
-normal morphology evaluation. Full-span simplex annotations also receive local
-scopes, obscuring cross-word recurrence. Existing focused tests and legacy replay
-pass; they do not cover those counterexamples. See the shared handoff for evidence.
+All historical `Task01`–`Task06` and post-review `R01`–`R07` work packages are
+complete on `main`. Because both `gemini/gemini-3.8-flash` (`medium` thinking)
+and local dense `qwen3.8-27b-splash` achieved `100%` (`18/18` on Stage B and
+`19/19` on Stage C) on the synthetic diagnostic panels, the next phase
+(`B01`–`B02` in `prompts/`) moves to **real multi-level language family
+benchmarking**:
 
-Task 04 has delivered the bounded offline repair and verified instruments
-described above. Task 05's [protocol revision](research/protocol_revision.md)
-provides compact local choices, executable versus commit-ready previews and
-immutable same-session inventory handles; full inventory/rule paths remain.
-Missing decisions/explanations and stale evidence remain strictly validated.
-Both paths freeze supplementary witness/anchor evidence too. System text and
-inventory protocol are independently selectable; node notes are now hashed.
-Five two-level scripted controls and 633 portable checks pass. The single Gemma
-smoke stalled after 15 turns/13 calls, seven rejections and two output truncations;
-only an empty preview succeeded, with no commit. Final explicit-list/flat-shape
-remediation and reference-word isolation clarifications are offline-tested only.
-Task05 is partial at the live usability gate; no second smoke ran. Cumulative
-input tokens were 631,609 versus a maximum request of 56,233; configured context
-was 262,144. A shorter static prompt did not establish lower cost or better science.
-Task 06 is delivered offline with 680 portable passes. Task 07 requires an instrument/interface gate, usable
-frozen arms and a focused manifest review unless the owner scopes that review out;
-06 can be explicitly scoped out for a bounded single-node pilot with demonstrated
-interruption/missing-outcome handling. Forward prediction remains deferred.
-No broad reconstruction gain has been established by the controls or smoke.
+1. **`B01` (`prompts/01-real-family-harness-prep.md`, offline):** Wire
+   `--tied-confidence-threshold` on `cli.py infer` (from `R05`), bridge `R07`'s
+   default deterministic detector (`run_deterministic_full_detector`) directly
+   to real run directories (`extract_critique_packets_from_run` and
+   `hypothesis_critic_probe.py audit-run`), add opt-in stale-preview
+   supersession (`--preview-history {keep,supersede}`, `R03f` Option 1b), and
+   freeze the candidate `B02` Burmish benchmark plan.
+2. **`B02` (`prompts/02-real-family-live-benchmark.md`, live benchmark):** Run
+   `gemini/gemini-3.8-flash` (`medium` thinking, `max_tokens = 32768`,
+   `--tied-confidence-threshold 0.5`, `--preview-history supersede`) on
+   `benchmarks/burmish.json` using the staged single-node-first protocol
+   (`--stop-after-node maruic` -> `audit-run` gate -> `--resume` full tree),
+   comparing against the pre-R01 Burmish baseline and deterministic oracle
+   ceilings before escalating to `polynesian.json` / `romance.json` and local
+   `qwen3.8-27b`.
