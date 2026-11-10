@@ -347,6 +347,43 @@ surface (`628f0f32…`) unchanged.
   (`compare_forward_hypotheses`); defer adding a model-facing forward-rule
   proposal tool or running live forward sweeps.
 
+## R07 source-linked hypothesis critic — completed 2026-11-10
+
+[R07](research/hypothesis_criticism_feasibility.md) (`r07-critic-v1`,
+`r07-critic-corpus-v1`; evaluator
+[`cognate_reconstruction/evaluation/critic.py`](../cognate_reconstruction/evaluation/critic.py),
+corpus [`benchmarks/diagnostic/r07-hypothesis-critic-v1.json`](../benchmarks/diagnostic/r07-hypothesis-critic-v1.json),
+probe [`tools/hypothesis_critic_probe.py`](../tools/hypothesis_critic_probe.py),
+banked experiment [`runs/experiments/r07-hypothesis-critic-20261110/`](../runs/experiments/r07-hypothesis-critic-20261110/))
+investigated source-linked claim-evidence and provenance discrepancy criticism
+across the concrete failure modes demonstrated in R03–R06, separating a
+deterministic trace/execution detector from a fallible LLM critic (`submit_hypothesis_critique`).
+
+- **Balanced paired corpus & independent derivations (`18` packets):**
+  6 `development` packets (`3` matched pairs `DP1`–`DP3`), 10 `held_out_evaluation`
+  packets (`5` matched pairs `EP1`–`EP5`, randomized order `P04, P02, P01, P10, P09, P07, P06, P08, P03, P05`),
+  and 2 `offline_held_out_scorer_only` boundary guards (`G01`–`G02`, mechanically
+  refused by `to_model_visible_packet`). All 11 ground-truth checks are
+  independently verified (`verify_independent_ground_truth`: `ok = True`) from
+  Stage C Fitch parsimony, R05 log-mass arithmetic (`0.5063` vs `0.4937`), and
+  R06 `RuleEngine` execution (`repaired = ['d01', 'd02']`, `newly_broken = ['d03']`)
+  plus B-Cubed contrast equivalence (`*ɢ` vs `*q`).
+- **Held-out evaluation comparison (`10` packets = `5` matched pairs `EP1`–`EP5`):**
+  - `existing_residue_ambiguity_baseline`: `1/5` TP, `0/5` false objections, `1/5` pairs (`0.200`).
+  - `fixed_evidence_checklist_baseline`: `1/5` TP, `3/5` false objections (`C02, C03, C05`), `0/5` pairs (`0.000`).
+  - `deterministic_mechanical_detector` (Stratum A mechanical/navigation/provenance/execution only): `3/5` TP (`E02, E04, E05`), `0/5` false objections, `3/5` pairs (`0.600`).
+  - `deterministic_full_trace_detector` (Stratum A + cross-node tie-confidence & unit-scoped outgroup witness rules): **`5/5` TP, `0/5` false objections, `5/5` pairs (`1.000`)** at `$0` cost and `< 0.01 s`.
+  - `FakeCriticProvider` controls (`$0`): `accurate` (`5/5` TP, `0/5` FO, `5/5` pairs), `over_objecting` (`5/5` TP, `4/5` FO, `1/5` pairs), `verbose_relabeller` (`1/5` TP, `0/5` FO, `1/5` pairs), `hallucinated_pointers` (`0/5` actionable TP, `0.000` pointer validity).
+  - **Single live `gemini/gemini-3.8-flash` (`medium` thinking) serial pass** (`runs/r07-gemini-r07-critic/`, launched after independent read-only review [`review.md`](../runs/experiments/r07-hypothesis-critic-20261110/review.md)): **`5/5` actionable TP (`100%` recall, `1.000` pointer validity, `1.000` defect pointer completeness), `1/5` false objection (`eval_c01_legitimate_parent_majority` `P06`), `4/5` matched pairs (`0.800`), `0.833` actionable precision**. Resources: `10` requests, `31,209` input tokens (`0` cached), `43,280` output tokens (`38,309` reasoning), **`US$0.185707`** certified table cost (vs `US$1.50` ceiling), **`344.5 s`** launcher wall time (vs `1,200.0 s` ceiling).
+- **Decision (adopted in code):** `run_deterministic_full_detector` (`5/5` pairs at `$0`) is
+  adopted and wired as the default offline post-run audit report
+  (`DEFAULT_CRITIC_MODE = "deterministic_full"` in `run_default_hypothesis_critic`,
+  `run_default_critic_report`, and `tools/hypothesis_critic_probe.py audit`);
+  `submit_hypothesis_critique` is kept strictly as an optional, read-only
+  human-facing narrative aid filtered by `filter_llm_assessment_with_deterministic_guard`
+  (`apply_deterministic_guard=True` by default), and no LLM critic is wired into
+  an autonomous repair loop.
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.
