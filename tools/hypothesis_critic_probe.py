@@ -63,6 +63,7 @@ from cognate_reconstruction.evaluation.critic import (
     CritiquePacket,
     EvidenceChannel,
     FakeCriticProvider,
+    audit_run_directory,
     build_blind_evaluation_sheet,
     build_critic_user_prompt,
     critic_system_instructions,
@@ -70,6 +71,7 @@ from cognate_reconstruction.evaluation.critic import (
     evaluate_forward_revision_on_packet,
     filter_llm_assessment_with_deterministic_guard,
     parse_critic_response,
+    resolve_audit_payload,
     run_default_critic_report,
     run_default_hypothesis_critic,
     run_deterministic_full_detector,
@@ -1227,6 +1229,26 @@ def evaluate(run_dir: Path, *, mode: str = "auto") -> dict[str, Any]:
     return report
 
 
+def audit_run(
+    run_dir: Path,
+    *,
+    definition: str | Path | None = None,
+    output: Path | None = None,
+) -> dict[str, Any]:
+    """Run alignment-safe deterministic provenance and trace audit on a run directory ($0 cost)."""
+    resolved_payload = (
+        resolve_audit_payload(definition) if definition is not None else None
+    )
+    report = audit_run_directory(run_dir, payload=resolved_payload)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps(report, indent=2, ensure_ascii=False, default=str) + "\n",
+            encoding="utf-8",
+        )
+    return report
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -1246,6 +1268,24 @@ def main() -> None:
         default=DEFAULT_CRITIC_MODE,
     )
     aud.add_argument("--output", type=Path, default=None)
+
+    aud_run = sub.add_parser(
+        "audit-run",
+        help="Deterministically audit a family reconstruction run directory ($0 cost)",
+    )
+    aud_run.add_argument(
+        "--run-dir",
+        type=Path,
+        required=True,
+        help="Completed, planned-stop, or incomplete run directory to audit",
+    )
+    aud_run.add_argument(
+        "--definition",
+        type=str,
+        default=None,
+        help="Benchmark short name (burmish, polynesian, romance) or JSON definition/payload path",
+    )
+    aud_run.add_argument("--output", type=Path, default=None)
 
     ctrl = sub.add_parser(
         "controls",
@@ -1296,6 +1336,13 @@ def main() -> None:
             output=args.output,
         )
         print(json.dumps(payload, indent=2, default=str))
+    elif args.command == "audit-run":
+        report = audit_run(
+            args.run_dir,
+            definition=args.definition,
+            output=args.output,
+        )
+        print(json.dumps(report, indent=2, ensure_ascii=False, default=str))
     elif args.command == "controls":
         payload = controls(args.live_run_dir)
         if args.output is not None:

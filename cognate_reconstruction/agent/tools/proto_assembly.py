@@ -185,12 +185,18 @@ def assemble_node(
         from cognate_reconstruction.agent.reconstructor import _apply_overlay
         beams = [_apply_overlay(beam, context, segmentation_overlay_id)
                  for beam in context.child_beams]
+    effective_tied_threshold = (
+        None
+        if context.tied_confidence_threshold == 0.0
+        else context.tied_confidence_threshold
+    )
     assembler = ProtoInventoryAssembler(
         beam_width=max((beam.beam_width for beam in beams), default=1),
         anchor_policy=context.anchor_policy,
         aligner=context.aligner,
         engine=context.rule_engine,
         semantic_cache=context.unit_alignment_cache,
+        tied_confidence_threshold=effective_tied_threshold,
     )
     step = assembler.reconstruct(
         node_id,

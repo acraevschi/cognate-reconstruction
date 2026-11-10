@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 from dataclasses import dataclass, field
 
 from cognate_reconstruction.agent.error_codes import ToolInputError
@@ -61,6 +62,7 @@ class AgentContext:
     inventory_hypotheses: dict = field(default_factory=dict)
     unit_alignment_cache: dict = field(default_factory=dict)
     child_beams: tuple[NodeBeamState, ...] = ()
+    tied_confidence_threshold: float | None = None
     commit: CommittedHypothesis | None = None
     held_out_share: float = DEFAULT_HELD_OUT_SHARE
     # Derived, never supplied: the split is a function of the node ID and the
@@ -71,6 +73,12 @@ class AgentContext:
         ids = [lexicon.variety_id for lexicon in self.child_lexicons]
         if len(ids) < 2 or len(ids) != len(set(ids)):
             raise ValueError("an agent context needs at least two distinct children")
+        if self.tied_confidence_threshold is not None and (
+            isinstance(self.tied_confidence_threshold, bool)
+            or not math.isfinite(self.tied_confidence_threshold)
+            or not (0.0 <= self.tied_confidence_threshold <= 1.0)
+        ):
+            raise ValueError("tied_confidence_threshold must be in [0, 1]")
         self.concept_split = split_concepts(
             self.node_id,
             (form.concept_id for form in self.all_forms),

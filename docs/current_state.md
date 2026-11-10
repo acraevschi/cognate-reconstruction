@@ -384,6 +384,50 @@ deterministic trace/execution detector from a fallible LLM critic (`submit_hypot
   (`apply_deterministic_guard=True` by default), and no LLM critic is wired into
   an autonomous repair loop.
 
+## B01 pre-benchmark harness prep — completed 2026-11-11
+
+`B01` (`prompts/01-real-family-harness-prep.md`, strictly offline, `$0` spend,
+`0` live model calls; driver [`tools/real_family_benchmark_probe.py`](../tools/real_family_benchmark_probe.py),
+tests [`tests/workbench/test_real_family_harness_prep.py`](../tests/workbench/test_real_family_harness_prep.py),
+independent review [`runs/experiments/b02-burmish-gemini-benchmark/review.md`](../runs/experiments/b02-burmish-gemini-benchmark/review.md))
+integrated the post-review `R05`–`R07` and `R03` §19.4 runtime/audit capabilities
+into the live CLI and froze the staged `B02` Burmish benchmark bundle:
+
+- **Tied-confidence beam retention wired end-to-end (`R05`):** `cli.py infer`
+  exposes `--tied-confidence-threshold FLOAT` (`[0.0, 1.0)`, default `None`;
+  joined into `configuration_sha256` only when `not None`, preserving historical
+  digests bit-for-bit) and threads it into both `proto_assembly.py:assemble_node`
+  and `AgenticNodeReconstructor` so preview and committed multi-level beams never
+  diverge.
+- **Alignment-safe run-directory critic bridge (`R07`):** `audit_run_directory`
+  in [`cognate_reconstruction/evaluation/critic.py`](../cognate_reconstruction/evaluation/critic.py)
+  and `python tools/hypothesis_critic_probe.py audit-run` audit completed runs,
+  `--stop-after-node` checkpoints, and incomplete/stalled runs across five exact
+  provenance/trace invariants (`silent_residue_drop_truncation`,
+  `uninspected_outgroup_citation`, `unit_provenance_loss`,
+  `identity_confidence_length_bias`, `upstream_tie_collapse_majority`) with zero
+  synthetic Stage-B/C false positives on 2-child root nodes (`proto_burmish`,
+  `proto_polynesian`) or sound-shifted outgroups. Offline verification: `0`
+  defects on `c-gemini-r04`, `14` on `c-local-qwen36-35b-r04`, and `12`, `7`,
+  `16`, `6` across the four banked pre-R01 Burmish seeds (`0` root outgroup false
+  positives; full-form tone-preserving `R06` `corpus_bcubed_f1` baseline at
+  `proto_burmish`: `0.4339 ± 0.0481`, `0/4` bijective).
+- **Watermark-gated preview compaction (`R03` §19.4):** `cli.py infer` exposes
+  `--compaction-watermark-tokens INT` (`>= 8192`, default `None`; `256000` for
+  Gemini, `96000` for `128k`-window local Qwen; digest-joined only when `not None`).
+  Below the watermark `_MessageLog.prompt` is untouched (100% prefix-cache reuse);
+  at `>= watermark` older accepted superseded `test_proto_assembly`,
+  `test_rule_cascade`, and `test_sound_law` previews are stubbed in
+  `_MessageLog.prompt` while preserving `validation_id`/`inventory_id` handles,
+  keeping `ok=false` rejections and newest previews verbatim, enforcing an
+  `argument_sha256` repeat-call guard, and keeping `trajectories.jsonl`
+  (`_MessageLog.audit`) completely uncompacted.
+- **Frozen `B02` candidate bundle (`runs/experiments/b02-burmish-gemini-benchmark/`):**
+  Supports single-checkpoint `--stop-after-node maruic` (`$3.50` cap, `1,500 s`)
+  -> `$0` `gate-stage1` -> `--resume` (`$8.50` cumulative cap, `3,600 s`, worst-case
+  uncached upper bound `US$8.50 + US$0.909312 = US$9.409312 <= US$10.00`; tones
+  100% intact).
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.
@@ -656,16 +700,14 @@ and local dense `qwen3.8-27b-splash` achieved `100%` (`18/18` on Stage B and
 (`B01`–`B02` in `prompts/`) moves to **real multi-level language family
 benchmarking**:
 
-1. **`B01` (`prompts/01-real-family-harness-prep.md`, offline):** Wire
-   `--tied-confidence-threshold` across both `proto_assembly.py` and
-   `reconstructor.py` (from `R05`), bridge `R07`'s deterministic critic to real
-   run directories via alignment-safe provenance/trace checks
-   (`audit_run_directory` and `hypothesis_critic_probe.py audit-run`), add
-   watermark-gated preview compaction (`--compaction-watermark-tokens`:
-   `256000` for Gemini, `96000` for Qwen) in `AgentOrchestrator` with handle
-   and repeat-guard safety (`R03` §19.4), and freeze the staged `B02` Burmish
-   benchmark plan (`<= US$10.00` upper-bound ceiling).
-2. **`B02` (`prompts/02-real-family-live-benchmark.md`, live benchmark):** Run
+1. **`B01` (`prompts/01-real-family-harness-prep.md`, offline — completed 2026-11-11):**
+   Wired `--tied-confidence-threshold` across both `proto_assembly.py` and
+   `reconstructor.py`, added `audit_run_directory` and
+   `hypothesis_critic_probe.py audit-run`, added watermark-gated preview
+   compaction (`--compaction-watermark-tokens`) in `AgentOrchestrator`, and froze
+   `runs/experiments/b02-burmish-gemini-benchmark/` (`<= US$10.00` upper-bound
+   ceiling, verified by independent read-only review).
+2. **`B02` (`prompts/02-real-family-live-benchmark.md`, live benchmark — ready to launch):** Run
    `gemini/gemini-3.8-flash` (`medium` thinking, `max_tokens = 32768`,
    `--compaction-watermark-tokens 256000`, `--tied-confidence-threshold 0.5`)
    on `benchmarks/burmish.json` using the single-checkpoint staged protocol

@@ -175,21 +175,43 @@ class AgenticNodeReconstructor:
         aligner: AlignmentProvider | None = None,
         fail_fast: bool = False,
         max_failed_nodes: int | None = DEFAULT_MAX_FAILED_NODES,
+        tied_confidence_threshold: float | None = None,
     ) -> None:
         if max_failed_nodes is not None and max_failed_nodes < 0:
             raise ValueError("max_failed_nodes must be non-negative")
+        if (
+            assembler is not None
+            and tied_confidence_threshold is not None
+            and assembler.tied_confidence_threshold
+            != (None if tied_confidence_threshold == 0.0 else tied_confidence_threshold)
+        ):
+            raise ValueError(
+                "supplied assembler tied_confidence_threshold disagrees with "
+                "AgenticNodeReconstructor tied_confidence_threshold"
+            )
         self.orchestrator = orchestrator
         self.deterministic = deterministic or RuleBasedReconstructor()
         self.aligner = aligner or LingPyAligner()
         # Same beam width, anchor policy and anchor factor as the rule path, so
         # which protocol a node committed under changes what is assembled and
         # nothing about how the beam is scored or pruned.
+        assembler_tied_threshold = (
+            None
+            if tied_confidence_threshold == 0.0
+            else tied_confidence_threshold
+        )
         self.assembler = assembler or ProtoInventoryAssembler(
             beam_width=self.deterministic.beam_width,
             anchor_policy=self.deterministic.anchor_policy,
             anchor_match_factor=self.deterministic.anchor_match_factor,
             aligner=self.aligner,
             engine=self.deterministic.engine,
+            tied_confidence_threshold=assembler_tied_threshold,
+        )
+        self.tied_confidence_threshold = (
+            tied_confidence_threshold
+            if tied_confidence_threshold is not None
+            else self.assembler.tied_confidence_threshold
         )
         self.fail_fast = fail_fast
         self.max_failed_nodes = max_failed_nodes
@@ -296,6 +318,7 @@ class AgenticNodeReconstructor:
                 for item in self._visible_prior_reconstructions(evidence_context)
                 if isinstance(item, PriorNodeInventory)
             ),
+            tied_confidence_threshold=self.tied_confidence_threshold,
         )
         try:
             run_result = self.orchestrator.run(context)

@@ -8,9 +8,10 @@ import math
 import time
 import uuid
 from collections import deque
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Callable
+from typing import Any, Callable
 
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.error_codes import (
@@ -182,6 +183,23 @@ per-column resolutions. Compaction today is all-or-nothing per tool message, so
 that split has to be in the result rather than in the compactor.
 """
 
+PREVIEW_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "test_proto_assembly",
+        "test_rule_cascade",
+        "test_sound_law",
+    }
+)
+"""Preview tools eligible for watermark-gated stub compaction (R03 §19.4).
+
+Below `compaction_watermark_tokens` (or when it is `None`), preview results are
+never rewritten so provider prefix caches remain intact. Once observed prompt
+tokens cross the watermark, older accepted previews superseded by a newer
+accepted preview of the same tool are replaced in `_MessageLog.prompt` with a
+deterministic stub preserving validation/hypothesis handles and outcome counts,
+while `_MessageLog.audit` (`trajectories.jsonl`) remains completely uncompacted.
+"""
+
 _SELECTION_ARGUMENT_KEYS: frozenset[str] = frozenset(
     {"node_ids", "node_id", "concept_ids", "form_ids", "cognate_set_ids"}
 )
@@ -253,6 +271,122 @@ class _ToolResultRecord:
     call_id: str
     name: str
     arguments: dict[str, object]
+
+
+@dataclass(frozen=True)
+class _PreviewResultRecord:
+    """Where one accepted preview tool result sits while live in the prompt."""
+
+    index: int
+    call_id: str
+    name: str
+    argument_sha256: str
+    validation_id: str
+    inventory_id: str | None
+    executable: bool
+    commit_ready: bool | None
+    covered_set_count: int | None
+    unaccounted_column_rate: float | None
+    residue_policy: str | None = None
+
+
+@dataclass(frozen=True)
+class _CompactedPreviewRecord:
+    """Preserved handle metadata and stub for an already-compacted preview."""
+
+    call_id: str
+    name: str
+    argument_sha256: str
+    validation_id: str
+    inventory_id: str | None
+    executable: bool
+    commit_ready: bool | None
+    covered_set_count: int | None
+    unaccounted_column_rate: float | None
+    residue_policy: str | None
+    superseded_by: str
+    stub: dict[str, Any]
+
+
+def _estimate_prompt_tokens(messages: list[LLMMessage]) -> int:
+    """Conservative fallback token estimate (`len(json_bytes) // 3`) when usage omits input_tokens."""
+    serialized = json.dumps(
+        [message.model_dump(mode="json") for message in messages],
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return len(serialized) // 3
+
+
+def _extract_preview_record(
+    index: int,
+    call: LLMToolCall,
+    argument_sha256: str,
+    payload: Mapping[str, Any],
+) -> _PreviewResultRecord:
+    validation_id = str(payload.get("validation_call_id") or call.call_id)
+    raw_hyp_id = payload.get("hypothesis_id")
+    inventory_id = raw_hyp_id if isinstance(raw_hyp_id, str) else None
+    if call.name == "test_proto_assembly":
+        executable = bool(payload.get("executable", True))
+        raw_ready = payload.get("commit_ready")
+        commit_ready = raw_ready if isinstance(raw_ready, bool) else None
+        covered = payload.get("covered_set_ids")
+        covered_set_count = len(covered) if isinstance(covered, (list, tuple)) else 0
+        raw_rate = payload.get("unaccounted_column_rate")
+        unaccounted_column_rate = (
+            float(raw_rate)
+            if isinstance(raw_rate, (int, float)) and not isinstance(raw_rate, bool)
+            else 0.0
+        )
+        raw_policy = payload.get("residue_policy")
+        residue_policy = str(raw_policy) if raw_policy is not None else None
+    else:
+        executable = True
+        commit_ready = None
+        covered_set_count = None
+        unaccounted_column_rate = None
+        residue_policy = None
+    return _PreviewResultRecord(
+        index=index,
+        call_id=call.call_id,
+        name=call.name,
+        argument_sha256=argument_sha256,
+        validation_id=validation_id,
+        inventory_id=inventory_id,
+        executable=executable,
+        commit_ready=commit_ready,
+        covered_set_count=covered_set_count,
+        unaccounted_column_rate=unaccounted_column_rate,
+        residue_policy=residue_policy,
+    )
+
+
+def _build_preview_compaction_stub(
+    record: _PreviewResultRecord,
+    superseded_by: str,
+) -> dict[str, Any]:
+    return {
+        "compacted": True,
+        "tool": record.name,
+        "call_id": record.call_id,
+        "argument_sha256": record.argument_sha256,
+        "validation_id": record.validation_id,
+        "validation_call_id": record.validation_id,
+        "inventory_id": record.inventory_id,
+        "hypothesis_id": record.inventory_id,
+        "executable": record.executable,
+        "commit_ready": record.commit_ready,
+        "covered_set_count": record.covered_set_count,
+        "unaccounted_column_rate": record.unaccounted_column_rate,
+        "superseded_by": superseded_by,
+        "note": (
+            f"The full output of this {record.name} preview was compacted after "
+            f"crossing the prompt token watermark because later {record.name} "
+            f"call {superseded_by} superseded it. Its validation_id / inventory_id "
+            "handles remain valid for commit_reconstruction; do not re-submit "
+            "identical arguments."
+        ),
+    }
 
 
 @dataclass
@@ -337,7 +471,17 @@ class _RunState:
     # Accepted results of read-only evidence tools that are still live in the
     # prompt, oldest first, and how many have been replaced by a placeholder.
     live_tool_results: list[_ToolResultRecord] = field(default_factory=list)
+    live_preview_results: list[_PreviewResultRecord] = field(default_factory=list)
+    compacted_previews: dict[tuple[str, str], _CompactedPreviewRecord] = field(
+        default_factory=dict
+    )
     compacted_tool_results: int = 0
+    compacted_preview_results: int = 0
+    watermark_trigger_count: int = 0
+    repeat_guard_hits: int = 0
+    latest_prompt_tokens: int = 0
+    peak_prompt_tokens: int = 0
+    last_response_had_input_tokens: bool = False
     # Concepts named in tool arguments over the session, so a commit made after
     # looking at 5 of 46 concepts is legible as such.
     inspected_concept_ids: set[str] = field(default_factory=set)
@@ -372,6 +516,7 @@ class AgentOrchestrator:
         allow_truncation_backoff: bool = False,
         truncation_max_tokens_ceiling: int | None = None,
         compact_superseded_tool_results: bool = True,
+        compaction_watermark_tokens: int | None = None,
         instructions: str | None = None,
         trajectory_sink: TrajectorySink | None = None,
         event_sink: AgentEventSink | None = None,
@@ -430,6 +575,14 @@ class AgentOrchestrator:
             and truncation_max_tokens_ceiling < 1
         ):
             raise ValueError("truncation_max_tokens_ceiling must be positive")
+        if (
+            compaction_watermark_tokens is not None
+            and (
+                isinstance(compaction_watermark_tokens, bool)
+                or compaction_watermark_tokens < 1
+            )
+        ):
+            raise ValueError("compaction_watermark_tokens must be positive")
         self.provider = provider
         self.registry = registry or default_tool_registry()
         self.max_turns = max_turns
@@ -449,6 +602,7 @@ class AgentOrchestrator:
         self.allow_truncation_backoff = allow_truncation_backoff
         self.truncation_max_tokens_ceiling = truncation_max_tokens_ceiling
         self.compact_superseded_tool_results = compact_superseded_tool_results
+        self.compaction_watermark_tokens = compaction_watermark_tokens
         self.instructions = instructions or load_agent_instructions()
         self.trajectory_sink = trajectory_sink
         self.event_sink = event_sink
@@ -469,6 +623,7 @@ class AgentOrchestrator:
         self._effort_counts_known = True
         self._unrecorded_requests = 0
         self._trajectory_starts: dict[str, float] = {}
+        self._node_compaction: dict[str, dict[str, Any]] = {}
         public_configuration = {
             "provider_adapter": type(provider).__name__,
             "model_id": getattr(provider, "model", None),
@@ -489,9 +644,73 @@ class AgentOrchestrator:
                 self.instructions.encode()
             ).hexdigest(),
         }
+        if compaction_watermark_tokens is not None:
+            public_configuration["compaction_watermark_tokens"] = (
+                compaction_watermark_tokens
+            )
         self.configuration_sha256 = (
             configuration_sha256 or _sha256_json(public_configuration)
         )
+
+    def compaction_summary(self) -> dict[str, Any]:
+        """Per-node and cumulative watermark compaction statistics for run_summary.json."""
+        nodes = self._node_compaction
+        return {
+            "compaction_watermark_tokens": self.compaction_watermark_tokens,
+            "watermark_trigger_count": sum(
+                int(item.get("watermark_trigger_count", 0))
+                for item in nodes.values()
+            ),
+            "compacted_preview_results": sum(
+                int(item.get("compacted_preview_results", 0))
+                for item in nodes.values()
+            ),
+            "compacted_read_only_results": sum(
+                int(item.get("compacted_read_only_results", 0))
+                for item in nodes.values()
+            ),
+            "compacted_tool_results": sum(
+                int(item.get("compacted_tool_results", 0))
+                for item in nodes.values()
+            ),
+            "repeat_guard_hits": sum(
+                int(item.get("repeat_guard_hits", 0))
+                for item in nodes.values()
+            ),
+            "peak_prompt_tokens": (
+                max(
+                    (
+                        int(item["peak_prompt_tokens"])
+                        for item in nodes.values()
+                        if item.get("peak_prompt_tokens") is not None
+                    ),
+                    default=0,
+                )
+            ),
+            "per_node": {
+                node_id: dict(item) for node_id, item in sorted(nodes.items())
+            },
+        }
+
+    def restore_compaction_summary(
+        self,
+        saved: Mapping[str, Any] | None,
+        *,
+        keep_node_ids: Iterable[str] | None = None,
+    ) -> None:
+        """Restore checkpointed nodes' compaction counters across `--resume`."""
+        if not saved:
+            return
+        per_node = saved.get("per_node")
+        if not isinstance(per_node, Mapping):
+            return
+        allowed = set(keep_node_ids) if keep_node_ids is not None else None
+        for node_id, entry in per_node.items():
+            if not isinstance(node_id, str) or not isinstance(entry, Mapping):
+                continue
+            if allowed is not None and node_id not in allowed:
+                continue
+            self._node_compaction[node_id] = dict(entry)
 
     def usage_snapshot(self) -> dict[str, int | float]:
         return {
@@ -1149,6 +1368,70 @@ class AgentOrchestrator:
                 compacted_tool_results=state.compacted_tool_results,
             )
 
+    def _compact_watermark_previews(
+        self,
+        context: AgentContext,
+        state: _RunState,
+        messages: _MessageLog,
+    ) -> None:
+        """Compact older superseded preview results once observed prompt tokens cross the watermark."""
+        if (
+            not self.compact_superseded_tool_results
+            or self.compaction_watermark_tokens is None
+            or state.latest_prompt_tokens < self.compaction_watermark_tokens
+        ):
+            return
+        newest_by_tool: dict[str, _PreviewResultRecord] = {}
+        for record in state.live_preview_results:
+            newest_by_tool[record.name] = record
+        to_compact = [
+            record
+            for record in state.live_preview_results
+            if newest_by_tool[record.name].call_id != record.call_id
+        ]
+        if not to_compact:
+            return
+        state.watermark_trigger_count += 1
+        for record in to_compact:
+            superseded_by = newest_by_tool[record.name].call_id
+            stub = _build_preview_compaction_stub(record, superseded_by)
+            messages.replace_prompt_content(record.index, json.dumps(stub))
+            state.live_preview_results.remove(record)
+            state.compacted_previews[(record.name, record.argument_sha256)] = (
+                _CompactedPreviewRecord(
+                    call_id=record.call_id,
+                    name=record.name,
+                    argument_sha256=record.argument_sha256,
+                    validation_id=record.validation_id,
+                    inventory_id=record.inventory_id,
+                    executable=record.executable,
+                    commit_ready=record.commit_ready,
+                    covered_set_count=record.covered_set_count,
+                    unaccounted_column_rate=record.unaccounted_column_rate,
+                    residue_policy=record.residue_policy,
+                    superseded_by=superseded_by,
+                    stub=stub,
+                )
+            )
+            state.compacted_tool_results += 1
+            state.compacted_preview_results += 1
+            self._emit(
+                AgentEventKind.CONTEXT_COMPACTION,
+                context.node_id,
+                f"compacted superseded {record.name} preview above token watermark",
+                action="watermark_preview_compaction",
+                tool_name=record.name,
+                call_id=record.call_id,
+                argument_sha256=record.argument_sha256,
+                validation_id=record.validation_id,
+                inventory_id=record.inventory_id,
+                superseded_by=superseded_by,
+                observed_prompt_tokens=state.latest_prompt_tokens,
+                compaction_watermark_tokens=self.compaction_watermark_tokens,
+                compacted_tool_results=state.compacted_tool_results,
+                compacted_preview_results=state.compacted_preview_results,
+            )
+
     @staticmethod
     def _usage_total(
         responses: list[ProviderResponseMetadata],
@@ -1332,6 +1615,17 @@ class AgentOrchestrator:
             provider_failure=provider_failure,
             interruption_reason=interruption_reason,
         )
+        self._node_compaction[context.node_id] = {
+            "watermark_trigger_count": state.watermark_trigger_count,
+            "compacted_preview_results": state.compacted_preview_results,
+            "compacted_read_only_results": (
+                state.compacted_tool_results - state.compacted_preview_results
+            ),
+            "compacted_tool_results": state.compacted_tool_results,
+            "repeat_guard_hits": state.repeat_guard_hits,
+            "latest_prompt_tokens": state.latest_prompt_tokens,
+            "peak_prompt_tokens": state.peak_prompt_tokens,
+        }
         if completed:
             self._trajectory_starts[trajectory_id] = state.started_monotonic
         if write_to_sink and self.trajectory_sink is not None:
@@ -1524,6 +1818,18 @@ class AgentOrchestrator:
                     messages.prompt,
                     state,
                 )
+                usage = response.metadata.usage
+                if usage is not None and usage.input_tokens is not None:
+                    state.last_response_had_input_tokens = True
+                    state.latest_prompt_tokens = usage.input_tokens
+                else:
+                    state.last_response_had_input_tokens = False
+                    state.latest_prompt_tokens = _estimate_prompt_tokens(
+                        messages.prompt
+                    )
+                state.peak_prompt_tokens = max(
+                    state.peak_prompt_tokens, state.latest_prompt_tokens
+                )
                 reply = response.message
                 if reply.role is not MessageRole.ASSISTANT:
                     raise ValueError(
@@ -1599,6 +1905,14 @@ class AgentOrchestrator:
                             ),
                         )
                     )
+                    if not state.last_response_had_input_tokens:
+                        state.latest_prompt_tokens = _estimate_prompt_tokens(
+                            messages.prompt
+                        )
+                        state.peak_prompt_tokens = max(
+                            state.peak_prompt_tokens, state.latest_prompt_tokens
+                        )
+                    self._compact_watermark_previews(context, state, messages)
                     continue
                 # One assistant message may carry several tool calls, and every
                 # tool result must follow its call without anything in between.
@@ -1639,9 +1953,88 @@ class AgentOrchestrator:
                         call_id=call.call_id,
                         arguments=call.arguments,
                     )
-                    result = self.registry.execute(call, context)
+                    repeat_hit = False
+                    arg_sha = (
+                        _sha256_json(call.arguments)
+                        if call.name in PREVIEW_TOOL_NAMES
+                        else ""
+                    )
+                    prior_compacted = (
+                        state.compacted_previews.get((call.name, arg_sha))
+                        if call.name in PREVIEW_TOOL_NAMES
+                        else None
+                    )
+                    if prior_compacted is not None:
+                        repeat_hit = True
+                        state.repeat_guard_hits += 1
+                        if (
+                            call.name == "test_proto_assembly"
+                            and prior_compacted.call_id in context.assembly_validations
+                        ):
+                            context.assembly_validations[call.call_id] = (
+                                context.assembly_validations[prior_compacted.call_id]
+                            )
+                        elif (
+                            call.name == "test_rule_cascade"
+                            and prior_compacted.call_id in context.cascade_validations
+                        ):
+                            context.cascade_validations[call.call_id] = (
+                                context.cascade_validations[prior_compacted.call_id]
+                            )
+                        elif (
+                            call.name == "test_sound_law"
+                            and prior_compacted.call_id in context.validations
+                        ):
+                            context.validations[call.call_id] = (
+                                context.validations[prior_compacted.call_id]
+                            )
+                        result = ToolExecutionResult(
+                            ok=True,
+                            result={
+                                "repeat_guard": True,
+                                "tool": call.name,
+                                "call_id": call.call_id,
+                                "identical_to_call_id": prior_compacted.call_id,
+                                "argument_sha256": arg_sha,
+                                "validation_id": prior_compacted.validation_id,
+                                "validation_call_id": prior_compacted.validation_id,
+                                "inventory_id": prior_compacted.inventory_id,
+                                "hypothesis_id": prior_compacted.inventory_id,
+                                "executable": prior_compacted.executable,
+                                "commit_ready": prior_compacted.commit_ready,
+                                "covered_set_count": prior_compacted.covered_set_count,
+                                "unaccounted_column_rate": (
+                                    prior_compacted.unaccounted_column_rate
+                                ),
+                                "residue_policy": prior_compacted.residue_policy,
+                                "preserved_stub": prior_compacted.stub,
+                                "note": (
+                                    f"Identical to earlier compacted {call.name} "
+                                    f"call {prior_compacted.call_id!r} "
+                                    f"(argument_sha256={arg_sha}); result unchanged. "
+                                    "Its preserved validation_id / inventory_id "
+                                    "handles remain valid for commit_reconstruction; "
+                                    "modify your hypothesis before previewing again "
+                                    "or commit now."
+                                ),
+                            },
+                        )
+                        self._emit(
+                            AgentEventKind.CONTEXT_COMPACTION,
+                            context.node_id,
+                            f"blocked duplicate {call.name} preview matching compacted call {prior_compacted.call_id}",
+                            action="repeat_preview_guard",
+                            tool_name=call.name,
+                            call_id=call.call_id,
+                            identical_to_call_id=prior_compacted.call_id,
+                            argument_sha256=arg_sha,
+                            repeat_guard_hits=state.repeat_guard_hits,
+                        )
+                    else:
+                        result = self.registry.execute(call, context)
                     if result.ok:
-                        state.successful_tool_names.append(call.name)
+                        if not repeat_hit:
+                            state.successful_tool_names.append(call.name)
                         self._record_call_signature(state, _SUCCESS_SIGNATURE)
                     else:
                         correction, stall_reason = self._record_tool_failure(
@@ -1684,6 +2077,19 @@ class AgentOrchestrator:
                                     arguments=dict(call.arguments),
                                 )
                             )
+                        elif (
+                            not repeat_hit
+                            and call.name in PREVIEW_TOOL_NAMES
+                            and result.result is not None
+                        ):
+                            state.live_preview_results.append(
+                                _extract_preview_record(
+                                    index,
+                                    call,
+                                    arg_sha,
+                                    result.result,
+                                )
+                            )
                     if context.commit is not None:
                         self._emit(
                             AgentEventKind.NODE_COMMIT,
@@ -1706,6 +2112,14 @@ class AgentOrchestrator:
                                 sorted(state.inspected_concept_ids)
                             ),
                         )
+                if not state.last_response_had_input_tokens:
+                    state.latest_prompt_tokens = _estimate_prompt_tokens(
+                        messages.prompt
+                    )
+                    state.peak_prompt_tokens = max(
+                        state.peak_prompt_tokens, state.latest_prompt_tokens
+                    )
+                self._compact_watermark_previews(context, state, messages)
                 if pending_stall is not None:
                     raise ProtocolStallError(pending_stall)
                 if pending_correction is not None:

@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -687,6 +689,28 @@ def _provider_and_configuration(
     args: argparse.Namespace,
     *, compatibility_policy: str = "operational-retry-v1",
 ) -> tuple[LiteLLMProvider, str, dict[str, Any], dict[str, str]]:
+    tied_confidence_threshold = getattr(args, "tied_confidence_threshold", None)
+    if tied_confidence_threshold is not None:
+        if (
+            isinstance(tied_confidence_threshold, bool)
+            or not isinstance(tied_confidence_threshold, (int, float))
+            or not math.isfinite(tied_confidence_threshold)
+            or not (0.0 <= tied_confidence_threshold < 1.0)
+        ):
+            raise ValueError(
+                "--tied-confidence-threshold must be finite and in [0.0, 1.0)"
+            )
+        tied_confidence_threshold = float(tied_confidence_threshold)
+    compaction_watermark_tokens = getattr(args, "compaction_watermark_tokens", None)
+    if compaction_watermark_tokens is not None:
+        if (
+            isinstance(compaction_watermark_tokens, bool)
+            or not isinstance(compaction_watermark_tokens, int)
+            or compaction_watermark_tokens < 8192
+        ):
+            raise ValueError(
+                "--compaction-watermark-tokens must be an integer >= 8192"
+            )
     options = load_provider_options(args.provider_config)
     preset = "lm-studio" if args.lm_studio else args.preset
     api_key_env = args.api_key_env
@@ -826,6 +850,10 @@ def _provider_and_configuration(
         # the digest records what was sent. Why it was decided goes to the
         # run summary (`_with_reasoning_history`).
         settings["reasoning_history"] = reasoning_history.setting()
+    if tied_confidence_threshold is not None:
+        settings["tied_confidence_threshold"] = tied_confidence_threshold
+    if compaction_watermark_tokens is not None:
+        settings["compaction_watermark_tokens"] = compaction_watermark_tokens
     provider.reasoning_decision = {**history_record, **(
         reasoning_history.setting() if reasoning_history is not None else {"mode": "drop"})}
     retry_settings = {
@@ -1029,6 +1057,26 @@ def _with_reasoning_history(summary: dict, decision: dict | None) -> dict:
     return {**summary, "reasoning_history": decision}
 
 
+def _with_runtime_metadata(
+    summary: dict,
+    *,
+    args: argparse.Namespace,
+    decision: dict | None,
+    orchestrator: AgentOrchestrator,
+) -> dict:
+    enriched = _with_reasoning_history(summary, decision)
+    return {
+        **enriched,
+        "tied_confidence_threshold": getattr(args, "tied_confidence_threshold", None),
+        "compaction_watermark_tokens": getattr(args, "compaction_watermark_tokens", None),
+        "compaction": orchestrator.compaction_summary(),
+        "effective_run_caps": {
+            "max_run_seconds": args.max_run_seconds,
+            "max_total_cost_usd": args.max_total_cost_usd,
+        },
+    }
+
+
 def _write_run_summary(path: Path, summary: dict, request_journal: JsonlRequestJournal | None = None) -> None:
     """Replace the run summary atomically, then mark it in the journal.
 
@@ -1168,8 +1216,39 @@ def _command_infer(args: argparse.Namespace) -> None:
     checkpoint: FamilyCheckpoint | None = None
     if args.resume and checkpoint_store is not None:
         checkpoint = checkpoint_store.load()
+    config_args = args
+    changed_run_caps = False
+    orig_run_caps: dict[str, Any] = {}
+    curr_run_caps: dict[str, Any] = {}
+    if (
+        args.resume
+        and checkpoint is not None
+        and checkpoint.compatibility_policy == "operational-retry-v1"
+    ):
+        op = checkpoint.operational_settings
+        cap_overrides: dict[str, Any] = {}
+        for cap_key in ("max_run_seconds", "max_total_cost_usd"):
+            if cap_key in op:
+                orig_val = op[cap_key]
+                curr_val = getattr(args, cap_key, None)
+                if curr_val is not None and (
+                    not math.isfinite(curr_val) or curr_val <= 0
+                ):
+                    raise ValueError(f"{cap_key} must be positive")
+                # Never silently drop an originally enforced cap to None on resume.
+                if orig_val is not None and curr_val is None:
+                    continue
+                orig_run_caps[cap_key] = orig_val
+                curr_run_caps[cap_key] = curr_val
+                if curr_val != orig_val:
+                    cap_overrides[cap_key] = orig_val
+                    changed_run_caps = True
+        if cap_overrides:
+            config_args = copy.copy(args)
+            for cap_key, orig_val in cap_overrides.items():
+                setattr(config_args, cap_key, orig_val)
     provider, configuration_sha256, _, components = _provider_and_configuration(
-        args, compatibility_policy=checkpoint.compatibility_policy if checkpoint else "operational-retry-v1",
+        config_args, compatibility_policy=checkpoint.compatibility_policy if checkpoint else "operational-retry-v1",
     )
     decision = getattr(provider, "reasoning_decision", None)
     seed_trajectories: tuple[AgentTrajectory, ...] = ()
@@ -1200,6 +1279,14 @@ def _command_infer(args: argparse.Namespace) -> None:
                 "decide when the harness gives up, not what it reconstructs, "
                 "so the resume proceeds; the checkpoint keeps the values the "
                 "original run used.",
+                file=sys.stderr,
+            )
+        if changed_run_caps:
+            print(
+                "note: the cumulative run caps changed since this checkpoint "
+                f"was written ({orig_run_caps} -> {curr_run_caps}); resuming "
+                "under the updated cumulative envelope while keeping the "
+                "original semantic configuration digest.",
                 file=sys.stderr,
             )
         recovered = _recover_finalized_steps(args.trajectories, checkpoint, dataset, args.beam_width)
@@ -1244,6 +1331,8 @@ def _command_infer(args: argparse.Namespace) -> None:
                     "retry_backoff_seconds": args.retry_backoff_seconds,
                     "max_retry_seconds": args.max_retry_seconds,
                     "retry_max_delay_seconds": args.retry_max_delay_seconds,
+                    "max_run_seconds": args.max_run_seconds,
+                    "max_total_cost_usd": args.max_total_cost_usd,
                     REQUEST_JOURNAL_SETTING: REQUEST_JOURNAL_VERSION,
                 },
             )
@@ -1273,6 +1362,7 @@ def _command_infer(args: argparse.Namespace) -> None:
         max_truncated_responses=args.max_truncated_responses,
         allow_truncation_backoff=args.allow_truncation_backoff,
         truncation_max_tokens_ceiling=args.truncation_max_tokens_ceiling,
+        compaction_watermark_tokens=args.compaction_watermark_tokens,
         trajectory_sink=JsonlTrajectorySink(args.trajectories),
         event_sink=_event_sink(args),
         run_id=run_id,
@@ -1290,6 +1380,7 @@ def _command_infer(args: argparse.Namespace) -> None:
             deterministic=deterministic,
             fail_fast=args.fail_fast,
             max_failed_nodes=args.max_failed_nodes,
+            tied_confidence_threshold=args.tied_confidence_threshold,
         )
     )
 
@@ -1311,13 +1402,21 @@ def _command_infer(args: argparse.Namespace) -> None:
 
     summary_path = Path(args.output).expanduser().with_name("run_summary.json")
     if args.resume:
+        retry_keys = (
+            "max_retries",
+            "retry_backoff_seconds",
+            "max_retry_seconds",
+            "retry_max_delay_seconds",
+        )
         for name in _changed_advisory_components(checkpoint, components):
             orchestrator._emit(
                 AgentEventKind.RESUME_SETTINGS_CHANGED, "run", f"{name} changed on resume",
                 component=name, original_digest=checkpoint.configuration_components.get(name),
                 current_digest=components[name],
                 original_retry_settings={
-                    k: v for k, v in checkpoint.operational_settings.items() if k != REQUEST_JOURNAL_SETTING
+                    k: checkpoint.operational_settings[k]
+                    for k in retry_keys
+                    if k in checkpoint.operational_settings
                 },
                 current_retry_settings={
                     "max_retries": args.max_retries, "retry_backoff_seconds": args.retry_backoff_seconds,
@@ -1325,6 +1424,25 @@ def _command_infer(args: argparse.Namespace) -> None:
                     "retry_max_delay_seconds": args.retry_max_delay_seconds,
                 },
             )
+        if changed_run_caps:
+            orchestrator._emit(
+                AgentEventKind.RESUME_SETTINGS_CHANGED,
+                "run",
+                "the cumulative run caps changed on resume",
+                component="the cumulative run caps",
+                original_run_caps=orig_run_caps,
+                current_run_caps=curr_run_caps,
+            )
+        if summary_path.exists():
+            saved_summary_data = json.loads(summary_path.read_text(encoding="utf-8"))
+            if (
+                saved_summary_data.get("run_id"),
+                saved_summary_data.get("configuration_sha256"),
+            ) == (run_id, configuration_sha256):
+                orchestrator.restore_compaction_summary(
+                    saved_summary_data.get("compaction"),
+                    keep_node_ids=checkpoint.steps_by_node,
+                )
         resumed = _resume_usage(args.trajectories, checkpoint, checkpoint_store.path,
                                 summary_path, run_id, configuration_sha256)
         _warn_incomplete_history(resumed)
@@ -1339,21 +1457,45 @@ def _command_infer(args: argparse.Namespace) -> None:
             stop_after_node=args.stop_after_node,
         )
     except PlannedStop as stop:
-        _write_run_summary(summary_path, _with_reasoning_history(
-            {**service.last_run_summary, "stop_after_node": args.stop_after_node}, decision), request_journal)
+        _write_run_summary(
+            summary_path,
+            _with_runtime_metadata(
+                {**service.last_run_summary, "stop_after_node": args.stop_after_node},
+                args=args,
+                decision=decision,
+                orchestrator=orchestrator,
+            ),
+            request_journal,
+        )
         print(f"PLANNED STOP: {stop}. Completed nodes are in {summary_path}"
               f"{' and the checkpoint' if checkpoint_store else ''}; no result.json is written.",
               file=sys.stderr)
         return
     except (Exception, KeyboardInterrupt):
         if service.last_run_summary is not None:
-            _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
-                               request_journal)
+            _write_run_summary(
+                summary_path,
+                _with_runtime_metadata(
+                    service.last_run_summary,
+                    args=args,
+                    decision=decision,
+                    orchestrator=orchestrator,
+                ),
+                request_journal,
+            )
             print(f"INCOMPLETE RUN: progress and missing evaluations saved to {summary_path}", file=sys.stderr)
         raise
     _write_json(args.output, result.model_dump_json(indent=2))
-    _write_run_summary(summary_path, _with_reasoning_history(service.last_run_summary, decision),
-                       request_journal)
+    _write_run_summary(
+        summary_path,
+        _with_runtime_metadata(
+            service.last_run_summary,
+            args=args,
+            decision=decision,
+            orchestrator=orchestrator,
+        ),
+        request_journal,
+    )
     reconstructed = len(result.internal_nodes) - len(result.node_failures)
     print(
         f"wrote {args.output}: {reconstructed} reconstructed "
@@ -2129,6 +2271,28 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--max-total-tool-calls", type=int)
     infer.add_argument("--max-run-seconds", type=float)
     infer.add_argument("--max-total-cost-usd", type=float)
+    infer.add_argument(
+        "--tied-confidence-threshold",
+        type=float,
+        default=None,
+        help=(
+            "Optional confidence threshold in [0.0, 1.0) (e.g. 0.5) for "
+            "retaining tied proto-segments in assembled intermediate beams "
+            "(R05). Passed to both preview and committed ProtoInventoryAssembler "
+            "call sites; joins configuration_sha256 only when set."
+        ),
+    )
+    infer.add_argument(
+        "--compaction-watermark-tokens",
+        type=int,
+        default=None,
+        help=(
+            "Optional prompt-token watermark (>= 8192; e.g. 256000 for Gemini, "
+            "96000 for local Qwen) gating stub compaction of older accepted "
+            "preview tool results (R03 §19.4). Preserves prefix caches below "
+            "the watermark and joins configuration_sha256 only when set."
+        ),
+    )
     infer.add_argument(
         "--stop-after-node",
         help=(
