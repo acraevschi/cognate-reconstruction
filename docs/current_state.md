@@ -657,17 +657,20 @@ and local dense `qwen3.8-27b-splash` achieved `100%` (`18/18` on Stage B and
 benchmarking**:
 
 1. **`B01` (`prompts/01-real-family-harness-prep.md`, offline):** Wire
-   `--tied-confidence-threshold` on `cli.py infer` (from `R05`), bridge `R07`'s
-   default deterministic detector (`run_deterministic_full_detector`) directly
-   to real run directories (`extract_critique_packets_from_run` and
-   `hypothesis_critic_probe.py audit-run`), add opt-in stale-preview
-   supersession (`--preview-history {keep,supersede}`, `R03f` Option 1b), and
-   freeze the candidate `B02` Burmish benchmark plan.
+   `--tied-confidence-threshold` across both `proto_assembly.py` and
+   `reconstructor.py` (from `R05`), bridge `R07`'s deterministic critic to real
+   run directories via alignment-safe provenance/trace checks
+   (`audit_run_directory` and `hypothesis_critic_probe.py audit-run`), add
+   watermark-gated preview compaction (`--compaction-watermark-tokens`:
+   `256000` for Gemini, `96000` for Qwen) in `AgentOrchestrator` with handle
+   and repeat-guard safety (`R03` §19.4), and freeze the staged `B02` Burmish
+   benchmark plan (`<= US$10.00` upper-bound ceiling).
 2. **`B02` (`prompts/02-real-family-live-benchmark.md`, live benchmark):** Run
    `gemini/gemini-3.8-flash` (`medium` thinking, `max_tokens = 32768`,
-   `--tied-confidence-threshold 0.5`, `--preview-history supersede`) on
-   `benchmarks/burmish.json` using the staged single-node-first protocol
+   `--compaction-watermark-tokens 256000`, `--tied-confidence-threshold 0.5`)
+   on `benchmarks/burmish.json` using the single-checkpoint staged protocol
    (`--stop-after-node maruic` -> `audit-run` gate -> `--resume` full tree),
-   comparing against the pre-R01 Burmish baseline and deterministic oracle
-   ceilings before escalating to `polynesian.json` / `romance.json` and local
-   `qwen3.8-27b`.
+   evaluating **full tone-bearing forms** (no tone stripping) with `task02-v1`,
+   `R06` `compute_corpus_contrast_equivalence` (`corpus_bcubed_f1`), and `$0`
+   offline tied-beam replay before escalating to `polynesian.json` and local
+   `qwen3.8-27b` (`--compaction-watermark-tokens 96000`).
