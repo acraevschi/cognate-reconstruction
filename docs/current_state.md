@@ -428,6 +428,64 @@ into the live CLI and froze the staged `B02` Burmish benchmark bundle:
   uncached upper bound `US$8.50 + US$0.909312 = US$9.409312 <= US$10.00`; tones
   100% intact).
 
+## B02 live Burmish Stage 1 gate, forensics, and bounded runtime bugfixes — completed 2026-11-11
+
+[B02](research/real_family_benchmark_burmish.md)
+([machine results](research/real_family_benchmark_burmish_results.json);
+banked artifacts and post-run independent review in
+`runs/experiments/b02-burmish-gemini-benchmark/`) ran the pre-registered Stage 1
+gate (`--stop-after-node maruic --max-total-cost-usd 3.50 --max-run-seconds 1500
+--compaction-watermark-tokens 256000 --tied-confidence-threshold 0.5`) on
+`benchmarks/burmish.json` (`tones_preserved = true`) with
+`gemini/gemini-3.8-flash` (`medium` thinking, `max_tokens = 32768`,
+`stored-hypothesis`, `configuration_sha256 = 89a490658839…`):
+
+- **Clean Stage 1 gate halt (`US$1.2368` actual cached spend; `US$0.00` downstream waste):**
+  Across `22` requests (`22` turns, `20` executed tool calls, `2` rejected calls,
+  `1` truncated response at `32,764` output tokens, `4,434,603` input tokens with
+  `3,588,670` cached [`80.92%`], `88,855` output tokens [`36,099` reasoning],
+  `696.13 s` wall time), Turn 22 (`input_tokens = 483,849`) returned a
+  `14,873`-output-token repair call that pushed cumulative uncached table cost
+  from `US$3.2405` to **`US$3.6592 >= US$3.50`** (`US$1.2368` cached-adjusted),
+  raising `RunBudgetExceeded` pre-dispatch (`history_certified = True`, `0`
+  unknown-cost requests). `gate-stage1` marked `usable = False`, halting cleanly
+  before `burmic` and `proto_burmish` with no automatic rerun.
+- **Root-cause diagnosis across three strata:**
+  1. **Four concrete runtime bugs (repaired offline in `B02` at `$0`):**
+     `proto_assembly.py:assembly_result` retained full `source_positions` on
+     `unmatched_columns` under `detail="summary"` (`245,995 B` compact = `92.1%`
+     of Turn 17's `267,149 B` preview); `orchestrator.py:_supersedes` compared
+     un-normalized raw arguments and required exact `limit` equality (`+68,897 B`
+     / `+38,226` tokens on Turn 16 vs Turn 2); `_compact_watermark_previews`
+     rewrote `805 B` empty identity probes into `873 B` stubs (`+68 B`), busting
+     Gemini's prefix cache on Turn 19 (`246,893 -> 15,135` cached tokens,
+     `US$0.3274` single-turn spend); and pre-dispatch `RunBudgetExceeded` left
+     `compaction_summary.peak_prompt_tokens` (`468,811`) behind
+     `max_request_input_tokens` (`483,849`) and omitted Turn 22's paid message
+     from `trajectories.jsonl`. All four are fixed with zero behavioural or
+     `configuration_sha256` digest change (`15 passed` in
+     `test_real_family_harness_prep.py`; **`887 passed, 41 deselected`** across
+     the portable suite; Wave 2 independent review verdict: `PASS`, `0` defects).
+  2. **`units-v2` 738-set scaling & linguistic forensics (deferred to `B03`):**
+      Gemini preserved 100% of surface tone contours across Turn 21's `55`
+     `shared_claims` (`0` tone stripping) and polarized stop-coda debuccalization
+     (`*-k > -ʔ`), while missing Maruic creaky-register reflexes of `*ˀm/*ˀŋ`
+     because `40/42` (`95.2%`) creaky-vowel (`V̱`) `csp-*` patterns have
+     `support == 1` (`0` multi-daughter `V̱` patterns at `support >= 2`) whereas
+     `67/113` (`59.3%`) `support >= 2` patterns are 1-daughter compound/affix
+     singletons. `$0` deduplicated replay of Turn 21 (`394/738` sets,
+     `unaccounted_column_rate = 0.4431`) shows `inventory_contrast_reductions`
+     flags `346/394` (`87.8%`) sets for `missing-directionality-rationale`
+     (`commit_ready = False`), and Turn-22 prompt attribution (`299,041` tokens
+     [`61.8%`] in uncompacted read-only pages; `458,599` non-signature tokens,
+     crossing `116,626` on Turn 4) proves `96,000`-watermark / `128k`-context
+     local `qwen3.8-27b-splash` cannot run `units-v2` `burmish.json` prior to
+     `B03`.
+  3. **Uncached-vs-cached cap calibration:** `pricing.py`'s deliberate uncached
+     table check turned `--max-total-cost-usd 3.50` into a `US$1.18` real-cash
+     cap at `80.92%` cache hit (two of the four pre-R01 `maruic` seeds also
+     exceeded `US$3.50` uncached: `US$4.1120` and `US$3.9012`).
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.
@@ -707,12 +765,26 @@ benchmarking**:
    compaction (`--compaction-watermark-tokens`) in `AgentOrchestrator`, and froze
    `runs/experiments/b02-burmish-gemini-benchmark/` (`<= US$10.00` upper-bound
    ceiling, verified by independent read-only review).
-2. **`B02` (`prompts/02-real-family-live-benchmark.md`, live benchmark — ready to launch):** Run
-   `gemini/gemini-3.8-flash` (`medium` thinking, `max_tokens = 32768`,
-   `--compaction-watermark-tokens 256000`, `--tied-confidence-threshold 0.5`)
-   on `benchmarks/burmish.json` using the single-checkpoint staged protocol
-   (`--stop-after-node maruic` -> `audit-run` gate -> `--resume` full tree),
-   evaluating **full tone-bearing forms** (no tone stripping) with `task02-v1`,
-   `R06` `compute_corpus_contrast_equivalence` (`corpus_bcubed_f1`), and `$0`
-   offline tied-beam replay before escalating to `polynesian.json` and local
-   `qwen3.8-27b` (`--compaction-watermark-tokens 96000`).
+2. **`B02` (`prompts/02-real-family-live-benchmark.md`, live Stage 1 gate & bounded fixes — completed 2026-11-11):**
+   Executed Stage 1 (`maruic`) on `benchmarks/burmish.json` (`US$1.2368` cached /
+   `US$3.6592` uncached spent; `US$0.00` wasted downstream), repaired the four
+   runtime bugs exposed on `maruic` (`proto_assembly.py` summary
+   `unmatched_columns` slimming, `_supersedes` default-normalized pagination
+   containment, `MIN_PREVIEW_COMPACTION_SAVINGS_BYTES = 256` prefix-cache guard,
+   and pre-dispatch `RunBudgetExceeded` peak-token/audit flush; `887 passed, 41
+   deselected`), and published [B02 report](research/real_family_benchmark_burmish.md).
+3. **Recommended next sequence (`B03` -> `polynesian.json` -> `burmish.json`):**
+   - **`B03` (offline `$0` scaling & cost-cap package):** Add incremental/patch
+     `stored-hypothesis` assembly updates (`base_hypothesis_id`), refine
+     `inventory_contrast_reductions` so unanimous and 1-daughter boundary
+     retentions do not require hundreds of directionality rationales, compact
+     older disjoint read-only survey pages above the watermark, surface
+     multi-daughter `support == 1` phonation/creaky-register patterns separately
+     from 1-daughter compound singletons, and support verified-cached cost-cap
+     enforcement.
+   - **Live `benchmarks/polynesian.json` (`gemini/gemini-3.8-flash` + `96k`-watermark local `qwen3.8-27b-splash`):**
+     Test 5-level post-order propagation (`7` internal nodes, simplex lexicon,
+     `46k–93k` measured prompt peaks fitting within `96k`/`128k`) and `$0`
+     `None` vs `0.5` counterfactual tied-beam replay end-to-end.
+   - **Re-benchmark `benchmarks/burmish.json`** after `B03` brings `maruic` and
+     `burmic` context and output footprints within compact single-node bounds.

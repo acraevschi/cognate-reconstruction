@@ -266,7 +266,16 @@ def assembly_result(
     reports = step.assembly_reports
     if detail is AssemblyDetail.SUMMARY:
         reports = tuple(
-            report.model_copy(update={"columns": ()}) for report in reports
+            report.model_copy(
+                update={
+                    "columns": (),
+                    "unmatched_columns": tuple(
+                        column.model_copy(update={"source_positions": ()})
+                        for column in report.unmatched_columns
+                    ),
+                }
+            )
+            for report in reports
         )
     diagnostics = step.diagnostics
     return TestProtoAssemblyResult(

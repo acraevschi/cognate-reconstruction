@@ -40,13 +40,20 @@ from cognate_reconstruction.agent.schemas import (
     CommittedHypothesis,
     CommittedReconstruction,
     ConceptHoldout,
+    GetAlignmentsArgs,
+    GetNodeReconstructionArgs,
     LLMMessage,
     LLMToolCall,
+    ListAvailableNodesArgs,
+    ListConceptsArgs,
     MessageRole,
     NodeLexiconSummary,
     NodePromptPayload,
+    PolarizeArgs,
     ProviderResponse,
     ProviderResponseMetadata,
+    SearchFormsArgs,
+    SummarizeCorrespondencesArgs,
     ToolError,
     ToolExecutionResult,
 )
@@ -61,6 +68,7 @@ from cognate_reconstruction.agent.trajectory import (
     AgentTrajectory,
     TrajectorySink,
 )
+from cognate_reconstruction.schemas.common import WorkbenchModel
 from cognate_reconstruction.schemas.inventory import CommittedProtoInventory
 from cognate_reconstruction.schemas.traversal import ReconstructionStep
 
@@ -200,15 +208,36 @@ deterministic stub preserving validation/hypothesis handles and outcome counts,
 while `_MessageLog.audit` (`trajectories.jsonl`) remains completely uncompacted.
 """
 
+MIN_PREVIEW_COMPACTION_SAVINGS_BYTES: int = 256
+"""Minimum positive UTF-8 byte reduction required to stub a superseded preview.
+
+Replacing an empty or micro-sized identity probe (`805 B -> 873 B`) yields negative
+or negligible savings while mutating early prompt messages and invalidating hundreds
+of thousands of cached prefix tokens.
+"""
+
+_PAGINATION_ARGUMENT_KEYS: frozenset[str] = frozenset({"offset", "limit"})
+
+_COMPACTABLE_ARGS_MODELS: dict[str, type[WorkbenchModel]] = {
+    "get_alignments": GetAlignmentsArgs,
+    "summarize_correspondences": SummarizeCorrespondencesArgs,
+    "search_forms": SearchFormsArgs,
+    "list_concepts": ListConceptsArgs,
+    "list_available_nodes": ListAvailableNodesArgs,
+    "get_node_reconstruction": GetNodeReconstructionArgs,
+    "polarize": PolarizeArgs,
+}
+
 _SELECTION_ARGUMENT_KEYS: frozenset[str] = frozenset(
     {"node_ids", "node_id", "concept_ids", "form_ids", "cognate_set_ids"}
 )
 """Arguments that name *what* was asked for, rather than how.
 
-These are compared as sets, with absent or empty meaning "everything", so a
-widening call supersedes a narrower one. Every other argument — pagination,
-`detail`, filters, flags, overlays — must match exactly, because a later call
-that changed one of them asked a different question.
+These are compared as sets on unpaginated calls, with absent or empty meaning
+"everything", so a widening call supersedes a narrower one. On paginated calls,
+`[later_offset, later_offset + later_limit]` supersedes
+`[earlier_offset, earlier_offset + earlier_limit]` when all non-pagination
+arguments match.
 """
 
 
@@ -223,7 +252,44 @@ def _selection_values(value: object) -> frozenset[str] | None:
     return frozenset({str(value)})
 
 
-def _supersedes(later: dict[str, object], earlier: dict[str, object]) -> bool:
+def _normalize_tool_arguments(
+    arguments: Mapping[str, object],
+    args_model: type[WorkbenchModel] | None,
+) -> dict[str, object]:
+    """Populate schema defaults when `arguments` validates against `args_model`."""
+    if args_model is None:
+        return dict(arguments)
+    try:
+        validated = args_model.model_validate_json(json.dumps(dict(arguments)))
+    except Exception:
+        return dict(arguments)
+    return validated.model_dump(mode="json")
+
+
+def _pagination_bounds(arguments: Mapping[str, object]) -> tuple[int, int] | None:
+    """Return `(offset, offset + limit)` when valid integer pagination is present."""
+    if "limit" not in arguments:
+        return None
+    raw_offset = arguments.get("offset", 0)
+    raw_limit = arguments.get("limit")
+    if (
+        isinstance(raw_offset, bool)
+        or not isinstance(raw_offset, int)
+        or raw_offset < 0
+        or isinstance(raw_limit, bool)
+        or not isinstance(raw_limit, int)
+        or raw_limit < 1
+    ):
+        return None
+    return raw_offset, raw_offset + raw_limit
+
+
+def _supersedes(
+    later: dict[str, object],
+    earlier: dict[str, object],
+    *,
+    args_model: type[WorkbenchModel] | None = None,
+) -> bool:
     """Does a later call re-request everything an earlier one asked for?
 
     Deliberately strict. Two calls that overlap without one covering the other —
@@ -231,17 +297,44 @@ def _supersedes(later: dict[str, object], earlier: dict[str, object]) -> bool:
     result still holds evidence the later one never returned, and dropping it
     would silently take back something the model may still be reasoning from.
     Absent and empty are treated alike for selections, since both mean "no
-    filter" across this tool surface.
+    filter" across this tool surface. When both calls carry bounded pagination,
+    `[later_offset, later_offset + later_limit]` supersedes
+    `[earlier_offset, earlier_offset + earlier_limit]` only when all
+    non-pagination arguments match.
     """
-    for key in set(later) | set(earlier):
+    norm_later = _normalize_tool_arguments(later, args_model)
+    norm_earlier = _normalize_tool_arguments(earlier, args_model)
+    later_bounds = _pagination_bounds(norm_later)
+    earlier_bounds = _pagination_bounds(norm_earlier)
+    paginated = later_bounds is not None and earlier_bounds is not None
+    if paginated:
+        later_start, later_end = later_bounds
+        earlier_start, earlier_end = earlier_bounds
+        if not (later_start <= earlier_start and later_end >= earlier_end):
+            return False
+
+    keys_to_compare = set(norm_later) | set(norm_earlier)
+    if paginated:
+        keys_to_compare -= _PAGINATION_ARGUMENT_KEYS
+
+    for key in keys_to_compare:
         if key in _SELECTION_ARGUMENT_KEYS:
-            later_selection = _selection_values(later.get(key))
+            if paginated:
+                if key == "node_ids" and args_model is SummarizeCorrespondencesArgs:
+                    if list(norm_later.get(key) or ()) != list(norm_earlier.get(key) or ()):
+                        return False
+                elif _selection_values(norm_later.get(key)) != _selection_values(
+                    norm_earlier.get(key)
+                ):
+                    return False
+                continue
+            later_selection = _selection_values(norm_later.get(key))
             if later_selection is None:
                 continue
-            earlier_selection = _selection_values(earlier.get(key))
+            earlier_selection = _selection_values(norm_earlier.get(key))
             if earlier_selection is None or not earlier_selection <= later_selection:
                 return False
-        elif later.get(key) != earlier.get(key):
+        elif norm_later.get(key) != norm_earlier.get(key):
             return False
     return True
 
@@ -482,6 +575,7 @@ class _RunState:
     latest_prompt_tokens: int = 0
     peak_prompt_tokens: int = 0
     last_response_had_input_tokens: bool = False
+    pending_audit_message: LLMMessage | None = None
     # Concepts named in tool arguments over the session, so a commit made after
     # looking at 5 of 46 concepts is legible as such.
     inspected_concept_ids: set[str] = field(default_factory=set)
@@ -875,6 +969,17 @@ class AgentOrchestrator:
                             else ProviderResponse(message=raw_response))
                 state.provider_responses.append(response.metadata)
                 usage = response.metadata.usage
+                if usage is not None and usage.input_tokens is not None:
+                    state.last_response_had_input_tokens = True
+                    state.latest_prompt_tokens = usage.input_tokens
+                else:
+                    state.last_response_had_input_tokens = False
+                    state.latest_prompt_tokens = _estimate_prompt_tokens(messages)
+                state.peak_prompt_tokens = max(
+                    state.peak_prompt_tokens, state.latest_prompt_tokens
+                )
+                if response.message.role is MessageRole.ASSISTANT:
+                    state.pending_audit_message = response.message
                 self._journal(
                     "request_end", node_id, state, attempt=state.provider_attempts, outcome="response",
                     duration_seconds=max(0.0, self.clock_fn() - attempt_started),
@@ -1344,12 +1449,17 @@ class AgentOrchestrator:
             return
         if call.name not in COMPACTABLE_TOOL_NAMES:
             return
+        spec = getattr(self.registry, "_tools", {}).get(call.name)
+        args_model = (
+            getattr(spec, "args_model", None)
+            or _COMPACTABLE_ARGS_MODELS.get(call.name)
+        )
         superseded = [
             record
             for record in state.live_tool_results
             if record.name == call.name
             and record.call_id != call.call_id
-            and _supersedes(call.arguments, record.arguments)
+            and _supersedes(call.arguments, record.arguments, args_model=args_model)
         ]
         for record in superseded:
             messages.replace_prompt_content(
@@ -1384,18 +1494,26 @@ class AgentOrchestrator:
         newest_by_tool: dict[str, _PreviewResultRecord] = {}
         for record in state.live_preview_results:
             newest_by_tool[record.name] = record
-        to_compact = [
+        candidates = [
             record
             for record in state.live_preview_results
             if newest_by_tool[record.name].call_id != record.call_id
         ]
-        if not to_compact:
-            return
-        state.watermark_trigger_count += 1
-        for record in to_compact:
+        eligible: list[tuple[_PreviewResultRecord, str, dict[str, Any], str]] = []
+        for record in candidates:
             superseded_by = newest_by_tool[record.name].call_id
             stub = _build_preview_compaction_stub(record, superseded_by)
-            messages.replace_prompt_content(record.index, json.dumps(stub))
+            stub_json = json.dumps(stub)
+            live_content = messages.prompt[record.index].content or ""
+            live_bytes = len(live_content.encode("utf-8"))
+            stub_bytes = len(stub_json.encode("utf-8"))
+            if live_bytes - stub_bytes >= MIN_PREVIEW_COMPACTION_SAVINGS_BYTES:
+                eligible.append((record, superseded_by, stub, stub_json))
+        if not eligible:
+            return
+        state.watermark_trigger_count += 1
+        for record, superseded_by, stub, stub_json in eligible:
+            messages.replace_prompt_content(record.index, stub_json)
             state.live_preview_results.remove(record)
             state.compacted_previews[(record.name, record.argument_sha256)] = (
                 _CompactedPreviewRecord(
@@ -1818,24 +1936,14 @@ class AgentOrchestrator:
                     messages.prompt,
                     state,
                 )
-                usage = response.metadata.usage
-                if usage is not None and usage.input_tokens is not None:
-                    state.last_response_had_input_tokens = True
-                    state.latest_prompt_tokens = usage.input_tokens
-                else:
-                    state.last_response_had_input_tokens = False
-                    state.latest_prompt_tokens = _estimate_prompt_tokens(
-                        messages.prompt
-                    )
-                state.peak_prompt_tokens = max(
-                    state.peak_prompt_tokens, state.latest_prompt_tokens
-                )
                 reply = response.message
                 if reply.role is not MessageRole.ASSISTANT:
+                    state.pending_audit_message = None
                     raise ValueError(
                         "LLM providers must return an assistant message"
                     )
                 messages.append(reply)
+                state.pending_audit_message = None
                 self._emit(
                     AgentEventKind.MODEL_RESPONSE,
                     context.node_id,
@@ -2133,6 +2241,9 @@ class AgentOrchestrator:
                 "agent did not commit within its per-node turn limit"
             )
         except (Exception, KeyboardInterrupt) as caught:
+            if state.pending_audit_message is not None:
+                messages.audit.append(state.pending_audit_message)
+                state.pending_audit_message = None
             error = RunCancelled("run cancelled by keyboard interrupt") if isinstance(caught, KeyboardInterrupt) else caught
             interruption = isinstance(error, (ProviderError, RunBudgetExceeded, RunCancelled, RequestJournalError))
             cause = (error.metadata.kind.value if isinstance(error, ProviderError)

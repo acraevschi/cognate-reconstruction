@@ -1,0 +1,836 @@
+{
+  "report_version": "b02-real-family-burmish-report-v1",
+  "date": "2026-11-11",
+  "stage": "B02",
+  "experiment_id": "b02-burmish-gemini-benchmark",
+  "experiment_dir": "runs/experiments/b02-burmish-gemini-benchmark",
+  "run_dir": "runs/experiments/b02-burmish-gemini-benchmark/runs/burmish-gemini",
+  "run_id": "b02-burmish-gemini",
+  "trajectory_id": "trajectory-b6263219-6775-4151-b2f9-d8a22183dba8",
+  "tones_preserved": true,
+  "provenance": {
+    "launch_head_commit": "8243dfc52df3d8b1b2be196592e79efbed9ec7cc",
+    "branch": "main",
+    "source_manifest_sha256": "5a811ce7064ee669ae1d6e7cc448797765fdadb01d5d5e6fcfbd0bcd717263de",
+    "candidate_manifest_sha256": "b717efd6c7013c900f9f23ba15cef4626fa1d79812a8e767deaef44c41b11805",
+    "pre_commit_reviewed_manifest_sha256": "d5e9d4064f7f49c22254dfa370f7cf68bb4718101725346bc5677501a67ae5c4",
+    "preregistration_sha256": "95a6ad3b164a3b2b51757bf95bfadeff8a074cb391da3e4e1b24e7f74e091204",
+    "pre_launch_review_sha256": "405a83413d175ef893b2443c34e00bf6a0f0e3dd43f32df9b4b7a5430dd6bea1",
+    "benchmark_definition": "benchmarks/burmish.json",
+    "benchmark_definition_sha256": "fb9cd9660f08dea3d4d69bf5b7e82a1c345b6143d8f08039b089041d1856128d",
+    "payload_sha256": "092ae5b1534f3beb025d5114d4b37524ea213411a5595a6870df1bc2d63d39e9",
+    "normalized_tree_sha256": "fa7b48177b087cf728295be4a5ef163b9001ab69b2f6f6f9aa7cb776d7343f5c",
+    "price_table_sha256": "f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521",
+    "provider_config_sha256": "027bbb0a9e0d8ac63339623ff801caecd5de86d0d5f381feff0775ab5c13b01b",
+    "configuration_sha256": "89a49065883951bc68bc0943898ae6681be7ee6f9371ef52fe3c417d5e69ed22",
+    "model_visible_contract_digests": {
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the agent instructions": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "628f0f32eca43a872c7fb72c90e67b1ba3e00b9a1f9b4057e1cf702175584a72",
+      "the anchor file": "absent",
+      "first_request_maruic_node_prompt_sha256": "21a54c336f8268910b6eefa9f63a51ed1edce9934267494eb74e4b1e5e2d1094",
+      "first_request_maruic_tool_definitions_sha256": "d8566a1c5282e2253c7f799de10031703c8c515f47b89e389b2a617a59265359"
+    },
+    "banked_r04_configuration_sha256_invariance": {
+      "trial_id": "c-gemini-r04",
+      "configuration_sha256": "339adb1338add17c78a0b5477d9c0b9dd85b64501e2be314951627861adce38a",
+      "verified_post_b02_bugfix": true
+    }
+  },
+  "configuration": {
+    "model": "gemini/gemini-3.8-flash",
+    "preset": "gemini",
+    "reasoning_effort": "medium",
+    "temperature": 1.0,
+    "max_output_tokens": 32768,
+    "inventory_protocol": "stored-hypothesis",
+    "reasoning_history": "auto",
+    "effective_reasoning_history": "drop",
+    "tied_confidence_threshold": 0.5,
+    "compaction_watermark_tokens": 256000,
+    "max_turns": 36,
+    "max_tool_calls": 64,
+    "max_failed_nodes": 0,
+    "max_retries": 3,
+    "max_retry_seconds": 300,
+    "timeout_seconds": 300,
+    "stage1_caps": {
+      "stop_after_node": "maruic",
+      "max_total_cost_usd": 3.5,
+      "max_run_seconds": 1500.0,
+      "one_response_headroom_usd": 0.909312,
+      "worst_case_upper_bound_usd": 4.409312
+    },
+    "stage2_planned_caps": {
+      "resume": true,
+      "max_total_cost_usd": 8.5,
+      "max_run_seconds": 3600.0,
+      "one_response_headroom_usd": 0.909312,
+      "worst_case_upper_bound_usd": 9.409312,
+      "hard_ceiling_usd": 10.0,
+      "launched": false
+    }
+  },
+  "experiment_directory_digests": {
+    "file_count": 19,
+    "pre_evaluate_batch_ledger_sha256": "35307fa2c2f878734b55871a4bec32f175ee827df09d7b6b638ed22169d2401b",
+    "files": [
+      {
+        "relative_path": "batch_events.jsonl",
+        "bytes": 2160,
+        "sha256": "d6de734d394ad5679e1820192dc481b54c0f4c6c6c6e9b1288f40c373f576544"
+      },
+      {
+        "relative_path": "batch_ledger.json",
+        "bytes": 5333,
+        "sha256": "3ad9c02faeb318ed5b4d2b5960f4888b6c9f79467d8427cce87bf437561e5ca9"
+      },
+      {
+        "relative_path": "inputs/burmish.payload.json",
+        "bytes": 1515426,
+        "sha256": "092ae5b1534f3beb025d5114d4b37524ea213411a5595a6870df1bc2d63d39e9"
+      },
+      {
+        "relative_path": "inputs/price-table.json",
+        "bytes": 521,
+        "sha256": "f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521"
+      },
+      {
+        "relative_path": "inputs/provider-config.json",
+        "bytes": 26,
+        "sha256": "027bbb0a9e0d8ac63339623ff801caecd5de86d0d5f381feff0775ab5c13b01b"
+      },
+      {
+        "relative_path": "manifest.b02-burmish.json",
+        "bytes": 33769,
+        "sha256": "b717efd6c7013c900f9f23ba15cef4626fa1d79812a8e767deaef44c41b11805"
+      },
+      {
+        "relative_path": "preregistration.md",
+        "bytes": 11206,
+        "sha256": "95a6ad3b164a3b2b51757bf95bfadeff8a074cb391da3e4e1b24e7f74e091204"
+      },
+      {
+        "relative_path": "review.md",
+        "bytes": 11990,
+        "sha256": "405a83413d175ef893b2443c34e00bf6a0f0e3dd43f32df9b4b7a5430dd6bea1"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/checkpoint.json",
+        "bytes": 1460,
+        "sha256": "e2aa105dcd6937b66360ed68efc91f7c333e0df2ec6a269b103e97c993223913"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/checkpoint.requests.jsonl",
+        "bytes": 35522,
+        "sha256": "6e95006a7898d671a6db0ad53063cb69d16b0b395883b369b29b10a84ac19991"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/evaluation.json",
+        "bytes": 225599,
+        "sha256": "915de014385e6960894e47cdc01c63585ba622fb4e9169a7dd3c63701b211639"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/events.jsonl",
+        "bytes": 995480,
+        "sha256": "d8ac8097c3b07ee70bebfb2736f484cee6c2a9c616da4d5f008161e82865f9e2"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/gate_stage1.json",
+        "bytes": 4293,
+        "sha256": "6279721ca2d09e4996ee786de2547c13f5af416a93ab5a0e6df568343cf76e0b"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/inspect_stage1.txt",
+        "bytes": 6433,
+        "sha256": "4ce4df6a64c55e362f2408b538836fee9d2bfb039ed31c8db51c893d5b5b79c6"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/run_summary.json",
+        "bytes": 212993,
+        "sha256": "e1d96cd230bedc05d4370f2b369b19422243540140154e4d3c1f9bfe3b57dd99"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/stage1.stderr.log",
+        "bytes": 22138,
+        "sha256": "1c483634db392ab41633e38c88bdef1436019aa5363851934110f0c41a0b61e0"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/stage1.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/trajectories.jsonl",
+        "bytes": 1145330,
+        "sha256": "4a776b4616face9cca05958ce706fda1b8fc2dc54eb16a28325faee7576e0e94"
+      },
+      {
+        "relative_path": "source_manifest.json",
+        "bytes": 28846,
+        "sha256": "5a811ce7064ee669ae1d6e7cc448797765fdadb01d5d5e6fcfbd0bcd717263de"
+      }
+    ]
+  },
+  "stage1_gate_outcome": {
+    "usable": false,
+    "gate_stage1_reason": "maruic missing from checkpoint.steps_by_node",
+    "evaluate_stage_gate_reason": "run_status=interrupted",
+    "failure_kind": "resource_interruption",
+    "failure_error_type": "RunBudgetExceeded",
+    "interruption_reason": "run exceeded its reported provider cost limit",
+    "checks": {
+      "in_checkpoint_steps": false,
+      "not_failure_fallback": false,
+      "trajectory_committed": false
+    },
+    "decision": "STOP_PAID_INFERENCE_AT_STAGE1_GATE",
+    "wasted_spend_on_downstream_nodes_usd": 0.0,
+    "remaining_hard_ceiling_uncached_usd": 6.3408415,
+    "max_legal_3node_restart_cap_after_headroom_usd": 5.4315295
+  },
+  "certified_resources": {
+    "ledger_version": "r02-ledger-v1",
+    "usage_accounting_version": "abrupt-loss-v1",
+    "outcome": "interrupted",
+    "history_certified": true,
+    "history_complete": true,
+    "cost_known": true,
+    "turns": 22,
+    "provider_requests": 22,
+    "responses_with_cost": 22,
+    "unknown_cost_requests": 0,
+    "unrecorded_requests": 0,
+    "tool_calls": 20,
+    "failed_tool_calls": 2,
+    "truncated_responses": 1,
+    "aborted_pre_dispatch_responses": 1,
+    "input_tokens": 4434603,
+    "cached_input_tokens": 3588670,
+    "uncached_input_tokens": 845933,
+    "cache_hit_rate": 0.809243,
+    "output_tokens": 88855,
+    "reasoning_output_tokens": 36099,
+    "total_tokens": 4523458,
+    "max_request_input_tokens": 483849,
+    "recorded_compaction_summary_peak_prompt_tokens_pre_bugfix4": 468811,
+    "max_response_output_tokens": 32764,
+    "watermark_trigger_count": 1,
+    "compacted_preview_results": 3,
+    "compacted_read_only_results": 0,
+    "repeat_guard_hits": 0,
+    "uncached_table_total_cost_usd_rounded": 3.659158,
+    "uncached_table_total_cost_usd_exact": 3.6591585,
+    "cached_adjusted_total_cost_usd": 1.236806,
+    "elapsed_seconds": 695.4494107910141,
+    "wall_seconds": 696.1282
+  },
+  "deterministic_ceilings": {
+    "beam_width": 5,
+    "boundaries": "include",
+    "tones_preserved": true,
+    "proto_burmish": {
+      "target_validity": "validated_target",
+      "evaluated_concepts": 54,
+      "daughter_selection_bar": {
+        "top_exact_matches": 0,
+        "top_exact_rate": 0.0
+      },
+      "assembly_ceiling_node_local": {
+        "top_exact_matches": 6,
+        "top_exact_rate": 0.111111,
+        "flat_exact_matches": 5
+      },
+      "oracle_context_free": {
+        "top_exact_matches": 7,
+        "top_exact_rate": 0.12963,
+        "beam_exact_matches": 15,
+        "beam_exact_rate": 0.277778,
+        "mean_top_ned": 0.489644,
+        "mean_word_bcubed_f1": 0.90954,
+        "rule_count": 236
+      },
+      "oracle_contextual": {
+        "top_exact_matches": 16,
+        "top_exact_rate": 0.296296,
+        "beam_exact_matches": 26,
+        "beam_exact_rate": 0.481481,
+        "mean_top_ned": 0.292615,
+        "mean_word_bcubed_f1": 0.960443,
+        "rule_count": 621,
+        "fallback_branches": 1
+      },
+      "oracle_assembly": {
+        "top_exact_matches": 42,
+        "top_exact_rate": 0.777778,
+        "beam_exact_matches": 42,
+        "beam_exact_rate": 0.777778,
+        "mean_top_ned": 0.07037,
+        "mean_word_bcubed_f1": 0.988598,
+        "committed_set_count": 529,
+        "unaccounted_column_rate": 0.0
+      }
+    },
+    "burmic": {
+      "target_validity": "provisional_proxy",
+      "source_variety_id": "hillburmish:OldBurmese",
+      "evaluated_concepts": 37,
+      "daughter_selection_bar": {
+        "top_exact_matches": 0,
+        "top_exact_rate": 0.0
+      },
+      "assembly_ceiling_node_local": {
+        "top_exact_matches": 4,
+        "top_exact_rate": 0.108108
+      },
+      "oracle_context_free": {
+        "top_exact_matches": 11,
+        "top_exact_rate": 0.297297,
+        "beam_exact_matches": 15,
+        "beam_exact_rate": 0.405405,
+        "mean_top_ned": 0.370967,
+        "mean_word_bcubed_f1": 0.951593,
+        "rule_count": 194
+      },
+      "oracle_contextual": {
+        "top_exact_matches": 10,
+        "top_exact_rate": 0.27027,
+        "beam_exact_matches": 17,
+        "beam_exact_rate": 0.459459,
+        "mean_top_ned": 0.312484,
+        "mean_word_bcubed_f1": 0.955025,
+        "rule_count": 380,
+        "fallback_branches": 1
+      },
+      "oracle_assembly": {
+        "top_exact_matches": 25,
+        "top_exact_rate": 0.675676,
+        "beam_exact_matches": 25,
+        "beam_exact_rate": 0.675676,
+        "mean_top_ned": 0.090015,
+        "mean_word_bcubed_f1": 0.974465,
+        "committed_set_count": 335
+      }
+    }
+  },
+  "pre_r01_banked_gemini_3_7_sweeps": {
+    "model": "gemini/gemini-3.7-flash",
+    "evidence_regime": "legacy whole-string alignment (150 cs-* sets / 341 columns at maruic)",
+    "seeds": [
+      {
+        "seed_id": "burmish-gemini-t36-r2/seed-00",
+        "committed_nodes": "2/3",
+        "fallback_nodes": ["maruic"],
+        "proto_burmish": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 54,
+          "mean_ned": 0.707279,
+          "word_bcubed_f1": 0.861123,
+          "r06_corpus_bcubed_f1": 0.390326,
+          "r06_corpus_bcubed_precision": 0.436447,
+          "r06_corpus_bcubed_recall": 0.353021,
+          "is_bijective_relabelling": false
+        },
+        "burmic": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 37,
+          "mean_ned": 0.672351,
+          "r06_corpus_bcubed_f1": 0.473031,
+          "is_bijective_relabelling": false
+        },
+        "audit_run_defects": {
+          "total": 12,
+          "maruic": 9,
+          "burmic": 2,
+          "proto_burmish": 1,
+          "root_outgroup_false_positives": 0
+        },
+        "maruic_node_profile": {
+          "outcome": "fallback",
+          "sets_available": 150,
+          "committed_sets": 0,
+          "last_preview_sets": 38,
+          "turns": 28,
+          "provider_attempts": 29,
+          "tool_calls": 28,
+          "failed_tool_calls": 8,
+          "peak_input_tokens": 336176,
+          "peak_output_tokens": 7538,
+          "input_tokens": 5074144,
+          "cached_input_tokens": 4278940,
+          "cache_hit_rate": 0.843283,
+          "output_tokens": 81696,
+          "reasoning_output_tokens": 22509,
+          "cached_adjusted_cost_usd": 1.223684,
+          "uncached_table_cost_usd": 4.111968,
+          "duration_seconds": 1058.03
+        },
+        "family_3node_cost_usd": {
+          "cached_adjusted": 2.827991,
+          "uncached_table": 8.949286
+        }
+      },
+      {
+        "seed_id": "burmish-gemini-t36-r2/seed-01",
+        "committed_nodes": "3/3",
+        "fallback_nodes": [],
+        "proto_burmish": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 54,
+          "mean_ned": 0.706526,
+          "word_bcubed_f1": 0.889002,
+          "r06_corpus_bcubed_f1": 0.472894,
+          "r06_corpus_bcubed_precision": 0.48792,
+          "r06_corpus_bcubed_recall": 0.458766,
+          "is_bijective_relabelling": false
+        },
+        "burmic": {
+          "top_exact_matches": 1,
+          "exact_match_concepts": ["NEEDLE"],
+          "evaluated_concepts": 37,
+          "mean_ned": 0.666645,
+          "r06_corpus_bcubed_f1": 0.452765,
+          "is_bijective_relabelling": false
+        },
+        "audit_run_defects": {
+          "total": 7,
+          "maruic": 3,
+          "burmic": 4,
+          "proto_burmish": 0,
+          "root_outgroup_false_positives": 0
+        },
+        "maruic_node_profile": {
+          "outcome": "committed",
+          "sets_available": 150,
+          "committed_sets": 39,
+          "derived_rules": 43,
+          "proto_phonemes": 18,
+          "unaccounted_column_rate": 0.495601,
+          "held_out_unaccounted_column_rate": 0.424242,
+          "turns": 29,
+          "provider_attempts": 30,
+          "tool_calls": 29,
+          "failed_tool_calls": 4,
+          "peak_input_tokens": 276939,
+          "peak_output_tokens": 8673,
+          "input_tokens": 4909993,
+          "cached_input_tokens": 4110567,
+          "cache_hit_rate": 0.837184,
+          "output_tokens": 58333,
+          "reasoning_output_tokens": 24487,
+          "cached_adjusted_cost_usd": 1.126611,
+          "uncached_table_cost_usd": 3.901244,
+          "duration_seconds": 1008.64
+        },
+        "family_3node_cost_usd": {
+          "cached_adjusted": 2.197753,
+          "uncached_table": 6.994879
+        }
+      },
+      {
+        "seed_id": "burmish-gemini-t36-r3/seed-00",
+        "committed_nodes": "3/3",
+        "fallback_nodes": [],
+        "proto_burmish": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 54,
+          "mean_ned": 0.738608,
+          "word_bcubed_f1": 0.857031,
+          "r06_corpus_bcubed_f1": 0.394367,
+          "r06_corpus_bcubed_precision": 0.438775,
+          "r06_corpus_bcubed_recall": 0.358123,
+          "is_bijective_relabelling": false
+        },
+        "burmic": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 37,
+          "mean_ned": 0.714843,
+          "r06_corpus_bcubed_f1": 0.443895,
+          "is_bijective_relabelling": false
+        },
+        "audit_run_defects": {
+          "total": 16,
+          "maruic": 8,
+          "burmic": 7,
+          "proto_burmish": 1,
+          "root_outgroup_false_positives": 0
+        },
+        "maruic_node_profile": {
+          "outcome": "committed",
+          "sets_available": 150,
+          "committed_sets": 39,
+          "derived_rules": 45,
+          "proto_phonemes": 18,
+          "unaccounted_column_rate": 0.495601,
+          "held_out_unaccounted_column_rate": 0.424242,
+          "turns": 18,
+          "provider_attempts": 18,
+          "tool_calls": 18,
+          "failed_tool_calls": 2,
+          "compacted_tool_results": 1,
+          "peak_input_tokens": 273714,
+          "peak_output_tokens": 9398,
+          "input_tokens": 2762739,
+          "cached_input_tokens": 1959744,
+          "cache_hit_rate": 0.709348,
+          "output_tokens": 43479,
+          "reasoning_output_tokens": 20717,
+          "cached_adjusted_cost_usd": 0.912273,
+          "uncached_table_cost_usd": 2.2351,
+          "duration_seconds": 243.49
+        },
+        "family_3node_cost_usd": {
+          "cached_adjusted": 1.935673,
+          "uncached_table": 5.098639
+        }
+      },
+      {
+        "seed_id": "burmish-gemini-t36-r3/seed-01",
+        "committed_nodes": "3/3",
+        "fallback_nodes": [],
+        "proto_burmish": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 54,
+          "mean_ned": 0.689469,
+          "word_bcubed_f1": 0.890353,
+          "r06_corpus_bcubed_f1": 0.478021,
+          "r06_corpus_bcubed_precision": 0.472987,
+          "r06_corpus_bcubed_recall": 0.483164,
+          "is_bijective_relabelling": false
+        },
+        "burmic": {
+          "top_exact_matches": 0,
+          "evaluated_concepts": 37,
+          "mean_ned": 0.682561,
+          "r06_corpus_bcubed_f1": 0.505197,
+          "is_bijective_relabelling": false
+        },
+        "audit_run_defects": {
+          "total": 6,
+          "maruic": 3,
+          "burmic": 2,
+          "proto_burmish": 1,
+          "root_outgroup_false_positives": 0
+        },
+        "maruic_node_profile": {
+          "outcome": "committed",
+          "sets_available": 150,
+          "committed_sets": 39,
+          "derived_rules": 41,
+          "proto_phonemes": 19,
+          "unaccounted_column_rate": 0.495601,
+          "held_out_unaccounted_column_rate": 0.424242,
+          "turns": 28,
+          "provider_attempts": 28,
+          "tool_calls": 28,
+          "failed_tool_calls": 2,
+          "peak_input_tokens": 248102,
+          "peak_output_tokens": 10110,
+          "input_tokens": 4215171,
+          "cached_input_tokens": 3725578,
+          "cache_hit_rate": 0.88385,
+          "output_tokens": 41386,
+          "reasoning_output_tokens": 18583,
+          "cached_adjusted_cost_usd": 0.801811,
+          "uncached_table_cost_usd": 3.316576,
+          "duration_seconds": 297.89
+        },
+        "family_3node_cost_usd": {
+          "cached_adjusted": 1.793139,
+          "uncached_table": 5.90577
+        }
+      }
+    ],
+    "four_seed_aggregate": {
+      "committed_node_attempts": "11/12",
+      "proto_burmish": {
+        "repeated_concept_evaluations": 216,
+        "top_exact_matches": 0,
+        "mean_ned_mean": 0.710471,
+        "mean_ned_sd": 0.020482,
+        "word_bcubed_f1_mean": 0.874377,
+        "word_bcubed_f1_sd": 0.017754,
+        "r06_corpus_bcubed_f1_mean": 0.433902,
+        "r06_corpus_bcubed_f1_sd": 0.048058,
+        "bijective_seeds": 0
+      },
+      "burmic": {
+        "repeated_concept_evaluations": 148,
+        "top_exact_matches": 1,
+        "mean_ned_mean": 0.6841,
+        "mean_ned_sd": 0.021527,
+        "r06_corpus_bcubed_f1_mean": 0.468722,
+        "r06_corpus_bcubed_f1_sd": 0.027203,
+        "bijective_seeds": 0
+      },
+      "audit_run_defects_total": {
+        "total": 41,
+        "uninspected_outgroup_citation": 24,
+        "unit_provenance_loss": 7,
+        "identity_confidence_length_bias": 10,
+        "silent_residue_drop_truncation": 0,
+        "upstream_tie_collapse_majority": 0,
+        "root_outgroup_false_positives": 0
+      },
+      "family_3node_cost_mean_usd": {
+        "cached_adjusted": 2.188639,
+        "uncached_table": 6.737144
+      }
+    }
+  },
+  "b02_live_evaluation_and_forensics": {
+    "end_to_end_evaluation": {
+      "run_status": "interrupted",
+      "proto_burmish": {
+        "target_validity": "validated_target",
+        "output_kind": "missing",
+        "evaluated_concepts": 54,
+        "missing_reconstruction_concepts": 54,
+        "top_exact_matches": 0,
+        "beam_exact_matches": 0,
+        "top_exact_rate": 0.0,
+        "beam_exact_rate": 0.0,
+        "mean_top_ned": null,
+        "r06_corpus_bcubed_f1": 0.0,
+        "is_bijective_relabelling": false
+      },
+      "burmic": {
+        "target_validity": "provisional_proxy",
+        "output_kind": "missing",
+        "evaluated_concepts": 37,
+        "missing_reconstruction_concepts": 37,
+        "top_exact_matches": 0,
+        "beam_exact_matches": 0,
+        "top_exact_rate": 0.0,
+        "beam_exact_rate": 0.0,
+        "mean_top_ned": null,
+        "r06_corpus_bcubed_f1": 0.0,
+        "is_bijective_relabelling": false
+      },
+      "counterfactual_tied_beam_replay": {
+        "executed_multi_node": false,
+        "nodes_replayed": [],
+        "reason": "Stage 1 stopped pre-commit at maruic on RunBudgetExceeded ($3.6591585 >= $3.50 uncached cap); checkpoint.steps_by_node remained empty and burmic/proto_burmish were never attempted."
+      }
+    },
+    "critic_audit_stage1_maruic": {
+      "evaluator_version": "r07-critic-v1",
+      "audit_mode": "real_run_provenance_v1",
+      "run_status": "incomplete",
+      "inventory_source": "last_preview",
+      "last_preview_call_id": "call_912a515c06714298bc1b4a664fc8",
+      "residue_policy": "retain_from_witness",
+      "assembled_column_count": 589,
+      "unaccounted_column_count": 586,
+      "unaccounted_column_rate": 0.9949066213921901,
+      "uncovered_set_count": 735,
+      "uncovered_concept_count": 53,
+      "total_defect_count": 0,
+      "defect_counts_by_category": {
+        "silent_residue_drop_truncation": 0,
+        "uninspected_outgroup_citation": 0,
+        "unit_provenance_loss": 0,
+        "identity_confidence_length_bias": 0,
+        "upstream_tie_collapse_majority": 0
+      }
+    },
+    "offline_deduplicated_turn21_maruic_replay": {
+      "turn": 21,
+      "original_call_id": "call_7df6c702e32c42ecabe78d2ae38c",
+      "original_error_code": "invalid-shared-claim",
+      "overlapping_choice_set_ids_removed": [
+        "csu-b61d042a30f0d854c5daeffa",
+        "csu-c739e7ed4afdb0fa6101d1c3"
+      ],
+      "retained_choice_set_ids": ["csu-8ec518e00fcc660ed10274aa"],
+      "shared_claims_count": 55,
+      "unique_shared_member_sets": 393,
+      "total_unique_covered_sets": 394,
+      "total_node_local_sets": 738,
+      "covered_set_share": 0.533875,
+      "executable": true,
+      "commit_ready": false,
+      "assembled_column_count": 589,
+      "unaccounted_column_count": 261,
+      "unaccounted_column_rate": 0.4431239388794567,
+      "cross_branch_assembly_rate": 0.6851851851851852,
+      "missing_commit_requirements_code": "missing-directionality-rationale",
+      "sets_flagged_missing_directionality_rationale": 346,
+      "serialized_bytes_pre_bugfix1": 288173,
+      "serialized_bytes_post_bugfix1": 206643
+    },
+    "linguistic_forensics_maruic": {
+      "tone_preservation": {
+        "tones_stripped_count": 0,
+        "shared_claims_total": 55,
+        "reconstructed_tone_set_counts": {
+          "⁵⁵": 51,
+          "³¹": 26,
+          "²¹": 17,
+          "³⁵": 15,
+          "⁵¹": 9,
+          "³³": 6
+        }
+      },
+      "stop_coda_debuccalization": {
+        "polarized_correspondence": ["ʔ", "ʔ", "k", "k"],
+        "pattern_id": "csp-11da406b24d8839c282b5b92",
+        "reconstructed_proto_segment": "k",
+        "labial_stop_pattern_id": "csp-37927da23cb8f32ee3d355f3",
+        "labial_reconstructed_proto_segment": "p"
+      },
+      "creaky_vowel_preglottalized_initial_visibility": {
+        "total_recurrence_patterns": 320,
+        "patterns_with_support_ge_2": 113,
+        "creaky_vowel_patterns_total": 42,
+        "creaky_vowel_patterns_with_support_eq_1": 40,
+        "multi_daughter_creaky_vowel_patterns_with_support_ge_2": 0
+      },
+      "singleton_morpheme_distortion": {
+        "single_daughter_patterns_in_support_ge_2": 67,
+        "single_daughter_share_of_support_ge_2": 0.59292,
+        "over_retained_boundary_plus_sets": 77,
+        "over_retained_singleton_k_sets": 34
+      }
+    },
+    "turn22_prompt_attribution": {
+      "total_input_tokens": 483849,
+      "total_wire_utf8_bytes_excluding_signatures": 1029997,
+      "components": [
+        {
+          "component": "system_user_schemas_and_recovery",
+          "live_utf8_bytes": 68948,
+          "exact_gemini_tokens": 16150,
+          "token_share": 0.033378
+        },
+        {
+          "component": "uncompacted_read_only_inspection_results",
+          "live_utf8_bytes": 638898,
+          "exact_gemini_tokens": 299041,
+          "token_share": 0.618046
+        },
+        {
+          "component": "uncompacted_test_sound_law_result",
+          "live_utf8_bytes": 25776,
+          "exact_gemini_tokens": 11011,
+          "token_share": 0.022757
+        },
+        {
+          "component": "newest_live_test_proto_assembly_preview_turn17",
+          "live_utf8_bytes": 267149,
+          "exact_gemini_tokens": 115742,
+          "token_share": 0.239211
+        },
+        {
+          "component": "compacted_preview_stubs_and_turn21_error",
+          "live_utf8_bytes": 3266,
+          "exact_gemini_tokens": 687,
+          "token_share": 0.00142
+        },
+        {
+          "component": "assistant_tool_call_arguments",
+          "live_utf8_bytes": 25960,
+          "exact_gemini_tokens": 15968,
+          "token_share": 0.033002
+        },
+        {
+          "component": "gemini_thought_signature_wire_state",
+          "live_utf8_bytes": null,
+          "exact_gemini_tokens": 25250,
+          "token_share": 0.052186
+        }
+      ],
+      "turn19_cache_invalidation": {
+        "turn18_input_tokens": 363088,
+        "turn18_cached_input_tokens": 246893,
+        "turn18_cache_hit_rate": 0.679981,
+        "turn19_input_tokens": 427502,
+        "turn19_cached_input_tokens": 15135,
+        "turn19_cache_hit_rate": 0.035403,
+        "turn19_cached_adjusted_cost_usd": 0.327424,
+        "share_of_total_stage1_cached_spend": 0.264734,
+        "net_byte_reduction_from_3_stubs": 5215
+      },
+      "local_qwen38_27b_96k_feasibility_on_burmish": {
+        "fits_96k_watermark": false,
+        "fits_128k_context_window": false,
+        "turn4_prompt_tokens": 116626,
+        "estimated_non_signature_turn22_tokens": 458599,
+        "ratio_to_96k_watermark": 4.777073
+      }
+    }
+  },
+  "offline_runtime_bugfixes_landed": {
+    "live_llm_calls": 0,
+    "paid_spend_usd": 0.0,
+    "behavioural_digests_unchanged": true,
+    "fixes": [
+      {
+        "id": "B02-fix-1",
+        "file": "cognate_reconstruction/agent/tools/proto_assembly.py",
+        "symbol": "assembly_result",
+        "summary": "Clear source_positions=() on report.unmatched_columns when detail is AssemblyDetail.SUMMARY while preserving full source_positions under AssemblyDetail.FULL.",
+        "measured_effect_on_maruic_turn17": {
+          "compact_total_bytes_before": 267149,
+          "compact_total_bytes_after": 143035,
+          "compact_unmatched_columns_bytes_before": 245995,
+          "compact_unmatched_columns_bytes_after": 121881,
+          "unmatched_columns_reduction_ratio": 0.504539,
+          "spaced_unmatched_columns_reduction_ratio": 0.506025
+        }
+      },
+      {
+        "id": "B02-fix-2",
+        "file": "cognate_reconstruction/agent/orchestrator.py",
+        "symbol": "_supersedes",
+        "summary": "Normalize read-only tool arguments via spec.args_model defaults and allow paginated slice [later_offset, later_offset + later_limit] to supersede [earlier_offset, earlier_offset + earlier_limit] when all non-pagination arguments match.",
+        "measured_effect_on_maruic": {
+          "turn16_supersedes_turn2": true,
+          "reclaimed_utf8_bytes": 68897,
+          "reclaimed_gemini_tokens": 38226
+        }
+      },
+      {
+        "id": "B02-fix-3",
+        "file": "cognate_reconstruction/agent/orchestrator.py",
+        "symbol": "_compact_watermark_previews",
+        "summary": "Require MIN_PREVIEW_COMPACTION_SAVINGS_BYTES = 256 positive UTF-8 byte savings before stubbing a superseded preview so empty/micro identity probes (805 B -> 873 B) never mutate early prompt prefixes or bust provider prefix caches."
+      },
+      {
+        "id": "B02-fix-4",
+        "file": "cognate_reconstruction/agent/orchestrator.py",
+        "symbol": "_complete_with_retry / run",
+        "summary": "Update state.latest_prompt_tokens / state.peak_prompt_tokens upon response receipt and flush pending paid assistant messages to messages.audit when RunBudgetExceeded stops pre-dispatch, keeping messages.prompt untouched and dispatching zero tool calls."
+      }
+    ],
+    "test_verification": {
+      "focused_harness_prep_tests_passed": 15,
+      "portable_suite_command": "conda run -n llm_reconstruction python -m pytest -q -p no:cacheprovider -k 'not local_run_artifacts'",
+      "portable_suite_passed": 887,
+      "portable_suite_deselected": 41
+    }
+  },
+  "next_step_recommendations": {
+    "recommended_sequence": [
+      {
+        "step": 1,
+        "id": "B03-offline-units-v2-scaling-package",
+        "mode": "offline ($0)",
+        "summary": "Dedicated offline units-v2 scaling, contrast-reduction, and cached-cost-cap package: (a) incremental/patch hypothesis updates in stored-hypothesis so 400+ set claims do not require 15k-32k output-token full-replacement JSON payloads; (b) refine inventory_contrast_reductions so unanimous retentions and 1-daughter boundary/affix retentions do not trigger 346 false-positive missing-directionality-rationale blocks; (c) watermark-gated read-only page compaction; (d) multi-daughter support==1 phonation/creaky-register surfacing; and (e) optional cached-adjusted budget enforcement alongside uncached upper-bound ledger accounting."
+      },
+      {
+        "step": 2,
+        "id": "polynesian-live-gemini-and-local-qwen-transfer",
+        "mode": "bounded live benchmark",
+        "summary": "Run benchmarks/polynesian.json (10 daughters, 7 internal nodes [6 non-root subgroups + proto_polynesian root] across 5 tree levels, simplex fully-cognate lexicon, 46k-93k prompt peaks) on gemini/gemini-3.8-flash to measure multi-level tied-beam propagation (None vs 0.5) cleanly end-to-end, and use polynesian.json as the first real-family transfer target for 96k-watermark local dense qwen3.8-27b-splash."
+      },
+      {
+        "step": 3,
+        "id": "burmish-rebenchmark-after-b03",
+        "mode": "deferred until B03 lands",
+        "summary": "Re-freeze and run benchmarks/burmish.json on gemini/gemini-3.8-flash only after B03 reduces units-v2 prompt/output footprints below 128k/96k; do not run local qwen3.8-27b-splash (96k watermark, 128k context) on burmish.json beforehand."
+      }
+    ]
+  }
+}

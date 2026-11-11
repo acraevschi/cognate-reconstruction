@@ -2299,3 +2299,488 @@ def test_counterfactual_replay_rebinds_merges_with_set_id_and_honors_anchors(
     assert replay["node_deltas"]["proto_burmish"]["live_beam_matches_tied_0_5_replay"] is True
     assert replay["node_deltas"]["proto_burmish"]["top_candidate_changed_concepts"] == ["c01"]
 
+
+# ===========================================================================
+# 5. `B02` Bounded `$0` Offline Runtime Bugfixes & Digest Invariance
+# ===========================================================================
+
+
+def test_b02_summary_assembly_strips_unmatched_source_positions_and_preserves_digests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bugfix 1: `detail=summary` clears `source_positions=()` on `unmatched_columns` while `full` keeps them."""
+    payload = _build_two_level_tie_payload()
+    ctx = AgentContext(
+        node_id="maruic",
+        child_lexicons=tuple(l for l in payload.lexicons if l.variety_id in ("a", "b")),
+        aligner=LingPyAligner(),
+        tied_confidence_threshold=0.5,
+    )
+    reg = default_tool_registry(inventory_protocol="stored-hypothesis")
+
+    survey = reg.execute(
+        LLMToolCall(
+            call_id="survey-b02",
+            name="summarize_correspondences",
+            arguments={"reading": "local", "min_support": 1, "limit": 50},
+        ),
+        ctx,
+    ).result["sets"]
+    # Cover only the first set so the remaining columns populate `unmatched_columns`!
+    partial_choices = [
+        {
+            "set_id": survey[0]["set_id"],
+            "proto_segment": next(s for s in survey[0]["segments"] if s is not None),
+            "confidence": 0.9,
+            "rationale": "Single-set probe.",
+            "directionality_rationale": "Retention.",
+        }
+    ]
+    summary_res = reg.execute(
+        LLMToolCall(
+            call_id="prev-summary",
+            name="test_proto_assembly",
+            arguments={
+                "choices": partial_choices,
+                "residue_policy": "retain_from_witness",
+                "residue_witness_child_id": "a",
+                "detail": "summary",
+            },
+        ),
+        ctx,
+    )
+    full_res = reg.execute(
+        LLMToolCall(
+            call_id="prev-full",
+            name="test_proto_assembly",
+            arguments={
+                "choices": partial_choices,
+                "residue_policy": "retain_from_witness",
+                "residue_witness_child_id": "a",
+                "detail": "full",
+            },
+        ),
+        ctx,
+    )
+    assert summary_res.ok and full_res.ok
+    sum_unmatched = [
+        col for c in summary_res.result["concepts"] for col in c["unmatched_columns"]
+    ]
+    full_unmatched = [
+        col for c in full_res.result["concepts"] for col in c["unmatched_columns"]
+    ]
+    assert len(sum_unmatched) == len(full_unmatched) > 0
+    assert all(c["columns"] == [] for c in summary_res.result["concepts"])
+    assert any(len(c["columns"]) > 0 for c in full_res.result["concepts"])
+    assert all(col["source_positions"] == [] for col in sum_unmatched)
+    assert all(len(col["source_positions"]) > 0 for col in full_unmatched)
+    # Bounded unmatched-column pointers stay completely intact in `summary`:
+    for s_col, f_col in zip(sum_unmatched, full_unmatched, strict=True):
+        for key in (
+            "column_index",
+            "unit_id",
+            "evidence_column_id",
+            "reflexes",
+            "set_id",
+            "unmatched_reason",
+            "resolved_by",
+        ):
+            assert s_col[key] == f_col[key]
+    sum_unmatched_bytes = len(
+        json.dumps(sum_unmatched, separators=(",", ":")).encode("utf-8")
+    )
+    full_unmatched_bytes = len(
+        json.dumps(full_unmatched, separators=(",", ":")).encode("utf-8")
+    )
+    assert sum_unmatched_bytes < full_unmatched_bytes
+
+    # Verify all 4 model-visible `stored-hypothesis` behavioural digests stay bit-for-bit invariant:
+    digests = b02_probe.behavioural_digests("stored-hypothesis", None)
+    assert (
+        digests["the evidence/assembly contract"]
+        == "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7"
+    )
+    assert (
+        digests["the agent instructions"]
+        == "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d"
+    )
+    assert (
+        digests["the node commit requirements"]
+        == "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c"
+    )
+    assert (
+        digests["the tool schemas"]
+        == "628f0f32eca43a872c7fb72c90e67b1ba3e00b9a1f9b4057e1cf702175584a72"
+    )
+
+    r04_manifest_path = (
+        ROOT / "runs/experiments/r04-stage-c-20261029-v2/manifest.stage-c.json"
+    )
+    r04_cp_path = (
+        ROOT
+        / "runs/experiments/r04-stage-c-20261029-v2/runs/c-gemini-r04/checkpoint.json"
+    )
+    if r04_manifest_path.exists() and r04_cp_path.exists():
+        monkeypatch.setenv("GEMINI_API_KEY", "offline-dummy-key")
+        r04_argv = json.loads(r04_manifest_path.read_text(encoding="utf-8"))["arm"][
+            "gemini-r04"
+        ]["argv"][3:]
+        _, recomputed_sha, _, _ = cli._provider_and_configuration(
+            cli._parser().parse_args([*r04_argv, "--no-preflight"])
+        )
+        assert (
+            recomputed_sha
+            == "339adb1338add17c78a0b5477d9c0b9dd85b64501e2be314951627861adce38a"
+        )
+
+
+def test_b02_supersedes_normalizes_defaults_and_paginated_slices(
+    tmp_path: Path,
+) -> None:
+    """Bugfix 2: `_supersedes` normalizes schema defaults and checks `[offset, offset+limit]` containment."""
+    from cognate_reconstruction.agent.orchestrator import _supersedes
+    from cognate_reconstruction.agent.schemas import SummarizeCorrespondencesArgs
+
+    # Turn 16 `limit=50, offset=0` supersedes Turn 2 `reading="recurrence"` (`offset=0, limit=30`):
+    assert _supersedes(
+        {"limit": 50, "offset": 0},
+        {"reading": "recurrence"},
+        args_model=SummarizeCorrespondencesArgs,
+    )
+    # Contained inner slice `[10, 30]` is superseded by `[0, 50]`:
+    assert _supersedes(
+        {"limit": 50, "offset": 0},
+        {"limit": 20, "offset": 10},
+        args_model=SummarizeCorrespondencesArgs,
+    )
+    # Disjoint later page `[50, 100]` and narrower page `[0, 30]` do NOT supersede `[0, 50]`:
+    assert not _supersedes(
+        {"limit": 50, "offset": 50},
+        {"limit": 50, "offset": 0},
+        args_model=SummarizeCorrespondencesArgs,
+    )
+    assert not _supersedes(
+        {"limit": 30, "offset": 0},
+        {"limit": 50, "offset": 0},
+        args_model=SummarizeCorrespondencesArgs,
+    )
+    # Changing `concept_ids` on a bounded paginated query does NOT supersede:
+    assert not _supersedes(
+        {"reading": "local", "min_support": 1, "limit": 50, "offset": 0},
+        {"concept_ids": ["1209"], "reading": "local", "min_support": 1},
+        args_model=SummarizeCorrespondencesArgs,
+    )
+
+    # End-to-end orchestrator check: Turn 2 `limit=50, offset=0` compacts Turn 1 `reading="recurrence"`!
+    payload = _build_two_level_tie_payload()
+    ctx = AgentContext(
+        node_id="maruic",
+        child_lexicons=tuple(l for l in payload.lexicons if l.variety_id in ("a", "b")),
+        aligner=LingPyAligner(),
+    )
+    traj_path = tmp_path / "supersedes_traj.jsonl"
+    observed_prompts: list[list[LLMMessage]] = []
+
+    class _PaginatedSupersedeProvider:
+        model = "scripted/paginated-supersede"
+
+        def complete(self, messages, tools, **kwargs):
+            observed_prompts.append(list(messages))
+            turn = len(observed_prompts)
+            if turn == 1:
+                call = LLMToolCall(
+                    call_id="surv-default-30",
+                    name="summarize_correspondences",
+                    arguments={"reading": "recurrence"},
+                )
+            elif turn == 2:
+                call = LLMToolCall(
+                    call_id="surv-wider-50",
+                    name="summarize_correspondences",
+                    arguments={"limit": 50, "offset": 0},
+                )
+            elif turn == 3:
+                call = LLMToolCall(
+                    call_id="prev-empty-commit",
+                    name="test_proto_assembly",
+                    arguments={"choices": [], "residue_policy": "drop"},
+                )
+            else:
+                prev_res = json.loads(messages[-1].content)["result"]
+                call = LLMToolCall(
+                    call_id="commit-now",
+                    name="commit_reconstruction",
+                    arguments={
+                        "node_id": "maruic",
+                        "hypothesis_id": prev_res["hypothesis_id"],
+                        "anomalies": [],
+                        "summary": "Done.",
+                    },
+                )
+            return LLMMessage(role=MessageRole.ASSISTANT, tool_calls=(call,))
+
+    orch = AgentOrchestrator(
+        _PaginatedSupersedeProvider(),
+        registry=default_tool_registry(inventory_protocol="stored-hypothesis"),
+        trajectory_sink=JsonlTrajectorySink(traj_path),
+        instructions=load_agent_instructions(),
+    )
+    res = orch.run(ctx)
+    assert res.trajectory.completed is True
+    assert res.trajectory.metrics.compacted_tool_results == 1
+    final_tools = {
+        m.tool_call_id: json.loads(m.content)
+        for m in observed_prompts[-1]
+        if m.role is MessageRole.TOOL
+    }
+    assert final_tools["surv-default-30"]["compacted"] is True
+    assert final_tools["surv-default-30"]["superseded_by"] == "surv-wider-50"
+    assert final_tools["surv-wider-50"]["ok"] is True
+
+
+def test_b02_watermark_compaction_skips_tiny_identity_probes_preserving_prefix_cache() -> None:
+    """Bugfix 3: `_compact_watermark_previews` never stubs tiny (`< 256 B` net savings) identity probes."""
+    payload = _build_two_level_tie_payload()
+    ctx = AgentContext(
+        node_id="maruic",
+        child_lexicons=tuple(l for l in payload.lexicons if l.variety_id in ("a", "b")),
+        aligner=LingPyAligner(),
+    )
+    observed_prompts: list[list[LLMMessage]] = []
+
+    class _TinyProbeThenRealPreviewProvider:
+        model = "scripted/tiny-probe-guard"
+
+        def complete(self, messages, tools, **kwargs):
+            observed_prompts.append(list(messages))
+            turn = len(observed_prompts)
+            if turn == 1:
+                in_tok = 100
+                call = LLMToolCall(
+                    call_id="call_tiny_identity_probe_0001",
+                    name="test_proto_assembly",
+                    arguments={
+                        "choices": [],
+                        "residue_policy": "retain_from_witness",
+                        "residue_witness_child_id": "a",
+                    },
+                )
+            elif turn == 2:
+                # Crosses watermark (`350 >= 250`) with ONLY another tiny probe (`805 B -> 873 B` negative savings):
+                # watermark_trigger_count MUST stay 0 and msg[3] MUST stay untouched!
+                in_tok = 350
+                call = LLMToolCall(
+                    call_id="call_tiny_identity_probe_0002",
+                    name="test_proto_assembly",
+                    arguments={
+                        "choices": [],
+                        "concept_ids": ["c01"],
+                        "residue_policy": "retain_from_witness",
+                        "residue_witness_child_id": "a",
+                        "detail": "full",
+                    },
+                )
+            elif turn == 3:
+                in_tok = 360
+                call = LLMToolCall(
+                    call_id="survey-local",
+                    name="summarize_correspondences",
+                    arguments={"reading": "local", "min_support": 1, "limit": 50},
+                )
+            elif turn == 4:
+                in_tok = 380
+                sets = json.loads(messages[-1].content)["result"]["sets"]
+                choices = [
+                    {
+                        "set_id": s["set_id"],
+                        "proto_segment": s["segments"][0],
+                        "confidence": 1.0,
+                        "rationale": "Substantial preview 1.",
+                        "directionality_rationale": "Retention.",
+                    }
+                    for s in sets
+                ]
+                call = LLMToolCall(
+                    call_id="prev-real-1",
+                    name="test_proto_assembly",
+                    arguments={"choices": choices, "residue_policy": "drop"},
+                )
+            elif turn == 5:
+                in_tok = 420
+                sets = next(
+                    json.loads(m.content)["result"]["sets"]
+                    for m in messages
+                    if m.role is MessageRole.TOOL and m.tool_call_id == "survey-local"
+                )
+                choices = [
+                    {
+                        "set_id": s["set_id"],
+                        "proto_segment": s["segments"][-1],
+                        "confidence": 1.0,
+                        "rationale": "Substantial preview 2 superseding prev-real-1.",
+                        "directionality_rationale": "Retention.",
+                    }
+                    for s in sets
+                ]
+                call = LLMToolCall(
+                    call_id="prev-real-2",
+                    name="test_proto_assembly",
+                    arguments={"choices": choices, "residue_policy": "drop"},
+                )
+            else:
+                in_tok = 400
+                latest_prev = json.loads(messages[-1].content)["result"]
+                call = LLMToolCall(
+                    call_id="commit-final",
+                    name="commit_reconstruction",
+                    arguments={
+                        "node_id": "maruic",
+                        "hypothesis_id": latest_prev["hypothesis_id"],
+                        "anomalies": [],
+                        "summary": "Done.",
+                    },
+                )
+            return ProviderResponse(
+                message=LLMMessage(role=MessageRole.ASSISTANT, tool_calls=(call,)),
+                metadata=ProviderResponseMetadata(
+                    provider_id="fake",
+                    model_id=self.model,
+                    usage=ProviderUsage(
+                        input_tokens=in_tok, output_tokens=50, total_tokens=in_tok + 50
+                    ),
+                ),
+            )
+
+    orch = AgentOrchestrator(
+        _TinyProbeThenRealPreviewProvider(),
+        registry=default_tool_registry(inventory_protocol="stored-hypothesis"),
+        instructions=load_agent_instructions(),
+        compaction_watermark_tokens=250,
+    )
+    res = orch.run(ctx)
+    assert res.trajectory.completed is True
+
+    # Turn 3 prompt prefix must match Turn 2 prompt prefix byte-for-byte (tiny probe 1 was NOT stubbed on Turn 2!):
+    t2_msgs = [m.model_dump(mode="json") for m in observed_prompts[1]]
+    t3_msgs = [m.model_dump(mode="json") for m in observed_prompts[2]]
+    assert t3_msgs[: len(t2_msgs)] == t2_msgs
+
+    # On the final turn, BOTH early tiny probes stayed 100% uncompacted while `prev-real-1` WAS compacted!
+    final_tools = {
+        m.tool_call_id: json.loads(m.content)
+        for m in observed_prompts[-1]
+        if m.role is MessageRole.TOOL
+    }
+    assert "compacted" not in final_tools["call_tiny_identity_probe_0001"]
+    assert final_tools["call_tiny_identity_probe_0001"]["ok"] is True
+    assert "compacted" not in final_tools["call_tiny_identity_probe_0002"]
+    assert final_tools["call_tiny_identity_probe_0002"]["ok"] is True
+    assert final_tools["prev-real-1"]["compacted"] is True
+    assert final_tools["prev-real-1"]["superseded_by"] == "prev-real-2"
+    assert orch.compaction_summary()["compacted_preview_results"] == 1
+
+
+def test_b02_cost_cap_stop_records_peak_prompt_tokens_and_audit_message_without_dispatch(
+    tmp_path: Path,
+) -> None:
+    """Bugfix 4: `RunBudgetExceeded` pre-dispatch records `peak_prompt_tokens` and `messages.audit` without executing tool calls."""
+    from cognate_reconstruction.agent.orchestrator import RunBudgetExceeded
+
+    payload = _build_two_level_tie_payload()
+    ctx = AgentContext(
+        node_id="maruic",
+        child_lexicons=tuple(l for l in payload.lexicons if l.variety_id in ("a", "b")),
+        aligner=LingPyAligner(),
+    )
+    traj_path = tmp_path / "budget_stop_trajectories.jsonl"
+    observed_prompts: list[list[LLMMessage]] = []
+
+    class _TwoTurnCapCrossingProvider:
+        model = "scripted/cap-crossing"
+
+        def complete(self, messages, tools, **kwargs):
+            observed_prompts.append(list(messages))
+            turn = len(observed_prompts)
+            if turn == 1:
+                return ProviderResponse(
+                    message=LLMMessage(
+                        role=MessageRole.ASSISTANT,
+                        tool_calls=(
+                            LLMToolCall(
+                                call_id="turn1-nodes",
+                                name="list_available_nodes",
+                                arguments={},
+                            ),
+                        ),
+                    ),
+                    metadata=ProviderResponseMetadata(
+                        provider_id="gemini",
+                        model_id=self.model,
+                        usage=ProviderUsage(
+                            input_tokens=468_811,
+                            output_tokens=500,
+                            total_tokens=469_311,
+                            cost_usd=3.24,
+                        ),
+                    ),
+                )
+            # Turn 2 crosses `$3.50` (`3.24 + 0.42 = 3.66 >= 3.50`) with `input_tokens = 483_849`!
+            return ProviderResponse(
+                message=LLMMessage(
+                    role=MessageRole.ASSISTANT,
+                    tool_calls=(
+                        LLMToolCall(
+                            call_id="turn2-aborted-preview",
+                            name="test_proto_assembly",
+                            arguments={"choices": [], "residue_policy": "drop"},
+                        ),
+                    ),
+                ),
+                metadata=ProviderResponseMetadata(
+                    provider_id="gemini",
+                    model_id=self.model,
+                    usage=ProviderUsage(
+                        input_tokens=483_849,
+                        output_tokens=14_873,
+                        total_tokens=498_722,
+                        cost_usd=0.42,
+                    ),
+                ),
+            )
+
+    orch = AgentOrchestrator(
+        _TwoTurnCapCrossingProvider(),
+        registry=default_tool_registry(inventory_protocol="stored-hypothesis"),
+        trajectory_sink=JsonlTrajectorySink(traj_path),
+        instructions=load_agent_instructions(),
+        max_total_cost_usd=3.50,
+        compaction_watermark_tokens=256_000,
+    )
+    with pytest.raises(RunBudgetExceeded):
+        orch.run(ctx)
+
+    # 1. `compaction_summary` reflects Turn 2's completed request (`483,849`), NOT lagging Turn 1 (`468,811`):
+    comp = orch.compaction_summary()
+    assert comp["peak_prompt_tokens"] == 483_849
+    assert comp["per_node"]["maruic"]["latest_prompt_tokens"] == 483_849
+    assert comp["per_node"]["maruic"]["peak_prompt_tokens"] == 483_849
+
+    # 2. Paid Turn 2 assistant message IS recorded in `trajectories.jsonl` (`messages.audit`),
+    #    while Turn 2's tool call was NEVER dispatched (`tool_call_count == 1`, `"turn2-aborted-preview"` absent from `assembly_validations`)!
+    assert "turn2-aborted-preview" not in ctx.assembly_validations
+    saved = list(TrajectoryDatasetBuilder.read_jsonl(traj_path))
+    assert len(saved) == 1
+    traj = saved[0]
+    assert traj.completed is False
+    assert traj.metrics.turn_count == 2
+    assert traj.metrics.provider_attempts == 2
+    assert traj.metrics.tool_call_count == 1
+    assert len(traj.provider_responses) == 2
+    assistant_msgs = [m for m in traj.messages if m.role is MessageRole.ASSISTANT]
+    tool_msgs = [m for m in traj.messages if m.role is MessageRole.TOOL]
+    assert len(assistant_msgs) == 2
+    assert assistant_msgs[-1].tool_calls[0].call_id == "turn2-aborted-preview"
+    assert len(tool_msgs) == 1
+    assert tool_msgs[0].tool_call_id == "turn1-nodes"
+
+
