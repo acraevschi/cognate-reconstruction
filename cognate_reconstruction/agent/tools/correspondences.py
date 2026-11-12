@@ -8,6 +8,8 @@ batch of alignments can answer.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from cognate_reconstruction.agent.context import AgentContext
 from cognate_reconstruction.agent.schemas import (
     ColumnPosition,
@@ -15,6 +17,7 @@ from cognate_reconstruction.agent.schemas import (
     SetOutgroupProfile,
     SummarizeCorrespondencesArgs,
     SummarizeCorrespondencesResult,
+    SummarizeCorrespondencesV2Args,
 )
 from cognate_reconstruction.agent.tools.errors import ToolInputError
 # The same definitions polarize uses, imported rather than reimplemented: a
@@ -276,11 +279,26 @@ def summarize_correspondences(
     context: AgentContext,
     call_id: str,  # noqa: ARG001 - uniform tool signature
 ) -> SummarizeCorrespondencesResult:
-    arguments = SummarizeCorrespondencesArgs.model_validate(raw_arguments)
+    if isinstance(raw_arguments, SummarizeCorrespondencesArgs):
+        arguments = type(raw_arguments).model_validate(raw_arguments)
+    elif isinstance(raw_arguments, Mapping) and "min_attested_children" in raw_arguments:
+        arguments = SummarizeCorrespondencesV2Args.model_validate(raw_arguments)
+    else:
+        arguments = SummarizeCorrespondencesArgs.model_validate(raw_arguments)
+    min_attested = getattr(arguments, "min_attested_children", 1)
     evidence = selected_evidence(context, arguments.scope, arguments.node_ids)
     # The requested order is the column order of every returned set, so an
     # explicit selection keeps its own order rather than the tree's.
     node_ids = arguments.node_ids or tuple(item.node_id for item in evidence)
+    if min_attested > len(node_ids):
+        raise ToolInputError(
+            f"min_attested_children={min_attested} exceeds selected node count ({len(node_ids)})",
+            code="invalid-correspondence-filter",
+            remediation=(
+                f"Set min_attested_children between 1 and {len(node_ids)} "
+                f"for compared nodes {list(node_ids)}."
+            ),
+        )
     if arguments.segment_node_id is not None and (
         arguments.segment_node_id not in node_ids
     ):
@@ -347,6 +365,7 @@ def summarize_correspondences(
         if _matches_segment(
             item, node_ids, arguments.segment, arguments.segment_node_id
         )
+        and sum(1 for seg in item.segments if seg is not None) >= min_attested
     )
     matched = tuple(item for item in filtered if item.support >= arguments.min_support)
     page = matched[arguments.offset : arguments.offset + arguments.limit]

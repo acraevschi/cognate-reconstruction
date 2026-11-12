@@ -9,11 +9,16 @@ names one exact model, the published per-token prices, where and when they
 were read and the last date they apply, and its digest joins the run's
 configuration digest.
 
-The computed cost is a deliberate upper bound. Every prompt token is charged at
-the uncached input rate, although the provider discounts cached prompt tokens:
-the cached count is recorded beside the total but not trusted to lower spend.
-Output tokens include reasoning tokens, which providers bill at the output rate
-and LiteLLM already counts inside `completion_tokens`.
+When both a response's cached prompt token count and the table's
+`cached_input_usd_per_million` rate are present, `priced_cost` charges cached
+prompt tokens at the discounted cached input rate and the remaining prompt
+tokens at `input_usd_per_million` (clamping `cached_input_tokens` defensively
+into `[0, input_tokens]`). When either is absent, `priced_cost` falls back
+conservatively to `priced_uncached_cost`, which charges every prompt token at
+the uncached input rate and also supplies 0%-cache worst-case single-response
+headroom and uncached upper-bound ledger reporting. Output tokens include
+reasoning tokens, which providers bill at the output rate and LiteLLM already
+counts inside `completion_tokens`.
 """
 
 from __future__ import annotations
@@ -37,7 +42,7 @@ class TokenPrice(WorkbenchModel):
     input_usd_per_million: float = Field(gt=0)
     output_usd_per_million: float = Field(gt=0)
     cached_input_usd_per_million: float | None = Field(default=None, gt=0)
-    """Recorded from the source; never applied (see the module note)."""
+    """Discounted input rate for cached prompt tokens when reported by the provider."""
     valid_from: date | None = None
     valid_through: date
     tier: NonEmptyStr
@@ -85,12 +90,38 @@ def price_for(table: PriceTable, model: str, today: date) -> TokenPrice:
     return price
 
 
-def priced_cost(price: TokenPrice, input_tokens: int | None, output_tokens: int | None) -> float | None:
-    """Upper-bound cost of one response, or None when either count is unknown."""
+def priced_uncached_cost(
+    price: TokenPrice,
+    input_tokens: int | None,
+    output_tokens: int | None,
+) -> float | None:
+    """0%-cache upper-bound cost of one response, or None when either count is unknown."""
     if input_tokens is None or output_tokens is None:
         return None
-    return (input_tokens * price.input_usd_per_million
-            + output_tokens * price.output_usd_per_million) / 1_000_000
+    return (
+        input_tokens * price.input_usd_per_million
+        + output_tokens * price.output_usd_per_million
+    ) / 1_000_000
+
+
+def priced_cost(
+    price: TokenPrice,
+    input_tokens: int | None,
+    output_tokens: int | None,
+    cached_input_tokens: int | None = None,
+) -> float | None:
+    """Cost of one response (cached-adjusted when both cached count and rate exist), or None."""
+    if input_tokens is None or output_tokens is None:
+        return None
+    if cached_input_tokens is not None and price.cached_input_usd_per_million is not None:
+        cached = min(max(0, cached_input_tokens), max(0, input_tokens))
+        uncached = max(0, input_tokens - cached)
+        return (
+            uncached * price.input_usd_per_million
+            + cached * price.cached_input_usd_per_million
+            + output_tokens * price.output_usd_per_million
+        ) / 1_000_000
+    return priced_uncached_cost(price, input_tokens, output_tokens)
 
 
 def price_setting(price: TokenPrice, table_sha256: str) -> dict:

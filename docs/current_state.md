@@ -486,6 +486,59 @@ gate (`--stop-after-node maruic --max-total-cost-usd 3.50 --max-run-seconds 1500
      cap at `80.92%` cache hit (two of the four pre-R01 `maruic` seeds also
      exceeded `US$3.50` uncached: `US$4.1120` and `US$3.9012`).
 
+## B03 offline units-v2 scaling, cached pricing, and 48k Flash prep — completed 2026-11-12
+
+`B03` (strictly offline, `US$0.00` spend, `0` live model calls; tests
+[`tests/workbench/test_b03_protocol_scaling.py`](../tests/workbench/test_b03_protocol_scaling.py),
+[`tests/workbench/test_b03_context_and_survey.py`](../tests/workbench/test_b03_context_and_survey.py),
+[`tests/workbench/test_price_table.py`](../tests/workbench/test_price_table.py);
+independent review `runs/experiments/b04-burmish-gemini-b03-benchmark/review.md`)
+resolved all three `B02` scaling and cost-accounting bottlenecks while keeping
+every historical `stored-hypothesis` v1 digest (`b1f459e7…`, `0b9d91cf…`,
+`1ddfc0fc…`, `628f0f32…`), `c-gemini-r04` (`339adb13…`), and `b02-burmish-gemini`
+(`89a49065…`) bit-for-bit invariant:
+
+- **Incremental patching via `--inventory-protocol stored-hypothesis-v2`:**
+  [`stored_hypothesis.py`](../cognate_reconstruction/agent/tools/stored_hypothesis.py)
+  adds `StoredAssemblyV2Args` (`base_hypothesis_id`, `drop_set_ids`,
+  `drop_pattern_ids`), inheriting prior overlays/orders/residue/claims,
+  automatically superseding earlier smoke-test local `choices` when promoted
+  into `shared_claims`, and allowing 1-set local `choices` exception carving out
+  of `shared_claims` (`132 B` for a 2-set drop vs `21,276 B` monolithic JSON on
+  `B02` Turn 21, `-99.38%`; `2,321 B` for a `commit_ready=True` rationale patch,
+  `-89.09%`; `0` dropped properties through LiteLLM's Gemini tool converter).
+- **True within-child merger scoping (`inventory_contrast_reductions`):**
+  [`assembler.py`](../cognate_reconstruction/traversal/assembler.py) requires
+  `directionality_rationale` on unconditioned sets sharing a `proto_segment`
+  only for genuine within-child segmental/tonal mergers (`>= 2` distinct
+  non-`None` reflexes in an active child) or non-co-attested disjoint mergers
+  (plus deletions), eliminating false-positive blocks on partial-attestation
+  `cog:*` compound columns (`346 -> 35` sets [`-89.88%`] on `B02` Turn 21,
+  confined to `*k`, `*²¹`, `*⁵⁵`).
+- **Multi-daughter survey filtering & watermark read-only compaction:**
+  `SummarizeCorrespondencesV2Args` adds `min_attested_children` (`>= 1`),
+  reducing `maruic` `support >= 2` recurrence patterns from `113 -> 46`
+  (`-59.29%`, dropping all `67` 1-daughter compound/affix singletons) and
+  surfacing all `24` `support == 1` multi-daughter creaky-vowel (`V̱`)
+  correspondences under `min_support=1, min_attested_children=2`. Above
+  `compaction_watermark_tokens`, `_compact_watermark_read_only` in
+  [`orchestrator.py`](../cognate_reconstruction/agent/orchestrator.py) stubs
+  older `summarize_correspondences`, `get_alignments`, and `search_forms` pages
+  (`>= 1,024 B` savings, keeping the `2` newest results per tool verbatim and
+  allowing clean re-recall without `repeat_guard` blocking).
+- **Certified cached-input `priced_cost`, `48k` (`49,152`) Flash output cap, & `B04` freeze:**
+  [`pricing.py`](../cognate_reconstruction/agent/providers/pricing.py) and
+  [`litellm_provider.py`](../cognate_reconstruction/agent/providers/litellm_provider.py)
+  discount certified `cached_input_tokens` at `cached_input_usd_per_million`
+  (`US$1.236806` across `B02` Stage 1's 22 turns vs `US$3.6591585`
+  `priced_uncached_cost`, corroborated against `1.18 CHF` actual November
+  billing) while recording both figures in `batch_ledger.json`. `B04` candidate
+  bundles (`max_tokens = 49152` [`48k`], `US$0.970752` `0%`-cache 1-response
+  headroom) are frozen for both `burmish.json` (`US$2.50 -> US$6.50` cap,
+  `US$7.470752 <= US$10.00` ceiling) and `polynesian.json` (`US$2.00 -> US$6.00`
+  cap, `US$6.970752 <= US$10.00` ceiling). Portable suite: **`903 passed, 41
+  deselected`** (`PASS`, `0` defects).
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.
@@ -773,18 +826,18 @@ benchmarking**:
    containment, `MIN_PREVIEW_COMPACTION_SAVINGS_BYTES = 256` prefix-cache guard,
    and pre-dispatch `RunBudgetExceeded` peak-token/audit flush; `887 passed, 41
    deselected`), and published [B02 report](research/real_family_benchmark_burmish.md).
-3. **Recommended next sequence (`B03` -> `polynesian.json` -> `burmish.json`):**
-   - **`B03` (offline `$0` scaling & cost-cap package):** Add incremental/patch
-     `stored-hypothesis` assembly updates (`base_hypothesis_id`), refine
-     `inventory_contrast_reductions` so unanimous and 1-daughter boundary
-     retentions do not require hundreds of directionality rationales, compact
-     older disjoint read-only survey pages above the watermark, surface
-     multi-daughter `support == 1` phonation/creaky-register patterns separately
-     from 1-daughter compound singletons, and support verified-cached cost-cap
-     enforcement.
-   - **Live `benchmarks/polynesian.json` (`gemini/gemini-3.8-flash` + `96k`-watermark local `qwen3.8-27b-splash`):**
-     Test 5-level post-order propagation (`7` internal nodes, simplex lexicon,
-     `46k–93k` measured prompt peaks fitting within `96k`/`128k`) and `$0`
-     `None` vs `0.5` counterfactual tied-beam replay end-to-end.
-   - **Re-benchmark `benchmarks/burmish.json`** after `B03` brings `maruic` and
-     `burmic` context and output footprints within compact single-node bounds.
+3. **`B03` (offline `units-v2` scaling, cached pricing, & `48k` Flash prep — completed 2026-11-12):**
+   Implemented `--inventory-protocol stored-hypothesis-v2` (`base_hypothesis_id`
+   incremental patching, `min_attested_children`), true-merger scoping in
+   `inventory_contrast_reductions` (`346 -> 35` sets on `maruic`), watermark
+   read-only page compaction, cached-aware `priced_cost`, `max_tokens = 49152`
+   (`48k`), and frozen `B04` candidate bundles (`903 passed, 41 deselected`).
+4. **`B04` (`prompts/03-real-family-b04-live-benchmark.md`, live benchmark — ready to launch):**
+   Run `gemini/gemini-3.8-flash` (`medium` thinking, `max_tokens = 49152`,
+   `--inventory-protocol stored-hypothesis-v2`, `--compaction-watermark-tokens
+   256000`, `--tied-confidence-threshold 0.5`) on `benchmarks/burmish.json`
+   (tones 100% intact; `US$2.50` `maruic` gate -> `US$6.50` cumulative cap,
+   `US$7.470752 <= US$10.00` ceiling), with pre-frozen
+   `benchmarks/polynesian.json` (`US$2.00` `tongic` gate -> `US$6.00` cumulative
+   cap) ready as companion/follow-up, plus local `qwen3.8-27b-splash` (`96k`
+   watermark) transfer evaluation.

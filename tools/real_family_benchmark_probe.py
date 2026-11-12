@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""B02 real-family benchmark driver: candidate freeze, staged gate, resume & evaluation.
+"""Real-family benchmark driver (`B02` / `B04`): freeze, staged gate, resume & evaluation.
 
-Wraps the single-checkpoint two-stage Burmish live benchmark workflow (`B02`):
-  - `freeze`: writes `inputs/{price-table.json,provider-config.json,burmish.payload.json}`,
-    `source_manifest.json`, and `manifest.b02-burmish.json` (with all tones 100% intact).
-  - `run-stage1`: launches `cli.py infer --stop-after-node maruic` (`$3.50` / `1500s`).
-  - `gate-stage1`: runs `$0` `inspect_run` + `audit_run_directory` on `maruic` and writes
-    `<run_dir>/gate_stage1.json`.
+Supports both `B02` (`stored-hypothesis`, `max_tokens=32768`, uncached caps) and `B04`
+(`stored-hypothesis-v2`, `max_tokens=49152` [`48k`], cached-aware caps) across `burmish`
+(`benchmarks/burmish.json`, gate node `maruic`, tones 100% intact) and `polynesian`
+(`benchmarks/polynesian.json`, gate node `tongic`, 7 internal nodes):
+  - `freeze`: writes `inputs/{price-table.json,provider-config.json,<family>.payload.json}`,
+    `source_manifest.json`, and `manifest.<stage>-<family>.json`.
+  - `run-stage1`: launches `cli.py infer --stop-after-node <gate_node_id>`.
+  - `gate-stage1`: runs `$0` `inspect_run` + `audit_run_directory` on `<gate_node_id>` and
+    writes `<run_dir>/gate_stage1.json`.
   - `run-stage2-resume`: verifies `gate_stage1.json` (`usable == True`) and resumes the
-    exact same checkpoint directory (`--resume`) with cumulative caps `$8.50` / `3600s`
-    (`8.50 + 0.909312 = US$9.409312 <= US$10.00` worst-case upper bound).
+    exact same checkpoint directory (`--resume`) under cumulative stage-2 caps.
   - `evaluate`: runs `$0` `audit_run_directory`, official `task02-v1` + `task04-units-v1`
     full-form evaluation, `R06` full-form `compute_corpus_contrast_equivalence`
-    (`corpus_bcubed_f1`, `is_bijective_relabelling`, tones 100% intact), `$0` offline
-    counterfactual assembly replay (`tied_confidence_threshold = None` vs `0.5`), and
-    certified `batch_ledger.json` via `read_run_resources` (reporting both uncached table
-    upper-bound cost and cached-adjusted USD cost).
+    (`corpus_bcubed_f1`, `is_bijective_relabelling`), `$0` offline counterfactual assembly
+    replay (`tied_confidence_threshold = None` vs `0.5`), and certified `batch_ledger.json`
+    via `read_run_resources` (reporting both token-derived uncached upper-bound cost and
+    cached-adjusted USD cost).
 """
 from __future__ import annotations
 
@@ -28,6 +30,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Any
@@ -39,7 +42,11 @@ except ModuleNotFoundError:
 
 from cognate_reconstruction.agent.instructions import load_agent_instructions
 from cognate_reconstruction.agent.orchestrator import AgentOrchestrator
-from cognate_reconstruction.agent.providers.pricing import load_price_table, price_for
+from cognate_reconstruction.agent.providers.pricing import (
+    load_price_table,
+    price_for,
+    priced_uncached_cost,
+)
 from cognate_reconstruction.agent.reconstructor import AgenticNodeReconstructor
 from cognate_reconstruction.agent.schemas import (
     LLMMessage,
@@ -81,6 +88,7 @@ from cognate_reconstruction.tree import assign_node_ids, parse_newick, postorder
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_EXPERIMENT_DIR = ROOT / "runs/experiments/b02-burmish-gemini-benchmark"
 BURMISH_DEFINITION = ROOT / "benchmarks/burmish.json"
+POLYNESIAN_DEFINITION = ROOT / "benchmarks/polynesian.json"
 GEMINI_PRICE_TABLE = ROOT / "examples/pricing/gemini-3.8-flash.price-table.json"
 
 LOCAL_ONLY = (
@@ -89,7 +97,14 @@ LOCAL_ONLY = (
     "tests/fixtures/failure_audit/",
 )
 
+SUPPORTED_STAGES = ("B02", "B04")
+SUPPORTED_FAMILIES = ("burmish", "polynesian")
+SUPPORTED_PROTOCOLS = ("stored-hypothesis", "stored-hypothesis-v2")
+B02_DEFAULT_PROTOCOL = "stored-hypothesis"
+B04_DEFAULT_PROTOCOL = "stored-hypothesis-v2"
+
 ARM_NAME = "burmish-gemini"
+POLYNESIAN_ARM_NAME = "polynesian-gemini"
 RUN_ID = "b02-burmish-gemini"
 MODEL = "gemini-3.8-flash"
 PRESET = "gemini"
@@ -98,6 +113,7 @@ REASONING_EFFORT = "medium"
 TEMPERATURE = 1.0
 TIMEOUT_SECONDS = 300
 MAX_OUTPUT_TOKENS = 32_768
+B04_MAX_OUTPUT_TOKENS = 49_152
 CONTEXT_LIMIT_TOKENS = 1_048_576
 TIED_CONFIDENCE_THRESHOLD = 0.5
 COMPACTION_WATERMARK_TOKENS = 256_000
@@ -105,8 +121,12 @@ LOCAL_QWEN_WATERMARK_TOKENS = 96_000
 MAX_TURNS = 36
 MAX_TOOL_CALLS = 64
 MAX_TOTAL_TURNS = 108
+POLYNESIAN_INTERNAL_NODE_COUNT = 7
+POLYNESIAN_MAX_TOTAL_TURNS = MAX_TURNS * POLYNESIAN_INTERNAL_NODE_COUNT
 BEAM_WIDTH = 5
 GATE_NODE_ID = "maruic"
+BURMISH_GATE_NODE_ID = "maruic"
+POLYNESIAN_GATE_NODE_ID = "tongic"
 
 STAGE1_CAPS = {
     "stop_after_node": GATE_NODE_ID,
@@ -122,6 +142,38 @@ STAGE2_CUMULATIVE_CAPS = {
     "max_tool_calls": MAX_TOOL_CALLS,
     "max_run_seconds": 3600.0,
     "max_total_cost_usd": 8.50,
+}
+
+B04_BURMISH_STAGE1_CAPS = {
+    "stop_after_node": BURMISH_GATE_NODE_ID,
+    "max_turns": MAX_TURNS,
+    "max_tool_calls": MAX_TOOL_CALLS,
+    "max_run_seconds": 1500.0,
+    "max_total_cost_usd": 2.50,
+}
+
+B04_BURMISH_STAGE2_CUMULATIVE_CAPS = {
+    "stop_after_node": None,
+    "max_turns": MAX_TURNS,
+    "max_tool_calls": MAX_TOOL_CALLS,
+    "max_run_seconds": 3600.0,
+    "max_total_cost_usd": 6.50,
+}
+
+POLYNESIAN_STAGE1_CAPS = {
+    "stop_after_node": POLYNESIAN_GATE_NODE_ID,
+    "max_turns": MAX_TURNS,
+    "max_tool_calls": MAX_TOOL_CALLS,
+    "max_run_seconds": 1200.0,
+    "max_total_cost_usd": 2.00,
+}
+
+POLYNESIAN_STAGE2_CUMULATIVE_CAPS = {
+    "stop_after_node": None,
+    "max_turns": MAX_TURNS,
+    "max_tool_calls": MAX_TOOL_CALLS,
+    "max_run_seconds": 3600.0,
+    "max_total_cost_usd": 6.00,
 }
 
 HARD_COST_CEILING_USD = 10.00
@@ -499,6 +551,96 @@ PRE_R01_BANKED_SWEEPS: dict[str, Any] = {
 }
 
 
+POLYNESIAN_DATASET_SUMMARY: dict[str, Any] = {
+    "definition_path": "benchmarks/polynesian.json",
+    "definition_sha256": "ad2c8648c1408c5a52272d02d7fd63421354e49fabb95533ab1dd63384e41fb1",
+    "normalized_tree_newick": (
+        "(('walworthpolynesian:Tongan','walworthpolynesian:Niuean')tongic,"
+        "('walworthpolynesian:Samoan',('walworthpolynesian:EastFutuna','walworthpolynesian:EastUvea')futunic,"
+        "(('walworthpolynesian:Hawaiian','walworthpolynesian:NorthMarquesan')marquesic,"
+        "('walworthpolynesian:Maori','walworthpolynesian:Tahitian','walworthpolynesian:Rarotongan')tahitic)"
+        "central_eastern)nuclear_polynesian)proto_polynesian;"
+    ),
+    "normalized_tree_sha256": "7f17a4852c01afd3f943c67b9cd8889f2c22d92fce298f6aea9596cc70413559",
+    "tones_policy": "not_applicable_non_tonal_family",
+    "postorder_internal_nodes": [
+        {
+            "node_id": "tongic",
+            "children": ["walworthpolynesian:Tongan", "walworthpolynesian:Niuean"],
+            "leaf_count": 2,
+            "target_binding": None,
+        },
+        {
+            "node_id": "futunic",
+            "children": ["walworthpolynesian:EastFutuna", "walworthpolynesian:EastUvea"],
+            "leaf_count": 2,
+            "target_binding": None,
+        },
+        {
+            "node_id": "marquesic",
+            "children": ["walworthpolynesian:Hawaiian", "walworthpolynesian:NorthMarquesan"],
+            "leaf_count": 2,
+            "target_binding": None,
+        },
+        {
+            "node_id": "tahitic",
+            "children": [
+                "walworthpolynesian:Maori",
+                "walworthpolynesian:Tahitian",
+                "walworthpolynesian:Rarotongan",
+            ],
+            "leaf_count": 3,
+            "target_binding": None,
+        },
+        {
+            "node_id": "central_eastern",
+            "children": ["marquesic", "tahitic"],
+            "leaf_count": 5,
+            "target_binding": None,
+        },
+        {
+            "node_id": "nuclear_polynesian",
+            "children": ["walworthpolynesian:Samoan", "futunic", "central_eastern"],
+            "leaf_count": 8,
+            "target_binding": None,
+        },
+        {
+            "node_id": "proto_polynesian",
+            "children": ["tongic", "nuclear_polynesian"],
+            "leaf_count": 10,
+            "target_binding": {
+                "source_variety_id": "walworthpolynesian:Polynesian",
+                "gold_evidence_kind": "reconstructed",
+                "target_validity": None,
+                "concept_count": 46,
+                "form_count": 50,
+                "multi_variant_concept_count": 2,
+            },
+        },
+    ],
+}
+
+
+@dataclass(frozen=True)
+class BenchmarkProfile:
+    stage: str
+    family: str
+    protocol: str
+    max_output_tokens: int
+    arm_name: str
+    run_id: str
+    gate_node_id: str
+    payload_filename: str
+    default_definition: Path
+    max_total_turns: int
+    stage1_caps: dict[str, Any]
+    stage2_caps: dict[str, Any]
+    expected_stage1_cached_range: tuple[float, float]
+    expected_stage2_cached_range: tuple[float, float]
+    tones_required: bool
+    manifest_filename: str
+
+
 def _hash_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -511,8 +653,209 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def default_run_dir(experiment_dir: Path) -> Path:
-    return experiment_dir / "runs" / ARM_NAME
+def _load_instructions(protocol: str = B02_DEFAULT_PROTOCOL) -> str:
+    try:
+        return load_agent_instructions(inventory_protocol=protocol)
+    except TypeError:
+        return load_agent_instructions()
+
+
+def postorder_internal_node_ids(payload: WorkbenchPayload) -> tuple[str, ...]:
+    """Return internal node IDs in exact post-order traversal order (`parse_newick` + `postorder_groups`)."""
+    dataset = ingest_payload(payload)
+    root = parse_newick(dataset.tree.newick)
+    ids = assign_node_ids(root)
+    return tuple(ids[id(parent)] for _, parent in postorder_groups(root))
+
+
+def _find_frozen_manifest(
+    experiment_dir: Path,
+    *,
+    stage: str | None = None,
+    family: str | None = None,
+) -> dict[str, Any] | None:
+    if not experiment_dir.is_dir():
+        return None
+    candidates = sorted(experiment_dir.glob("manifest.*.json"))
+    if not candidates:
+        return None
+    if stage and family:
+        exact = experiment_dir / f"manifest.{stage.lower()}-{family.lower()}.json"
+        if exact.is_file():
+            candidates = [exact]
+    elif family:
+        fam_matches = [p for p in candidates if f"-{family.lower()}.json" in p.name.lower()]
+        if fam_matches:
+            candidates = fam_matches
+    elif stage:
+        stg_matches = [p for p in candidates if f"manifest.{stage.lower()}-" in p.name.lower()]
+        if stg_matches:
+            candidates = stg_matches
+    for path in candidates:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return None
+
+
+def _infer_family_from_manifest(manifest: Mapping[str, Any] | None) -> str | None:
+    if not isinstance(manifest, Mapping):
+        return None
+    explicit = manifest.get("family")
+    if isinstance(explicit, str) and explicit.lower() in SUPPORTED_FAMILIES:
+        return explicit.lower()
+    arm_map = manifest.get("arm")
+    if isinstance(arm_map, Mapping):
+        if POLYNESIAN_ARM_NAME in arm_map:
+            return "polynesian"
+        if ARM_NAME in arm_map:
+            return "burmish"
+    defn = str(manifest.get("definition") or "").lower()
+    if "polynesian" in defn:
+        return "polynesian"
+    if "burmish" in defn:
+        return "burmish"
+    return None
+
+
+def resolve_benchmark_profile(
+    experiment_dir: Path = DEFAULT_EXPERIMENT_DIR,
+    *,
+    stage: str | None = None,
+    family: str | None = None,
+    protocol: str | None = None,
+    max_output_tokens: int | None = None,
+    definition: str | Path | None = None,
+    ignore_frozen_manifest: bool = False,
+) -> BenchmarkProfile:
+    """Resolve stage (`B02`/`B04`), family (`burmish`/`polynesian`), protocol, and caps."""
+    manifest = (
+        None
+        if ignore_frozen_manifest
+        else _find_frozen_manifest(experiment_dir, stage=stage, family=family)
+    )
+
+    if stage is not None:
+        resolved_stage = stage.upper()
+    elif isinstance(manifest, Mapping) and str(manifest.get("stage", "")).upper() in SUPPORTED_STAGES:
+        resolved_stage = str(manifest["stage"]).upper()
+    elif experiment_dir.name.lower().startswith("b04-"):
+        resolved_stage = "B04"
+    else:
+        resolved_stage = "B02"
+    if resolved_stage not in SUPPORTED_STAGES:
+        raise ValueError(f"Unsupported stage {stage!r}; expected one of {SUPPORTED_STAGES}")
+
+    manifest_family = _infer_family_from_manifest(manifest)
+    if family is not None:
+        resolved_family = family.lower()
+    elif manifest_family is not None:
+        resolved_family = manifest_family
+    elif definition is not None and "polynesian" in Path(definition).name.lower():
+        resolved_family = "polynesian"
+    elif (
+        (experiment_dir / "inputs" / "polynesian.payload.json").is_file()
+        and not (experiment_dir / "inputs" / "burmish.payload.json").is_file()
+    ):
+        resolved_family = "polynesian"
+    elif "polynesian" in experiment_dir.name.lower():
+        resolved_family = "polynesian"
+    else:
+        resolved_family = "burmish"
+    if resolved_family not in SUPPORTED_FAMILIES:
+        raise ValueError(f"Unsupported family {family!r}; expected one of {SUPPORTED_FAMILIES}")
+
+    if protocol is not None:
+        resolved_protocol = protocol
+    elif isinstance(manifest, Mapping) and manifest.get("native_profile") in SUPPORTED_PROTOCOLS:
+        resolved_protocol = str(manifest["native_profile"])
+    elif resolved_stage == "B04":
+        resolved_protocol = B04_DEFAULT_PROTOCOL
+    else:
+        resolved_protocol = B02_DEFAULT_PROTOCOL
+    if resolved_protocol not in SUPPORTED_PROTOCOLS:
+        raise ValueError(f"Unsupported protocol {protocol!r}; expected one of {SUPPORTED_PROTOCOLS}")
+
+    arm_name = POLYNESIAN_ARM_NAME if resolved_family == "polynesian" else ARM_NAME
+    manifest_arm = (
+        (manifest.get("arm") or {}).get(arm_name)
+        if isinstance(manifest, Mapping) and isinstance(manifest.get("arm"), Mapping)
+        else None
+    )
+    if max_output_tokens is not None:
+        resolved_max_output = int(max_output_tokens)
+    elif isinstance(manifest_arm, Mapping) and isinstance(manifest_arm.get("max_output_tokens"), int):
+        resolved_max_output = int(manifest_arm["max_output_tokens"])
+    elif resolved_stage == "B04":
+        resolved_max_output = B04_MAX_OUTPUT_TOKENS
+    else:
+        resolved_max_output = MAX_OUTPUT_TOKENS
+    if resolved_max_output <= 0:
+        raise ValueError(f"max_output_tokens must be positive, got {resolved_max_output}")
+
+    run_id = (
+        str(manifest_arm["run_id"])
+        if isinstance(manifest_arm, Mapping) and isinstance(manifest_arm.get("run_id"), str)
+        else f"{resolved_stage.lower()}-{resolved_family}-gemini"
+    )
+    if resolved_family == "polynesian":
+        gate_node_id = POLYNESIAN_GATE_NODE_ID
+        payload_filename = "polynesian.payload.json"
+        default_definition = POLYNESIAN_DEFINITION
+        max_total_turns = POLYNESIAN_MAX_TOTAL_TURNS
+        stage1_caps = dict(POLYNESIAN_STAGE1_CAPS)
+        stage2_caps = dict(POLYNESIAN_STAGE2_CUMULATIVE_CAPS)
+        expected_s1_range = (0.35, 0.90)
+        expected_s2_range = (1.50, 3.50)
+        tones_required = False
+    else:
+        gate_node_id = BURMISH_GATE_NODE_ID
+        payload_filename = "burmish.payload.json"
+        default_definition = BURMISH_DEFINITION
+        max_total_turns = MAX_TOTAL_TURNS
+        if resolved_stage == "B04":
+            stage1_caps = dict(B04_BURMISH_STAGE1_CAPS)
+            stage2_caps = dict(B04_BURMISH_STAGE2_CUMULATIVE_CAPS)
+            expected_s1_range = (0.60, 1.50)
+            expected_s2_range = (2.00, 4.50)
+        else:
+            stage1_caps = dict(STAGE1_CAPS)
+            stage2_caps = dict(STAGE2_CUMULATIVE_CAPS)
+            expected_s1_range = (0.50, 0.90)
+            expected_s2_range = (1.80, 2.80)
+        tones_required = True
+
+    return BenchmarkProfile(
+        stage=resolved_stage,
+        family=resolved_family,
+        protocol=resolved_protocol,
+        max_output_tokens=resolved_max_output,
+        arm_name=arm_name,
+        run_id=run_id,
+        gate_node_id=gate_node_id,
+        payload_filename=payload_filename,
+        default_definition=default_definition,
+        max_total_turns=max_total_turns,
+        stage1_caps=stage1_caps,
+        stage2_caps=stage2_caps,
+        expected_stage1_cached_range=expected_s1_range,
+        expected_stage2_cached_range=expected_s2_range,
+        tones_required=tones_required,
+        manifest_filename=f"manifest.{resolved_stage.lower()}-{resolved_family}.json",
+    )
+
+
+def default_run_dir(
+    experiment_dir: Path,
+    *,
+    stage: str | None = None,
+    family: str | None = None,
+) -> Path:
+    profile = resolve_benchmark_profile(experiment_dir, stage=stage, family=family)
+    return experiment_dir / "runs" / profile.arm_name
 
 
 def _has_tone_tokens(payload: WorkbenchPayload) -> bool:
@@ -527,14 +870,16 @@ def load_benchmark_payload(
     source: str | Path | None = None,
     *,
     experiment_dir: Path = DEFAULT_EXPERIMENT_DIR,
+    family: str | None = None,
 ) -> tuple[WorkbenchPayload, Path, str]:
     """Load or build a benchmark `WorkbenchPayload` without altering tone tokens."""
     if source is None:
-        frozen_payload = experiment_dir / "inputs" / "burmish.payload.json"
+        profile = resolve_benchmark_profile(experiment_dir, family=family)
+        frozen_payload = experiment_dir / "inputs" / profile.payload_filename
         if frozen_payload.exists():
             text = frozen_payload.read_text(encoding="utf-8")
             return WorkbenchPayload.model_validate_json(text), frozen_payload, _hash_text(text)
-        source = BURMISH_DEFINITION
+        source = profile.default_definition
 
     candidate = Path(source)
     if not candidate.exists() and isinstance(source, str) and not source.endswith(".json"):
@@ -611,6 +956,9 @@ def first_node_prompt(
     """Digest of the exact first request a session at `node_id` receives (`$0` scripted peek)."""
     captured: dict[str, dict[str, Any]] = {}
 
+    class _PromptCaptured(Exception):
+        pass
+
     class _PeekProvider:
         model = "scripted/b02-peek"
 
@@ -627,6 +975,7 @@ def first_node_prompt(
                     ),
                     "node_prompt_chars": len(prompt),
                 }
+                raise _PromptCaptured
             return LLMMessage(
                 role=MessageRole.ASSISTANT,
                 tool_calls=(
@@ -671,11 +1020,10 @@ def resource_bound(
     max_turns_total: int,
     price,
     expected_cached_usd_range: Sequence[float],
+    max_output_tokens: int = MAX_OUTPUT_TOKENS,
 ) -> dict[str, Any]:
-    headroom = (
-        CONTEXT_LIMIT_TOKENS * price.input_usd_per_million
-        + MAX_OUTPUT_TOKENS * price.output_usd_per_million
-    ) / 1_000_000
+    headroom = priced_uncached_cost(price, CONTEXT_LIMIT_TOKENS, max_output_tokens)
+    assert headroom is not None
     worst = cost_cap_usd + headroom
     return {
         "paid": True,
@@ -683,14 +1031,14 @@ def resource_bound(
         "one_response_headroom_usd": round(headroom, 6),
         "headroom_basis": (
             f"{CONTEXT_LIMIT_TOKENS} input tokens (context limit) and "
-            f"{MAX_OUTPUT_TOKENS} output tokens at the uncached table price"
+            f"{max_output_tokens} output tokens at the uncached table price"
         ),
         "worst_case_upper_bound_usd": round(worst, 6),
         "cost_reservation_usd": round(worst + 0.005, 2),
         "within_10_usd_hard_ceiling": worst <= HARD_COST_CEILING_USD,
         "expected_cached_spend_usd_range": list(expected_cached_usd_range),
         "max_turns_total": max_turns_total,
-        "worst_case_output_tokens": max_turns_total * MAX_OUTPUT_TOKENS,
+        "worst_case_output_tokens": max_turns_total * max_output_tokens,
         "max_run_seconds": max_run_seconds,
         "wall_reservation_seconds": max_run_seconds + WALL_OVERHEAD_SECONDS,
     }
@@ -700,8 +1048,10 @@ def _common_semantic_infer_flags(
     inputs_dir: Path,
     *,
     payload_path: Path | None = None,
+    inventory_protocol: str = B02_DEFAULT_PROTOCOL,
+    payload_filename: str = "burmish.payload.json",
 ) -> list[str]:
-    resolved_payload = payload_path or (inputs_dir / "burmish.payload.json")
+    resolved_payload = payload_path or (inputs_dir / payload_filename)
     return [
         "--input",
         str(resolved_payload),
@@ -716,7 +1066,7 @@ def _common_semantic_infer_flags(
         "--provider-config",
         str(inputs_dir / "provider-config.json"),
         "--inventory-protocol",
-        "stored-hypothesis",
+        inventory_protocol,
         "--tied-confidence-threshold",
         str(TIED_CONFIDENCE_THRESHOLD),
         "--compaction-watermark-tokens",
@@ -745,16 +1095,34 @@ def stage1_argv(
     payload_path: Path | None = None,
     python_executable: str = "{python}",
     extra_args: Sequence[str] = (),
+    stage: str | None = None,
+    family: str | None = None,
+    protocol: str | None = None,
+    max_output_tokens: int | None = None,
 ) -> list[str]:
     experiment_dir = experiment_dir.resolve()
+    profile = resolve_benchmark_profile(
+        experiment_dir,
+        stage=stage,
+        family=family,
+        protocol=protocol,
+        max_output_tokens=max_output_tokens,
+    )
     inputs_dir = experiment_dir / "inputs"
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
     return [
         python_executable,
         "-m",
         "cognate_reconstruction.cli",
         "infer",
-        *_common_semantic_infer_flags(inputs_dir, payload_path=payload_path),
+        *_common_semantic_infer_flags(
+            inputs_dir,
+            payload_path=payload_path,
+            inventory_protocol=profile.protocol,
+            payload_filename=profile.payload_filename,
+        ),
         "--output",
         str(target_run / "result.json"),
         "--trajectories",
@@ -764,13 +1132,13 @@ def stage1_argv(
         "--checkpoint",
         str(target_run / "checkpoint.json"),
         "--run-id",
-        RUN_ID,
+        profile.run_id,
         "--stop-after-node",
-        GATE_NODE_ID,
+        profile.gate_node_id,
         "--max-total-cost-usd",
-        f"{STAGE1_CAPS['max_total_cost_usd']:.2f}",
+        f"{profile.stage1_caps['max_total_cost_usd']:.2f}",
         "--max-run-seconds",
-        str(int(STAGE1_CAPS["max_run_seconds"])),
+        str(int(profile.stage1_caps["max_run_seconds"])),
         "--quiet",
         *extra_args,
     ]
@@ -783,16 +1151,34 @@ def stage2_resume_argv(
     payload_path: Path | None = None,
     python_executable: str = "{python}",
     extra_args: Sequence[str] = (),
+    stage: str | None = None,
+    family: str | None = None,
+    protocol: str | None = None,
+    max_output_tokens: int | None = None,
 ) -> list[str]:
     experiment_dir = experiment_dir.resolve()
+    profile = resolve_benchmark_profile(
+        experiment_dir,
+        stage=stage,
+        family=family,
+        protocol=protocol,
+        max_output_tokens=max_output_tokens,
+    )
     inputs_dir = experiment_dir / "inputs"
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
     return [
         python_executable,
         "-m",
         "cognate_reconstruction.cli",
         "infer",
-        *_common_semantic_infer_flags(inputs_dir, payload_path=payload_path),
+        *_common_semantic_infer_flags(
+            inputs_dir,
+            payload_path=payload_path,
+            inventory_protocol=profile.protocol,
+            payload_filename=profile.payload_filename,
+        ),
         "--output",
         str(target_run / "result.json"),
         "--trajectories",
@@ -803,9 +1189,9 @@ def stage2_resume_argv(
         str(target_run / "checkpoint.json"),
         "--resume",
         "--max-total-cost-usd",
-        f"{STAGE2_CUMULATIVE_CAPS['max_total_cost_usd']:.2f}",
+        f"{profile.stage2_caps['max_total_cost_usd']:.2f}",
         "--max-run-seconds",
-        str(int(STAGE2_CUMULATIVE_CAPS["max_run_seconds"])),
+        str(int(profile.stage2_caps["max_run_seconds"])),
         "--quiet",
         *extra_args,
     ]
@@ -886,24 +1272,50 @@ def _collect_banked_critic_baselines(burmish_payload: WorkbenchPayload) -> dict[
 def freeze(
     experiment_dir: Path = DEFAULT_EXPERIMENT_DIR,
     *,
-    definition: Path = BURMISH_DEFINITION,
+    definition: Path | None = None,
+    stage: str | None = None,
+    family: str | None = None,
+    protocol: str | None = None,
+    max_output_tokens: int | None = None,
     price_table_source: Path = GEMINI_PRICE_TABLE,
     include_banked_critic_baselines: bool = True,
 ) -> dict[str, Any]:
-    """Write frozen inputs, `source_manifest.json`, and `manifest.b02-burmish.json`."""
+    """Write frozen inputs, `source_manifest.json`, and `manifest.<stage>-<family>.json`."""
     experiment_dir = experiment_dir.resolve()
+    profile = resolve_benchmark_profile(
+        experiment_dir,
+        stage=stage,
+        family=family,
+        protocol=protocol,
+        max_output_tokens=max_output_tokens,
+        definition=definition,
+        ignore_frozen_manifest=True,
+    )
     inputs_dir = experiment_dir / "inputs"
     inputs_dir.mkdir(parents=True, exist_ok=True)
 
-    payload, resolved_def, _ = load_benchmark_payload(definition, experiment_dir=experiment_dir)
-    if not _has_tone_tokens(payload):
+    resolved_def_arg = definition if definition is not None else profile.default_definition
+    payload, resolved_def, _ = load_benchmark_payload(
+        resolved_def_arg, experiment_dir=experiment_dir, family=profile.family
+    )
+    tones_present = _has_tone_tokens(payload)
+    if profile.tones_required and not tones_present:
         raise ValueError("Frozen Burmish payload must preserve tone tokens intact")
 
+    internal_nodes = postorder_internal_node_ids(payload)
+    if not internal_nodes or internal_nodes[0] != profile.gate_node_id:
+        raise ValueError(
+            f"Expected first post-order internal node {profile.gate_node_id!r} "
+            f"for family {profile.family!r}, got {internal_nodes[0] if internal_nodes else None!r}"
+        )
+    max_turns_total = MAX_TURNS * len(internal_nodes)
+
     payload_text = payload.model_dump_json(indent=2) + "\n"
-    (inputs_dir / "burmish.payload.json").write_text(payload_text, encoding="utf-8")
+    payload_out_path = inputs_dir / profile.payload_filename
+    payload_out_path.write_text(payload_text, encoding="utf-8")
     (inputs_dir / "price-table.json").write_bytes(price_table_source.read_bytes())
     (inputs_dir / "provider-config.json").write_text(
-        json.dumps({"max_tokens": MAX_OUTPUT_TOKENS}, indent=2) + "\n",
+        json.dumps({"max_tokens": profile.max_output_tokens}, indent=2) + "\n",
         encoding="utf-8",
     )
 
@@ -915,47 +1327,109 @@ def freeze(
     source_manifest_path.write_text(json.dumps(sources, indent=2) + "\n", encoding="utf-8")
 
     input_hashes = {p.name: _file_hash(p) for p in sorted(inputs_dir.iterdir()) if p.is_file()}
-    instructions = load_agent_instructions()
+    instructions = _load_instructions(profile.protocol)
+    packaged_base_instructions = _load_instructions(B02_DEFAULT_PROTOCOL)
     stage1_bound = resource_bound(
-        cost_cap_usd=STAGE1_CAPS["max_total_cost_usd"],
-        max_run_seconds=STAGE1_CAPS["max_run_seconds"],
+        cost_cap_usd=profile.stage1_caps["max_total_cost_usd"],
+        max_run_seconds=profile.stage1_caps["max_run_seconds"],
         max_turns_total=MAX_TURNS,
         price=price,
-        expected_cached_usd_range=(0.50, 0.90),
+        expected_cached_usd_range=profile.expected_stage1_cached_range,
+        max_output_tokens=profile.max_output_tokens,
     )
     stage2_bound = resource_bound(
-        cost_cap_usd=STAGE2_CUMULATIVE_CAPS["max_total_cost_usd"],
-        max_run_seconds=STAGE2_CUMULATIVE_CAPS["max_run_seconds"],
-        max_turns_total=MAX_TOTAL_TURNS,
+        cost_cap_usd=profile.stage2_caps["max_total_cost_usd"],
+        max_run_seconds=profile.stage2_caps["max_run_seconds"],
+        max_turns_total=max_turns_total,
         price=price,
-        expected_cached_usd_range=(1.80, 2.80),
+        expected_cached_usd_range=profile.expected_stage2_cached_range,
+        max_output_tokens=profile.max_output_tokens,
     )
 
     critic_baselines = (
-        _collect_banked_critic_baselines(payload) if include_banked_critic_baselines else None
+        _collect_banked_critic_baselines(payload)
+        if include_banked_critic_baselines and profile.family == "burmish"
+        else None
     )
     try:
         from cognate_reconstruction.evaluation.critic import CRITIC_EVALUATOR_VERSION
     except ImportError:
         CRITIC_EVALUATOR_VERSION = "r07-critic-v1"
 
-    target_run = default_run_dir(experiment_dir)
-    s1_argv = stage1_argv(experiment_dir, run_dir=target_run)
-    s2_argv = stage2_resume_argv(experiment_dir, run_dir=target_run)
+    target_run = default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    s1_argv = stage1_argv(
+        experiment_dir,
+        run_dir=target_run,
+        stage=profile.stage,
+        family=profile.family,
+        protocol=profile.protocol,
+        max_output_tokens=profile.max_output_tokens,
+    )
+    s2_argv = stage2_resume_argv(
+        experiment_dir,
+        run_dir=target_run,
+        stage=profile.stage,
+        family=profile.family,
+        protocol=profile.protocol,
+        max_output_tokens=profile.max_output_tokens,
+    )
 
     try:
         rel_def = str(resolved_def.relative_to(ROOT))
     except ValueError:
         rel_def = str(resolved_def)
 
+    driver_profile_flags = (
+        []
+        if (profile.stage == "B02" and profile.family == "burmish")
+        else ["--stage", profile.stage, "--family", profile.family]
+    )
+    if profile.family == "polynesian":
+        question = (
+            f"On real CLDF Polynesian ({', '.join(internal_nodes)}; 46 root concepts, "
+            f"10 daughters), how does {HARNESS_MODEL} ({REASONING_EFFORT} thinking, "
+            f"max_tokens={profile.max_output_tokens}, protocol={profile.protocol}, "
+            f"--tied-confidence-threshold {TIED_CONFIDENCE_THRESHOLD}, "
+            f"--compaction-watermark-tokens {COMPACTION_WATERMARK_TOKENS}) perform on "
+            "symbol-exact/NED metrics and R06 corpus-wide phonological contrast preservation?"
+        )
+        downstream_note = (
+            "tongic, futunic, marquesic, and tahitic use leaf beams; central_eastern, "
+            "nuclear_polynesian, and proto_polynesian depend on committed child beams"
+        )
+        dataset_summary = POLYNESIAN_DATASET_SUMMARY
+    else:
+        question = (
+            "On real CLDF Burmish (maruic, burmic, proto_burmish; 54 root concepts, "
+            "37 Old Burmese proxy concepts, morpheme-sliced cog:* units, and 4 contrastive "
+            f"tone categories kept 100% intact), how does {HARNESS_MODEL} "
+            f"({REASONING_EFFORT} thinking, max_tokens={profile.max_output_tokens}, "
+            f"--tied-confidence-threshold {TIED_CONFIDENCE_THRESHOLD}, "
+            f"--compaction-watermark-tokens {COMPACTION_WATERMARK_TOKENS}) perform against pre-R01 banked Gemini "
+            "sweeps and deterministic ceilings on both symbol-exact/NED metrics and R06 "
+            "corpus-wide phonological+tonal contrast preservation?"
+        )
+        downstream_note = (
+            "burmic uses leaf beams; proto_burmish depends on committed maruic and burmic beams"
+        )
+        dataset_summary = BURMISH_DATASET_SUMMARY
+
+    status_note = (
+        "candidate manifest frozen in B01 ($0 offline); live paid execution "
+        "deferred to Session B02 under strict <= US$10.00 upper-bound ceiling"
+        if profile.stage == "B02"
+        else (
+            f"candidate manifest frozen for {profile.stage} {profile.family} ($0 offline); "
+            "cached-aware spend caps with <= US$10.00 worst-case 0%-cache ceiling"
+        )
+    )
+
     manifest: dict[str, Any] = {
         "experiment": experiment_dir.name,
         "frozen_on": str(date.today()),
-        "stage": "B02",
-        "status": (
-            "candidate manifest frozen in B01 ($0 offline); live paid execution "
-            "deferred to Session B02 under strict <= US$10.00 upper-bound ceiling"
-        ),
+        "stage": profile.stage,
+        "family": profile.family,
+        "status": status_note,
         "source": {
             k: sources[k]
             for k in ("head", "branch", "source_roots", "tracked_diff_sha256", "dirty_paths")
@@ -963,18 +1437,10 @@ def freeze(
         "source_manifest_sha256": _file_hash(source_manifest_path),
         "definition": rel_def,
         "definition_sha256": _file_hash(resolved_def),
-        "payload_path": str((inputs_dir / "burmish.payload.json")),
-        "payload_sha256": input_hashes["burmish.payload.json"],
-        "tones_preserved": True,
-        "question": (
-            "On real CLDF Burmish (maruic, burmic, proto_burmish; 54 root concepts, "
-            "37 Old Burmese proxy concepts, morpheme-sliced cog:* units, and 4 contrastive "
-            "tone categories kept 100% intact), how does gemini/gemini-3.8-flash "
-            "(medium thinking, max_tokens=32768, --tied-confidence-threshold 0.5, "
-            "--compaction-watermark-tokens 256000) perform against pre-R01 banked Gemini "
-            "sweeps and deterministic ceilings on both symbol-exact/NED metrics and R06 "
-            "corpus-wide phonological+tonal contrast preservation?"
-        ),
+        "payload_path": str(payload_out_path),
+        "payload_sha256": input_hashes[profile.payload_filename],
+        "tones_preserved": tones_present,
+        "question": question,
         "inputs": input_hashes,
         "price_table": {
             "source_path": "examples/pricing/gemini-3.8-flash.price-table.json",
@@ -993,53 +1459,54 @@ def freeze(
         },
         "model_visible": {
             "instructions_sha256": _hash_text(instructions),
-            "packaged_instructions_sha256": _hash_text(instructions),
-            **behavioural_digests("stored-hypothesis", None),
-            "first_request_maruic": first_node_prompt(
+            "packaged_instructions_sha256": _hash_text(packaged_base_instructions),
+            **behavioural_digests(profile.protocol, None),
+            f"first_request_{profile.gate_node_id}": first_node_prompt(
                 payload,
                 instructions,
-                "stored-hypothesis",
-                GATE_NODE_ID,
+                profile.protocol,
+                profile.gate_node_id,
                 tied_confidence_threshold=TIED_CONFIDENCE_THRESHOLD,
             ),
-            "downstream_requests": (
-                "burmic uses leaf beams; proto_burmish depends on committed maruic and burmic beams"
-            ),
+            "downstream_requests": downstream_note,
         },
-        "native_profile": "stored-hypothesis",
+        "native_profile": profile.protocol,
         "runtime_upgrades": {
             "tied_confidence_threshold": TIED_CONFIDENCE_THRESHOLD,
             "compaction_watermark_tokens": COMPACTION_WATERMARK_TOKENS,
             "local_qwen_reserved_watermark_tokens": LOCAL_QWEN_WATERMARK_TOKENS,
         },
         "trials": 1,
-        "replication": "single staged checkpointed run (Stage 1 maruic gate -> Stage 2 --resume); no automatic reruns or seeds",
+        "replication": (
+            f"single staged checkpointed run (Stage 1 {profile.gate_node_id} gate "
+            "-> Stage 2 --resume); no automatic reruns or seeds"
+        ),
         "budget_ceiling": {
             "hard_upper_bound_usd": HARD_COST_CEILING_USD,
-            "stage1_cost_cap_usd": STAGE1_CAPS["max_total_cost_usd"],
-            "stage2_cumulative_cost_cap_usd": STAGE2_CUMULATIVE_CAPS["max_total_cost_usd"],
+            "stage1_cost_cap_usd": profile.stage1_caps["max_total_cost_usd"],
+            "stage2_cumulative_cost_cap_usd": profile.stage2_caps["max_total_cost_usd"],
             "one_response_headroom_usd": stage2_bound["one_response_headroom_usd"],
             "worst_case_cumulative_upper_bound_usd": stage2_bound["worst_case_upper_bound_usd"],
             "within_10_usd_hard_ceiling": stage2_bound["within_10_usd_hard_ceiling"],
-            "expected_actual_cached_spend_usd_range": [1.80, 2.80],
+            "expected_actual_cached_spend_usd_range": list(profile.expected_stage2_cached_range),
             "hard_wall_seconds": HARD_WALL_CEILING_SECONDS,
-            "stage2_cumulative_max_run_seconds": STAGE2_CUMULATIVE_CAPS["max_run_seconds"],
+            "stage2_cumulative_max_run_seconds": profile.stage2_caps["max_run_seconds"],
         },
         "arm": {
-            ARM_NAME: {
+            profile.arm_name: {
                 "model": MODEL,
                 "preset": PRESET,
                 "harness_model": HARNESS_MODEL,
                 "reasoning_effort": REASONING_EFFORT,
                 "temperature": TEMPERATURE,
                 "timeout": TIMEOUT_SECONDS,
-                "max_output_tokens": MAX_OUTPUT_TOKENS,
+                "max_output_tokens": profile.max_output_tokens,
                 "tied_confidence_threshold": TIED_CONFIDENCE_THRESHOLD,
                 "compaction_watermark_tokens": COMPACTION_WATERMARK_TOKENS,
                 "shared_run_dir": str(target_run),
-                "run_id": RUN_ID,
-                "stage1_maruic_gate": {
-                    "caps": STAGE1_CAPS,
+                "run_id": profile.run_id,
+                f"stage1_{profile.gate_node_id}_gate": {
+                    "caps": profile.stage1_caps,
                     "resources": stage1_bound,
                     "argv": s1_argv,
                     "driver_argv": [
@@ -1048,14 +1515,15 @@ def freeze(
                         "run-stage1",
                         "--experiment-dir",
                         str(experiment_dir),
+                        *driver_profile_flags,
                     ],
                 },
                 "gate_stage1": {
                     "cost_usd": 0.0,
                     "checks": [
-                        "maruic in checkpoint.steps_by_node",
+                        f"{profile.gate_node_id} in checkpoint.steps_by_node",
                         "not step.diagnostics.failure_fallback",
-                        "latest maruic trajectory completed with committed_reconstruction",
+                        f"latest {profile.gate_node_id} trajectory completed with committed_reconstruction",
                         "inspect_run and audit_run_directory executed offline ($0)",
                     ],
                     "driver_argv": [
@@ -1064,12 +1532,13 @@ def freeze(
                         "gate-stage1",
                         "--experiment-dir",
                         str(experiment_dir),
+                        *driver_profile_flags,
                     ],
                 },
                 "stage2_full_tree_resume": {
                     "requires_stage1_gate_usable": True,
                     "resumes_shared_checkpoint": str(target_run / "checkpoint.json"),
-                    "caps": STAGE2_CUMULATIVE_CAPS,
+                    "caps": profile.stage2_caps,
                     "resources": stage2_bound,
                     "argv": s2_argv,
                     "driver_argv": [
@@ -1078,6 +1547,7 @@ def freeze(
                         "run-stage2-resume",
                         "--experiment-dir",
                         str(experiment_dir),
+                        *driver_profile_flags,
                     ],
                 },
                 "evaluate": {
@@ -1088,17 +1558,20 @@ def freeze(
                         "evaluate",
                         "--experiment-dir",
                         str(experiment_dir),
+                        *driver_profile_flags,
                     ],
                 },
             }
         },
-        "dataset": BURMISH_DATASET_SUMMARY,
-        "deterministic_ceilings_tones_intact": DETERMINISTIC_CEILINGS_TONES_INTACT,
-        "pre_r01_banked_sweeps": PRE_R01_BANKED_SWEEPS,
+        "dataset": dataset_summary,
+        "deterministic_ceilings_tones_intact": (
+            DETERMINISTIC_CEILINGS_TONES_INTACT if profile.family == "burmish" else None
+        ),
+        "pre_r01_banked_sweeps": PRE_R01_BANKED_SWEEPS if profile.family == "burmish" else None,
         "pre_r01_critic_audit_baselines": critic_baselines,
     }
 
-    manifest_path = experiment_dir / "manifest.b02-burmish.json"
+    manifest_path = experiment_dir / profile.manifest_filename
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
     return {
         "manifest_path": str(manifest_path),
@@ -1135,24 +1608,34 @@ def compute_cached_adjusted_cost_usd(
     resources: RunResources,
     price_table_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Compute cached-adjusted USD spend alongside the uncached `pricing.py` upper bound."""
+    """Compute cached-adjusted USD spend alongside the token-derived 0%-cache upper bound."""
     resolved_table = price_table_path or GEMINI_PRICE_TABLE
     if not resolved_table.exists():
         resolved_table = GEMINI_PRICE_TABLE
     table, table_sha = load_price_table(resolved_table)
     price = price_for(table, HARNESS_MODEL, date.today())
 
-    cached_tokens = int(resources.cached_input_tokens or 0)
-    uncached_input_tokens = max(0, int(resources.input_tokens) - cached_tokens)
+    input_tokens = max(0, int(resources.input_tokens))
+    output_tokens = max(0, int(resources.output_tokens))
+    cached_tokens = min(max(0, int(resources.cached_input_tokens or 0)), input_tokens)
+    uncached_input_tokens = max(0, input_tokens - cached_tokens)
     cached_rate = float(price.cached_input_usd_per_million or 0.0)
+
+    uncached_upper_bound = (
+        input_tokens * price.input_usd_per_million
+        + output_tokens * price.output_usd_per_million
+    ) / 1_000_000
+    if resources.responses_without_token_counts > 0 and resources.known_cost_usd > uncached_upper_bound:
+        uncached_known = float(resources.known_cost_usd)
+    else:
+        uncached_known = uncached_upper_bound
+
     cached_adjusted_known = (
         uncached_input_tokens * price.input_usd_per_million
         + cached_tokens * cached_rate
-        + int(resources.output_tokens) * price.output_usd_per_million
+        + output_tokens * price.output_usd_per_million
     ) / 1_000_000
-    cache_hit_rate = (
-        (cached_tokens / resources.input_tokens) if resources.input_tokens > 0 else 0.0
-    )
+    cache_hit_rate = (cached_tokens / input_tokens) if input_tokens > 0 else 0.0
     return {
         "price_table_sha256": table_sha,
         "input_usd_per_million": price.input_usd_per_million,
@@ -1164,13 +1647,17 @@ def compute_cached_adjusted_cost_usd(
         "output_tokens": resources.output_tokens,
         "reasoning_output_tokens": resources.reasoning_output_tokens,
         "cache_hit_rate": round(cache_hit_rate, 6),
-        "uncached_table_known_cost_usd": round(resources.known_cost_usd, 6),
+        "uncached_table_known_cost_usd": round(uncached_known, 6),
         "uncached_table_total_cost_usd": (
-            round(resources.total_cost_usd, 6) if resources.total_cost_usd is not None else None
+            round(uncached_known, 6) if resources.cost_known else None
         ),
         "cached_adjusted_known_cost_usd": round(cached_adjusted_known, 6),
         "cached_adjusted_total_cost_usd": (
             round(cached_adjusted_known, 6) if resources.cost_known else None
+        ),
+        "recorded_known_cost_usd": round(resources.known_cost_usd, 6),
+        "recorded_total_cost_usd": (
+            round(resources.total_cost_usd, 6) if resources.total_cost_usd is not None else None
         ),
     }
 
@@ -1179,10 +1666,15 @@ def write_batch_ledger(
     experiment_dir: Path,
     *,
     run_dir: Path | None = None,
+    stage: str | None = None,
+    family: str | None = None,
 ) -> dict[str, Any]:
     """Certify the single shared checkpointed run via `read_run_resources` and write `batch_ledger.json`."""
     experiment_dir = experiment_dir.resolve()
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    profile = resolve_benchmark_profile(experiment_dir, stage=stage, family=family)
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
     resources = read_run_resources(target_run)
     events = _read_batch_events(experiment_dir)
     stage_walls = [
@@ -1210,11 +1702,16 @@ def write_batch_ledger(
 
     price_table_path = experiment_dir / "inputs" / "price-table.json"
     cost_breakdown = compute_cached_adjusted_cost_usd(resources, price_table_path)
-    totals = batch_totals([(ARM_NAME, resources)])
-    for bucket in (totals["overall"], totals["arms"].setdefault(ARM_NAME, totals["overall"])):
+    totals = batch_totals([(profile.arm_name, resources)])
+    for bucket in (
+        totals["overall"],
+        totals["arms"].setdefault(profile.arm_name, totals["overall"]),
+    ):
         bucket["wall_seconds"] = wall_seconds
         bucket["wall_known"] = wall_known
         bucket["ledger_errors"] = 0
+        bucket["uncached_table_known_cost_usd"] = cost_breakdown["uncached_table_known_cost_usd"]
+        bucket["uncached_table_total_cost_usd"] = cost_breakdown["uncached_table_total_cost_usd"]
         bucket["cached_adjusted_known_cost_usd"] = cost_breakdown["cached_adjusted_known_cost_usd"]
         bucket["cached_adjusted_total_cost_usd"] = cost_breakdown["cached_adjusted_total_cost_usd"]
 
@@ -1222,16 +1719,16 @@ def write_batch_ledger(
         "ledger_version": LEDGER_VERSION,
         "written_at": _now(),
         "ceilings": {
-            ARM_NAME: {
+            profile.arm_name: {
                 "cost_usd": HARD_COST_CEILING_USD,
-                "stage2_cumulative_cap_usd": STAGE2_CUMULATIVE_CAPS["max_total_cost_usd"],
+                "stage2_cumulative_cap_usd": profile.stage2_caps["max_total_cost_usd"],
                 "wall_seconds": HARD_WALL_CEILING_SECONDS,
             }
         },
         "trials": [
             {
-                "trial_id": RUN_ID,
-                "arm": ARM_NAME,
+                "trial_id": profile.run_id,
+                "arm": profile.arm_name,
                 "run_dir": str(target_run),
                 "wall_seconds": wall_seconds,
                 "wall_known": wall_known,
@@ -1267,10 +1764,23 @@ def run_stage1(
     payload_path: Path | None = None,
     dry_run: bool = False,
     extra_infer_args: Sequence[str] = (),
+    stage: str | None = None,
+    family: str | None = None,
+    protocol: str | None = None,
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
-    """Launch Stage 1 (`--stop-after-node maruic`) into a clean shared `run_dir`."""
+    """Launch Stage 1 (`--stop-after-node <gate_node_id>`) into a clean shared `run_dir`."""
     experiment_dir = experiment_dir.resolve()
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    profile = resolve_benchmark_profile(
+        experiment_dir,
+        stage=stage,
+        family=family,
+        protocol=protocol,
+        max_output_tokens=max_output_tokens,
+    )
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
     if target_run.exists() and any(target_run.iterdir()):
         reason = f"run_dir_not_empty: {target_run} already contains artifacts"
         if not dry_run:
@@ -1278,8 +1788,8 @@ def run_stage1(
                 experiment_dir,
                 {
                     "event": "stage1_refused",
-                    "trial_id": RUN_ID,
-                    "arm": ARM_NAME,
+                    "trial_id": profile.run_id,
+                    "arm": profile.arm_name,
                     "run_dir": str(target_run),
                     "reason": reason,
                 },
@@ -1292,6 +1802,10 @@ def run_stage1(
         payload_path=payload_path,
         python_executable=sys.executable,
         extra_args=extra_infer_args,
+        stage=profile.stage,
+        family=profile.family,
+        protocol=profile.protocol,
+        max_output_tokens=profile.max_output_tokens,
     )
     if dry_run:
         return {"launched": False, "dry_run": True, "run_dir": str(target_run), "argv": argv}
@@ -1300,8 +1814,8 @@ def run_stage1(
         experiment_dir,
         {
             "event": "stage1_started",
-            "trial_id": RUN_ID,
-            "arm": ARM_NAME,
+            "trial_id": profile.run_id,
+            "arm": profile.arm_name,
             "run_dir": str(target_run),
             "argv": argv,
         },
@@ -1313,14 +1827,16 @@ def run_stage1(
         experiment_dir,
         {
             "event": "stage1_finished",
-            "trial_id": RUN_ID,
-            "arm": ARM_NAME,
+            "trial_id": profile.run_id,
+            "arm": profile.arm_name,
             "run_dir": str(target_run),
             "exit_code": rc,
             "wall_seconds": round(wall, 4),
         },
     )
-    ledger = write_batch_ledger(experiment_dir, run_dir=target_run)
+    ledger = write_batch_ledger(
+        experiment_dir, run_dir=target_run, stage=profile.stage, family=profile.family
+    )
     return {
         "launched": True,
         "exit_code": rc,
@@ -1335,15 +1851,23 @@ def gate_stage1(
     *,
     experiment_dir: Path = DEFAULT_EXPERIMENT_DIR,
     payload: WorkbenchPayload | None = None,
-    gate_node_id: str = GATE_NODE_ID,
+    gate_node_id: str | None = None,
+    stage: str | None = None,
+    family: str | None = None,
 ) -> dict[str, Any]:
     """Audit Stage 1 (`$0` `inspect_run` + `audit_run_directory`) and write `gate_stage1.json`."""
     from cognate_reconstruction.evaluation.critic import audit_run_directory
 
     experiment_dir = experiment_dir.resolve()
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    profile = resolve_benchmark_profile(experiment_dir, stage=stage, family=family)
+    resolved_gate_node = gate_node_id or profile.gate_node_id
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
     if payload is None:
-        payload, _, _ = load_benchmark_payload(None, experiment_dir=experiment_dir)
+        payload, _, _ = load_benchmark_payload(
+            None, experiment_dir=experiment_dir, family=profile.family
+        )
 
     inspect_text, _ = inspect_run(target_run)
     (target_run / "inspect_stage1.txt").write_text(inspect_text, encoding="utf-8")
@@ -1360,10 +1884,10 @@ def gate_stage1(
         if (target_run / "trajectories.jsonl").exists()
         else []
     )
-    gate_trajs = [t for t in trajectories if t.node_id == gate_node_id]
+    gate_trajs = [t for t in trajectories if t.node_id == resolved_gate_node]
     latest_traj = gate_trajs[-1] if gate_trajs else None
 
-    step = checkpoint.steps_by_node.get(gate_node_id) if checkpoint is not None else None
+    step = checkpoint.steps_by_node.get(resolved_gate_node) if checkpoint is not None else None
     in_checkpoint = step is not None
     not_fallback = bool(step is not None and not step.diagnostics.failure_fallback)
     traj_committed = bool(
@@ -1373,13 +1897,13 @@ def gate_stage1(
     )
     usable = in_checkpoint and not_fallback and traj_committed
     if not in_checkpoint:
-        reason = f"{gate_node_id} missing from checkpoint.steps_by_node"
+        reason = f"{resolved_gate_node} missing from checkpoint.steps_by_node"
     elif not not_fallback:
-        reason = f"{gate_node_id} fell back to identity reconstruction"
+        reason = f"{resolved_gate_node} fell back to identity reconstruction"
     elif not traj_committed:
-        reason = f"{gate_node_id} trajectory did not complete with a model commitment"
+        reason = f"{resolved_gate_node} trajectory did not complete with a model commitment"
     else:
-        reason = f"{gate_node_id} committed cleanly without fallback"
+        reason = f"{resolved_gate_node} committed cleanly without fallback"
 
     peak_input_tokens = max(
         (
@@ -1395,10 +1919,10 @@ def gate_stage1(
     cost_breakdown = compute_cached_adjusted_cost_usd(resources, price_table_path)
 
     gate_payload: dict[str, Any] = {
-        "gate_version": "b02-stage1-gate-v1",
+        "gate_version": f"{profile.stage.lower()}-stage1-gate-v1",
         "evaluated_at": _now(),
         "run_dir": str(target_run),
-        "gate_node_id": gate_node_id,
+        "gate_node_id": resolved_gate_node,
         "usable": usable,
         "stage_gate": {"usable": usable, "reason": reason},
         "checks": {
@@ -1436,9 +1960,11 @@ def gate_stage1(
         "critic_audit": {
             "total_defect_count": critic_report.get("total_defect_count", 0),
             "defect_counts_by_category": critic_report.get("defect_counts_by_category", {}),
-            "node_audit": (critic_report.get("nodes") or {}).get(gate_node_id),
+            "node_audit": (critic_report.get("nodes") or {}).get(resolved_gate_node),
             "defects": [
-                d for d in critic_report.get("defects", ()) if d.get("node_id") == gate_node_id
+                d
+                for d in critic_report.get("defects", ())
+                if d.get("node_id") == resolved_gate_node
             ],
         },
         "resources": resources.as_dict(),
@@ -1448,7 +1974,9 @@ def gate_stage1(
     (target_run / GATE_FILE).write_text(
         json.dumps(gate_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    write_batch_ledger(experiment_dir, run_dir=target_run)
+    write_batch_ledger(
+        experiment_dir, run_dir=target_run, stage=profile.stage, family=profile.family
+    )
     return gate_payload
 
 
@@ -1460,10 +1988,23 @@ def run_stage2_resume(
     dry_run: bool = False,
     require_gate: bool = True,
     extra_infer_args: Sequence[str] = (),
+    stage: str | None = None,
+    family: str | None = None,
+    protocol: str | None = None,
+    max_output_tokens: int | None = None,
 ) -> dict[str, Any]:
-    """Resume the Stage 1 checkpoint directory through `burmic` and `proto_burmish`."""
+    """Resume the Stage 1 checkpoint directory through the remaining family nodes."""
     experiment_dir = experiment_dir.resolve()
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    profile = resolve_benchmark_profile(
+        experiment_dir,
+        stage=stage,
+        family=family,
+        protocol=protocol,
+        max_output_tokens=max_output_tokens,
+    )
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
 
     if (target_run / "result.json").exists():
         reason = f"already_completed: {target_run / 'result.json'} already exists"
@@ -1486,8 +2027,8 @@ def run_stage2_resume(
                     experiment_dir,
                     {
                         "event": "stage2_refused",
-                        "trial_id": RUN_ID,
-                        "arm": ARM_NAME,
+                        "trial_id": profile.run_id,
+                        "arm": profile.arm_name,
                         "run_dir": str(target_run),
                         "reason": reason,
                     },
@@ -1500,10 +2041,11 @@ def run_stage2_resume(
             f"stage1_cost_unknown: {prior_resources.unknown_cost_requests} request(s) of unknown cost"
         )
         return {"launched": False, "refused": True, "reason": reason, "run_dir": str(target_run)}
-    if prior_resources.known_cost_usd >= STAGE2_CUMULATIVE_CAPS["max_total_cost_usd"]:
+    stage2_cap_usd = float(profile.stage2_caps["max_total_cost_usd"])
+    if prior_resources.known_cost_usd >= stage2_cap_usd:
         reason = (
             f"stage2_cap_exhausted: prior spend ${prior_resources.known_cost_usd:.4f} "
-            f">= ${STAGE2_CUMULATIVE_CAPS['max_total_cost_usd']:.2f}"
+            f">= ${stage2_cap_usd:.2f}"
         )
         return {"launched": False, "refused": True, "reason": reason, "run_dir": str(target_run)}
 
@@ -1513,6 +2055,10 @@ def run_stage2_resume(
         payload_path=payload_path,
         python_executable=sys.executable,
         extra_args=extra_infer_args,
+        stage=profile.stage,
+        family=profile.family,
+        protocol=profile.protocol,
+        max_output_tokens=profile.max_output_tokens,
     )
     if dry_run:
         return {"launched": False, "dry_run": True, "run_dir": str(target_run), "argv": argv}
@@ -1521,8 +2067,8 @@ def run_stage2_resume(
         experiment_dir,
         {
             "event": "stage2_started",
-            "trial_id": RUN_ID,
-            "arm": ARM_NAME,
+            "trial_id": profile.run_id,
+            "arm": profile.arm_name,
             "run_dir": str(target_run),
             "argv": argv,
         },
@@ -1534,14 +2080,16 @@ def run_stage2_resume(
         experiment_dir,
         {
             "event": "stage2_finished",
-            "trial_id": RUN_ID,
-            "arm": ARM_NAME,
+            "trial_id": profile.run_id,
+            "arm": profile.arm_name,
             "run_dir": str(target_run),
             "exit_code": rc,
             "wall_seconds": round(wall, 4),
         },
     )
-    ledger = write_batch_ledger(experiment_dir, run_dir=target_run)
+    ledger = write_batch_ledger(
+        experiment_dir, run_dir=target_run, stage=profile.stage, family=profile.family
+    )
     return {
         "launched": True,
         "exit_code": rc,
@@ -1931,15 +2479,23 @@ def evaluate_benchmark_run(
     *,
     experiment_dir: Path = DEFAULT_EXPERIMENT_DIR,
     payload: WorkbenchPayload | None = None,
+    stage: str | None = None,
+    family: str | None = None,
 ) -> dict[str, Any]:
     """Full `$0` post-run evaluation: critic, `task02-v1`, `R06` contrast, replay & ledger."""
     from cognate_reconstruction.evaluation.critic import audit_run_directory
 
     experiment_dir = experiment_dir.resolve()
-    target_run = (run_dir or default_run_dir(experiment_dir)).resolve()
+    profile = resolve_benchmark_profile(experiment_dir, stage=stage, family=family)
+    target_run = (
+        run_dir or default_run_dir(experiment_dir, stage=profile.stage, family=profile.family)
+    ).resolve()
     if payload is None:
-        payload, _, _ = load_benchmark_payload(None, experiment_dir=experiment_dir)
-    if not _has_tone_tokens(payload):
+        payload, _, _ = load_benchmark_payload(
+            None, experiment_dir=experiment_dir, family=profile.family
+        )
+    tones_present = _has_tone_tokens(payload)
+    if profile.tones_required and not tones_present:
         raise ValueError("Evaluation payload must preserve tone tokens intact")
 
     result_raw = load_result_or_summary(target_run)
@@ -1957,7 +2513,9 @@ def evaluate_benchmark_run(
     r06_contrast = compute_r06_contrast_by_target(task02_report)
     critic_report = audit_run_directory(target_run, payload=payload)
     replay_report = counterfactual_assembly_replay(target_run, payload)
-    ledger = write_batch_ledger(experiment_dir, run_dir=target_run)
+    write_batch_ledger(
+        experiment_dir, run_dir=target_run, stage=profile.stage, family=profile.family
+    )
     resources = read_run_resources(target_run)
     cost_breakdown = compute_cached_adjusted_cost_usd(
         resources, experiment_dir / "inputs" / "price-table.json"
@@ -1990,19 +2548,23 @@ def evaluate_benchmark_run(
             ),
         }
 
+    expected_internal_nodes = postorder_internal_node_ids(payload)
+    expected_count = len(expected_internal_nodes)
     usable = (
         task02_report.run_status == "finished"
-        and len(task02_report.completed_node_ids) == 3
+        and len(task02_report.completed_node_ids) == expected_count
     )
+    family_label = "Polynesian" if profile.family == "polynesian" else "Burmish"
     report: dict[str, Any] = {
-        "evaluation_version": "b02-real-family-eval-v1",
+        "evaluation_version": f"{profile.stage.lower()}-real-family-eval-v1",
         "evaluated_at": _now(),
         "run_dir": str(target_run),
-        "tones_preserved": True,
+        "family": profile.family,
+        "tones_preserved": tones_present,
         "stage_gate": {
             "usable": usable,
             "reason": (
-                "all 3 Burmish internal nodes committed without fallback"
+                f"all {expected_count} {family_label} internal nodes committed without fallback"
                 if usable
                 else f"run_status={task02_report.run_status}"
             ),
@@ -2028,25 +2590,51 @@ def evaluate_benchmark_run(
     return report
 
 
+def _add_profile_args(subparser: argparse.ArgumentParser, *, include_protocol_and_tokens: bool) -> None:
+    subparser.add_argument(
+        "--stage",
+        choices=SUPPORTED_STAGES,
+        help="Benchmark stage profile (auto-detected from manifest or b04-* experiment dir when omitted)",
+    )
+    subparser.add_argument(
+        "--family",
+        choices=SUPPORTED_FAMILIES,
+        help="Benchmark family (auto-detected from manifest or definition/experiment dir when omitted)",
+    )
+    if include_protocol_and_tokens:
+        subparser.add_argument(
+            "--protocol",
+            choices=SUPPORTED_PROTOCOLS,
+            help="Inventory protocol override (defaults to stored-hypothesis for B02, stored-hypothesis-v2 for B04)",
+        )
+        subparser.add_argument(
+            "--max-output-tokens",
+            type=int,
+            help="Max output tokens override (defaults to 32768 for B02, 49152 for B04)",
+        )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
     fr = sub.add_parser(
         "freeze",
-        help="Write frozen B02 inputs, source_manifest.json, and manifest.b02-burmish.json",
+        help="Write frozen benchmark inputs, source_manifest.json, and manifest.<stage>-<family>.json",
     )
     fr.add_argument("--experiment-dir", type=Path, default=DEFAULT_EXPERIMENT_DIR)
-    fr.add_argument("--definition", type=Path, default=BURMISH_DEFINITION)
+    fr.add_argument("--definition", type=Path, default=None)
+    _add_profile_args(fr, include_protocol_and_tokens=True)
 
     s1 = sub.add_parser(
         "run-stage1",
-        help="Launch Stage 1 (maruic gate: --stop-after-node maruic, $3.50 / 1500s)",
+        help="Launch Stage 1 (--stop-after-node <gate_node_id>)",
     )
     s1.add_argument("--experiment-dir", type=Path, default=DEFAULT_EXPERIMENT_DIR)
     s1.add_argument("--run-dir", type=Path)
     s1.add_argument("--payload", type=Path)
     s1.add_argument("--dry-run", action="store_true")
+    _add_profile_args(s1, include_protocol_and_tokens=True)
 
     g1 = sub.add_parser(
         "gate-stage1",
@@ -2055,15 +2643,17 @@ def _build_parser() -> argparse.ArgumentParser:
     g1.add_argument("--experiment-dir", type=Path, default=DEFAULT_EXPERIMENT_DIR)
     g1.add_argument("--run-dir", type=Path)
     g1.add_argument("--definition", type=str)
+    _add_profile_args(g1, include_protocol_and_tokens=False)
 
     s2 = sub.add_parser(
         "run-stage2-resume",
-        help="Resume Stage 1 checkpoint (--resume) through burmic + proto_burmish ($8.50 / 3600s)",
+        help="Resume Stage 1 checkpoint (--resume) through the remaining family nodes",
     )
     s2.add_argument("--experiment-dir", type=Path, default=DEFAULT_EXPERIMENT_DIR)
     s2.add_argument("--run-dir", type=Path)
     s2.add_argument("--payload", type=Path)
     s2.add_argument("--dry-run", action="store_true")
+    _add_profile_args(s2, include_protocol_and_tokens=True)
 
     ev = sub.add_parser(
         "evaluate",
@@ -2072,6 +2662,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--experiment-dir", type=Path, default=DEFAULT_EXPERIMENT_DIR)
     ev.add_argument("--run-dir", type=Path)
     ev.add_argument("--definition", type=str)
+    _add_profile_args(ev, include_protocol_and_tokens=False)
 
     return parser
 
@@ -2079,7 +2670,14 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> None:
     args = _build_parser().parse_args(argv)
     if args.command == "freeze":
-        out = freeze(args.experiment_dir, definition=args.definition)
+        out = freeze(
+            args.experiment_dir,
+            definition=args.definition,
+            stage=args.stage,
+            family=args.family,
+            protocol=args.protocol,
+            max_output_tokens=args.max_output_tokens,
+        )
         print(json.dumps(out, indent=2))
     elif args.command == "run-stage1":
         out = run_stage1(
@@ -2087,17 +2685,29 @@ def main(argv: Sequence[str] | None = None) -> None:
             run_dir=args.run_dir,
             payload_path=args.payload,
             dry_run=args.dry_run,
+            stage=args.stage,
+            family=args.family,
+            protocol=args.protocol,
+            max_output_tokens=args.max_output_tokens,
         )
         print(json.dumps(out, indent=2))
         if out.get("refused") or (out.get("launched") and out.get("exit_code", 0) != 0):
             raise SystemExit(1)
     elif args.command == "gate-stage1":
         payload = (
-            load_benchmark_payload(args.definition, experiment_dir=args.experiment_dir)[0]
+            load_benchmark_payload(
+                args.definition, experiment_dir=args.experiment_dir, family=args.family
+            )[0]
             if args.definition
             else None
         )
-        out = gate_stage1(args.run_dir, experiment_dir=args.experiment_dir, payload=payload)
+        out = gate_stage1(
+            args.run_dir,
+            experiment_dir=args.experiment_dir,
+            payload=payload,
+            stage=args.stage,
+            family=args.family,
+        )
         print(json.dumps(out["stage_gate"], indent=2))
         if not out["usable"]:
             raise SystemExit(1)
@@ -2107,18 +2717,28 @@ def main(argv: Sequence[str] | None = None) -> None:
             run_dir=args.run_dir,
             payload_path=args.payload,
             dry_run=args.dry_run,
+            stage=args.stage,
+            family=args.family,
+            protocol=args.protocol,
+            max_output_tokens=args.max_output_tokens,
         )
         print(json.dumps(out, indent=2))
         if out.get("refused") or (out.get("launched") and out.get("exit_code", 0) != 0):
             raise SystemExit(1)
     elif args.command == "evaluate":
         payload = (
-            load_benchmark_payload(args.definition, experiment_dir=args.experiment_dir)[0]
+            load_benchmark_payload(
+                args.definition, experiment_dir=args.experiment_dir, family=args.family
+            )[0]
             if args.definition
             else None
         )
         out = evaluate_benchmark_run(
-            args.run_dir, experiment_dir=args.experiment_dir, payload=payload
+            args.run_dir,
+            experiment_dir=args.experiment_dir,
+            payload=payload,
+            stage=args.stage,
+            family=args.family,
         )
         print(
             json.dumps(

@@ -624,7 +624,15 @@ def _behavioural_input_digests(args: argparse.Namespace) -> dict[str, str]:
 
 def _selected_instructions(args: argparse.Namespace) -> str:
     path = getattr(args, "agent_instructions", None)
-    return Path(path).expanduser().read_text(encoding="utf-8") if path else load_agent_instructions()
+    if path:
+        return Path(path).expanduser().read_text(encoding="utf-8")
+    protocol = getattr(args, "inventory_protocol", "stored-hypothesis")
+    if protocol in {"full-payload", "stored-hypothesis"}:
+        return load_agent_instructions()
+    try:
+        return load_agent_instructions(inventory_protocol=protocol)
+    except TypeError:
+        return load_agent_instructions()
 
 
 GIVE_UP_COMPONENT = "the give-up thresholds"
@@ -2261,7 +2269,12 @@ def _parser() -> argparse.ArgumentParser:
     infer.add_argument("--timeout", type=float, default=300.0)
     infer.add_argument("--max-turns", type=int, default=24)
     infer.add_argument("--agent-instructions", help="Explicit system-text arm; content is hashed. Default: packaged corrected instructions.")
-    infer.add_argument("--inventory-protocol", choices=("full-payload", "stored-hypothesis"), default="stored-hypothesis", help="Independently select compact choices/immutable handles or full inventory payloads; both commit shapes remain supported.")
+    infer.add_argument(
+        "--inventory-protocol",
+        choices=("full-payload", "stored-hypothesis", "stored-hypothesis-v2"),
+        default="stored-hypothesis",
+        help="Independently select compact choices/immutable handles (v1 or incremental v2) or full inventory payloads; both commit shapes remain supported.",
+    )
     infer.add_argument("--max-tool-calls", type=int, default=64)
     infer.add_argument("--max-retries", type=int, default=6)
     infer.add_argument("--retry-backoff-seconds", type=float, default=10.0)

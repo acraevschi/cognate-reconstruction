@@ -297,6 +297,7 @@ class LiteLLMProvider:
                 self.price,
                 int(prompt_tokens) if prompt_tokens is not None else None,
                 int(completion_tokens) if completion_tokens is not None else None,
+                int(cached_tokens) if cached_tokens is not None else None,
             )
             # Without both token counts the table cannot price the response;
             # the reported figure, if any, is then the only known cost.

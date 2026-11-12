@@ -465,12 +465,52 @@ def inventory_contrast_reductions(
             continue
         if len({item.reflexes for item in unconditioned}) < 2:
             continue
-        for item in unconditioned:
-            merged_ids[item.set_id] = (
-                f"{len(unconditioned)} committed sets reconstruct {proto!r} with "
-                "no conditioning between them, so a distinction some child makes "
-                "is not made in the parent"
+        width = max((len(item.reflexes) for item in unconditioned), default=0)
+        child_non_null = [
+            {
+                item.reflexes[k]
+                for item in unconditioned
+                if k < len(item.reflexes) and item.reflexes[k] is not None
+            }
+            for k in range(width)
+        ]
+        conflicting_slots = [
+            k for k, segments in enumerate(child_non_null) if len(segments) >= 2
+        ]
+        if conflicting_slots:
+            flagged = [
+                item
+                for item in unconditioned
+                if any(
+                    k < len(item.reflexes) and item.reflexes[k] is not None
+                    for k in conflicting_slots
+                )
+            ]
+            for item in flagged:
+                merged_ids[item.set_id] = (
+                    f"{len(flagged)} committed sets reconstruct {proto!r} with "
+                    "no conditioning between them, so a distinction some child makes "
+                    "is not made in the parent"
+                )
+        else:
+            all_non_null = set().union(*child_non_null)
+            co_attested = any(
+                all_non_null
+                <= {reflex for reflex in item.reflexes if reflex is not None}
+                for item in unconditioned
             )
+            if len(all_non_null) >= 2 and not co_attested:
+                flagged = [
+                    item
+                    for item in unconditioned
+                    if any(reflex is not None for reflex in item.reflexes)
+                ]
+                for item in flagged:
+                    merged_ids[item.set_id] = (
+                        f"{len(flagged)} disjoint-witness sets reconstruct {proto!r} "
+                        "with no conditioning between them, so non-co-attested "
+                        "daughter reflexes collapse in the parent"
+                    )
     reductions: list[ContrastReducingSet] = []
     for item in commitments:
         deletes = item.proto_segment is None and any(

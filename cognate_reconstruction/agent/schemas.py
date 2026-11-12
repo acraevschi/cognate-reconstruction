@@ -533,6 +533,21 @@ class SummarizeCorrespondencesArgs(WorkbenchModel):
         return self
 
 
+class SummarizeCorrespondencesV2Args(SummarizeCorrespondencesArgs):
+    """Request the correspondence-set inventory over the whole evidence set."""
+
+    min_attested_children: int = Field(
+        default=1,
+        ge=1,
+        description=(
+            "Minimum number of selected child nodes with a non-null segment in the "
+            "correspondence row (default 1; set >=2 with min_support=1 to inspect "
+            "multi-daughter singleton correspondences while excluding 1-daughter "
+            "compound/affix singletons)."
+        ),
+    )
+
+
 class OutgroupReflex(WorkbenchModel):
     """What one node outside the group shows where this correspondence occurs.
 

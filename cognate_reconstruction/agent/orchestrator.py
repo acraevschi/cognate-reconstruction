@@ -216,6 +216,21 @@ or negligible savings while mutating early prompt messages and invalidating hund
 of thousands of cached prefix tokens.
 """
 
+WATERMARK_COMPACTABLE_READ_ONLY_TOOLS: frozenset[str] = frozenset(
+    {
+        "summarize_correspondences",
+        "get_alignments",
+        "search_forms",
+    }
+)
+"""High-volume read-only survey/inspection tools eligible for watermark page stubbing."""
+
+WATERMARK_READ_ONLY_KEEP_LIVE_PER_TOOL: int = 2
+"""Newest accepted live pages per high-volume read-only tool kept verbatim above watermark."""
+
+MIN_READ_ONLY_COMPACTION_SAVINGS_BYTES: int = 1024
+"""Minimum positive UTF-8 byte reduction required to stub an older read-only page."""
+
 _PAGINATION_ARGUMENT_KEYS: frozenset[str] = frozenset({"offset", "limit"})
 
 _COMPACTABLE_ARGS_MODELS: dict[str, type[WorkbenchModel]] = {
@@ -320,7 +335,11 @@ def _supersedes(
     for key in keys_to_compare:
         if key in _SELECTION_ARGUMENT_KEYS:
             if paginated:
-                if key == "node_ids" and args_model is SummarizeCorrespondencesArgs:
+                if (
+                    key == "node_ids"
+                    and args_model is not None
+                    and issubclass(args_model, SummarizeCorrespondencesArgs)
+                ):
                     if list(norm_later.get(key) or ()) != list(norm_earlier.get(key) or ()):
                         return False
                 elif _selection_values(norm_later.get(key)) != _selection_values(
@@ -482,6 +501,110 @@ def _build_preview_compaction_stub(
     }
 
 
+def _extract_read_only_summary(
+    record: _ToolResultRecord,
+    live_content: str,
+) -> dict[str, Any]:
+    payload: Mapping[str, Any] = {}
+    try:
+        parsed = json.loads(live_content)
+        if isinstance(parsed, Mapping) and isinstance(parsed.get("result"), Mapping):
+            payload = parsed["result"]
+    except Exception:
+        payload = {}
+
+    args = record.arguments
+    if record.name == "summarize_correspondences":
+        sets = payload.get("sets")
+        set_list = sets if isinstance(sets, list) else ()
+        summary: dict[str, Any] = {
+            "reading": payload.get("reading") or args.get("reading", "recurrence"),
+            "offset": args.get("offset", 0),
+            "limit": args.get("limit", 30),
+            "min_support": payload.get("min_support", args.get("min_support", 2)),
+            "total_set_count": payload.get("total_set_count"),
+            "matched_set_count": payload.get("matched_set_count"),
+            "suppressed_below_min_support": payload.get(
+                "suppressed_below_min_support"
+            ),
+            "returned_set_count": len(set_list),
+            "next_offset": payload.get("next_offset"),
+            "first_set_ids": [
+                item["set_id"]
+                for item in set_list[:5]
+                if isinstance(item, Mapping) and isinstance(item.get("set_id"), str)
+            ],
+        }
+        if "min_attested_children" in args:
+            summary["min_attested_children"] = args["min_attested_children"]
+        if args.get("segment") is not None:
+            summary["segment"] = args.get("segment")
+        return summary
+
+    if record.name == "get_alignments":
+        alignment_map = payload.get("alignment_map")
+        amap = alignment_map if isinstance(alignment_map, Mapping) else {}
+        alignments = amap.get("alignments")
+        align_list = alignments if isinstance(alignments, list) else ()
+        concept_ids = sorted(
+            {
+                item["concept_id"]
+                for item in align_list
+                if isinstance(item, Mapping)
+                and isinstance(item.get("concept_id"), str)
+            }
+        ) or list(args.get("concept_ids") or ())
+        return {
+            "detail": amap.get("detail") or args.get("detail", "summary"),
+            "node_ids": list(amap.get("variety_ids") or args.get("node_ids") or ()),
+            "concept_ids": concept_ids,
+            "alignment_count": len(align_list),
+            "segmentation_overlay_id": payload.get("segmentation_overlay_id"),
+        }
+
+    if record.name == "search_forms":
+        hits = payload.get("hits")
+        hit_list = hits if isinstance(hits, list) else ()
+        raw_offset = args.get("offset", 0)
+        offset = (
+            raw_offset
+            if isinstance(raw_offset, int) and not isinstance(raw_offset, bool)
+            else 0
+        )
+        next_offset = payload.get("next_offset")
+        total_matches = offset + len(hit_list) if next_offset is None else None
+        return {
+            "scope": args.get("scope", "active_children"),
+            "offset": offset,
+            "limit": args.get("limit", 50),
+            "hit_count": len(hit_list),
+            "total_matches": total_matches,
+            "next_offset": next_offset,
+        }
+
+    return {"arguments": dict(args)}
+
+
+def _build_read_only_compaction_stub(
+    record: _ToolResultRecord,
+    live_content: str,
+    argument_sha256: str,
+) -> dict[str, Any]:
+    return {
+        "ok": True,
+        "compacted": True,
+        "compaction_kind": "watermark_read_only_page",
+        "tool": record.name,
+        "call_id": record.call_id,
+        "argument_sha256": argument_sha256,
+        "summary": _extract_read_only_summary(record, live_content),
+        "note": (
+            "Earlier read-only inspection page compacted above context watermark; "
+            "re-issue the tool call if exact rows are needed again."
+        ),
+    }
+
+
 @dataclass
 class _MessageLog:
     """The conversation in the two forms it has to exist in.
@@ -570,6 +693,7 @@ class _RunState:
     )
     compacted_tool_results: int = 0
     compacted_preview_results: int = 0
+    compacted_read_only_results: int = 0
     watermark_trigger_count: int = 0
     repeat_guard_hits: int = 0
     latest_prompt_tokens: int = 0
@@ -1468,6 +1592,7 @@ class AgentOrchestrator:
             )
             state.live_tool_results.remove(record)
             state.compacted_tool_results += 1
+            state.compacted_read_only_results += 1
             self._emit(
                 AgentEventKind.CONTEXT_COMPACTION,
                 context.node_id,
@@ -1483,14 +1608,16 @@ class AgentOrchestrator:
         context: AgentContext,
         state: _RunState,
         messages: _MessageLog,
-    ) -> None:
+        *,
+        record_trigger: bool = True,
+    ) -> int:
         """Compact older superseded preview results once observed prompt tokens cross the watermark."""
         if (
             not self.compact_superseded_tool_results
             or self.compaction_watermark_tokens is None
             or state.latest_prompt_tokens < self.compaction_watermark_tokens
         ):
-            return
+            return 0
         newest_by_tool: dict[str, _PreviewResultRecord] = {}
         for record in state.live_preview_results:
             newest_by_tool[record.name] = record
@@ -1510,8 +1637,9 @@ class AgentOrchestrator:
             if live_bytes - stub_bytes >= MIN_PREVIEW_COMPACTION_SAVINGS_BYTES:
                 eligible.append((record, superseded_by, stub, stub_json))
         if not eligible:
-            return
-        state.watermark_trigger_count += 1
+            return 0
+        if record_trigger:
+            state.watermark_trigger_count += 1
         for record, superseded_by, stub, stub_json in eligible:
             messages.replace_prompt_content(record.index, stub_json)
             state.live_preview_results.remove(record)
@@ -1549,6 +1677,87 @@ class AgentOrchestrator:
                 compacted_tool_results=state.compacted_tool_results,
                 compacted_preview_results=state.compacted_preview_results,
             )
+        return len(eligible)
+
+    def _compact_watermark_read_only(
+        self,
+        context: AgentContext,
+        state: _RunState,
+        messages: _MessageLog,
+        *,
+        record_trigger: bool = True,
+    ) -> int:
+        """Compact 3rd-newest and older high-volume read-only pages once prompt tokens cross the watermark."""
+        if (
+            not self.compact_superseded_tool_results
+            or self.compaction_watermark_tokens is None
+            or state.latest_prompt_tokens < self.compaction_watermark_tokens
+        ):
+            return 0
+        by_tool: dict[str, list[_ToolResultRecord]] = {}
+        for record in state.live_tool_results:
+            if record.name in WATERMARK_COMPACTABLE_READ_ONLY_TOOLS:
+                by_tool.setdefault(record.name, []).append(record)
+        older_call_ids: set[str] = set()
+        for records in by_tool.values():
+            if len(records) > WATERMARK_READ_ONLY_KEEP_LIVE_PER_TOOL:
+                for record in records[:-WATERMARK_READ_ONLY_KEEP_LIVE_PER_TOOL]:
+                    older_call_ids.add(record.call_id)
+        if not older_call_ids:
+            return 0
+        eligible: list[tuple[_ToolResultRecord, str, str, int]] = []
+        for record in state.live_tool_results:
+            if record.call_id not in older_call_ids:
+                continue
+            live_content = messages.prompt[record.index].content or ""
+            arg_sha = _sha256_json(record.arguments)
+            stub = _build_read_only_compaction_stub(record, live_content, arg_sha)
+            stub_json = json.dumps(stub)
+            live_bytes = len(live_content.encode("utf-8"))
+            stub_bytes = len(stub_json.encode("utf-8"))
+            saved_bytes = live_bytes - stub_bytes
+            if saved_bytes >= MIN_READ_ONLY_COMPACTION_SAVINGS_BYTES:
+                eligible.append((record, arg_sha, stub_json, saved_bytes))
+        if not eligible:
+            return 0
+        if record_trigger:
+            state.watermark_trigger_count += 1
+        for record, arg_sha, stub_json, saved_bytes in eligible:
+            messages.replace_prompt_content(record.index, stub_json)
+            state.live_tool_results.remove(record)
+            state.compacted_tool_results += 1
+            state.compacted_read_only_results += 1
+            self._emit(
+                AgentEventKind.CONTEXT_COMPACTION,
+                context.node_id,
+                f"compacted older {record.name} read-only page above token watermark",
+                action="watermark_read_only_compaction",
+                tool_name=record.name,
+                call_id=record.call_id,
+                argument_sha256=arg_sha,
+                saved_bytes=saved_bytes,
+                observed_prompt_tokens=state.latest_prompt_tokens,
+                compaction_watermark_tokens=self.compaction_watermark_tokens,
+                compacted_tool_results=state.compacted_tool_results,
+                compacted_read_only_results=state.compacted_read_only_results,
+            )
+        return len(eligible)
+
+    def _compact_above_watermark(
+        self,
+        context: AgentContext,
+        state: _RunState,
+        messages: _MessageLog,
+    ) -> None:
+        """Run watermark-gated preview and read-only page compaction, counting one trigger if either fires."""
+        compacted_previews = self._compact_watermark_previews(
+            context, state, messages, record_trigger=False
+        )
+        compacted_read_only = self._compact_watermark_read_only(
+            context, state, messages, record_trigger=False
+        )
+        if compacted_previews or compacted_read_only:
+            state.watermark_trigger_count += 1
 
     @staticmethod
     def _usage_total(
@@ -1736,9 +1945,7 @@ class AgentOrchestrator:
         self._node_compaction[context.node_id] = {
             "watermark_trigger_count": state.watermark_trigger_count,
             "compacted_preview_results": state.compacted_preview_results,
-            "compacted_read_only_results": (
-                state.compacted_tool_results - state.compacted_preview_results
-            ),
+            "compacted_read_only_results": state.compacted_read_only_results,
             "compacted_tool_results": state.compacted_tool_results,
             "repeat_guard_hits": state.repeat_guard_hits,
             "latest_prompt_tokens": state.latest_prompt_tokens,
@@ -2020,7 +2227,7 @@ class AgentOrchestrator:
                         state.peak_prompt_tokens = max(
                             state.peak_prompt_tokens, state.latest_prompt_tokens
                         )
-                    self._compact_watermark_previews(context, state, messages)
+                    self._compact_above_watermark(context, state, messages)
                     continue
                 # One assistant message may carry several tool calls, and every
                 # tool result must follow its call without anything in between.
@@ -2227,7 +2434,7 @@ class AgentOrchestrator:
                     state.peak_prompt_tokens = max(
                         state.peak_prompt_tokens, state.latest_prompt_tokens
                     )
-                self._compact_watermark_previews(context, state, messages)
+                self._compact_above_watermark(context, state, messages)
                 if pending_stall is not None:
                     raise ProtocolStallError(pending_stall)
                 if pending_correction is not None:

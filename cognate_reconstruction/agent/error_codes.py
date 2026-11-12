@@ -141,6 +141,8 @@ TOOL_ERROR_CODES: Mapping[str, ToolErrorCategory] = MappingProxyType(
         # realignment invalidates every ID derived under the previous overlay.
         "unknown-correspondence-set": ToolErrorCategory.PROTOCOL,
         "invalid-shared-claim": ToolErrorCategory.PROTOCOL,
+        "invalid-correspondence-filter": ToolErrorCategory.PROTOCOL,
+        "invalid-hypothesis-patch": ToolErrorCategory.PROTOCOL,
         # A commitment's `reflexes` differ from the cited set's own. Split
         # from the support code below on 2026-08-24: they are different
         # mistakes with different fixes — one is a mis-spelled gap, the

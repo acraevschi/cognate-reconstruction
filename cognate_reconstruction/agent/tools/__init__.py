@@ -11,6 +11,7 @@ from cognate_reconstruction.agent.schemas import (
     SearchFormsArgs,
     SegmentMorphemesArgs,
     SummarizeCorrespondencesArgs,
+    SummarizeCorrespondencesV2Args,
     TestProtoAssemblyArgs,
     TestRuleCascadeArgs,
     TestSoundLawArgs,
@@ -44,21 +45,33 @@ from cognate_reconstruction.agent.tools.test_rule_cascade import test_rule_casca
 
 
 def default_tool_registry(*, inventory_protocol: str = "stored-hypothesis") -> ToolRegistry:
-    if inventory_protocol not in {"full-payload", "stored-hypothesis"}:
+    if inventory_protocol not in {"full-payload", "stored-hypothesis", "stored-hypothesis-v2"}:
         raise ValueError("unknown inventory protocol")
     from cognate_reconstruction.agent.tools.stored_hypothesis import (
         StoredAssemblyArgs, StoredCommitArgs, test_stored_assembly, commit_stored_hypothesis,
         describe_inventory_input,
     )
-    stored = inventory_protocol == "stored-hypothesis"
+    stored = inventory_protocol in {"stored-hypothesis", "stored-hypothesis-v2"}
+    stored_v2 = inventory_protocol == "stored-hypothesis-v2"
+    if stored_v2:
+        from cognate_reconstruction.agent.tools.stored_hypothesis import (
+            StoredAssemblyV2Args,
+            describe_inventory_input_v2,
+            test_stored_assembly_v2,
+        )
     registry = ToolRegistry()
     registry.register(
         ToolSpec(
             name="summarize_correspondences",
             description=(
                 'Survey descriptive recurrence (csp-*), or exact local sets (csu-*). Start here; inspect filters/pagination. support counts supplied etyma plus unresolved units; alternatives/source columns are separate. min_support=2 is a filter, not a sparse-value prohibition; use 1 to inspect singleton material. shared_claims must explicitly select local pattern members.'
+                + (
+                    " Use min_attested_children>=2 with min_support=1 to inspect multi-daughter singleton correspondences without 1-daughter compound noise."
+                    if stored_v2
+                    else ""
+                )
             ),
-            args_model=SummarizeCorrespondencesArgs,
+            args_model=SummarizeCorrespondencesV2Args if stored_v2 else SummarizeCorrespondencesArgs,
             handler=summarize_correspondences,
         )
     )
@@ -145,10 +158,25 @@ def default_tool_registry(*, inventory_protocol: str = "stored-hypothesis") -> T
         ToolSpec(
             name="test_proto_assembly",
             description=(
-                ('Execute the exact inventory and report forms, unit/column traces, residue and commit readiness. Executable is distinct from commit_ready: supply missing rationales/directionality in a new preview. Changed decisions, member selections, policy, orders, overlays or evidence need exact revalidation; identical evidence reinspection is safe. Full commitments copy reflexes/support exactly; explicit null/value and confidence are always required. Shared claims select pattern members explicitly.' + (" The choices field resolves local reflexes/support from IDs. A returned hypothesis_id freezes the preview for commit without retranscription." if stored else ""))          ),
-            args_model=StoredAssemblyArgs if stored else TestProtoAssemblyArgs,
-            handler=test_stored_assembly if stored else test_proto_assembly,
-            remediation=describe_inventory_input if stored else None,
+                'Execute the exact inventory and report forms, unit/column traces, residue and commit readiness. Executable is distinct from commit_ready: supply missing rationales/directionality in a new preview. Changed decisions, member selections, policy, orders, overlays or evidence need exact revalidation; identical evidence reinspection is safe. Full commitments copy reflexes/support exactly; explicit null/value and confidence are always required. Shared claims select pattern members explicitly.'
+                + (" The choices field resolves local reflexes/support from IDs. A returned hypothesis_id freezes the preview for commit without retranscription." if stored else "")
+                + (" Pass base_hypothesis_id to patch an earlier same-session preview incrementally via choices, shared_claims, drop_set_ids, or drop_pattern_ids." if stored_v2 else "")
+            ),
+            args_model=(
+                StoredAssemblyV2Args
+                if stored_v2
+                else (StoredAssemblyArgs if stored else TestProtoAssemblyArgs)
+            ),
+            handler=(
+                test_stored_assembly_v2
+                if stored_v2
+                else (test_stored_assembly if stored else test_proto_assembly)
+            ),
+            remediation=(
+                describe_inventory_input_v2
+                if stored_v2
+                else (describe_inventory_input if stored else None)
+            ),
         )
     )
     registry.register(
