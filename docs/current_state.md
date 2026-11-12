@@ -539,6 +539,70 @@ every historical `stored-hypothesis` v1 digest (`b1f459e7…`, `0b9d91cf…`,
   cap, `US$6.970752 <= US$10.00` ceiling). Portable suite: **`903 passed, 41
   deselected`** (`PASS`, `0` defects).
 
+## B04 live Burmish full-tree benchmark under stored-hypothesis-v2 — completed 2026-11-12
+
+[B04](research/real_family_benchmark_b04_burmish.md)
+([machine results](research/real_family_benchmark_b04_burmish_results.json);
+banked artifacts and independent post-run verification in
+`runs/experiments/b04-burmish-gemini-b03-benchmark/`) executed the frozen
+two-stage single-checkpoint benchmark on `benchmarks/burmish.json`
+(`tones_preserved = true`) with `gemini/gemini-3.8-flash` (`medium` thinking,
+`max_tokens = 49152`, `stored-hypothesis-v2`, `--tied-confidence-threshold 0.5`,
+`--compaction-watermark-tokens 256000`,
+`configuration_sha256 = 582b910aee74…`):
+
+- **Full `3/3` node completion without fallback or truncation (`US$3.8010` cached spend):**
+  Stage 1 (`--stop-after-node maruic --max-total-cost-usd 2.50`) committed
+  `maruic` cleanly on Turn 22 (`US$1.6531` cached-adjusted / `US$3.3741`
+  uncached, `441.97 s` wall; `gate_stage1.json` `usable = True`). Stage 2
+  (`--resume --max-total-cost-usd 6.50 --max-run-seconds 3600`) resumed the same
+  checkpoint and committed `burmic` (`20` turns, `US$0.7658` cached / `US$2.4060`
+  uncached, `201.34 s`) and `proto_burmish` (`20` turns, `US$1.3821` cached /
+  `US$3.5244` uncached, `299.46 s`). Certified 3-node cumulative ledger:
+  `62` requests / `62` turns / `62` tool calls (`4` rejected, all repaired on
+  the next turn; `0` truncations; `0` unknown-cost requests), `11,978,782` input
+  tokens (`8,153,319` cached [`68.06%`]), `85,438` output tokens (`51,587`
+  reasoning), **`US$3.800989` cached-adjusted spend** (`<= US$6.50` cap) vs
+  **`US$9.304479` uncached table cost** (`<= US$10.00` hard ceiling; `US$5.503490`
+  [`59.15%`] saved via prefix caching), `944.29 s` launcher wall time.
+- **Empirical validation of `B03` scaling vs `B02` Stage 1:**
+  Peak prompt tokens fell **`483,849 -> 336,297` (`-30.50%`)** and peak output
+  fell **`32,764` (truncated) -> `18,210`** (`0` truncations). Across `5`
+  `base_hypothesis_id` patch calls (`4` at `burmic`, `1` at `proto_burmish`),
+  `proto_burmish` Turn 17 repaired `14` contrast-reduction sets in `1,388 B` vs
+  `10,797 B` monolithic v1 (`-87.14%`) and `1,553` vs `18,210` output tokens
+  (`-91.47%`), while `burmic` Turn 19 automatically superseded an inherited
+  smoke choice (`*⁵⁵ -> *²²`) without `invalid-shared-claim` failure. At
+  `maruic`, Turn 15 flagged only `3` sets for `missing-directionality-rationale`
+  (down from `346` in `B02`), and `10` watermark triggers left all `7` empty
+  `790–805 B` baseline probes untouched while reclaiming `1,479,595 B` across
+  `10` read-only page stubs (`repeat_guard_hits = 0`, including a clean Turn-19
+  re-read at `proto_burmish`) plus `99,055 B` via immediate normalized
+  `_supersedes` containment on `burmic` Turn 13.
+- **Linguistic quality, `R07` critic audit, `$0` replay, & next-step gate:**
+  With `100%` tone preservation across all `187` beam forms and `404` committed
+  sets (`0` tone stripping), `proto_burmish` (`n=54` `validated_target`) scored
+  `0/54` full-form exact (`3/54` segment-only diagnostic exact on `1350` MONKEY,
+  `81` FATHOM, `156` RED, reflecting surface Chao contours `*³¹/*⁵¹` vs abstract
+  category numerals `¹–⁴` plus `77` singleton `*+` boundary retentions at
+  `maruic`), `mean_ned = 0.768140`, per-word `bcubed_f1 = 0.862556`, `0/53`
+  `cognate_unit_exact` (`35/54` exact `cog:*` unit-ID sequences), and **`R06`
+  `corpus_bcubed_f1 = 0.425184`** (`P = 0.456635`, `R = 0.397786`,
+  `bijective = False`); `burmic` (`n=37` Old Burmese `provisional_proxy`) scored
+  `0/37` full-form exact (`1/37` segment-only diagnostic exact on `1382` NEEDLE),
+  `mean_ned = 0.750054`, per-word `bcubed_f1 = 0.965559`, and **`R06`
+  `corpus_bcubed_f1 = 0.416361`**. `audit-run` recorded `97` defects (`85`
+  `maruic` + `11` `burmic` `uninspected_outgroup_citation`, exempting `239`
+  FLOWER via `polarize`, + `1` `proto_burmish` `identity_confidence_length_bias`
+  at `0.95 < 1.0`), with **`0` root outgroup false positives** and **`0`
+  `unit_provenance_loss`** (vs `7` in pre-R01). Counterfactual replay (`None` vs
+  `0.5`) yielded `0.000000` delta (`0` committed sets had `confidence <= 0.5`).
+  Pre-frozen `b04-polynesian-gemini-b03-benchmark/` (`US$6.9708 <= US$10.00`) is
+  cleared for a dedicated `$10.00` session, and `polynesian.json` (`46k–93k`
+  peaks)—not `burmish.json` (`264k–323k` non-signature peaks)—is confirmed as the
+  feasible real-family transfer target for `128k`-context local
+  `qwen3.8-27b-splash` (`96k` watermark).
+
 ## Authority and reading order
 
 This file summarizes implemented behavior and accepted decisions.

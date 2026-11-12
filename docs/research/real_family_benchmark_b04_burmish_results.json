@@ -1,0 +1,1675 @@
+{
+  "report_version": "b04-real-family-burmish-report-v1",
+  "date": "2026-11-12",
+  "stage": "B04",
+  "experiment_id": "b04-burmish-gemini-b03-benchmark",
+  "experiment_dir": "runs/experiments/b04-burmish-gemini-b03-benchmark",
+  "run_dir": "runs/experiments/b04-burmish-gemini-b03-benchmark/runs/burmish-gemini",
+  "run_id": "b04-burmish-gemini",
+  "trajectory_ids": {
+    "maruic": "trajectory-e5fc8a10-5de2-4a8c-8a21-88aee7e0835f",
+    "burmic": "trajectory-b320c8ae-312f-40bb-bd7f-76835886e888",
+    "proto_burmish": "trajectory-f7dbb30c-2dc1-4afe-8d07-f0fe9875ffc2"
+  },
+  "tones_preserved": true,
+  "provenance": {
+    "launch_head_commit": "c118e72c86731a34a1bae499be55b86409040ae0",
+    "branch": "main",
+    "dirty_paths": [],
+    "tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "source_manifest_sha256": "b3df62fb317f5b6ef6b5f43721694bee477f47c5cca9ddf742ae4ea4e403c288",
+    "candidate_manifest_sha256": "ce793890a865c28deecb78f6c562abe22de7fdc7a38785abe5e9e66bd6daaaa2",
+    "pre_commit_reviewed_manifest_sha256": "efcc87766998e03cf4aff08f86e411f2766cd860561b8e0eea7babedffc2d63e",
+    "preregistration_sha256": "e71df1027a58b2fdadf96379a8a0786d48ef9331bbaf8fd3044707f96964d3c7",
+    "pre_launch_review_sha256": "c1638f442d520bf419e9918a0828e68f5bee239812ca58b9e61c45c39e1881cf",
+    "benchmark_definition": "benchmarks/burmish.json",
+    "benchmark_definition_sha256": "fb9cd9660f08dea3d4d69bf5b7e82a1c345b6143d8f08039b089041d1856128d",
+    "payload_sha256": "092ae5b1534f3beb025d5114d4b37524ea213411a5595a6870df1bc2d63d39e9",
+    "normalized_tree_sha256": "fa7b48177b087cf728295be4a5ef163b9001ab69b2f6f6f9aa7cb776d7343f5c",
+    "price_table_sha256": "f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521",
+    "provider_config_sha256": "6ffec96c8a9b71c0c80c3b4b2681947d457cc492dcf5e5f4f7382819273ad68c",
+    "configuration_sha256": "582b910aee7401b14f9f705dce6e8ba361dc4fea620b57d90cc83f5572fb1a4d",
+    "configuration_components": {
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the agent instructions": "f170cfab2b241806490e31c74ca2871c2477ba487e2bbff7bd49c2aa2d881b91",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "2464ac4436f57e754168a905c8019aa138246c7ea7262d00b620014af62e3e8a",
+      "the anchor file": "absent",
+      "the provider and limit settings": "21b2e3b6f9cbb5e78850512c6442085279b3307c20a84a874a61a387411630f6",
+      "the give-up thresholds": "1272c745aaff889aeadad6a0e44e84d7d5ed4e5f6c989b0684ded45c3f1f93cc",
+      "the operational retry settings": "91e13d0a6549c76518ab7384ba52a997ea45c97f7eaa2189815ceb8fa86b20f9"
+    },
+    "model_visible_contract_digests": {
+      "native_profile": "stored-hypothesis-v2",
+      "packaged_instructions_sha256": "0b9d91cf5f5fd469fea1f5ec277ab436b7a412d4d2a87b94a766ff37166dc46d",
+      "the evidence/assembly contract": "b1f459e783712306fab58d8a350a304ad52ba5b8db660d2444afc33a77e19ec7",
+      "the agent instructions": "f170cfab2b241806490e31c74ca2871c2477ba487e2bbff7bd49c2aa2d881b91",
+      "the node commit requirements": "1ddfc0fcf882c4d425b1bb09aeb0cd74f05c5e18d52e4d5c8e51282cd03c1e4c",
+      "the tool schemas": "2464ac4436f57e754168a905c8019aa138246c7ea7262d00b620014af62e3e8a",
+      "the anchor file": "absent",
+      "tool_definitions_sha256": "f4b8f324f6e926f78b437fcd6ce6e5334210e9a459bce25649bd4f15c5f561bb",
+      "first_request_by_node": {
+        "maruic": {
+          "system_sha256": "f170cfab2b241806490e31c74ca2871c2477ba487e2bbff7bd49c2aa2d881b91",
+          "node_prompt_sha256": "21a54c336f8268910b6eefa9f63a51ed1edce9934267494eb74e4b1e5e2d1094",
+          "node_prompt_chars": 3098
+        },
+        "burmic": {
+          "system_sha256": "f170cfab2b241806490e31c74ca2871c2477ba487e2bbff7bd49c2aa2d881b91",
+          "node_prompt_sha256": "a562df86c1ec7acbe07fefa757fda8f3ba0a395215e7e3bd0d35934066c7b8b7",
+          "node_prompt_chars": 2996
+        },
+        "proto_burmish": {
+          "system_sha256": "f170cfab2b241806490e31c74ca2871c2477ba487e2bbff7bd49c2aa2d881b91",
+          "node_prompt_sha256": "e18961d9e3052760832df46d3dfe7365234d3273f5c48d667490d7abb7a7f533",
+          "node_prompt_chars": 2795
+        }
+      }
+    },
+    "historical_v1_digest_invariance": {
+      "c_gemini_r04_configuration_sha256": "339adb1338add17c78a0b5477d9c0b9dd85b64501e2be314951627861adce38a",
+      "b02_burmish_gemini_configuration_sha256": "89a49065883951bc68bc0943898ae6681be7ee6f9371ef52fe3c417d5e69ed22",
+      "v1_tool_schemas_sha256": "628f0f32eca43a872c7fb72c90e67b1ba3e00b9a1f9b4057e1cf702175584a72"
+    }
+  },
+  "configuration": {
+    "model": "gemini/gemini-3.8-flash",
+    "preset": "gemini",
+    "reasoning_effort": "medium",
+    "temperature": 1.0,
+    "max_output_tokens": 49152,
+    "inventory_protocol": "stored-hypothesis-v2",
+    "reasoning_history": "auto",
+    "effective_reasoning_history": "drop",
+    "tied_confidence_threshold": 0.5,
+    "compaction_watermark_tokens": 256000,
+    "max_turns": 36,
+    "max_tool_calls": 64,
+    "max_failed_nodes": 0,
+    "max_retries": 3,
+    "max_retry_seconds": 300,
+    "timeout_seconds": 300,
+    "stage1_caps": {
+      "stop_after_node": "maruic",
+      "max_total_cost_usd": 2.5,
+      "max_run_seconds": 1500.0,
+      "one_response_headroom_usd": 0.970752,
+      "worst_case_upper_bound_usd": 3.470752
+    },
+    "stage2_caps": {
+      "resume": true,
+      "max_total_cost_usd": 6.5,
+      "max_run_seconds": 3600.0,
+      "one_response_headroom_usd": 0.970752,
+      "worst_case_upper_bound_usd": 7.470752,
+      "hard_ceiling_usd": 10.0,
+      "launched": true
+    }
+  },
+  "experiment_directory_digests": {
+    "snapshot_stage": "post_evaluate_pre_post_run_review",
+    "note": "Records the 22 post-evaluate files on disk prior to creation of runs/experiments/b04-burmish-gemini-b03-benchmark/post_run_review.md by the independent post-run reviewer.",
+    "file_count": 22,
+    "files": [
+      {
+        "relative_path": "batch_events.jsonl",
+        "bytes": 4345,
+        "sha256": "6b31cead9e3e770a95bc883da42275a8da9ebfc16a51650708f5068c2e2b11c2"
+      },
+      {
+        "relative_path": "batch_ledger.json",
+        "bytes": 5633,
+        "sha256": "2860476fcb1032c860731c2a59b996d16262a9aa2cab0407cadd6c065babe5cf"
+      },
+      {
+        "relative_path": "inputs/burmish.payload.json",
+        "bytes": 1515426,
+        "sha256": "092ae5b1534f3beb025d5114d4b37524ea213411a5595a6870df1bc2d63d39e9"
+      },
+      {
+        "relative_path": "inputs/price-table.json",
+        "bytes": 521,
+        "sha256": "f07736e17fe8a06a8b4e9a77d0d43577a071d456066aa0d993d161bc1950f521"
+      },
+      {
+        "relative_path": "inputs/provider-config.json",
+        "bytes": 26,
+        "sha256": "6ffec96c8a9b71c0c80c3b4b2681947d457cc492dcf5e5f4f7382819273ad68c"
+      },
+      {
+        "relative_path": "manifest.b04-burmish.json",
+        "bytes": 34202,
+        "sha256": "ce793890a865c28deecb78f6c562abe22de7fdc7a38785abe5e9e66bd6daaaa2"
+      },
+      {
+        "relative_path": "preregistration.md",
+        "bytes": 14586,
+        "sha256": "e71df1027a58b2fdadf96379a8a0786d48ef9331bbaf8fd3044707f96964d3c7"
+      },
+      {
+        "relative_path": "review.md",
+        "bytes": 11623,
+        "sha256": "c1638f442d520bf419e9918a0828e68f5bee239812ca58b9e61c45c39e1881cf"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/checkpoint.json",
+        "bytes": 10757681,
+        "sha256": "9ad44bfbc3121a3c42085f1f5f6c8735b134fc4b9a05d4dda43d96f1c55b2aa5"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/checkpoint.requests.jsonl",
+        "bytes": 102740,
+        "sha256": "9a28aa779e745459b5e62a3865cf5c5c185fa011a96142c1bc1eb89fcbaef426"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/evaluation.json",
+        "bytes": 741074,
+        "sha256": "4f64f899c1f1fb3da4e48930b4be5872b9a619a2ce254361e38531e34ee73b31"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/events.jsonl",
+        "bytes": 5086526,
+        "sha256": "8708bbffa353eb7802bd048579cc8e418c4bf9ee49234dbea2aae68c4d3aca8f"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/gate_stage1.json",
+        "bytes": 312756,
+        "sha256": "8588722c298320ea908a7e7a76309f9316f97b85656bf4325dd6b714e899f33e"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/inspect_stage1.txt",
+        "bytes": 86091,
+        "sha256": "47bfceb6bd98579fec7229f053928a611247d9b3d9221a4b3fbb25ff2b44b013"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/result.json",
+        "bytes": 40132972,
+        "sha256": "81863699700546aa00d7b3b1e9e2c2df2be0171bf5312e7fe4e27397c52d0175"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/run_summary.json",
+        "bytes": 354764,
+        "sha256": "1b0d6f7a48c92d774c4f9a0f15f51b9b177ce7aca6a345d7fee288d05552126e"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/stage1.stderr.log",
+        "bytes": 22178,
+        "sha256": "cbf64d0d9820d2b0ec3d081b2b1fb25e225150c7eb21e78676d1501ecb071c29"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/stage1.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/stage2.stderr.log",
+        "bytes": 41482,
+        "sha256": "7a1bf58e1cefc1ab6dd6e8c381cf0051cae592b1d852f19720922bb4508536ae"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/stage2.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "relative_path": "runs/burmish-gemini/trajectories.jsonl",
+        "bytes": 10961023,
+        "sha256": "e15d1b207c0115d991bb6e3c68e0e8692fc6ddafdd3ec218af33e0e6aa4af810"
+      },
+      {
+        "relative_path": "source_manifest.json",
+        "bytes": 29088,
+        "sha256": "b3df62fb317f5b6ef6b5f43721694bee477f47c5cca9ddf742ae4ea4e403c288"
+      }
+    ]
+  },
+  "stage_gates_and_execution_outcome": {
+    "stage1_gate": {
+      "usable": true,
+      "gate_stage1_reason": "maruic committed cleanly without fallback",
+      "checks": {
+        "in_checkpoint_steps": true,
+        "not_failure_fallback": true,
+        "trajectory_committed": true
+      },
+      "stage1_cached_adjusted_cost_usd": 1.653072,
+      "stage1_cached_adjusted_cost_usd_exact": 1.65307245,
+      "stage1_uncached_table_cost_usd": 3.374131,
+      "stage1_uncached_table_cost_usd_exact": 3.37413075,
+      "stage1_wall_seconds": 441.9658,
+      "decision": "PROCEED_TO_STAGE2_RESUME"
+    },
+    "stage2_resume_and_final_outcome": {
+      "usable": true,
+      "evaluate_stage_gate_reason": "all 3 Burmish internal nodes committed without fallback",
+      "run_status": "finished",
+      "outcome": "committed",
+      "committed_nodes": [
+        "maruic",
+        "burmic",
+        "proto_burmish"
+      ],
+      "fallback_nodes": [],
+      "stage2_wall_seconds": 502.3204,
+      "cumulative_cached_adjusted_cost_usd": 3.800989,
+      "cumulative_cached_adjusted_cost_usd_exact": 3.800988675,
+      "cumulative_uncached_table_cost_usd": 9.304479,
+      "cumulative_uncached_table_cost_usd_exact": 9.304479,
+      "within_stage2_6_50_cached_cap": true,
+      "within_10_00_hard_uncached_ceiling": true
+    }
+  },
+  "certified_resources": {
+    "ledger_version": "r02-ledger-v1",
+    "usage_accounting_version": "abrupt-loss-v1",
+    "outcome": "committed",
+    "history_certified": true,
+    "history_complete": true,
+    "cost_known": true,
+    "journal_record_count": 252,
+    "distinct_trajectories": 3,
+    "turns": 62,
+    "provider_requests": 62,
+    "responses_with_cost": 62,
+    "unknown_cost_requests": 0,
+    "unrecorded_requests": 0,
+    "tool_calls": 62,
+    "rejected_tool_calls": 4,
+    "truncated_responses": 0,
+    "input_tokens": 11978782,
+    "cached_input_tokens": 8153319,
+    "uncached_input_tokens": 3825463,
+    "cache_hit_rate": 0.680647,
+    "output_tokens": 85438,
+    "reasoning_output_tokens": 51587,
+    "total_tokens": 12064220,
+    "max_request_input_tokens": 336297,
+    "max_estimated_non_signature_prompt_tokens": 323339,
+    "max_response_output_tokens": 18210,
+    "watermark_trigger_count": 10,
+    "compacted_preview_results": 9,
+    "compacted_read_only_results": 11,
+    "compacted_tool_results": 20,
+    "repeat_guard_hits": 0,
+    "cached_adjusted_total_cost_usd_rounded": 3.800989,
+    "cached_adjusted_total_cost_usd_exact": 3.800988675,
+    "uncached_table_total_cost_usd_rounded": 9.304479,
+    "uncached_table_total_cost_usd_exact": 9.304479,
+    "elapsed_seconds": 942.2435084580211,
+    "wall_seconds": 944.2862,
+    "stage_subtotals": {
+      "stage1_maruic": {
+        "provider_requests": 22,
+        "turns": 22,
+        "tool_calls": 22,
+        "rejected_tool_calls": 1,
+        "truncated_responses": 0,
+        "input_tokens": 4283186,
+        "cached_input_tokens": 2549716,
+        "uncached_input_tokens": 1733470,
+        "cache_hit_rate": 0.595285,
+        "output_tokens": 43131,
+        "reasoning_output_tokens": 21484,
+        "cached_adjusted_cost_usd_rounded": 1.653072,
+        "cached_adjusted_cost_usd_exact": 1.65307245,
+        "uncached_table_cost_usd_rounded": 3.374131,
+        "uncached_table_cost_usd_exact": 3.37413075,
+        "journal_elapsed_seconds": 441.0828063750232,
+        "wall_seconds": 441.9658
+      },
+      "stage2_burmic_and_proto_burmish": {
+        "provider_requests": 40,
+        "turns": 40,
+        "tool_calls": 40,
+        "rejected_tool_calls": 3,
+        "truncated_responses": 0,
+        "input_tokens": 7695596,
+        "cached_input_tokens": 5603603,
+        "uncached_input_tokens": 2091993,
+        "cache_hit_rate": 0.728157,
+        "output_tokens": 42307,
+        "reasoning_output_tokens": 30103,
+        "cached_adjusted_cost_usd_rounded": 2.147916,
+        "cached_adjusted_cost_usd_exact": 2.147916225,
+        "uncached_table_cost_usd_rounded": 5.930348,
+        "uncached_table_cost_usd_exact": 5.93034825,
+        "journal_elapsed_delta_seconds": 501.1607020829979,
+        "wall_seconds": 502.3204
+      }
+    },
+    "per_node": {
+      "maruic": {
+        "trajectory_id": "trajectory-e5fc8a10-5de2-4a8c-8a21-88aee7e0835f",
+        "stage": "Stage 1",
+        "turns": 22,
+        "provider_requests": 22,
+        "tool_calls": 22,
+        "rejected_tool_calls": 1,
+        "truncated_responses": 0,
+        "input_tokens": 4283186,
+        "cached_input_tokens": 2549716,
+        "uncached_input_tokens": 1733470,
+        "cache_hit_rate": 0.595285,
+        "output_tokens": 43131,
+        "reasoning_output_tokens": 21484,
+        "total_tokens": 4326317,
+        "peak_input_tokens": 336297,
+        "peak_input_turn": 19,
+        "peak_estimated_non_signature_prompt_tokens": 323339,
+        "latest_prompt_tokens": 308190,
+        "peak_output_tokens": 15973,
+        "peak_output_turn": 21,
+        "watermark_trigger_count": 5,
+        "compacted_preview_results": 4,
+        "compacted_read_only_results": 5,
+        "compacted_tool_results": 9,
+        "watermark_read_only_saved_bytes": 523278,
+        "immediate_supersedes_drops": 0,
+        "repeat_guard_hits": 0,
+        "cached_adjusted_cost_usd_rounded": 1.653072,
+        "cached_adjusted_cost_usd_exact": 1.65307245,
+        "uncached_table_cost_usd_rounded": 3.374131,
+        "uncached_table_cost_usd_exact": 3.37413075,
+        "node_duration_seconds": 441.0183912089851,
+        "http_request_duration_sum_seconds": 437.1602,
+        "fits_96k_local_qwen_watermark": false
+      },
+      "burmic": {
+        "trajectory_id": "trajectory-b320c8ae-312f-40bb-bd7f-76835886e888",
+        "stage": "Stage 2a",
+        "turns": 20,
+        "provider_requests": 20,
+        "tool_calls": 20,
+        "rejected_tool_calls": 1,
+        "truncated_responses": 0,
+        "input_tokens": 3136907,
+        "cached_input_tokens": 2429866,
+        "uncached_input_tokens": 707041,
+        "cache_hit_rate": 0.774606,
+        "output_tokens": 14216,
+        "reasoning_output_tokens": 9880,
+        "total_tokens": 3151123,
+        "peak_input_tokens": 272547,
+        "peak_input_turn": 20,
+        "peak_estimated_non_signature_prompt_tokens": 263629,
+        "latest_prompt_tokens": 272547,
+        "peak_output_tokens": 4910,
+        "peak_output_turn": 19,
+        "watermark_trigger_count": 1,
+        "compacted_preview_results": 3,
+        "compacted_read_only_results": 3,
+        "compacted_tool_results": 6,
+        "watermark_read_only_saved_bytes": 77719,
+        "immediate_supersedes_drops": 1,
+        "immediate_supersedes_saved_bytes": 99055,
+        "repeat_guard_hits": 0,
+        "cached_adjusted_cost_usd_rounded": 0.765831,
+        "cached_adjusted_cost_usd_exact": 0.7658307,
+        "uncached_table_cost_usd_rounded": 2.40599,
+        "uncached_table_cost_usd_exact": 2.40599025,
+        "node_duration_seconds": 201.34456712502288,
+        "http_request_duration_sum_seconds": 198.8633,
+        "fits_96k_local_qwen_watermark": false
+      },
+      "proto_burmish": {
+        "trajectory_id": "trajectory-f7dbb30c-2dc1-4afe-8d07-f0fe9875ffc2",
+        "stage": "Stage 2b",
+        "turns": 20,
+        "provider_requests": 20,
+        "tool_calls": 20,
+        "rejected_tool_calls": 2,
+        "truncated_responses": 0,
+        "input_tokens": 4558689,
+        "cached_input_tokens": 3173737,
+        "uncached_input_tokens": 1384952,
+        "cache_hit_rate": 0.696195,
+        "output_tokens": 28091,
+        "reasoning_output_tokens": 20223,
+        "total_tokens": 4586780,
+        "peak_input_tokens": 305646,
+        "peak_input_turn": 13,
+        "peak_estimated_non_signature_prompt_tokens": 301032,
+        "latest_prompt_tokens": 269019,
+        "peak_output_tokens": 18210,
+        "peak_output_turn": 16,
+        "watermark_trigger_count": 4,
+        "compacted_preview_results": 2,
+        "compacted_read_only_results": 3,
+        "compacted_tool_results": 5,
+        "watermark_read_only_saved_bytes": 878598,
+        "immediate_supersedes_drops": 0,
+        "repeat_guard_hits": 0,
+        "cached_adjusted_cost_usd_rounded": 1.382086,
+        "cached_adjusted_cost_usd_exact": 1.382085525,
+        "uncached_table_cost_usd_rounded": 3.524358,
+        "uncached_table_cost_usd_exact": 3.524358,
+        "node_duration_seconds": 299.4562989999831,
+        "http_request_duration_sum_seconds": 296.5012,
+        "fits_96k_local_qwen_watermark": false
+      }
+    }
+  },
+  "deterministic_ceilings": {
+    "beam_width": 5,
+    "boundaries": "include",
+    "tones_preserved": true,
+    "proto_burmish": {
+      "target_validity": "validated_target",
+      "evaluated_concepts": 54,
+      "daughter_selection_bar": {
+        "top_exact_matches": 0,
+        "top_exact_rate": 0.0
+      },
+      "assembly_ceiling_node_local": {
+        "top_exact_matches": 6,
+        "top_exact_rate": 0.111111,
+        "flat_exact_matches": 5
+      },
+      "oracle_context_free": {
+        "top_exact_matches": 7,
+        "top_exact_rate": 0.12963,
+        "beam_exact_matches": 15,
+        "beam_exact_rate": 0.277778,
+        "mean_top_ned": 0.489644,
+        "mean_beam_ned": 0.295811,
+        "mean_word_bcubed_f1": 0.90954,
+        "rule_count": 236
+      },
+      "oracle_contextual": {
+        "top_exact_matches": 16,
+        "top_exact_rate": 0.296296,
+        "beam_exact_matches": 26,
+        "beam_exact_rate": 0.481481,
+        "mean_top_ned": 0.292615,
+        "mean_beam_ned": 0.178395,
+        "mean_word_bcubed_f1": 0.960443,
+        "rule_count": 621,
+        "fallback_branches": 1
+      },
+      "oracle_assembly": {
+        "top_exact_matches": 42,
+        "top_exact_rate": 0.777778,
+        "beam_exact_matches": 42,
+        "beam_exact_rate": 0.777778,
+        "mean_top_ned": 0.07037,
+        "mean_beam_ned": 0.07037,
+        "mean_word_bcubed_f1": 0.988598,
+        "committed_set_count": 529,
+        "unaccounted_column_rate": 0.0
+      }
+    },
+    "burmic": {
+      "target_validity": "provisional_proxy",
+      "source_variety_id": "hillburmish:OldBurmese",
+      "evaluated_concepts": 37,
+      "daughter_selection_bar": {
+        "top_exact_matches": 0,
+        "top_exact_rate": 0.0
+      },
+      "assembly_ceiling_node_local": {
+        "top_exact_matches": 4,
+        "top_exact_rate": 0.108108
+      },
+      "oracle_context_free": {
+        "top_exact_matches": 11,
+        "top_exact_rate": 0.297297,
+        "beam_exact_matches": 15,
+        "beam_exact_rate": 0.405405,
+        "mean_top_ned": 0.370967,
+        "mean_beam_ned": 0.199721,
+        "mean_word_bcubed_f1": 0.951593,
+        "rule_count": 194
+      },
+      "oracle_contextual": {
+        "top_exact_matches": 10,
+        "top_exact_rate": 0.27027,
+        "beam_exact_matches": 17,
+        "beam_exact_rate": 0.459459,
+        "mean_top_ned": 0.312484,
+        "mean_beam_ned": 0.196761,
+        "mean_word_bcubed_f1": 0.955025,
+        "rule_count": 380,
+        "fallback_branches": 1
+      },
+      "oracle_assembly": {
+        "top_exact_matches": 25,
+        "top_exact_rate": 0.675676,
+        "beam_exact_matches": 25,
+        "beam_exact_rate": 0.675676,
+        "mean_top_ned": 0.090015,
+        "mean_beam_ned": 0.090015,
+        "mean_word_bcubed_f1": 0.974465,
+        "committed_set_count": 335,
+        "unaccounted_column_rate": 0.17058
+      }
+    }
+  },
+  "historical_model_baselines": {
+    "pre_r01_banked_gemini_3_7_sweeps": {
+      "model": "gemini/gemini-3.7-flash",
+      "evidence_regime": "legacy whole-string alignment (150 cs-* sets / 341 columns at maruic)",
+      "seeds": [
+        {
+          "seed_id": "burmish-gemini-t36-r2/seed-00",
+          "committed_nodes": "2/3",
+          "fallback_nodes": [
+            "maruic"
+          ],
+          "proto_burmish": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 54,
+            "mean_ned": 0.707279,
+            "word_bcubed_f1": 0.861123,
+            "r06_corpus_bcubed_f1": 0.390326,
+            "r06_corpus_bcubed_precision": 0.436447,
+            "r06_corpus_bcubed_recall": 0.353021,
+            "is_bijective_relabelling": false
+          },
+          "burmic": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 37,
+            "mean_ned": 0.672351,
+            "word_bcubed_f1": 0.9611,
+            "r06_corpus_bcubed_f1": 0.473031,
+            "is_bijective_relabelling": false
+          },
+          "audit_run_defects": {
+            "total": 12,
+            "maruic": 9,
+            "burmic": 2,
+            "proto_burmish": 1,
+            "root_outgroup_false_positives": 0
+          },
+          "family_3node_cost_usd": {
+            "cached_adjusted": 2.827991,
+            "uncached_table": 8.949286
+          }
+        },
+        {
+          "seed_id": "burmish-gemini-t36-r2/seed-01",
+          "committed_nodes": "3/3",
+          "fallback_nodes": [],
+          "proto_burmish": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 54,
+            "mean_ned": 0.706526,
+            "word_bcubed_f1": 0.889002,
+            "r06_corpus_bcubed_f1": 0.472894,
+            "r06_corpus_bcubed_precision": 0.48792,
+            "r06_corpus_bcubed_recall": 0.458766,
+            "is_bijective_relabelling": false
+          },
+          "burmic": {
+            "top_exact_matches": 1,
+            "exact_match_concepts": [
+              "NEEDLE"
+            ],
+            "evaluated_concepts": 37,
+            "mean_ned": 0.666645,
+            "word_bcubed_f1": 0.9611,
+            "r06_corpus_bcubed_f1": 0.452765,
+            "is_bijective_relabelling": false
+          },
+          "audit_run_defects": {
+            "total": 7,
+            "maruic": 3,
+            "burmic": 4,
+            "proto_burmish": 0,
+            "root_outgroup_false_positives": 0
+          },
+          "family_3node_cost_usd": {
+            "cached_adjusted": 2.197753,
+            "uncached_table": 6.994879
+          }
+        },
+        {
+          "seed_id": "burmish-gemini-t36-r3/seed-00",
+          "committed_nodes": "3/3",
+          "fallback_nodes": [],
+          "proto_burmish": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 54,
+            "mean_ned": 0.738608,
+            "word_bcubed_f1": 0.857031,
+            "r06_corpus_bcubed_f1": 0.394367,
+            "r06_corpus_bcubed_precision": 0.438775,
+            "r06_corpus_bcubed_recall": 0.358123,
+            "is_bijective_relabelling": false
+          },
+          "burmic": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 37,
+            "mean_ned": 0.714843,
+            "word_bcubed_f1": 0.957849,
+            "r06_corpus_bcubed_f1": 0.443895,
+            "is_bijective_relabelling": false
+          },
+          "audit_run_defects": {
+            "total": 16,
+            "maruic": 8,
+            "burmic": 7,
+            "proto_burmish": 1,
+            "root_outgroup_false_positives": 0
+          },
+          "family_3node_cost_usd": {
+            "cached_adjusted": 1.935673,
+            "uncached_table": 5.098639
+          }
+        },
+        {
+          "seed_id": "burmish-gemini-t36-r3/seed-01",
+          "committed_nodes": "3/3",
+          "fallback_nodes": [],
+          "proto_burmish": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 54,
+            "mean_ned": 0.689469,
+            "word_bcubed_f1": 0.890353,
+            "r06_corpus_bcubed_f1": 0.478021,
+            "r06_corpus_bcubed_precision": 0.472987,
+            "r06_corpus_bcubed_recall": 0.483164,
+            "is_bijective_relabelling": false
+          },
+          "burmic": {
+            "top_exact_matches": 0,
+            "evaluated_concepts": 37,
+            "mean_ned": 0.682561,
+            "word_bcubed_f1": 0.961427,
+            "r06_corpus_bcubed_f1": 0.505197,
+            "is_bijective_relabelling": false
+          },
+          "audit_run_defects": {
+            "total": 6,
+            "maruic": 3,
+            "burmic": 2,
+            "proto_burmish": 1,
+            "root_outgroup_false_positives": 0
+          },
+          "family_3node_cost_usd": {
+            "cached_adjusted": 1.793139,
+            "uncached_table": 5.90577
+          }
+        }
+      ],
+      "four_seed_aggregate": {
+        "committed_node_attempts": "11/12",
+        "proto_burmish": {
+          "repeated_concept_evaluations": 216,
+          "top_exact_matches": 0,
+          "mean_ned_mean": 0.710471,
+          "mean_ned_sd": 0.020482,
+          "word_bcubed_f1_mean": 0.874377,
+          "word_bcubed_f1_sd": 0.017754,
+          "r06_corpus_bcubed_f1_mean": 0.433902,
+          "r06_corpus_bcubed_f1_sd": 0.048058,
+          "bijective_seeds": 0
+        },
+        "burmic": {
+          "repeated_concept_evaluations": 148,
+          "top_exact_matches": 1,
+          "mean_ned_mean": 0.6841,
+          "mean_ned_sd": 0.021527,
+          "word_bcubed_f1_mean": 0.960369,
+          "word_bcubed_f1_sd": 0.001687,
+          "r06_corpus_bcubed_f1_mean": 0.468722,
+          "r06_corpus_bcubed_f1_sd": 0.027203,
+          "bijective_seeds": 0
+        },
+        "audit_run_defects_total": {
+          "total": 41,
+          "uninspected_outgroup_citation": 24,
+          "unit_provenance_loss": 7,
+          "identity_confidence_length_bias": 10,
+          "silent_residue_drop_truncation": 0,
+          "upstream_tie_collapse_majority": 0,
+          "root_outgroup_false_positives": 0
+        },
+        "family_3node_cost_mean_usd": {
+          "cached_adjusted": 2.188639,
+          "uncached_table": 6.737144
+        }
+      }
+    },
+    "b02_stage1_stored_hypothesis_v1": {
+      "run_id": "b02-burmish-gemini",
+      "configuration_sha256": "89a49065883951bc68bc0943898ae6681be7ee6f9371ef52fe3c417d5e69ed22",
+      "inventory_protocol": "stored-hypothesis",
+      "max_output_tokens": 32768,
+      "committed_nodes": "0/3",
+      "outcome": "interrupted",
+      "interruption_reason": "RunBudgetExceeded pre-dispatch at maruic Turn 22 ($3.6591585 >= $3.50 uncached cap)",
+      "turns": 22,
+      "provider_requests": 22,
+      "tool_calls": 20,
+      "rejected_tool_calls": 2,
+      "truncated_responses": 1,
+      "input_tokens": 4434603,
+      "cached_input_tokens": 3588670,
+      "cache_hit_rate": 0.809243,
+      "output_tokens": 88855,
+      "reasoning_output_tokens": 36099,
+      "peak_input_tokens": 483849,
+      "peak_estimated_non_signature_prompt_tokens": 458599,
+      "peak_output_tokens": 32764,
+      "turn21_monolithic_claim_bytes": 21276,
+      "turn21_deduplicated_sets_flagged_missing_directionality_rationale": 346,
+      "cached_adjusted_cost_usd": 1.236806,
+      "uncached_table_cost_usd_exact": 3.6591585,
+      "wall_seconds": 696.1282
+    }
+  },
+  "b04_live_evaluation_and_forensics": {
+    "official_task02_and_task04_evaluation": {
+      "evaluator_version": "task02-v1",
+      "unit_evaluator_version": "task04-units-v1",
+      "run_status": "finished",
+      "validated_target_summary": {
+        "planned_concepts": 54,
+        "available_outputs": 54,
+        "committed_outputs": 54,
+        "fallback_outputs": 0,
+        "committed_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.7681399875844319,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0
+      },
+      "raw_target_summary": {
+        "planned_concepts": 91,
+        "available_outputs": 91,
+        "committed_outputs": 91,
+        "fallback_outputs": 0,
+        "committed_top_hits": 0,
+        "conditional_committed_top_exact_rate": 0.0,
+        "conditional_committed_mean_ned": 0.7607861918301478,
+        "end_to_end_model_top_exact_rate": 0.0,
+        "end_to_end_output_top_exact_rate": 0.0
+      },
+      "proto_burmish": {
+        "target_validity": "validated_target",
+        "source_variety_id": "hillburmish:ProtoBurmish",
+        "output_kind": "committed",
+        "evaluated_concepts": 54,
+        "target_form_count": 92,
+        "missing_reconstruction_concepts": 0,
+        "top_exact_matches": 0,
+        "top_exact_rate": 0.0,
+        "beam_exact_matches": 0,
+        "beam_exact_rate": 0.0,
+        "mean_top_ned": 0.768139987584432,
+        "sd_top_ned": 0.2103815267225523,
+        "min_top_ned": 0.2,
+        "median_top_ned": 0.788888888888889,
+        "max_top_ned": 1.0,
+        "mean_beam_ned": 0.768139987584432,
+        "mean_top_edit_distance": 5.537037037037037,
+        "word_bcubed_precision_mean": 0.9491826658493326,
+        "word_bcubed_recall_mean": 0.8161968452389312,
+        "word_bcubed_f1_mean": 0.8625561869860631,
+        "word_bcubed_f1_sd": 0.1704340320836885,
+        "cognate_unit_exact_hits": 0,
+        "cognate_unit_exact_scored": 53,
+        "cognate_unit_unresolved_lexical_scope_count": 1,
+        "exact_cog_unit_id_sequence_match_count": 35,
+        "selection": {
+          "eligible_concepts": 54,
+          "oracle_reachable_concepts": 0,
+          "outside_selection_top_hits": 0,
+          "outside_selection_beam_hits": 0
+        },
+        "lexical_novelty_vs_leaf_daughters": {
+          "novel_top_predictions_not_verbatim_in_any_leaf": 37,
+          "verbatim_leaf_attested_top_predictions": 17
+        },
+        "diagnostic_superscript_partition_only": {
+          "note": "task01-v1 token_diagnostics partition only; tones are 100% preserved in all official metrics",
+          "segment_only_exact_count": 3,
+          "segment_only_exact_rate": 0.05555555555555555,
+          "segment_only_exact_concepts": [
+            "1350",
+            "81",
+            "156"
+          ],
+          "mean_segment_only_ned": 0.696244,
+          "tone_token_exact_count": 0
+        },
+        "notable_concept_predictions": [
+          {
+            "concept_id": "1350",
+            "gloss": "MONKEY",
+            "predicted": [
+              "m",
+              "j",
+              "u",
+              "k",
+              "³¹"
+            ],
+            "nearest_gold": [
+              "m",
+              "j",
+              "u",
+              "k",
+              "⁴"
+            ],
+            "top_ned": 0.2,
+            "segment_only_exact": true,
+            "segment_only_ned": 0.0
+          },
+          {
+            "concept_id": "81",
+            "gloss": "FATHOM",
+            "predicted": [
+              "l",
+              "a",
+              "m",
+              "⁵¹"
+            ],
+            "nearest_gold": [
+              "l",
+              "a",
+              "m",
+              "¹"
+            ],
+            "top_ned": 0.25,
+            "segment_only_exact": true,
+            "segment_only_ned": 0.0
+          },
+          {
+            "concept_id": "156",
+            "gloss": "RED",
+            "predicted": [
+              "n",
+              "ɛ",
+              "⁵¹"
+            ],
+            "nearest_gold": [
+              "n",
+              "ɛ",
+              "¹"
+            ],
+            "top_ned": 0.3333333333333333,
+            "segment_only_exact": true,
+            "segment_only_ned": 0.0,
+            "novel_outside_leaf_attestation": true
+          },
+          {
+            "concept_id": "586",
+            "gloss": "GARDEN",
+            "predicted": [
+              "kʰ",
+              "j",
+              "a",
+              "m",
+              "⁵¹"
+            ],
+            "nearest_gold": [
+              "k",
+              "j",
+              "a",
+              "m",
+              "¹"
+            ],
+            "top_ned": 0.4,
+            "segment_only_exact": false,
+            "segment_only_ned": 0.25
+          },
+          {
+            "concept_id": "1382",
+            "gloss": "NEEDLE (FOR SEWING)",
+            "predicted": [
+              "ŋ",
+              "ɛ̱",
+              "p",
+              "⁵⁵"
+            ],
+            "nearest_gold": [
+              "ʔ",
+              "a",
+              "p",
+              "⁴"
+            ],
+            "all_gold_variants": [
+              [
+                "ˀŋ",
+                "a",
+                "p",
+                "⁴"
+              ],
+              [
+                "ʔ",
+                "a",
+                "p",
+                "⁴"
+              ]
+            ],
+            "top_ned": 0.75,
+            "segment_only_exact": false,
+            "novel_outside_leaf_attestation": true
+          },
+          {
+            "concept_id": "1209",
+            "gloss": "I",
+            "predicted": [
+              "ŋ",
+              "ɔ",
+              "⁵¹"
+            ],
+            "nearest_gold": [
+              "ŋ",
+              "a",
+              "¹"
+            ],
+            "top_ned": 0.6666666666666666,
+            "segment_only_exact": false,
+            "novel_outside_leaf_attestation": true
+          },
+          {
+            "concept_id": "1248",
+            "gloss": "EYE",
+            "predicted": [
+              "m",
+              "j",
+              "ɔ",
+              "ʔ",
+              "³¹",
+              "+",
+              "+",
+              "+",
+              "tʃ",
+              "i",
+              "k",
+              "⁵⁵"
+            ],
+            "nearest_gold": [
+              "m",
+              "j",
+              "a",
+              "k",
+              "⁴"
+            ],
+            "top_ned": 0.75,
+            "segment_only_exact": false
+          },
+          {
+            "concept_id": "1223",
+            "gloss": "HEART",
+            "predicted": [
+              "k",
+              "⁵⁵",
+              "+",
+              "+",
+              "n",
+              "a̱",
+              "k",
+              "⁵⁵",
+              "+",
+              "l",
+              "a",
+              "m",
+              "³¹"
+            ],
+            "nearest_gold": [
+              "ˀn",
+              "i",
+              "k",
+              "⁴"
+            ],
+            "top_ned": 0.9230769230769231,
+            "segment_only_exact": false
+          }
+        ]
+      },
+      "burmic": {
+        "target_validity": "provisional_proxy",
+        "source_variety_id": "hillburmish:OldBurmese",
+        "output_kind": "committed",
+        "evaluated_concepts": 37,
+        "target_form_count": 38,
+        "missing_reconstruction_concepts": 0,
+        "top_exact_matches": 0,
+        "top_exact_rate": 0.0,
+        "beam_exact_matches": 0,
+        "beam_exact_rate": 0.0,
+        "mean_top_ned": 0.750053625053625,
+        "sd_top_ned": 0.19697430918717476,
+        "min_top_ned": 0.3333333333333333,
+        "median_top_ned": 0.75,
+        "max_top_ned": 1.0,
+        "mean_beam_ned": 0.750053625053625,
+        "mean_top_edit_distance": 3.810810810810811,
+        "word_bcubed_precision_mean": 0.9795149695149695,
+        "word_bcubed_recall_mean": 0.9581192059570438,
+        "word_bcubed_f1_mean": 0.9655588184999949,
+        "word_bcubed_f1_sd": 0.07699282654025365,
+        "cognate_unit_exact_hits": 0,
+        "cognate_unit_exact_scored": 37,
+        "exact_cog_unit_id_sequence_match_count": 14,
+        "selection": {
+          "eligible_concepts": 37,
+          "oracle_reachable_concepts": 0,
+          "outside_selection_top_hits": 0,
+          "outside_selection_beam_hits": 0
+        },
+        "lexical_novelty_vs_leaf_daughters": {
+          "novel_top_predictions_not_verbatim_in_any_burmic_leaf": 15,
+          "verbatim_burmic_leaf_attested_top_predictions": 22
+        },
+        "diagnostic_superscript_partition_only": {
+          "segment_only_exact_count": 1,
+          "segment_only_exact_rate": 0.02702702702702703,
+          "segment_only_exact_concepts": [
+            "1382"
+          ],
+          "mean_segment_only_ned": 0.64305,
+          "tone_token_exact_count": 0
+        },
+        "notable_concept_predictions": [
+          {
+            "concept_id": "1382",
+            "gloss": "NEEDLE (FOR SEWING)",
+            "predicted": [
+              "a",
+              "p",
+              "⁵⁵"
+            ],
+            "nearest_gold": [
+              "a",
+              "p",
+              "⁴"
+            ],
+            "top_ned": 0.3333333333333333,
+            "segment_only_exact": true,
+            "segment_only_ned": 0.0
+          },
+          {
+            "concept_id": "1225",
+            "gloss": "DAY (NOT NIGHT)",
+            "predicted": [
+              "n",
+              "i",
+              "ʔ",
+              "³¹"
+            ],
+            "nearest_gold": [
+              "n",
+              "i",
+              "j",
+              "ʔ",
+              "³"
+            ],
+            "top_ned": 0.4,
+            "segment_only_exact": false,
+            "segment_only_ned": 0.25
+          },
+          {
+            "concept_id": "1223",
+            "gloss": "HEART",
+            "predicted": [
+              "ȵ̥",
+              "a",
+              "⁵⁵",
+              "+",
+              "l",
+              "u",
+              "m",
+              "³¹"
+            ],
+            "nearest_gold": [
+              "nʰ",
+              "a",
+              "c",
+              "⁴",
+              "+",
+              "l",
+              "u",
+              "m",
+              "⁵"
+            ],
+            "top_ned": 0.4444444444444444,
+            "segment_only_exact": false,
+            "segment_only_ned": 0.2857142857142857
+          },
+          {
+            "concept_id": "208",
+            "gloss": "NASAL MUCUS (SNOT)",
+            "predicted": [
+              "n̥",
+              "a",
+              "p",
+              "⁵⁵"
+            ],
+            "nearest_gold": [
+              "nʰ",
+              "a",
+              "p",
+              "⁴"
+            ],
+            "top_ned": 0.5,
+            "segment_only_exact": false,
+            "segment_only_ned": 0.3333333333333333
+          },
+          {
+            "concept_id": "1209",
+            "gloss": "I",
+            "predicted": [
+              "ŋ",
+              "ɔ",
+              "²²"
+            ],
+            "nearest_gold": [
+              "ŋ",
+              "a"
+            ],
+            "top_ned": 0.6666666666666666,
+            "segment_only_exact": false,
+            "novel_outside_leaf_attestation": true
+          }
+        ]
+      }
+    },
+    "r06_corpus_contrast_equivalence": {
+      "proto_burmish": {
+        "target_validity": "validated_target",
+        "output_kind": "committed",
+        "evaluated_concept_count": 54,
+        "corpus_bcubed_precision": 0.45663468592761525,
+        "corpus_bcubed_recall": 0.39778573923454097,
+        "corpus_bcubed_f1": 0.4251835764983633,
+        "is_bijective_relabelling": false,
+        "tone_tokens_in_reference": true,
+        "tone_tokens_in_inferred": true
+      },
+      "burmic": {
+        "target_validity": "provisional_proxy",
+        "output_kind": "committed",
+        "evaluated_concept_count": 37,
+        "corpus_bcubed_precision": 0.45309417224189946,
+        "corpus_bcubed_recall": 0.38513708513708517,
+        "corpus_bcubed_f1": 0.41636092010095105,
+        "is_bijective_relabelling": false,
+        "tone_tokens_in_reference": true,
+        "tone_tokens_in_inferred": true
+      }
+    },
+    "critic_audit": {
+      "evaluator_version": "r07-critic-v1",
+      "audit_mode": "real_run_provenance_v1",
+      "run_status": "completed",
+      "total_defect_count": 97,
+      "root_outgroup_false_positives": 0,
+      "defect_counts_by_category": {
+        "silent_residue_drop_truncation": 0,
+        "uninspected_outgroup_citation": 96,
+        "unit_provenance_loss": 0,
+        "identity_confidence_length_bias": 1,
+        "upstream_tie_collapse_majority": 0
+      },
+      "per_node": {
+        "maruic": {
+          "is_root": false,
+          "committed": true,
+          "failure_fallback": false,
+          "inventory_source": "committed",
+          "validation_call_id": "call_bedcaa2c2a3a4c2c9050421ae6f0",
+          "residue_policy": "retain_from_witness",
+          "residue_witness_child_id": "hillburmish:Maru",
+          "local_csu_set_count": 738,
+          "committed_set_count": 230,
+          "uncovered_set_count": 508,
+          "recurrence_csp_pattern_count": 320,
+          "recurrence_support_ge_2": 113,
+          "recurrence_min_attested_children_2_all": 196,
+          "recurrence_min_attested_children_2_support_ge_2": 46,
+          "unaccounted_column_count": 379,
+          "assembled_column_count": 589,
+          "unaccounted_column_rate": 0.6434634974533107,
+          "uncovered_concept_count": 49,
+          "defect_count": 85,
+          "defect_counts_by_category": {
+            "silent_residue_drop_truncation": 0,
+            "uninspected_outgroup_citation": 85,
+            "unit_provenance_loss": 0,
+            "identity_confidence_length_bias": 0,
+            "upstream_tie_collapse_majority": 0
+          },
+          "defective_shared_claim_pattern_count": 23,
+          "root_cause": "Gemini relied on aggregate outgroup_reflexes summaries in summarize_correspondences and cited external outgroup corroboration in directionality_rationale across 23 shared_claims (85 csu-* sets), while calling search_forms 0 times, scoping all 3 get_alignments calls exclusively to the 4 Maruic children, and calling polarize successfully only once (T16 call_a799c9cdce5e4fe7893fc0f18b01 on csu-07afc4c41b08314b6e5b4adf in concept 1710, which had 0 outgroup observations)."
+        },
+        "burmic": {
+          "is_root": false,
+          "committed": true,
+          "failure_fallback": false,
+          "inventory_source": "committed",
+          "validation_call_id": "call_ee3fb0dc1ad04c7e9b2c7afa29e7",
+          "residue_policy": "retain_from_witness",
+          "residue_witness_child_id": "hillburmish:AchangLongchuan",
+          "local_csu_set_count": 543,
+          "committed_set_count": 62,
+          "uncovered_set_count": 481,
+          "recurrence_csp_pattern_count": 210,
+          "recurrence_support_ge_2": 90,
+          "recurrence_min_attested_children_2_all": 120,
+          "recurrence_min_attested_children_2_support_ge_2": 35,
+          "unaccounted_column_count": 475,
+          "assembled_column_count": 537,
+          "unaccounted_column_rate": 0.8845437616387337,
+          "uncovered_concept_count": 53,
+          "defect_count": 11,
+          "defect_counts_by_category": {
+            "silent_residue_drop_truncation": 0,
+            "uninspected_outgroup_citation": 11,
+            "unit_provenance_loss": 0,
+            "identity_confidence_length_bias": 0,
+            "upstream_tie_collapse_majority": 0
+          },
+          "defective_breakdown": {
+            "inherited_local_choice": [
+              "csu-e8ed44ce4323af202422c581"
+            ],
+            "shared_claim_patterns": {
+              "csp-160116e30532b947dd87dd6b": "3/3 sets",
+              "csp-be00c9759a230e8cad1c2e7b": "4/4 sets",
+              "csp-698f375e6a070d4c6b0dfb0e": "3/4 sets (4th set csu-c19614857dee66828b91aab4 in concept 239 FLOWER exempted because T15 polarize call_582fd84e8e244e729d3f9e81a278 inspected outgroups across ['1007', '239', '496', '749', '759', '96', 'hillburmish:1254_wearabracelet'])"
+            }
+          }
+        },
+        "proto_burmish": {
+          "is_root": true,
+          "committed": true,
+          "failure_fallback": false,
+          "inventory_source": "committed",
+          "validation_call_id": "call_a9a3e456ff4141bc9f6498aec1ae",
+          "residue_policy": "retain_from_witness",
+          "residue_witness_child_id": "maruic",
+          "local_csu_set_count": 545,
+          "identity_child_beam_reference_local_csu_sets": 1823,
+          "committed_set_count": 112,
+          "uncovered_set_count": 433,
+          "recurrence_csp_pattern_count": 145,
+          "recurrence_support_ge_2": 79,
+          "recurrence_min_attested_children_2_all": 70,
+          "recurrence_min_attested_children_2_support_ge_2": 30,
+          "unaccounted_column_count": 393,
+          "assembled_column_count": 506,
+          "unaccounted_column_rate": 0.7766798418972332,
+          "uncovered_concept_count": 47,
+          "defect_count": 1,
+          "defect_counts_by_category": {
+            "silent_residue_drop_truncation": 0,
+            "uninspected_outgroup_citation": 0,
+            "unit_provenance_loss": 0,
+            "identity_confidence_length_bias": 1,
+            "upstream_tie_collapse_majority": 0
+          },
+          "identity_confidence_length_bias_detail": {
+            "biased_identity_set_count": 46,
+            "biased_identity_pattern_count": 11,
+            "assigned_confidence": 0.95,
+            "affected_unequal_length_multi_candidate_concepts": [
+              "1441",
+              "2070",
+              "2378"
+            ]
+          }
+        }
+      }
+    },
+    "counterfactual_tied_beam_replay": {
+      "replay_cost_usd": 0.0,
+      "executed_multi_node": true,
+      "nodes_replayed": [
+        "maruic",
+        "burmic",
+        "proto_burmish"
+      ],
+      "rebound_nodes": {},
+      "any_beam_or_score_delta": false,
+      "low_confidence_le_0_5_commitments_by_node": {
+        "maruic": 0,
+        "burmic": 0,
+        "proto_burmish": 0
+      },
+      "committed_confidence_distributions": {
+        "maruic": {
+          "1.0": 163,
+          "0.95": 67
+        },
+        "burmic": {
+          "1.0": 7,
+          "0.95": 37,
+          "0.9": 18
+        },
+        "proto_burmish": {
+          "0.95": 46,
+          "0.9": 59,
+          "0.85": 7
+        }
+      },
+      "multi_candidate_concept_counts": {
+        "maruic": 3,
+        "burmic": 1,
+        "proto_burmish": 3
+      },
+      "multi_candidate_source_explanation": "All multi-candidate distributions (1441 FLY, 2070 COMB, 2378 THUNDER at maruic/proto_burmish; 2378 THUNDER at burmic) arise from leaf-lexicon multi-form variants/synonyms (91 alignments across 54 concepts at maruic, 57 at burmic, 71 at proto_burmish), not from confidence <= 0.5 correspondence ties."
+    },
+    "stored_hypothesis_v2_and_b03_scaling_telemetry": {
+      "test_proto_assembly_calls_total": 20,
+      "test_proto_assembly_accepted_total": 18,
+      "base_hypothesis_id_patch_calls_total": 5,
+      "drop_set_ids_calls_total": 0,
+      "drop_pattern_ids_calls_total": 0,
+      "automatic_choice_supersessions_by_shared_claims": [
+        {
+          "node_id": "burmic",
+          "turn": 19,
+          "call_id": "call_ee3fb0dc1ad04c7e9b2c7afa29e7",
+          "base_hypothesis_id": "hyp-8568b03a646498c15676c35d",
+          "superseded_choice_set_id": "csu-85a6106d177f26dbe95b2ca7",
+          "prior_choice_proto_segment": "⁵⁵",
+          "superseding_pattern_id": "csp-2678cefdb0fe4c79d2cabf84",
+          "new_shared_claim_proto_segment": "²²",
+          "surviving_inherited_choice_set_ids": [
+            "csu-4727af1d80045dd34f043283",
+            "csu-e8ed44ce4323af202422c581"
+          ]
+        }
+      ],
+      "patch_calls_byte_comparison": [
+        {
+          "node_id": "burmic",
+          "turn": 12,
+          "call_id": "call_48cbd5c2944d41368516888cdc8d",
+          "base_hypothesis_id": "hyp-44604f880296c1534440ece9",
+          "result_hypothesis_id": "hyp-94d5f3fedb6b099c6f3854c2",
+          "compact_patch_arg_bytes": 141,
+          "monolithic_v1_normalized_bytes": 610,
+          "monolithic_v1_raw_int_conf_bytes": 608,
+          "stored_spec_json_bytes": 1150,
+          "byte_reduction_vs_normalized_v1_ratio": 0.768852
+        },
+        {
+          "node_id": "burmic",
+          "turn": 17,
+          "call_id": "call_5f80513fd1984dc2a94d5bb29f02",
+          "base_hypothesis_id": "hyp-44604f880296c1534440ece9",
+          "result_hypothesis_id": "hyp-5569277fd07947ba2c931a17",
+          "compact_patch_arg_bytes": 804,
+          "monolithic_v1_normalized_bytes": 1297,
+          "monolithic_v1_raw_int_conf_bytes": 1295,
+          "stored_spec_json_bytes": 1870,
+          "byte_reduction_vs_normalized_v1_ratio": 0.380108
+        },
+        {
+          "node_id": "burmic",
+          "turn": 18,
+          "call_id": "call_828a5773f0164a1b89123b25a412",
+          "base_hypothesis_id": "hyp-5569277fd07947ba2c931a17",
+          "result_hypothesis_id": "hyp-8568b03a646498c15676c35d",
+          "compact_patch_arg_bytes": 149,
+          "monolithic_v1_normalized_bytes": 1369,
+          "monolithic_v1_raw_int_conf_bytes": 1367,
+          "stored_spec_json_bytes": 1910,
+          "byte_reduction_vs_normalized_v1_ratio": 0.891161
+        },
+        {
+          "node_id": "burmic",
+          "turn": 19,
+          "call_id": "call_ee3fb0dc1ad04c7e9b2c7afa29e7",
+          "base_hypothesis_id": "hyp-8568b03a646498c15676c35d",
+          "result_hypothesis_id": "hyp-a76428c6544bcfd021c05ddc",
+          "compact_patch_arg_bytes": 3959,
+          "monolithic_v1_normalized_bytes": 5092,
+          "monolithic_v1_raw_int_conf_bytes": 5088,
+          "stored_spec_json_bytes": 5749,
+          "byte_reduction_vs_normalized_v1_ratio": 0.222506
+        },
+        {
+          "node_id": "proto_burmish",
+          "turn": 17,
+          "call_id": "call_a9a3e456ff4141bc9f6498aec1ae",
+          "base_hypothesis_id": "hyp-1daab6e8bd0ab03d5f36b65b",
+          "result_hypothesis_id": "hyp-9574bf1eda75097002f7c713",
+          "compact_patch_arg_bytes": 1388,
+          "monolithic_v1_normalized_bytes": 10797,
+          "stored_spec_json_bytes": 11811,
+          "byte_reduction_vs_normalized_v1_ratio": 0.871446,
+          "output_tokens_patch": 1553,
+          "output_tokens_prior_monolithic_turn16": 18210,
+          "output_token_reduction_ratio": 0.914717
+        }
+      ],
+      "rejected_tool_calls": [
+        {
+          "node_id": "maruic",
+          "turn": 19,
+          "call_id": "call_e8b6d8f43db74bcf9c1134c3bd62",
+          "tool_name": "polarize",
+          "error_code": "schema:<root>=value_error",
+          "root_cause": "Supplied 4 child_ids against a 1-element correspondence=['k'] on singleton set csu-2123a65b2a91bee2505ca1f9.",
+          "repair": "Switched on Turn 20 (call_fa195d87f7fc4807bb05b1ab2756) to get_alignments(concept_ids=['1248']) and assembled 50 shared_claims cleanly on Turn 21."
+        },
+        {
+          "node_id": "burmic",
+          "turn": 6,
+          "call_id": "call_14f24afafc964673b907b9da9353",
+          "tool_name": "test_proto_assembly",
+          "error_code": "schema:<root>=value_error",
+          "root_cause": "Omitted choices/commitments/shared_claims without base_hypothesis_id when probing concept_ids=['1209'].",
+          "repair": "Immediately added choices=[] on Turn 7 (call_6063e9228061483d8a3d2cf170bf, ok=true)."
+        },
+        {
+          "node_id": "proto_burmish",
+          "turn": 5,
+          "call_id": "call_c4d735fac190466ab00c2dbe0ab8",
+          "tool_name": "test_sound_law",
+          "error_code": "no-op-rule",
+          "root_cause": "Tested identity rule dsl='ŋ > ŋ' on source_child_ids=['maruic'].",
+          "repair": "Immediately tested non-identity palatalization rule dsl='m > ȵ / _j' on Turn 6 (call_48c275afec0e4e139be640bb9eaf, ok=true)."
+        },
+        {
+          "node_id": "proto_burmish",
+          "turn": 7,
+          "call_id": "call_33b26e8642314bb7a38b1943f774",
+          "tool_name": "test_proto_assembly",
+          "error_code": "schema:<root>=value_error",
+          "root_cause": "Passed only {'residue_policy': 'drop'} with no explicit claim collection.",
+          "repair": "Immediately passed {'choices': [], 'residue_policy': 'drop'} on Turn 8 (call_1fa539edf233418b8d54d15676fc, ok=true)."
+        }
+      ],
+      "summarize_correspondences_min_attested_children_usage": {
+        "total_calls": 21,
+        "maruic": {
+          "calls": 8,
+          "min_attested_children_calls": 1,
+          "details": "Turn 18 call_3ce150eb6d744d3e97f8669a59f9 used min_support=2, min_attested_children=2, cutting matched recurrence rows from 113 to 46 (-59.29%, eliminating all 67 single-daughter compound/affix singletons); min_support=1 with min_attested_children=2 was not queried at maruic."
+        },
+        "burmic": {
+          "calls": 6,
+          "min_attested_children_calls": 0,
+          "details": "Used default min_attested_children=1 across 2 recurrence and 4 local surveys."
+        },
+        "proto_burmish": {
+          "calls": 7,
+          "min_attested_children_calls": 5,
+          "details": "Turns 11, 12, 13, 14, and 19 passed min_support=1, min_attested_children=2, cutting recurrence rows from 145 to 70 multi-daughter correspondences (30 at support>=2 and 40 at support==1), directly surfacing 6 creaky-vowel (V̱) patterns and 5 voiceless-sonorant (m̥, n̥, ȵ̥, ŋ̊) patterns, and cleanly re-reading offset=30 on Turn 19 after Turn 16 watermark compaction with repeat_guard_hits=0."
+        }
+      },
+      "local_qwen38_27b_96k_feasibility_post_b03": {
+        "watermark_tokens": 96000,
+        "context_window_tokens": 128000,
+        "max_output_tokens_reserved": 32768,
+        "fits_on_burmish": false,
+        "per_node_non_signature_peaks": {
+          "maruic": {
+            "first_turn_over_96k": 3,
+            "first_turn_over_96k_non_sig_tokens": 128710,
+            "peak_turn": 19,
+            "peak_non_sig_tokens": 323339,
+            "ratio_to_96k_watermark": 3.368115
+          },
+          "burmic": {
+            "first_turn_over_96k": 4,
+            "first_turn_over_96k_non_sig_tokens": 99243,
+            "first_turn_over_128k": 5,
+            "first_turn_over_128k_non_sig_tokens": 129344,
+            "peak_turn": 20,
+            "peak_non_sig_tokens": 263629,
+            "ratio_to_96k_watermark": 2.746135
+          },
+          "proto_burmish": {
+            "first_turn_over_96k": 3,
+            "first_turn_over_96k_non_sig_tokens": 214487,
+            "peak_turn": 13,
+            "peak_non_sig_tokens": 301032,
+            "ratio_to_96k_watermark": 3.13575
+          }
+        }
+      }
+    },
+    "linguistic_forensics": {
+      "tone_preservation": {
+        "tones_stripped_commits_across_all_nodes": 0,
+        "beam_candidates_with_tone_tokens_share": 1.0,
+        "maruic": {
+          "committed_tone_phonemes": {
+            "³¹": 21,
+            "⁵⁵": 15,
+            "⁵¹": 14,
+            "³⁵": 2
+          },
+          "output_beam_66_candidates_tone_tokens": {
+            "³¹": 46,
+            "⁵⁵": 26,
+            "⁵¹": 13,
+            "³⁵": 14,
+            "²¹": 1,
+            "³": 1
+          }
+        },
+        "burmic": {
+          "committed_tone_phonemes": {
+            "⁵⁵": 22,
+            "²²": 10
+          },
+          "output_beam_55_candidates_tone_tokens": {
+            "⁵⁵": 39,
+            "³¹": 20,
+            "²²": 10,
+            "³⁵": 8,
+            "⁵³": 1
+          }
+        },
+        "proto_burmish": {
+          "committed_tone_phonemes": {
+            "³¹": 18,
+            "⁵¹": 10,
+            "⁵⁵": 9,
+            "³⁵": 4
+          },
+          "output_beam_66_candidates_tone_tokens": {
+            "³¹": 46,
+            "⁵⁵": 26,
+            "⁵¹": 13,
+            "³⁵": 14,
+            "²¹": 1,
+            "³": 1
+          }
+        },
+        "gold_notation_mismatch_explanation": "Hill & Gong (2020) encode Proto-Burmish tones as abstract etymological category numerals (¹ Tone 1, ² Tone 2, ³ Tone 3, ⁴ checked stop-coda category) and Old Burmese proxy forms use ³ ⁴ ⁵ or unmarked open syllables, whereas all 7 modern leaf lexicons carry Chao pitch-contour superscripts (⁵⁵, ⁵¹, ³⁵, ³³, ³¹, ²², ²¹, plus Rangoon ⁴). Gemini preserved 100% of tonal contrasts using daughter-grounded contour symbols (*⁵¹ ≈ gold ¹, *³⁵/*⁵⁵ ≈ gold ²/³, *³¹/*⁵⁵ ≈ checked ⁴), yielding 0/54 and 0/37 literal string/unit exact matches (with 3/54 and 1/37 segment-only exact matches) while capturing corpus-wide contrast structure in R06 corpus_bcubed_f1 (0.425184 at proto_burmish, 0.416361 at burmic)."
+      },
+      "preglottalized_and_voiceless_sonorants": {
+        "reconstructed_preglottalized_onset_symbols": [],
+        "proto_burmish_surfaced_creaky_patterns_count": 6,
+        "proto_burmish_committed_creaky_vowel": {
+          "pattern_id": "csp-7a90d3c0064e0c0f7d1e3fa9",
+          "correspondence": [
+            "ɛ̱",
+            "a"
+          ],
+          "proto_segment": "ɛ̱",
+          "member_sets": 3,
+          "confidence": 0.85
+        },
+        "proto_burmish_surfaced_support1_voiceless_sonorant_patterns": [
+          [
+            "csp-d15a831d12fd160ea84c62cc",
+            [
+              "m",
+              "m̥"
+            ]
+          ],
+          [
+            "csp-328456207db458fa27dea480",
+            [
+              "n",
+              "n̥"
+            ]
+          ],
+          [
+            "csp-d10d73b456e86fe85ba5efb8",
+            [
+              "n",
+              "ȵ̥"
+            ]
+          ],
+          [
+            "csp-86127a47621e0306241c2029",
+            [
+              "s",
+              "m̥"
+            ]
+          ],
+          [
+            "csp-55b8471a9f15fcf2612b113f",
+            [
+              "ŋ",
+              "ŋ̊"
+            ]
+          ]
+        ],
+        "diagnosis": "Witness retention carried Maru creaky vowels (a̱, ɛ̱, i̱, u̱, ɔ̱) through maruic and Achang voiceless sonorants (m̥, n̥, ȵ̥, ŋ̊) through burmic, allowing min_attested_children=2, min_support=1 at proto_burmish to surface all 5 ['N', 'N̥'] and 6 ['V̱', 'V'] correspondences. However, Gemini committed only support>=2 patterns at proto_burmish (capturing *ɛ̱ on support=3) and treated onset and nucleus columns segment-by-segment rather than synthesizing cross-column *ˀm, *ˀn, *ˀŋ."
+      },
+      "stop_codas_and_morpheme_boundaries": {
+        "maruic_stop_coda_polarization": {
+          "labial": "csp-37927da23cb8f32ee3d355f3 ['p', 'ʔ', 'p', 'ʔ'] -> *p (5 sets)",
+          "velar": "csp-11da406b24d8839c282b5b92 ['ʔ', 'ʔ', 'k', 'k'] -> *k (2 sets)"
+        },
+        "burmic_nasal_coda_retention": {
+          "labial": "csp-be00c9759a230e8cad1c2e7b ['m', 'm', None] -> *m (4 sets)",
+          "coronal": "csp-698f375e6a070d4c6b0dfb0e ['n', 'n', None] -> *n (4 sets)",
+          "velar": "csp-766e72922573c0a77747e657 ['ŋ', 'ŋ', None] -> *ŋ (4 sets)"
+        },
+        "morpheme_boundary_plus_commits": {
+          "maruic_explicit_plus_sets": 81,
+          "maruic_explicit_plus_patterns": 6,
+          "burmic_explicit_plus_sets": 0,
+          "proto_burmish_explicit_plus_sets": 0,
+          "diagnosis": "At maruic, Gemini over-retained 4 single-daughter '+' boundary patterns (77 sets) + 2 multi-daughter '+' patterns (4 sets) = 81 '*+' sets before calling min_attested_children=2 on Turn 18, inflating compound forms with multiple '+' tokens (e.g., 1007 COW, 1248 EYE, 2378 THUNDER) that then propagated into proto_burmish via retain_from_witness='maruic' despite proto_burmish committing 0 '*+' sets."
+        }
+      }
+    }
+  },
+  "next_step_recommendations": {
+    "recommended_sequence": [
+      {
+        "step": 1,
+        "id": "polynesian-live-b04-gemini-separate-budget-session",
+        "mode": "bounded live benchmark (separate $10.00 session)",
+        "experiment_dir": "runs/experiments/b04-polynesian-gemini-b03-benchmark",
+        "summary": "Launch the pre-frozen B04 Polynesian companion bundle (7 internal nodes across 5 phylogenetic levels: tongic -> futunic -> marquesic -> tahitic -> central_eastern -> nuclear_polynesian -> proto_polynesian; $2.00 tongic Stage 1 gate -> $6.00 Stage 2 cumulative cached cap; $6.970752 <= $10.00 worst-case 0%-cache ceiling) in a dedicated session or only with explicit cumulative budget confirmation, because combining B04 Burmish actual spend ($3.800989) with Polynesian's worst-case 0%-cache Stage 2 reservation ($6.970752) equals $10.771741 > $10.00."
+      },
+      {
+        "step": 2,
+        "id": "local-qwen38-27b-transfer-on-polynesian-not-burmish",
+        "mode": "local $0 inference transfer",
+        "summary": "Run local dense qwen3.8-27b-splash (128k context, --compaction-watermark-tokens 96000, max_tokens=32768) on benchmarks/polynesian.json (simplex lexicon, R03f prompt peaks 46k-93k < 96k watermark), NOT on benchmarks/burmish.json, where post-B03 non-signature prompt peaks remain 323,339 (maruic T19), 263,629 (burmic T20), and 301,032 (proto_burmish T13) tokens—exceeding 96k on Turns 3-4 and 128k on Turns 3-5 unless initial survey page defaults/caps are tightened."
+      },
+      {
+        "step": 3,
+        "id": "targeted-linguistic-and-audit-refinements-post-b04",
+        "mode": "offline ($0) research follow-up",
+        "summary": "(a) Prevent 1-daughter '+' boundary over-retention in units-v2 partial-cognacy compounds; (b) clarify in agent instructions that aggregate outgroup_reflexes in summarize_correspondences is a survey summary rather than concept-level outgroup verification (cutting uninspected_outgroup_citation from 96) and that unanimous identity retentions carry confidence=1.0 (eliminating identity_confidence_length_bias); and (c) evaluate cross-column prosodic/laryngeal conditioning (*ˀN -> N + V̱ / N̥ + V) and explicit tone-correspondence table evaluation."
+      }
+    ]
+  }
+}
