@@ -597,11 +597,64 @@ two-stage single-checkpoint benchmark on `benchmarks/burmish.json`
   at `0.95 < 1.0`), with **`0` root outgroup false positives** and **`0`
   `unit_provenance_loss`** (vs `7` in pre-R01). Counterfactual replay (`None` vs
   `0.5`) yielded `0.000000` delta (`0` committed sets had `confidence <= 0.5`).
-  Pre-frozen `b04-polynesian-gemini-b03-benchmark/` (`US$6.9708 <= US$10.00`) is
-  cleared for a dedicated `$10.00` session, and `polynesian.json` (`46k–93k`
-  peaks)—not `burmish.json` (`264k–323k` non-signature peaks)—is confirmed as the
-  feasible real-family transfer target for `128k`-context local
-  `qwen3.8-27b-splash` (`96k` watermark).
+
+## B04 live Polynesian companion benchmark under stored-hypothesis-v2 — completed 2026-11-13
+
+[B04 Polynesian](research/real_family_benchmark_b04_polynesian.md)
+([machine results](research/real_family_benchmark_b04_polynesian_results.json);
+banked artifacts and independent post-run verification in
+`runs/experiments/b04-polynesian-gemini-b03-benchmark/`) executed the frozen
+companion two-stage single-checkpoint benchmark on `benchmarks/polynesian.json`
+(`10` daughter varieties, `7` internal nodes across `5` phylogenetic levels,
+`46` root concepts / `131` total concepts) with `gemini/gemini-3.8-flash`
+(`medium` thinking, `max_tokens = 49152`, `stored-hypothesis-v2`,
+`--tied-confidence-threshold 0.5`, `--compaction-watermark-tokens 256000`,
+`configuration_sha256 = d9de11ba3340…`):
+
+- **Clean Stage 1 pass + Stage 2 `RunBudgetExceeded` stop (`US$6.0715` Polynesian / `US$9.8725 <= US$12.00` combined):**
+  Stage 1 (`--stop-after-node tongic --max-total-cost-usd 2.00`) committed
+  `tongic` cleanly in `21` turns (`US$0.894254` cached-adjusted / `US$3.173744`
+  uncached, `83.11%` cache hit, `74.04%` [`174/235`] explicit column coverage,
+  `317.79 s` wall; `gate_stage1.json` `usable = True`). Stage 2 (`--resume
+  --max-total-cost-usd 6.00 --max-run-seconds 3600`) committed `futunic` (`23`
+  turns, `US$1.332312` cached / `US$3.432722` uncached, `81.12%` [`159/196`]
+  coverage) and `marquesic` (`20` turns, `US$2.045983` cached / `US$4.025276`
+  uncached, `82.93%` [`170/205`] coverage), and halted cleanly pre-dispatch on
+  `tahitic` Turn 19 (`US$1.798912` cached / `US$3.715788` uncached) when
+  cumulative Polynesian spend reached **`US$6.071462 >= US$6.00`** (`US$14.347529`
+  uncached, `66.11%` cache hit, `1,225.98 s` wall; combined `B04` session spend
+  `US$3.800989 + US$6.071462 = US$9.872450 <= US$12.00`). Across `83` turns /
+  `84` journaled requests (`1` `$0.00` HTTP `429` retry on `tahitic` T14) / `82`
+  executed tool calls, Gemini recorded **`0` rejected calls**, **`0` output
+  truncations**, and `7` `base_hypothesis_id` delta patches (`-12.16%` to
+  `-98.42%` bytes vs v1).
+- **Three cross-family engineering & protocol findings surfaced for `B05` (`$0` offline):**
+  1. **`256,000`-token watermark cache thrashing (`19` triggers, `31` compactions):**
+     Once `2` retained `summarize_correspondences` pages held `marquesic`'s
+     steady-state prompt at `327k–358k > 256k`, watermark compaction fired on
+     `5` consecutive turns (`T15–T19`), mutating mid-history messages and
+     resetting cached input tokens to `~16,020` (`4.5%–4.9%`) at **`US$1.2604`
+     across `5` turns (`61.6%` of `marquesic` spend; `$0.2160` re-prefill
+     penalty vs `$0.00075/10k` cached retention = `288×`)**.
+  2. **`summarize_correspondences` `517,098`-char (`517,345` UTF-8 B) outgroup-witness bloat & `128k` Qwen correction:**
+     On `tahitic` Turn 13 (`limit=100` -> `494,693` peak input tokens), all `100`
+     `sets` rows occupied only `60,006` UTF-8 B (`11.6%`), while
+     `outgroup_reflexes[*].witnesses` (`599` `LocalOutgroupWitness` objects /
+     `1,668` `PieceSource` provenance dicts across `10` outgroup nodes) consumed
+     **`408,022` UTF-8 B (`78.9%` of the payload)** vs `28,072` B (`5.4%`) for
+     the compact `OutgroupReflex` tally—explaining why `units-v2` Polynesian
+     (`257.8k–494.7k` peaks) exceeded R03f's `46k–93k` legacy whole-word replay
+     and showing that stripping `SetOutgroupProfile.witnesses` + capping
+     `limit <= 40` restores `< 96k` local `qwen3.8-27b-splash` feasibility on
+     both families.
+  3. **`R07` `audit-run` (`34` defects: `2` `silent_residue_drop_truncation`, `32` `uninspected_outgroup_citation`, `0` provenance loss):**
+     `futunic` (`37/196` cols = `18.88%`, `15` concepts, `2` dropped completely)
+     and `marquesic` (`35/205` cols = `17.07%`, `13` concepts, after Turn 19
+     started a fresh payload without `base_hypothesis_id` and reverted from Turn
+     18's `retain_from_witness="walworthpolynesian:Hawaiian"` to default `drop`)
+     exposed the need for a `commit_ready = False` coverage-loss guard on
+     `residue_policy == "drop"` before propagating intermediate beams to
+     `central_eastern -> nuclear_polynesian -> proto_polynesian`.
 
 ## Authority and reading order
 
